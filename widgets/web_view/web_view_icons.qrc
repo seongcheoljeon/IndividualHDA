@@ -1,0 +1,22 @@
+<RCC>
+  <qresource prefix="web_view_main">
+    <file>icons/google.png</file>
+    <file>icons/houdini_logo.png</file>
+    <file>icons/ic_apps_white.png</file>
+    <file>icons/ic_arrow_back_white.png</file>
+    <file>icons/ic_arrow_forward_white.png</file>
+    <file>icons/ic_close_white.png</file>
+    <file>icons/ic_fullscreen_white.png</file>
+    <file>icons/ic_g_translate_white.png</file>
+    <file>icons/ic_home_white.png</file>
+    <file>icons/ic_refresh_white.png</file>
+    <file>icons/ic_search_white.png</file>
+    <file>icons/ic_zoom_in_white.png</file>
+    <file>icons/ic_zoom_out_white.png</file>
+    <file>icons/news.png</file>
+    <file>icons/odforce.png</file>
+    <file>icons/viewport_logo_trans.png</file>
+    <file>icons/vimeo.png</file>
+    <file>icons/youtube.png</file>
+  </qresource>
+</RCC>

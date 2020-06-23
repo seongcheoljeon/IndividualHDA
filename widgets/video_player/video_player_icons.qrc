@@ -1,0 +1,24 @@
+<RCC>
+  <qresource prefix="video_player_main">
+    <file>icons/ic_audiotrack_white.png</file>
+    <file>icons/ic_delete_forever_white.png</file>
+    <file>icons/ic_donut_large_white.png</file>
+    <file>icons/ic_movie_white.png</file>
+    <file>icons/ic_pause_white.png</file>
+    <file>icons/ic_play_arrow_white.png</file>
+    <file>icons/ic_playlist_add_white.png</file>
+    <file>icons/ic_playlist_play_white.png</file>
+    <file>icons/ic_playlist_repeat_white.png</file>
+    <file>icons/ic_repeat_one_white.png</file>
+    <file>icons/ic_repeat_white.png</file>
+    <file>icons/ic_shuffle_white.png</file>
+    <file>icons/ic_skip_next_white.png</file>
+    <file>icons/ic_skip_previous_white.png</file>
+    <file>icons/ic_stop_white.png</file>
+    <file>icons/ic_volume_off_white.png</file>
+    <file>icons/ic_volume_up_white.png</file>
+    <file>icons/ic_zoom_out_map_white.png</file>
+    <file>icons/unknown.png</file>
+    <file>icons/viewport_logo_trans.png</file>
+  </qresource>
+</RCC>

@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="detail_view_main">
+    <file>icons/no_img_available.png</file>
+    <file>icons/viewport_logo_trans.png</file>
+  </qresource>
+</RCC>

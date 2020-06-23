@@ -1,0 +1,2653 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow__individualHDA</class>
+ <widget class="QMainWindow" name="MainWindow__individualHDA">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1472</width>
+    <height>863</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>11</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>Individual HDA</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="icons.qrc">
+    <normaloff>:/main/icons/viewport_logo_trans.png</normaloff>:/main/icons/viewport_logo_trans.png</iconset>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout_18">
+    <property name="spacing">
+     <number>1</number>
+    </property>
+    <property name="leftMargin">
+     <number>1</number>
+    </property>
+    <property name="topMargin">
+     <number>1</number>
+    </property>
+    <property name="rightMargin">
+     <number>1</number>
+    </property>
+    <property name="bottomMargin">
+     <number>1</number>
+    </property>
+    <item>
+     <widget class="QSplitter" name="splitter__whole_vertical">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <property name="handleWidth">
+       <number>3</number>
+      </property>
+      <widget class="QStackedWidget" name="stackedWidget__whole">
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <widget class="QWidget" name="page__ihda">
+        <layout class="QVBoxLayout" name="verticalLayout_15">
+         <property name="spacing">
+          <number>1</number>
+         </property>
+         <property name="leftMargin">
+          <number>1</number>
+         </property>
+         <property name="topMargin">
+          <number>1</number>
+         </property>
+         <property name="rightMargin">
+          <number>1</number>
+         </property>
+         <property name="bottomMargin">
+          <number>1</number>
+         </property>
+         <item>
+          <widget class="QSplitter" name="splitter__whole_horizontal">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="handleWidth">
+            <number>3</number>
+           </property>
+           <widget class="QWidget" name="layoutWidget">
+            <layout class="QVBoxLayout" name="verticalLayout_4">
+             <property name="spacing">
+              <number>1</number>
+             </property>
+             <item>
+              <widget class="QSplitter" name="splitter__cate_whole_vertical">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+               <property name="handleWidth">
+                <number>3</number>
+               </property>
+               <widget class="QWidget" name="layoutWidget">
+                <layout class="QHBoxLayout" name="horizontalLayout_3">
+                 <property name="spacing">
+                  <number>5</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>3</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>3</number>
+                 </property>
+                 <item>
+                  <widget class="QCheckBox" name="checkBox__casesensitive_cate">
+                   <property name="cursor">
+                    <cursorShape>PointingHandCursor</cursorShape>
+                   </property>
+                   <property name="toolTip">
+                    <string>Word Case Sensitive</string>
+                   </property>
+                   <property name="statusTip">
+                    <string>It is case sensitive</string>
+                   </property>
+                   <property name="text">
+                    <string/>
+                   </property>
+                   <property name="icon">
+                    <iconset resource="icons.qrc">
+                     <normaloff>:/main/icons/case_sensitive.png</normaloff>:/main/icons/case_sensitive.png</iconset>
+                   </property>
+                   <property name="iconSize">
+                    <size>
+                     <width>20</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="lineEdit__search_cate">
+                   <property name="statusTip">
+                    <string>Please enter your search term</string>
+                   </property>
+                   <property name="frame">
+                    <bool>false</bool>
+                   </property>
+                   <property name="placeholderText">
+                    <string>ex) sop</string>
+                   </property>
+                   <property name="clearButtonEnabled">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QStackedWidget" name="stackedWidget__category">
+                <property name="statusTip">
+                 <string>Show the category of the iHDA</string>
+                </property>
+                <property name="currentIndex">
+                 <number>0</number>
+                </property>
+                <widget class="QWidget" name="page__category">
+                 <layout class="QVBoxLayout" name="verticalLayout_16">
+                  <property name="spacing">
+                   <number>1</number>
+                  </property>
+                  <property name="leftMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="topMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="rightMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="bottomMargin">
+                   <number>0</number>
+                  </property>
+                  <item>
+                   <layout class="QVBoxLayout" name="verticalLayout__category">
+                    <property name="spacing">
+                     <number>1</number>
+                    </property>
+                   </layout>
+                  </item>
+                 </layout>
+                </widget>
+               </widget>
+              </widget>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_12">
+               <property name="spacing">
+                <number>3</number>
+               </property>
+               <property name="leftMargin">
+                <number>3</number>
+               </property>
+               <property name="rightMargin">
+                <number>3</number>
+               </property>
+               <item>
+                <spacer name="horizontalSpacer_6">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <widget class="QLabel" name="label__cate_count">
+                 <property name="text">
+                  <string>0</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label__cate_count_suffix">
+                 <property name="text">
+                  <string>categories</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="layoutWidget">
+            <layout class="QVBoxLayout" name="verticalLayout_6">
+             <property name="spacing">
+              <number>1</number>
+             </property>
+             <item>
+              <widget class="QSplitter" name="splitter__ihda_whole_vertical">
+               <property name="orientation">
+                <enum>Qt::Vertical</enum>
+               </property>
+               <property name="handleWidth">
+                <number>3</number>
+               </property>
+               <widget class="QWidget" name="layoutWidget">
+                <layout class="QVBoxLayout" name="verticalLayout_5">
+                 <property name="spacing">
+                  <number>1</number>
+                 </property>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_2">
+                   <property name="spacing">
+                    <number>3</number>
+                   </property>
+                   <property name="leftMargin">
+                    <number>3</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>3</number>
+                   </property>
+                   <item>
+                    <widget class="QPushButton" name="pushButton__favorite_node">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Shows Favorite Nodes</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>Shows the node where the favorites are active</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="icons.qrc">
+                       <normaloff>:/main/icons/ic_favorite_border_white.png</normaloff>:/main/icons/ic_favorite_border_white.png</iconset>
+                     </property>
+                     <property name="iconSize">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                     <property name="checkable">
+                      <bool>true</bool>
+                     </property>
+                     <property name="flat">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="pushButton__thumbnail">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Shows Thumbnails iHDA</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>Shows thumbnails of iHDA nodes</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="icons.qrc">
+                       <normaloff>:/main/icons/network_sop.png</normaloff>:/main/icons/network_sop.png</iconset>
+                     </property>
+                     <property name="iconSize">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                     <property name="checkable">
+                      <bool>true</bool>
+                     </property>
+                     <property name="flat">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_4">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>198</width>
+                       <height>17</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="pushButton__zoomin">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Zoom In</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>Zoom in to the HDA's icon</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="icons.qrc">
+                       <normaloff>:/main/icons/ic_zoom_in_white.png</normaloff>:/main/icons/ic_zoom_in_white.png</iconset>
+                     </property>
+                     <property name="iconSize">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                     <property name="flat">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="pushButton__zoomout">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Zoom Out</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>Zoom out to the HDA's icon</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="icons.qrc">
+                       <normaloff>:/main/icons/ic_zoom_out_white.png</normaloff>:/main/icons/ic_zoom_out_white.png</iconset>
+                     </property>
+                     <property name="iconSize">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                     <property name="flat">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QDoubleSpinBox" name="doubleSpinBox__zoom">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignCenter</set>
+                     </property>
+                     <property name="suffix">
+                      <string>%</string>
+                     </property>
+                     <property name="decimals">
+                      <number>0</number>
+                     </property>
+                     <property name="minimum">
+                      <double>10.000000000000000</double>
+                     </property>
+                     <property name="maximum">
+                      <double>500.000000000000000</double>
+                     </property>
+                     <property name="singleStep">
+                      <double>10.000000000000000</double>
+                     </property>
+                     <property name="value">
+                      <double>100.000000000000000</double>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="Line" name="line">
+                     <property name="orientation">
+                      <enum>Qt::Vertical</enum>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="pushButton__icon_mode">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Icon View</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>Displays only the icon and name of the HDA</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="icons.qrc">
+                       <normaloff>:/main/icons/ic_widgets_white.png</normaloff>:/main/icons/ic_widgets_white.png</iconset>
+                     </property>
+                     <property name="iconSize">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                     <property name="checkable">
+                      <bool>true</bool>
+                     </property>
+                     <property name="checked">
+                      <bool>true</bool>
+                     </property>
+                     <property name="autoExclusive">
+                      <bool>true</bool>
+                     </property>
+                     <property name="flat">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="pushButton__table_mode">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Table View</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>Display various information of HDA</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="icons.qrc">
+                       <normaloff>:/main/icons/ic_format_list_numbered_white.png</normaloff>:/main/icons/ic_format_list_numbered_white.png</iconset>
+                     </property>
+                     <property name="iconSize">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                     <property name="checkable">
+                      <bool>true</bool>
+                     </property>
+                     <property name="autoExclusive">
+                      <bool>true</bool>
+                     </property>
+                     <property name="flat">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_4">
+                   <property name="spacing">
+                    <number>5</number>
+                   </property>
+                   <property name="leftMargin">
+                    <number>3</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>3</number>
+                   </property>
+                   <item>
+                    <widget class="QComboBox" name="comboBox__search_type">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Search Type</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>Decide what type to search for</string>
+                     </property>
+                     <property name="frame">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="checkBox__casesensitive_hda">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Word Case Sensitive</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>It is case sensitive</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="icons.qrc">
+                       <normaloff>:/main/icons/case_sensitive.png</normaloff>:/main/icons/case_sensitive.png</iconset>
+                     </property>
+                     <property name="iconSize">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="lineEdit__search_hda">
+                     <property name="statusTip">
+                      <string>Please enter your search term</string>
+                     </property>
+                     <property name="frame">
+                      <bool>false</bool>
+                     </property>
+                     <property name="placeholderText">
+                      <string>ex) create_velocity</string>
+                     </property>
+                     <property name="clearButtonEnabled">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QStackedWidget" name="stackedWidget__hda">
+                <property name="sizePolicy">
+                 <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                  <horstretch>0</horstretch>
+                  <verstretch>0</verstretch>
+                 </sizepolicy>
+                </property>
+                <property name="currentIndex">
+                 <number>0</number>
+                </property>
+                <widget class="QWidget" name="page__hda_list">
+                 <property name="statusTip">
+                  <string>Icon show iHDA nodes.</string>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_8">
+                  <property name="spacing">
+                   <number>1</number>
+                  </property>
+                  <property name="leftMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="topMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="rightMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="bottomMargin">
+                   <number>0</number>
+                  </property>
+                  <item>
+                   <layout class="QVBoxLayout" name="verticalLayout__listview">
+                    <property name="spacing">
+                     <number>1</number>
+                    </property>
+                   </layout>
+                  </item>
+                 </layout>
+                </widget>
+                <widget class="QWidget" name="page__hda_table">
+                 <property name="statusTip">
+                  <string>Table show iHDA nodes.</string>
+                 </property>
+                 <layout class="QVBoxLayout" name="verticalLayout_12">
+                  <property name="spacing">
+                   <number>1</number>
+                  </property>
+                  <property name="leftMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="topMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="rightMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="bottomMargin">
+                   <number>0</number>
+                  </property>
+                  <item>
+                   <layout class="QVBoxLayout" name="verticalLayout__tableview">
+                    <property name="spacing">
+                     <number>1</number>
+                    </property>
+                   </layout>
+                  </item>
+                 </layout>
+                </widget>
+               </widget>
+              </widget>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_9">
+               <property name="spacing">
+                <number>1</number>
+               </property>
+               <property name="leftMargin">
+                <number>3</number>
+               </property>
+               <property name="rightMargin">
+                <number>3</number>
+               </property>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_8">
+                 <property name="spacing">
+                  <number>8</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="label__tag_pixmap">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="maximumSize">
+                    <size>
+                     <width>20</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                   <property name="text">
+                    <string/>
+                   </property>
+                   <property name="pixmap">
+                    <pixmap resource="icons.qrc">:/main/icons/ic_bookmark_white.png</pixmap>
+                   </property>
+                   <property name="scaledContents">
+                    <bool>true</bool>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="label__tags">
+                   <property name="text">
+                    <string/>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <spacer name="horizontalSpacer_3">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <widget class="QLabel" name="label__logged_id_pixmap">
+                 <property name="sizePolicy">
+                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                   <horstretch>0</horstretch>
+                   <verstretch>0</verstretch>
+                  </sizepolicy>
+                 </property>
+                 <property name="maximumSize">
+                  <size>
+                   <width>20</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="pixmap">
+                  <pixmap resource="icons.qrc">:/main/icons/ic_account_box_white.png</pixmap>
+                 </property>
+                 <property name="scaledContents">
+                  <bool>true</bool>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignCenter</set>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label__logged_id">
+                 <property name="toolTip">
+                  <string>Logged ID</string>
+                 </property>
+                 <property name="statusTip">
+                  <string>Displays the logged-in ID</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignCenter</set>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <spacer name="horizontalSpacer_8">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_7">
+                 <property name="spacing">
+                  <number>3</number>
+                 </property>
+                 <item>
+                  <widget class="QLabel" name="label__hda_count">
+                   <property name="text">
+                    <string>0</string>
+                   </property>
+                   <property name="alignment">
+                    <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLabel" name="label__hda_count_suffix">
+                   <property name="text">
+                    <string>iHDA(s)</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QSplitter" name="splitter__hda_info_whole_vertical">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="handleWidth">
+             <number>3</number>
+            </property>
+            <widget class="QFrame" name="frame__hda_info">
+             <property name="frameShape">
+              <enum>QFrame::NoFrame</enum>
+             </property>
+             <property name="frameShadow">
+              <enum>QFrame::Raised</enum>
+             </property>
+             <layout class="QHBoxLayout" name="horizontalLayout_11">
+              <property name="spacing">
+               <number>3</number>
+              </property>
+              <property name="leftMargin">
+               <number>3</number>
+              </property>
+              <property name="topMargin">
+               <number>1</number>
+              </property>
+              <property name="rightMargin">
+               <number>3</number>
+              </property>
+              <property name="bottomMargin">
+               <number>1</number>
+              </property>
+              <item>
+               <widget class="QPushButton" name="pushButton__hda_info">
+                <property name="cursor">
+                 <cursorShape>PointingHandCursor</cursorShape>
+                </property>
+                <property name="toolTip">
+                 <string>iHDA Info View</string>
+                </property>
+                <property name="statusTip">
+                 <string>iHDA notes and tag information.</string>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="icon">
+                 <iconset resource="icons.qrc">
+                  <normaloff>:/main/icons/ic_border_color_white.png</normaloff>:/main/icons/ic_border_color_white.png</iconset>
+                </property>
+                <property name="iconSize">
+                 <size>
+                  <width>20</width>
+                  <height>20</height>
+                 </size>
+                </property>
+                <property name="checkable">
+                 <bool>true</bool>
+                </property>
+                <property name="checked">
+                 <bool>true</bool>
+                </property>
+                <property name="autoExclusive">
+                 <bool>true</bool>
+                </property>
+                <property name="flat">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="pushButton__hda_loc_record">
+                <property name="cursor">
+                 <cursorShape>PointingHandCursor</cursorShape>
+                </property>
+                <property name="toolTip">
+                 <string>iHDA Location Record View</string>
+                </property>
+                <property name="statusTip">
+                 <string>Record iHDA location of current HIP file.</string>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="icon">
+                 <iconset resource="icons.qrc">
+                  <normaloff>:/main/icons/ic_place_white.png</normaloff>:/main/icons/ic_place_white.png</iconset>
+                </property>
+                <property name="iconSize">
+                 <size>
+                  <width>20</width>
+                  <height>20</height>
+                 </size>
+                </property>
+                <property name="checkable">
+                 <bool>true</bool>
+                </property>
+                <property name="autoExclusive">
+                 <bool>true</bool>
+                </property>
+                <property name="flat">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="pushButton__hda_inside_node_view">
+                <property name="cursor">
+                 <cursorShape>PointingHandCursor</cursorShape>
+                </property>
+                <property name="toolTip">
+                 <string>iHDA Inside Node View</string>
+                </property>
+                <property name="statusTip">
+                 <string>Find the iHDA node in the current HIP file.</string>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="icon">
+                 <iconset resource="icons.qrc">
+                  <normaloff>:/main/icons/ic_find_in_page_white.png</normaloff>:/main/icons/ic_find_in_page_white.png</iconset>
+                </property>
+                <property name="iconSize">
+                 <size>
+                  <width>20</width>
+                  <height>20</height>
+                 </size>
+                </property>
+                <property name="checkable">
+                 <bool>true</bool>
+                </property>
+                <property name="autoExclusive">
+                 <bool>true</bool>
+                </property>
+                <property name="flat">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="horizontalSpacer_5">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>133</width>
+                  <height>20</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QPushButton" name="pushButton__donate">
+                <property name="cursor">
+                 <cursorShape>PointingHandCursor</cursorShape>
+                </property>
+                <property name="toolTip">
+                 <string>Donate...</string>
+                </property>
+                <property name="statusTip">
+                 <string>Donate. I need your help to make a better program.</string>
+                </property>
+                <property name="text">
+                 <string/>
+                </property>
+                <property name="icon">
+                 <iconset resource="icons.qrc">
+                  <normaloff>:/main/icons/ic_sentiment_satisfied_white.png</normaloff>:/main/icons/ic_sentiment_satisfied_white.png</iconset>
+                </property>
+                <property name="iconSize">
+                 <size>
+                  <width>20</width>
+                  <height>20</height>
+                 </size>
+                </property>
+                <property name="flat">
+                 <bool>true</bool>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QStackedWidget" name="stackedWidget__hda_infos">
+             <property name="currentIndex">
+              <number>0</number>
+             </property>
+             <widget class="QWidget" name="page__hda_info">
+              <layout class="QVBoxLayout" name="verticalLayout_3">
+               <property name="spacing">
+                <number>1</number>
+               </property>
+               <property name="leftMargin">
+                <number>1</number>
+               </property>
+               <property name="topMargin">
+                <number>1</number>
+               </property>
+               <property name="rightMargin">
+                <number>1</number>
+               </property>
+               <property name="bottomMargin">
+                <number>1</number>
+               </property>
+               <item>
+                <widget class="QSplitter" name="splitter__hda_info_vertical">
+                 <property name="orientation">
+                  <enum>Qt::Vertical</enum>
+                 </property>
+                 <property name="handleWidth">
+                  <number>3</number>
+                 </property>
+                 <widget class="QWidget" name="layoutWidget">
+                  <layout class="QVBoxLayout" name="verticalLayout">
+                   <property name="spacing">
+                    <number>1</number>
+                   </property>
+                   <property name="leftMargin">
+                    <number>1</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>1</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>1</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>1</number>
+                   </property>
+                   <item>
+                    <widget class="QTextEdit" name="textEdit__note">
+                     <property name="statusTip">
+                      <string>Please enter a note for that HDA</string>
+                     </property>
+                     <property name="frameShape">
+                      <enum>QFrame::NoFrame</enum>
+                     </property>
+                     <property name="tabStopWidth">
+                      <number>40</number>
+                     </property>
+                     <property name="placeholderText">
+                      <string>This is a note to write the selected iHDA.</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout">
+                     <property name="spacing">
+                      <number>3</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>3</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>3</number>
+                     </property>
+                     <item>
+                      <spacer name="horizontalSpacer">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="pushButton__note_save">
+                       <property name="cursor">
+                        <cursorShape>PointingHandCursor</cursorShape>
+                       </property>
+                       <property name="toolTip">
+                        <string>Save Note</string>
+                       </property>
+                       <property name="statusTip">
+                        <string>Save the text entered in the selected iHDA node</string>
+                       </property>
+                       <property name="text">
+                        <string/>
+                       </property>
+                       <property name="icon">
+                        <iconset resource="icons.qrc">
+                         <normaloff>:/main/icons/ic_save_white.png</normaloff>:/main/icons/ic_save_white.png</iconset>
+                       </property>
+                       <property name="iconSize">
+                        <size>
+                         <width>20</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="flat">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                 <widget class="QWidget" name="layoutWidget">
+                  <layout class="QVBoxLayout" name="verticalLayout_2">
+                   <property name="spacing">
+                    <number>1</number>
+                   </property>
+                   <property name="leftMargin">
+                    <number>1</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>1</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>1</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>1</number>
+                   </property>
+                   <item>
+                    <widget class="QTextEdit" name="textEdit__tag">
+                     <property name="statusTip">
+                      <string>Please enter a tag for that HDA</string>
+                     </property>
+                     <property name="frameShape">
+                      <enum>QFrame::NoFrame</enum>
+                     </property>
+                     <property name="tabStopWidth">
+                      <number>40</number>
+                     </property>
+                     <property name="placeholderText">
+                      <string>ex) #basic #explosion #smoke &lt;Separated by #&gt;</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_6">
+                     <property name="spacing">
+                      <number>3</number>
+                     </property>
+                     <property name="leftMargin">
+                      <number>3</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>3</number>
+                     </property>
+                     <item>
+                      <spacer name="horizontalSpacer_2">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="pushButton__tag_save">
+                       <property name="cursor">
+                        <cursorShape>PointingHandCursor</cursorShape>
+                       </property>
+                       <property name="toolTip">
+                        <string>Save Tag</string>
+                       </property>
+                       <property name="statusTip">
+                        <string>Save the tag you entered in the selected iHDA node</string>
+                       </property>
+                       <property name="text">
+                        <string/>
+                       </property>
+                       <property name="icon">
+                        <iconset resource="icons.qrc">
+                         <normaloff>:/main/icons/ic_save_white.png</normaloff>:/main/icons/ic_save_white.png</iconset>
+                       </property>
+                       <property name="iconSize">
+                        <size>
+                         <width>20</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                       <property name="flat">
+                        <bool>true</bool>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                  </layout>
+                 </widget>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+             <widget class="QWidget" name="page__hda_loc_record">
+              <layout class="QVBoxLayout" name="verticalLayout_13">
+               <property name="spacing">
+                <number>1</number>
+               </property>
+               <property name="leftMargin">
+                <number>1</number>
+               </property>
+               <property name="topMargin">
+                <number>1</number>
+               </property>
+               <property name="rightMargin">
+                <number>1</number>
+               </property>
+               <property name="bottomMargin">
+                <number>1</number>
+               </property>
+               <item>
+                <layout class="QVBoxLayout" name="verticalLayout_9">
+                 <property name="spacing">
+                  <number>1</number>
+                 </property>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_5">
+                   <property name="spacing">
+                    <number>5</number>
+                   </property>
+                   <item>
+                    <widget class="QLineEdit" name="lineEdit__search_record">
+                     <property name="statusTip">
+                      <string>Please enter your search term</string>
+                     </property>
+                     <property name="frame">
+                      <bool>false</bool>
+                     </property>
+                     <property name="placeholderText">
+                      <string>ex) untitled.hip</string>
+                     </property>
+                     <property name="clearButtonEnabled">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="checkBox__record_only_current_ihda">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Show Only Current iHDA</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>When selected, displays information only from the current iHDA node.</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="icons.qrc">
+                       <normaloff>:/main/icons/show_all.png</normaloff>:/main/icons/show_all.png</iconset>
+                     </property>
+                     <property name="iconSize">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="checkBox__record_only_current_hipfile">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Show Only Current HIP File</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>When checked, only information from the current HIP file is displayed.</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="icons.qrc">
+                       <normaloff>:/main/icons/hipfile.png</normaloff>:/main/icons/hipfile.png</iconset>
+                     </property>
+                     <property name="iconSize">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_16">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="pushButton__cleanup_hda_record">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Remove any unnecessary iHDA Record data that does not exist.</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>Remove any unnecessary iHDA Record data that does not exist.</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="icons.qrc">
+                       <normaloff>:/main/icons/clear.png</normaloff>:/main/icons/clear.png</iconset>
+                     </property>
+                     <property name="iconSize">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                     <property name="flat">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QVBoxLayout" name="verticalLayout__hda_loc_record">
+                   <property name="spacing">
+                    <number>1</number>
+                   </property>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_13">
+                   <property name="spacing">
+                    <number>5</number>
+                   </property>
+                   <item>
+                    <spacer name="horizontalSpacer_7">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label__loc_record_count">
+                     <property name="text">
+                      <string>0</string>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label__loc_record_count_suffix">
+                     <property name="text">
+                      <string>records</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+             <widget class="QWidget" name="page__hda_inside_hipfile">
+              <layout class="QVBoxLayout" name="verticalLayout_21">
+               <property name="spacing">
+                <number>1</number>
+               </property>
+               <property name="leftMargin">
+                <number>1</number>
+               </property>
+               <property name="topMargin">
+                <number>1</number>
+               </property>
+               <property name="rightMargin">
+                <number>1</number>
+               </property>
+               <property name="bottomMargin">
+                <number>1</number>
+               </property>
+               <item>
+                <layout class="QVBoxLayout" name="verticalLayout_20">
+                 <property name="spacing">
+                  <number>1</number>
+                 </property>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_20">
+                   <property name="spacing">
+                    <number>3</number>
+                   </property>
+                   <item>
+                    <widget class="QCheckBox" name="checkBox__hda_inside_connect_to_view">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Connect to List/Table View</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>When you enable this option, when you select an iHDA node in the List/Table view, only the information for that node is automatically displayed.</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="icons.qrc">
+                       <normaloff>:/main/icons/show_all.png</normaloff>:/main/icons/show_all.png</iconset>
+                     </property>
+                     <property name="iconSize">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="comboBox__hda_inside_node">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Select which iHDA node to search.</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>The selected iHDA node is retrieved from the current HIP file.</string>
+                     </property>
+                     <property name="frame">
+                      <bool>false</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="lineEdit__search_found_hda_inside_node">
+                     <property name="statusTip">
+                      <string>Please enter your search term</string>
+                     </property>
+                     <property name="frame">
+                      <bool>false</bool>
+                     </property>
+                     <property name="placeholderText">
+                      <string>ex) setup_fire</string>
+                     </property>
+                     <property name="clearButtonEnabled">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_15">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="pushButton__hda_inside_node_refresh">
+                     <property name="cursor">
+                      <cursorShape>PointingHandCursor</cursorShape>
+                     </property>
+                     <property name="toolTip">
+                      <string>Refresh the iHDA node search results in the current HIP file.</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>If the search results do not match the iHDA node in the current HIP file, click this button to refresh.</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="icons.qrc">
+                       <normaloff>:/main/icons/ic_refresh_white.png</normaloff>:/main/icons/ic_refresh_white.png</iconset>
+                     </property>
+                     <property name="iconSize">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                     <property name="flat">
+                      <bool>true</bool>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QVBoxLayout" name="verticalLayout__hda_inside_node">
+                   <property name="spacing">
+                    <number>1</number>
+                   </property>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_19">
+                   <property name="spacing">
+                    <number>3</number>
+                   </property>
+                   <property name="leftMargin">
+                    <number>3</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>3</number>
+                   </property>
+                   <item>
+                    <spacer name="horizontalSpacer_14">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label__found_hda_inside_hipfile">
+                     <property name="text">
+                      <string>found iHDA of </string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label__found_hda_inside_hipfile_count">
+                     <property name="text">
+                      <string>0</string>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </item>
+              </layout>
+             </widget>
+            </widget>
+           </widget>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="page__video_player">
+        <layout class="QVBoxLayout" name="verticalLayout_10">
+         <property name="spacing">
+          <number>1</number>
+         </property>
+         <property name="leftMargin">
+          <number>1</number>
+         </property>
+         <property name="topMargin">
+          <number>1</number>
+         </property>
+         <property name="rightMargin">
+          <number>1</number>
+         </property>
+         <property name="bottomMargin">
+          <number>1</number>
+         </property>
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayout__video_player">
+           <property name="spacing">
+            <number>1</number>
+           </property>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="page__web_view">
+        <layout class="QVBoxLayout" name="verticalLayout_11">
+         <property name="spacing">
+          <number>1</number>
+         </property>
+         <property name="leftMargin">
+          <number>1</number>
+         </property>
+         <property name="topMargin">
+          <number>1</number>
+         </property>
+         <property name="rightMargin">
+          <number>1</number>
+         </property>
+         <property name="bottomMargin">
+          <number>1</number>
+         </property>
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayout__web_view">
+           <property name="spacing">
+            <number>1</number>
+           </property>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="page__history">
+        <layout class="QVBoxLayout" name="verticalLayout_17">
+         <property name="spacing">
+          <number>1</number>
+         </property>
+         <property name="leftMargin">
+          <number>1</number>
+         </property>
+         <property name="topMargin">
+          <number>1</number>
+         </property>
+         <property name="rightMargin">
+          <number>1</number>
+         </property>
+         <property name="bottomMargin">
+          <number>1</number>
+         </property>
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayout_7">
+           <property name="spacing">
+            <number>1</number>
+           </property>
+           <item>
+            <widget class="QSplitter" name="splitter__ihda_hist_whole_vertical">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="handleWidth">
+              <number>3</number>
+             </property>
+             <widget class="QWidget" name="layoutWidget">
+              <layout class="QHBoxLayout" name="horizontalLayout_18">
+               <property name="spacing">
+                <number>5</number>
+               </property>
+               <item>
+                <widget class="QComboBox" name="comboBox__hist_ihda_node">
+                 <property name="cursor">
+                  <cursorShape>PointingHandCursor</cursorShape>
+                 </property>
+                 <property name="toolTip">
+                  <string>Select iHDA node</string>
+                 </property>
+                 <property name="statusTip">
+                  <string>It shows the history of the selected iHDA node.</string>
+                 </property>
+                 <property name="frame">
+                  <bool>false</bool>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <spacer name="horizontalSpacer_9">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeType">
+                  <enum>QSizePolicy::Expanding</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_10">
+                 <property name="spacing">
+                  <number>5</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>3</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>3</number>
+                 </property>
+                 <item>
+                  <widget class="QComboBox" name="comboBox__search_field_hist">
+                   <property name="cursor">
+                    <cursorShape>PointingHandCursor</cursorShape>
+                   </property>
+                   <property name="toolTip">
+                    <string>Search Type</string>
+                   </property>
+                   <property name="statusTip">
+                    <string>Decide what type to search for</string>
+                   </property>
+                   <property name="frame">
+                    <bool>false</bool>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QCheckBox" name="checkBox__casesensitive_hda_hist">
+                   <property name="cursor">
+                    <cursorShape>PointingHandCursor</cursorShape>
+                   </property>
+                   <property name="toolTip">
+                    <string>Word Case Sensitive</string>
+                   </property>
+                   <property name="statusTip">
+                    <string>It is case sensitive</string>
+                   </property>
+                   <property name="text">
+                    <string/>
+                   </property>
+                   <property name="icon">
+                    <iconset resource="icons.qrc">
+                     <normaloff>:/main/icons/case_sensitive.png</normaloff>:/main/icons/case_sensitive.png</iconset>
+                   </property>
+                   <property name="iconSize">
+                    <size>
+                     <width>20</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QLineEdit" name="lineEdit__search_hda_hist">
+                   <property name="statusTip">
+                    <string>Please enter your search term</string>
+                   </property>
+                   <property name="frame">
+                    <bool>false</bool>
+                   </property>
+                   <property name="placeholderText">
+                    <string>ex) wrangle</string>
+                   </property>
+                   <property name="clearButtonEnabled">
+                    <bool>true</bool>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <spacer name="horizontalSpacer_10">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeType">
+                  <enum>QSizePolicy::Fixed</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>24</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+               <item>
+                <layout class="QHBoxLayout" name="horizontalLayout_15">
+                 <item>
+                  <widget class="QCheckBox" name="checkBox__hist_search_date">
+                   <property name="cursor">
+                    <cursorShape>PointingHandCursor</cursorShape>
+                   </property>
+                   <property name="toolTip">
+                    <string>Search History By Date</string>
+                   </property>
+                   <property name="statusTip">
+                    <string>Search iHDA history by date</string>
+                   </property>
+                   <property name="text">
+                    <string>Date Search</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_14">
+                   <item>
+                    <widget class="QDateEdit" name="dateEdit__hist_search_start">
+                     <property name="toolTip">
+                      <string>Start Date</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>Start date to search</string>
+                     </property>
+                     <property name="frame">
+                      <bool>false</bool>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignCenter</set>
+                     </property>
+                     <property name="calendarPopup">
+                      <bool>true</bool>
+                     </property>
+                     <property name="date">
+                      <date>
+                       <year>2020</year>
+                       <month>1</month>
+                       <day>1</day>
+                      </date>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label__join_str">
+                     <property name="sizePolicy">
+                      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                       <horstretch>0</horstretch>
+                       <verstretch>0</verstretch>
+                      </sizepolicy>
+                     </property>
+                     <property name="text">
+                      <string>~</string>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignCenter</set>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QDateEdit" name="dateEdit__hist_search_end">
+                     <property name="toolTip">
+                      <string>End Date</string>
+                     </property>
+                     <property name="statusTip">
+                      <string>End date to search</string>
+                     </property>
+                     <property name="frame">
+                      <bool>false</bool>
+                     </property>
+                     <property name="alignment">
+                      <set>Qt::AlignCenter</set>
+                     </property>
+                     <property name="calendarPopup">
+                      <bool>true</bool>
+                     </property>
+                     <property name="date">
+                      <date>
+                       <year>2020</year>
+                       <month>12</month>
+                       <day>31</day>
+                      </date>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </item>
+                </layout>
+               </item>
+               <item>
+                <spacer name="horizontalSpacer_11">
+                 <property name="orientation">
+                  <enum>Qt::Horizontal</enum>
+                 </property>
+                 <property name="sizeHint" stdset="0">
+                  <size>
+                   <width>40</width>
+                   <height>20</height>
+                  </size>
+                 </property>
+                </spacer>
+               </item>
+              </layout>
+             </widget>
+             <widget class="QWidget" name="layoutWidget">
+              <layout class="QVBoxLayout" name="verticalLayout__history">
+               <property name="spacing">
+                <number>1</number>
+               </property>
+              </layout>
+             </widget>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_17">
+             <property name="spacing">
+              <number>5</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="label__hist_tag_pixmap">
+               <property name="maximumSize">
+                <size>
+                 <width>20</width>
+                 <height>20</height>
+                </size>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+               <property name="pixmap">
+                <pixmap>:/main/icons/ic_bookmark_white_18dp.png</pixmap>
+               </property>
+               <property name="scaledContents">
+                <bool>true</bool>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label__hist_tags">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer_12">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_16">
+               <property name="spacing">
+                <number>5</number>
+               </property>
+               <item>
+                <widget class="QLabel" name="label__hist_cnt">
+                 <property name="text">
+                  <string>0</string>
+                 </property>
+                 <property name="alignment">
+                  <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label__hist_cnt_suffix">
+                 <property name="text">
+                  <string>histories</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="verticalLayoutWidget">
+       <layout class="QVBoxLayout" name="verticalLayout_14">
+        <property name="spacing">
+         <number>1</number>
+        </property>
+        <item>
+         <widget class="QTextBrowser" name="textBrowser__debug">
+          <property name="statusTip">
+           <string>Show debug of application</string>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::NoFrame</enum>
+          </property>
+          <property name="tabStopWidth">
+           <number>40</number>
+          </property>
+          <property name="openExternalLinks">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1472</width>
+     <height>31</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <widget class="QMenu" name="menuDatabase">
+     <property name="title">
+      <string>Database</string>
+     </property>
+     <property name="icon">
+      <iconset resource="icons.qrc">
+       <normaloff>:/main/icons/database.png</normaloff>:/main/icons/database.png</iconset>
+     </property>
+     <addaction name="actionCleanup"/>
+    </widget>
+    <addaction name="actionCreate_Account"/>
+    <addaction name="separator"/>
+    <addaction name="actionLogin"/>
+    <addaction name="actionLogout"/>
+    <addaction name="separator"/>
+    <addaction name="menuDatabase"/>
+    <addaction name="separator"/>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <widget class="QMenu" name="menuConfig">
+     <property name="title">
+      <string>Config</string>
+     </property>
+     <property name="icon">
+      <iconset resource="icons.qrc">
+       <normaloff>:/main/icons/ic_settings_applications_white.png</normaloff>:/main/icons/ic_settings_applications_white.png</iconset>
+     </property>
+     <widget class="QMenu" name="menuTheme">
+      <property name="title">
+       <string>Theme</string>
+      </property>
+      <property name="icon">
+       <iconset resource="icons.qrc">
+        <normaloff>:/main/icons/ic_palette_white.png</normaloff>:/main/icons/ic_palette_white.png</iconset>
+      </property>
+      <addaction name="actionDefault"/>
+      <addaction name="actionDark_blue"/>
+     </widget>
+     <addaction name="menuTheme"/>
+     <addaction name="separator"/>
+     <addaction name="actionReset"/>
+    </widget>
+    <widget class="QMenu" name="menuDownload">
+     <property name="title">
+      <string>Download</string>
+     </property>
+     <property name="icon">
+      <iconset resource="icons.qrc">
+       <normaloff>:/main/icons/ic_language_white.png</normaloff>:/main/icons/ic_language_white.png</iconset>
+     </property>
+     <addaction name="actionFFmpeg"/>
+     <addaction name="actionCodec"/>
+    </widget>
+    <addaction name="menuConfig"/>
+    <addaction name="separator"/>
+    <addaction name="actionPreference"/>
+    <addaction name="separator"/>
+    <addaction name="menuDownload"/>
+   </widget>
+   <widget class="QMenu" name="menuHelp">
+    <property name="title">
+     <string>Help</string>
+    </property>
+    <addaction name="actionHelp"/>
+    <addaction name="separator"/>
+    <addaction name="actionSubmit_a_Bug_Report"/>
+    <addaction name="actionSubmit_Feedback"/>
+    <addaction name="separator"/>
+    <addaction name="actionUpdate"/>
+    <addaction name="actionAbout"/>
+    <addaction name="separator"/>
+    <addaction name="actionDonate"/>
+   </widget>
+   <widget class="QMenu" name="menuData">
+    <property name="title">
+     <string>Data</string>
+    </property>
+    <widget class="QMenu" name="menuHistory">
+     <property name="title">
+      <string>History</string>
+     </property>
+     <property name="icon">
+      <iconset resource="icons.qrc">
+       <normaloff>:/main/icons/ic_query_builder_white.png</normaloff>:/main/icons/ic_query_builder_white.png</iconset>
+     </property>
+     <addaction name="actionDelete_All"/>
+    </widget>
+    <addaction name="actionImport_Data"/>
+    <addaction name="actionExport_Data"/>
+    <addaction name="separator"/>
+    <addaction name="menuHistory"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuData"/>
+   <addaction name="menuTools"/>
+   <addaction name="menuHelp"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <property name="iconSize">
+    <size>
+     <width>18</width>
+     <height>18</height>
+    </size>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>false</bool>
+   </attribute>
+   <addaction name="actionOpen_the_hda_directory"/>
+   <addaction name="separator"/>
+   <addaction name="separator"/>
+   <addaction name="actioniHDA"/>
+   <addaction name="actionHistory"/>
+   <addaction name="actionVideo_Player"/>
+   <addaction name="actionWeb"/>
+   <addaction name="separator"/>
+   <addaction name="separator"/>
+   <addaction name="actionCategory_Synchronization"/>
+   <addaction name="actionNode_Synchronization"/>
+   <addaction name="separator"/>
+   <addaction name="actionUnpack_Subnet"/>
+   <addaction name="actionSticky_Note"/>
+   <addaction name="actionComment"/>
+   <addaction name="separator"/>
+   <addaction name="actionNull"/>
+   <addaction name="actionInput"/>
+   <addaction name="actionOuput"/>
+   <addaction name="actionBoth"/>
+   <addaction name="separator"/>
+   <addaction name="actionAutomatic_Name_Change"/>
+  </widget>
+  <action name="actionQuit">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/main/icons/ic_not_interested_white_48dp.png</normaloff>:/main/icons/ic_not_interested_white_48dp.png</iconset>
+   </property>
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionHelp">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_help_white.png</normaloff>:/main/icons/ic_help_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Help</string>
+   </property>
+  </action>
+  <action name="actionAbout">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_info_outline_white.png</normaloff>:/main/icons/ic_info_outline_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>About</string>
+   </property>
+  </action>
+  <action name="actionReset">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_restore_page_white.png</normaloff>:/main/icons/ic_restore_page_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Reset</string>
+   </property>
+   <property name="statusTip">
+    <string>Initialize the property</string>
+   </property>
+  </action>
+  <action name="actionDefault">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Default</string>
+   </property>
+   <property name="statusTip">
+    <string>Change to the default theme</string>
+   </property>
+  </action>
+  <action name="actionDark_blue">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Dark blue</string>
+   </property>
+   <property name="statusTip">
+    <string>Change to the dark blue</string>
+   </property>
+  </action>
+  <action name="actionOpen_the_hda_directory">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_folder_white.png</normaloff>:/main/icons/ic_folder_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Open the HDA directory...</string>
+   </property>
+   <property name="statusTip">
+    <string>Open the HDA directory path.</string>
+   </property>
+  </action>
+  <action name="actionLogin">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_account_box_white.png</normaloff>:/main/icons/ic_account_box_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Login</string>
+   </property>
+  </action>
+  <action name="actionLogout">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_account_box_white.png</normaloff>:/main/icons/ic_account_box_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Logout</string>
+   </property>
+  </action>
+  <action name="actionSubmit_a_Bug_Report">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_email_white.png</normaloff>:/main/icons/ic_email_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Submit a Bug Report</string>
+   </property>
+  </action>
+  <action name="actionSubmit_Feedback">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_send_white.png</normaloff>:/main/icons/ic_send_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Submit Feedback</string>
+   </property>
+  </action>
+  <action name="actioniHDA">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/houdini_logo_white.png</normaloff>:/main/icons/houdini_logo_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>iHDA</string>
+   </property>
+   <property name="statusTip">
+    <string>Show iHDA window.</string>
+   </property>
+  </action>
+  <action name="actionVideo_Player">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_movie_white.png</normaloff>:/main/icons/ic_movie_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Video Player</string>
+   </property>
+   <property name="statusTip">
+    <string>Show video player window.</string>
+   </property>
+  </action>
+  <action name="actionWeb">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_language_white.png</normaloff>:/main/icons/ic_language_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Web</string>
+   </property>
+   <property name="statusTip">
+    <string>Show web window.</string>
+   </property>
+  </action>
+  <action name="actionCreate_Account">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_group_white.png</normaloff>:/main/icons/ic_group_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Create Account</string>
+   </property>
+  </action>
+  <action name="actionPreference">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_build_white.png</normaloff>:/main/icons/ic_build_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Preference</string>
+   </property>
+   <property name="statusTip">
+    <string>Setting iHDA preference.</string>
+   </property>
+  </action>
+  <action name="actionImport_Data">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_unarchive_white.png</normaloff>:/main/icons/ic_unarchive_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Import Data</string>
+   </property>
+   <property name="statusTip">
+    <string>Import iHDA data.</string>
+   </property>
+  </action>
+  <action name="actionExport_Data">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_archive_white.png</normaloff>:/main/icons/ic_archive_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Export Data</string>
+   </property>
+   <property name="statusTip">
+    <string>Export iHDA data.</string>
+   </property>
+  </action>
+  <action name="actionDownload_FFmpeg">
+   <property name="icon">
+    <iconset>
+     <normaloff>:/main/icons/ic_language_white_48dp.png</normaloff>:/main/icons/ic_language_white_48dp.png</iconset>
+   </property>
+   <property name="text">
+    <string>Download FFmpeg</string>
+   </property>
+   <property name="statusTip">
+    <string>Go to the ffmpeg download site.</string>
+   </property>
+  </action>
+  <action name="actionHistory">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_query_builder_white.png</normaloff>:/main/icons/ic_query_builder_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>History</string>
+   </property>
+   <property name="statusTip">
+    <string>Show iHDA history</string>
+   </property>
+  </action>
+  <action name="actionUpdate">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_new_releases_white.png</normaloff>:/main/icons/ic_new_releases_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Update...</string>
+   </property>
+  </action>
+  <action name="actionFFmpeg">
+   <property name="text">
+    <string>FFmpeg</string>
+   </property>
+   <property name="toolTip">
+    <string>Download FFmpeg</string>
+   </property>
+  </action>
+  <action name="actionCodec">
+   <property name="text">
+    <string>Codec</string>
+   </property>
+   <property name="toolTip">
+    <string>Download Codec</string>
+   </property>
+  </action>
+  <action name="actionDelete_All">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_delete_forever_white.png</normaloff>:/main/icons/ic_delete_forever_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Delete All</string>
+   </property>
+   <property name="statusTip">
+    <string>Delete all iHDA history.</string>
+   </property>
+  </action>
+  <action name="actionUnpack_Subnet">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/unpack_subnet.png</normaloff>:/main/icons/unpack_subnet.png</iconset>
+   </property>
+   <property name="text">
+    <string>Unpack Subnet</string>
+   </property>
+   <property name="statusTip">
+    <string>When you import a node, you unpack it and import it</string>
+   </property>
+  </action>
+  <action name="actionSticky_Note">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/network_sticky.png</normaloff>:/main/icons/network_sticky.png</iconset>
+   </property>
+   <property name="text">
+    <string>Sticky Note</string>
+   </property>
+   <property name="toolTip">
+    <string>Note to Sticky Note</string>
+   </property>
+   <property name="statusTip">
+    <string>Apply iHDA note contents to houdini sticky note</string>
+   </property>
+  </action>
+  <action name="actionComment">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_comment_white.png</normaloff>:/main/icons/ic_comment_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Comment</string>
+   </property>
+   <property name="toolTip">
+    <string>Houdini Node Comment</string>
+   </property>
+   <property name="statusTip">
+    <string>If true, simple iHDA information is entered as Houdini node description.</string>
+   </property>
+  </action>
+  <action name="actionNode_Synchronization">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_swap_vert_white.png</normaloff>:/main/icons/ic_swap_vert_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Node Synchronization</string>
+   </property>
+   <property name="statusTip">
+    <string>When activated, the Houdini node and iHDA app are synchronized.</string>
+   </property>
+  </action>
+  <action name="actionNull">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_clear_white.png</normaloff>:/main/icons/ic_clear_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Null</string>
+   </property>
+   <property name="toolTip">
+    <string>Do not connect</string>
+   </property>
+   <property name="statusTip">
+    <string>It does not connect the node even if there is node connection information.</string>
+   </property>
+  </action>
+  <action name="actionInput">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_vertical_align_bottom_white.png</normaloff>:/main/icons/ic_vertical_align_bottom_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Input</string>
+   </property>
+   <property name="toolTip">
+    <string>Input connection</string>
+   </property>
+   <property name="statusTip">
+    <string>Connect only inputs from nodes</string>
+   </property>
+  </action>
+  <action name="actionOuput">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_vertical_align_top_white.png</normaloff>:/main/icons/ic_vertical_align_top_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Ouput</string>
+   </property>
+   <property name="toolTip">
+    <string>Ouput connection</string>
+   </property>
+   <property name="statusTip">
+    <string>Connect only the output of the nodes.</string>
+   </property>
+  </action>
+  <action name="actionBoth">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_vertical_align_center_white.png</normaloff>:/main/icons/ic_vertical_align_center_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Both</string>
+   </property>
+   <property name="toolTip">
+    <string>Both connections</string>
+   </property>
+   <property name="statusTip">
+    <string>Connect both input and output of nodes.</string>
+   </property>
+  </action>
+  <action name="actionCategory_Synchronization">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_swap_horiz_white.png</normaloff>:/main/icons/ic_swap_horiz_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Category Synchronization</string>
+   </property>
+   <property name="toolTip">
+    <string>Category Synchronization</string>
+   </property>
+   <property name="statusTip">
+    <string>Synchronize houdini category with current HDA category in real time</string>
+   </property>
+  </action>
+  <action name="actionCleanup">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/clear.png</normaloff>:/main/icons/clear.png</iconset>
+   </property>
+   <property name="text">
+    <string>Clean up</string>
+   </property>
+   <property name="statusTip">
+    <string>Clean up unnecessary data from the database.</string>
+   </property>
+  </action>
+  <action name="actionAutomatic_Name_Change">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_text_format_white.png</normaloff>:/main/icons/ic_text_format_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Automatic Name Change</string>
+   </property>
+   <property name="toolTip">
+    <string>Houdini node name is changed automatically</string>
+   </property>
+   <property name="statusTip">
+    <string>When you select this option, the name that can cause errors when registering Houdini nodes to the iHDA app is automatically changed.</string>
+   </property>
+  </action>
+  <action name="actionSystem_Info">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_fingerprint_white.png</normaloff>:/main/icons/ic_fingerprint_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>System Info</string>
+   </property>
+   <property name="toolTip">
+    <string>Current System Information</string>
+   </property>
+   <property name="statusTip">
+    <string>Display current computer system information.</string>
+   </property>
+  </action>
+  <action name="actionLicense_Registration">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_chrome_reader_mode_white.png</normaloff>:/main/icons/ic_chrome_reader_mode_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>License Registration...</string>
+   </property>
+   <property name="statusTip">
+    <string>Register your iHDA license.</string>
+   </property>
+  </action>
+  <action name="actionDonate">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_sentiment_satisfied_white.png</normaloff>:/main/icons/ic_sentiment_satisfied_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Donate</string>
+   </property>
+   <property name="statusTip">
+    <string>Donate. I need your help to make a better program.</string>
+   </property>
+  </action>
+ </widget>
+ <resources>
+  <include location="icons.qrc"/>
+ </resources>
+ <connections/>
+</ui>

@@ -1,0 +1,8 @@
+<RCC>
+  <qresource prefix="main">
+    <file>icons/ic_clear_white.png</file>
+    <file>icons/ic_done_white.png</file>
+    <file>icons/ic_translate_white.png</file>
+    <file>icons/viewport_logo_trans.png</file>
+  </qresource>
+</RCC>

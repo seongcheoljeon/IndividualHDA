@@ -1,0 +1,14 @@
+<RCC>
+  <qresource prefix="main">
+    <file>icons/ic_refresh_white.png</file>
+    <file>icons/case_sensitive.png</file>
+    <file>icons/ffmpeg.png</file>
+    <file>icons/ic_clear_white.png</file>
+    <file>icons/ic_done_white.png</file>
+    <file>icons/ic_folder_white.png</file>
+    <file>icons/ic_photo_white.png</file>
+    <file>icons/ic_settings_overscan_white.png</file>
+    <file>icons/ic_settings_white.png</file>
+    <file>icons/viewport_logo_trans.png</file>
+  </qresource>
+</RCC>

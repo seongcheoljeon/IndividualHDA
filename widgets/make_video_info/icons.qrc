@@ -1,0 +1,10 @@
+<RCC>
+  <qresource prefix="main">
+    <file>icons/facebook.png</file>
+    <file>icons/instagram.png</file>
+    <file>icons/linkedin.png</file>
+    <file>icons/vimeo.png</file>
+    <file>icons/youtube.png</file>
+    <file>icons/viewport_logo_trans.png</file>
+  </qresource>
+</RCC>
