@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<pythonPanelDocument>
+  <!-- This file contains definitions of Python interfaces and the
+ interfaces menu.  It should not be hand-edited when it is being
+ used by the application.  Note, that two definitions of the
+ same interface or of the interfaces menu are not allowed
+ in a single file. -->
+  <interface name="individualHDA" label="Individual HDA" icon="MISC_python" showNetworkNavigationBar="false" help_url="">
+    <script><![CDATA[########################################################################
+# Copyright 2020. (Seongcheol Jeon) all rights reserved.
+#
+# author:           SeongcheolJeon
+# email:            saelly55@gmail.com
+# release date:     2020.06.23
+# release version:  1.7.1
+# description:      Individual HDA
+#
+# https://github.com/seongcheoljeon/IndividualHDA
+########################################################################
+
+import sys
+from site import addsitedir
+
+
+ihda_dirpath = '{0}/scripts/python/individualHDA'.format(hou.getenv('HOUDINI_USER_PREF_DIR'))
+
+addsitedir('{0}/libs/site-packages'.format(ihda_dirpath))
+sys.path.append(ihda_dirpath)
+sys.path.append('{0}/widgets/detail_view'.format(ihda_dirpath))
+sys.path.append('{0}/widgets/make_video_info'.format(ihda_dirpath))
+sys.path.append('{0}/widgets/preference'.format(ihda_dirpath))
+sys.path.append('{0}/widgets/rename_ihda'.format(ihda_dirpath))
+sys.path.append('{0}/widgets/video_player'.format(ihda_dirpath))
+sys.path.append('{0}/widgets/web_view'.format(ihda_dirpath))
+
+
+import individualHDA.main as ihda_main
+
+reload(ihda_main)
+
+iHDA = ihda_main.IndividualHDA()
+
+
+def onCreateInterface():
+    global iHDA
+    return iHDA
+
+
+def onDestroyInterface():
+    global iHDA
+    del iHDA]]></script>
+    <includeInToolbarMenu menu_position="104" create_separator="false"/>
+    <help><![CDATA[]]></help>
+  </interface>
+</pythonPanelDocument>
