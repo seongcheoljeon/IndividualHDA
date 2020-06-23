@@ -554,12 +554,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-This software is "Individual HDA". Also called "iHDA".
-iHDA is Houdini's internal application for managing / monitoring nodes in Houdini.
-iHDA does not manipulate or modify anything in Houdini.
-When a user registers a Houdini node with iHDA, only that node is managed and supervised.
-In no event will the authors be held liable for any damages arising from the use of this software.
-
 
 
         '''
