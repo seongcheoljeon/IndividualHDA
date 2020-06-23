@@ -50,6 +50,9 @@ SOFTWARE.
 ---
 
 ## INSTALL
+
+>[iHDA Install Video](https://www.youtube.com/watch?v=wbHcrlRSPdY)
+
 1. Click the "Download ZIP" button to download. Or, if you use git, download it as git.
 2. If it is compressed, decompress it.
 3. Move "individualHDA.pypnal" file to your houdini python_panels directory. ex) $HOME/houdini18.0/python_panels
