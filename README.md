@@ -1,6 +1,6 @@
 # Individual HDA
 
-![Alt text](ihda_main.png)
+![iHDA Main](image/ihda_main.png)
 
 **_Houdini Version: 18.0.460 or higher is recommended._**
 
@@ -12,7 +12,10 @@
 
 ## SUPPORT
 
-<a href="https://www.buymeacoffee.com/seongcheoljeon" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+<a href="https://www.buymeacoffee.com/seongcheoljeon" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>   
+
+[![twitch donate](image/twitch.png)](https://twip.kr/saelly)
+
 
 ---
 
