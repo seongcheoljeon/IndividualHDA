@@ -2,7 +2,11 @@
 
 ![iHDA Main](image/ihda_main.png)
 
-**_Houdini Version: 18.0.460 or higher is recommended._**
+**_Houdini Version: 18.0.460 or higher is recommended._**   
+
+> Friends, node drag and drop should be done with middle mouse click.   
+You cannot drag and drop with the left mouse button.    
+Do not send an email saying the node is not dragging and dropping :)
 
 - [ ] Linux (Video playback and production has not been implemented yet)
 - [ ] Mac (Video playback and production has not been implemented yet)
