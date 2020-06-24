@@ -509,7 +509,10 @@ Release Version: {0}<br>
 OS Available: {1}<br>
 Recommended Houdini Version: {2}<br>
 <br>
-<a href="mailto:saelly55@gmail.com?Subject=[iHDA]" style="color:red" target="_top">Send E-Mail</a><br><br>
+<b><i>Please donate if you like this app.<i><b><br>
+<br>
+<a href="https://www.buymeacoffee.com/seongcheoljeon" style="color:#ff6f00" target="_blank">Buy Me A Coffee</a><br>
+<br>
 <a href="https://www.youtube.com/channel/UCy4fuTNjIPeKPB4hacaP_6A?view_as=subscriber" style="color:red" 
 target="_blank">Youtube</a><br>
         '''.format(
