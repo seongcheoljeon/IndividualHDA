@@ -31,8 +31,8 @@ Using the iHDA app as a multi-user can cause problems.
 
 ## UPDATE CONTENTS
 
-#### v1.7.1
-Download: **https://github.com/seongcheoljeon/IndividualHDA/releases/tag/v1.7.1**
+### v1.7.1
+**https://github.com/seongcheoljeon/IndividualHDA/releases/tag/v1.7.1**
 - Changed so that the user can select a data storage location.
 - Fixed asset name change error.
 
