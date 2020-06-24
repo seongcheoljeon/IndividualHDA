@@ -362,7 +362,6 @@ class Name:
     class IHDAData:
         filename = 'iHDA'
         backup_dirname = 'backup'
-        data_dirname = '.iHDAData'
 
 
 def is_linux():
@@ -415,13 +414,6 @@ class UISetting:
     else:
         dft_font_style = 'Courier'
         view_font_style = 'Courier'
-    # try:
-    #     dft_font_size = hou.ui.scaledSize(10)
-    #     view_font_size = hou.ui.scaledSize(11)
-    #     listview_node_icon_size = hou.ui.scaledSize(38)
-    #     tableview_node_icon_size = hou.ui.scaledSize(38)
-    #     treeview_node_icon_size = hou.ui.scaledSize(24)
-    # except AttributeError as err:
     dft_font_size = 10
     view_font_size = 11
     #
@@ -496,17 +488,12 @@ class Paths:
     icons_hda_default_filepath = icons_hda_default_dirpath / __company_log_icon
     # python site-packages dir path
     python_packages_dirpath = curt_script_dirpath / Name.Python.lib / Name.Python.packages
-    # iHDA data directory
-    ihda_data_dirpath = user_home_dirpath / Name.IHDAData.data_dirname
     # houdini fx cmd file path
     houdinifx_cmd = hb_dirpath.joinpath(Name.houdinifx_name).with_suffix(Extensions.executable)
 
 
 class SQLite:
-    db_dirpath = Paths.ihda_data_dirpath
     db_filename = 'ihda{0}'.format(Extensions.database_file)
-    # iHDA app이 실행되고 계속 불러올 DB파일 경로
-    db_filepath = db_dirpath / db_filename
     # 임시 ihda database name
     tmp_db_filename = 'tmp_ihda{0}'.format(Extensions.database_file)
     tmp_db_filepath = Paths.tmp_dirpath / tmp_db_filename
@@ -517,7 +504,7 @@ class Info:
     def app_info(houdini_ver=None):
         info = '''
 <p>Individual HDA (Houdini built-in app)<br><br>
-Release Date: 2020.06.23<br>
+Release Date: 2020.06.24<br>
 Release Version: {0}<br>
 OS Available: {1}<br>
 Recommended Houdini Version: {2}<br>

@@ -30,8 +30,7 @@ class PreferenceUISettings(object):
         return self.__cfg_dict
 
     def save_cfg_dict_to_file(self):
-        # self.__cfg_dict[public.Name.PreferenceUI.lineedit_data_dirpath] = self.__window.data_dirpath.as_posix()
-        #
+        self.__cfg_dict[public.Name.PreferenceUI.lineedit_data_dirpath] = self.__window.data_dirpath.as_posix()
         ffmpeg_dirpath = ''
         if self.__window.ffmpeg_dirpath is not None:
             ffmpeg_dirpath = self.__window.ffmpeg_dirpath.as_posix()
@@ -116,8 +115,7 @@ class PreferenceUISettings(object):
                 os.remove(self.__setting_json.as_posix())
                 return
         try:
-            # self.__window.data_dirpath = self.__cfg_dict[public.Name.PreferenceUI.lineedit_data_dirpath]
-            self.__window.data_dirpath = public.Paths.ihda_data_dirpath.as_posix()
+            self.__window.data_dirpath = self.__cfg_dict[public.Name.PreferenceUI.lineedit_data_dirpath]
             self.__window.ffmpeg_dirpath = self.__cfg_dict[public.Name.PreferenceUI.lineedit_ffmpeg_dirpath]
             #
             view_font_size = self.__cfg_dict[public.Name.PreferenceUI.spb_view_font_size]
@@ -179,8 +177,7 @@ class PreferenceUISettings(object):
             return
 
     def get_data_dirpath_from_saved(self):
-        # return self.cfg_dict.get(public.Name.PreferenceUI.lineedit_data_dirpath)
-        return public.Paths.ihda_data_dirpath
+        return self.cfg_dict.get(public.Name.PreferenceUI.lineedit_data_dirpath)
 
     def get_ffmpeg_dirpath_from_saved(self):
         return self.cfg_dict.get(public.Name.PreferenceUI.lineedit_ffmpeg_dirpath)

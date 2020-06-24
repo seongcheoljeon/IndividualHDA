@@ -304,9 +304,9 @@ class RecordModel(QtCore.QAbstractItemModel):
         return {public.Type.root: {}}
 
     def __update_data(self, data=None):
-        assert isinstance(data, dict)
         if (data is None) or (not len(data)):
             return
+        assert isinstance(data, dict)
         self.__data.get(public.Type.root).update(data)
 
     def insert_record_data(self, data=None):
@@ -632,7 +632,7 @@ class RecordModel(QtCore.QAbstractItemModel):
                             # 파일 이름은 버전이 같은 것만 변경 해야 함.
                             if get_data[row][5] == hda_version:
                                 hda_filename = houdini_api.HoudiniAPI.make_hda_filename(
-                                    name=new_name, version=hda_version, is_encrypt_ihda=True)
+                                    name=new_name, version=hda_version)
                                 get_data[row][11] = hda_filename
                 else:
                     self.__rename_record_data(data=get_data, update_key_data=val, update_data=update_data)
