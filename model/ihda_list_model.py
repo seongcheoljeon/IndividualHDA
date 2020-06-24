@@ -55,7 +55,7 @@ class ListModel(QtCore.QAbstractListModel):
         self.__show_thumbnail = val
 
     def rowCount(self, parent=QtCore.QModelIndex()):
-        return len(self.__items)
+        return len(self.__items) if self.__items is not None else 0
 
     def flags(self, index):
         flags = super(ListModel, self).flags(index)

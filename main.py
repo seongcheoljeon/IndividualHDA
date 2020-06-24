@@ -5,7 +5,7 @@
 # email addr        : saelly55@gmail.com
 # project name      : individualHDA/main
 # create date       : 2020.01.27 11:15
-# modify date       : 2020.06.22 21:40
+# modify date       : 2020.06.24 19:40
 # description       : Individual Houdini Digital Assets
 
 import sys
@@ -102,12 +102,10 @@ except ImportError:
 
 sys.setrecursionlimit(500000)
 
-# ex) collections.Counter(p.suffix for p in pathlib2.Path.cwd().iterdir())
-# ex) res: Counter({'.md': 2, '.txt': 4, '.pdf: 2, '.py': 1, ...})
 
 __author__ = 'Seongcheol Jeon'
 __version__ = public.Value.current_ver
-__date__ = '2020.06.23'
+__date__ = '2020.06.24'
 
 
 class IndividualHDA(QtWidgets.QMainWindow, main_ui.Ui_MainWindow__individualHDA):
@@ -123,13 +121,13 @@ class IndividualHDA(QtWidgets.QMainWindow, main_ui.Ui_MainWindow__individualHDA)
             self.setParent(hou.ui.mainQtWindow(), QtCore.Qt.Window)
         self.setAcceptDrops(True)
         self.centralwidget.setEnabled(False)
+        self.toolBar.setEnabled(False)
         # status
         self.__is_ready = False
         # regex
         self.__regex_squence_str = re_compile(r'\$F4')
         # user id
         self.__user = public.Name.username
-        # self.label__logged_id.setText(self.__user)
         # ui_settings
         self.__ui_settings = ui_settings.UISettings(window=self)
         # logging
@@ -153,14 +151,10 @@ class IndividualHDA(QtWidgets.QMainWindow, main_ui.Ui_MainWindow__individualHDA)
         # not have null node context
         # /ch, /shop, /img, /vex    -> null 이 없음.
         self.__not_have_null_node_context_lst = ['/ch', '/shop', '/img', '/vex']
-        # shortcut key
-        self.__shortcut_copy_key = 'Ctrl+C'
-        self.__shortcut_del_key = 'Delete'
         # app properties 초기화
         self.__is_reset_app_properties = False
         # import data 했는 지의 대한 변수
         self.__is_imported_data = False
-        #
         # current pane tab
         self.__current_panetab = None
         # iHDA data
@@ -233,33 +227,26 @@ class IndividualHDA(QtWidgets.QMainWindow, main_ui.Ui_MainWindow__individualHDA)
             log_handler.LogHandler.log_msg(
                 method=logging.warning, msg='you did not specify a location where data is stored')
             self.__preference.show()
-        db_filepath = public.SQLite.db_filepath
-        assert isinstance(db_filepath, pathlib2.Path)
-        if not db_filepath.parent.exists():
-            db_filepath.parent.mkdir(parents=True)
+        else:
+            db_filepath = self.__db_filepath
+            assert isinstance(db_filepath, pathlib2.Path)
             db_api = sqlite3_db_api.SQLite3DatabaseAPI(db_filepath=db_filepath)
-            db_api.create_tables()
-            is_done = db_api.insert_users(user_id=self.__user, email='anonymous@temp.com')
-            if not is_done:
-                log_handler.LogHandler.log_msg(method=logging.error, msg='user creation failed')
-            return
-        db_api = sqlite3_db_api.SQLite3DatabaseAPI(db_filepath=db_filepath)
-        if not db_api.is_exist_users_table():
-            is_done = db_api.create_tables()
-            if not is_done:
-                log_handler.LogHandler.log_msg(method=logging.critical, msg='table creation failed')
-            else:
-                if not db_api.is_exist_user_id(self.__user):
-                    is_done = db_api.insert_users(user_id=self.__user, email='anonymous@temp.com')
-                    if not is_done:
-                        log_handler.LogHandler.log_msg(method=logging.error, msg='user creation failed')
+            if not db_api.is_exist_users_table():
+                is_done = db_api.create_tables()
+                if not is_done:
+                    log_handler.LogHandler.log_msg(method=logging.critical, msg='table creation failed')
+                else:
+                    if not db_api.is_exist_user_id(self.__user):
+                        is_done = db_api.insert_users(user_id=self.__user, email='anonymous@temp.com')
+                        if not is_done:
+                            log_handler.LogHandler.log_msg(method=logging.error, msg='user creation failed')
 
     def __init_set(self):
         # is ready iHDA
         self.__set_is_ready()
         # hide parameters
         self.__hide_parms()
-        self.__ihda_data = IndividualHDA.__get_hda_data(user_id=self.__user)
+        self.__ihda_data = IndividualHDA.__get_hda_data(user_id=self.__user, db_filepath=self.__db_filepath)
         # combobox - search type
         self.comboBox__search_type.addItems(['Name', 'Tags', 'Type'])
         self.comboBox__search_field_hist.addItems(['Name', 'Tags', 'Type'])
@@ -304,14 +291,13 @@ class IndividualHDA(QtWidgets.QMainWindow, main_ui.Ui_MainWindow__individualHDA)
         else:
             # theme
             self.__ui_settings.set_theme(theme=public.Name.default_theme)
-        db_api = IndividualHDA.__db_api_wrap()
-        if db_api is None:
-            return
-        self.__ihda_icons.make_pixmap_ihda_data(icon_info=db_api.get_icon_info_by_user(user_id=self.__user))
-        self.__ihda_icons.make_pixmap_cate_data(cate_lst=db_api.get_hda_category(user_id=self.__user))
-        self.__ihda_icons.make_pixmap_thumbnail_data(all_data=self.__ihda_data)
-        self.__ihda_icons.make_pixmap_hist_thumbnail_data(
-            all_data=db_api.get_thumbnail_by_hda_history(user_id=self.__user))
+        db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
+        if db_api is not None:
+            self.__ihda_icons.make_pixmap_ihda_data(icon_info=db_api.get_icon_info_by_user(user_id=self.__user))
+            self.__ihda_icons.make_pixmap_cate_data(cate_lst=db_api.get_hda_category(user_id=self.__user))
+            self.__ihda_icons.make_pixmap_thumbnail_data(all_data=self.__ihda_data)
+            self.__ihda_icons.make_pixmap_hist_thumbnail_data(
+                all_data=db_api.get_thumbnail_by_hda_history(user_id=self.__user))
         self.__ihda_category_view = ihda_category_view.CategoryView(self)
         self.verticalLayout__category.addWidget(self.__ihda_category_view)
         self.__init_set_ihda_category_model()
@@ -475,9 +461,17 @@ class IndividualHDA(QtWidgets.QMainWindow, main_ui.Ui_MainWindow__individualHDA)
         self.__rename_ihda.buttonBox__confirm.accepted.connect(self.__slot_hda_name_changed)
         self.doubleSpinBox__zoom.valueChanged.connect(self.__slot_zoom_value)
 
+    @property
+    def __db_filepath(self):
+        if not self.__preference.is_data_valid:
+            return None
+        return self.__preference.data_dirpath / public.SQLite.db_filename
+
     @staticmethod
-    def __db_api_wrap():
-        db_filepath = public.SQLite.db_filepath
+    def __db_api_wrap(db_filepath):
+        if db_filepath is None:
+            log_handler.LogHandler.log_msg(method=logging.critical, msg='no data path')
+            return None
         assert isinstance(db_filepath, pathlib2.Path)
         if not db_filepath.exists():
             log_handler.LogHandler.log_msg(
@@ -578,7 +572,8 @@ class IndividualHDA(QtWidgets.QMainWindow, main_ui.Ui_MainWindow__individualHDA)
         self.stackedWidget__category.setCurrentIndex(0)
         # tree model
         self.__ihda_category_model = ihda_category_model.CategoryModel(
-            data=IndividualHDA.__get_hda_category(user_id=self.__user), pixmap_cate_data=self.__ihda_icons.pixmap_cate_data,
+            data=IndividualHDA.__get_hda_category(user_id=self.__user, db_filepath=self.__db_filepath),
+            pixmap_cate_data=self.__ihda_icons.pixmap_cate_data,
             font_size=font_size, font_style=font_style, icon_size=icon_size, padding=padding)
         self.__ihda_category_proxy_model = ihda_category_proxy_model.CategoryProxyModel()
         self.__ihda_category_proxy_model.setSourceModel(self.__ihda_category_model)
@@ -640,7 +635,7 @@ class IndividualHDA(QtWidgets.QMainWindow, main_ui.Ui_MainWindow__individualHDA)
         padding = self.__get_padding_properties(
             public.UISetting.padding_history, public.Name.PreferenceUI.pad_history)
         # ihda history model
-        get_data = IndividualHDA.__get_hda_hist_data(user_id=self.__user)
+        get_data = IndividualHDA.__get_hda_hist_data(user_id=self.__user, db_filepath=self.__db_filepath)
         self.__ihda_history_model = ihda_history_model.HistoryModel(
             items=get_data, pixmap_ihda_data=self.__ihda_icons.pixmap_ihda_data,
             pixmap_cate_data=self.__ihda_icons.pixmap_cate_data,
@@ -673,7 +668,8 @@ class IndividualHDA(QtWidgets.QMainWindow, main_ui.Ui_MainWindow__individualHDA)
             public.UISetting.padding_record, public.Name.PreferenceUI.pad_record)
         # tree model
         self.__ihda_record_model = ihda_record_model.RecordModel(
-            data=IndividualHDA.__get_hda_loc_record_data(), pixmap_cate_data=self.__ihda_icons.pixmap_cate_data,
+            data=IndividualHDA.__get_hda_loc_record_data(self.__db_filepath),
+            pixmap_cate_data=self.__ihda_icons.pixmap_cate_data,
             pixmap_ihda_data=self.__ihda_icons.pixmap_ihda_data,
             font_size=font_size, font_style=font_style, icon_size=icon_size, padding=padding)
         self.__ihda_record_proxy_model = ihda_record_proxy_model.RecordProxyModel()
@@ -724,7 +720,7 @@ class IndividualHDA(QtWidgets.QMainWindow, main_ui.Ui_MainWindow__individualHDA)
         self.__slot_selected_category(idx)
 
     def __init_set_hist_ihda_combobox(self):
-        db_api = IndividualHDA.__db_api_wrap()
+        db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
         if db_api is None:
             return
         self.__default_set_hist_ihda_combobox()
@@ -1134,7 +1130,7 @@ class IndividualHDA(QtWidgets.QMainWindow, main_ui.Ui_MainWindow__individualHDA)
     def __create_ihda_node_in_houdini(
             self, model_data_lst=None, network_editor=None, cursor_pos=None, offset_pos=None,
             total_node_cnt=None):
-        db_api = IndividualHDA.__db_api_wrap()
+        db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
         if db_api is None:
             return
         num_count = 0
@@ -1425,7 +1421,7 @@ But it didn't stop, so please wait a little longer.
                 node_lst=node_lst, total_node_cnt=total_node_cnt))
 
     def __make_houdini_node_to_ihda_node(self, node_lst=None, total_node_cnt=None):
-        db_api = IndividualHDA.__db_api_wrap()
+        db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
         if db_api is None:
             return
         is_declare = False
@@ -1649,25 +1645,6 @@ But it didn't stop, so please wait a little longer.
             hda_key_id=hda_key_id, filename=hip_filepath.name, dirpath=hip_filepath.parent,
             houdini_version=hou_version, hda_license=hou_license,
             operating_system=declare_os, sf=frinfo[0], ef=frinfo[1], fps=frinfo[2])
-        # loc = location.Location()
-        # # 만약 인터넷에 연결되어 있다면
-        # if location.Location.is_network_connected():
-        #     loc_data = loc.get_loc()
-        #     if loc_data is None:
-        #         log_handler.LogHandler.log_msg(method=logging.warning, msg='IP information could not be verified')
-        #     else:
-        #         is_location_info = db_api.update_location_info(
-        #             hda_key_id=hda_key_id, country=loc_data.get(public.Key.Location.country),
-        #             timezone=loc_data.get(public.Key.Location.timezone),
-        #             region=loc_data.get(public.Key.Location.region),
-        #             city=loc_data.get(public.Key.Location.city),
-        #             ip=loc_data.get(public.Key.Location.ip),
-        #             localx=loc_data.get(public.Key.Location.localx),
-        #             localy=loc_data.get(public.Key.Location.localy),
-        #             org=loc_data.get(public.Key.Location.org),
-        #             postal=loc_data.get(public.Key.Location.postal))
-        # else:
-        #     log_handler.LogHandler.log_msg(method=logging.warning, msg='not internet connected')
         is_update_thumb = db_api.update_thumbnail_info(
             hda_key_id=hda_key_id, dirpath=thumb_dirpath, filename=thumb_filename, version=node_ver)
         if is_update_thumb:
@@ -1802,25 +1779,6 @@ But it didn't stop, so please wait a little longer.
             hda_key_id=last_hda_key_id, filename=hip_filename, dirpath=hip_dirpath,
             houdini_version=hou_version, hda_license=hou_license, operating_system=declare_os,
             sf=frinfo[0], ef=frinfo[1], fps=frinfo[2])
-        # loc = location.Location()
-        # # 만약 인터넷에 연결되어 있다면
-        # if location.Location.is_network_connected():
-        #     loc_data = loc.get_loc()
-        #     if loc_data is None:
-        #         log_handler.LogHandler.log_msg(method=logging.warning, msg='IP information could not be verified')
-        #     else:
-        #         is_location_info = db_api.insert_location_info(
-        #             hda_key_id=last_hda_key_id, country=loc_data.get(public.Key.Location.country),
-        #             timezone=loc_data.get(public.Key.Location.timezone),
-        #             region=loc_data.get(public.Key.Location.region),
-        #             city=loc_data.get(public.Key.Location.city),
-        #             ip=loc_data.get(public.Key.Location.ip),
-        #             localx=loc_data.get(public.Key.Location.localx),
-        #             localy=loc_data.get(public.Key.Location.localy),
-        #             org=loc_data.get(public.Key.Location.org),
-        #             postal=loc_data.get(public.Key.Location.postal))
-        # else:
-        #     log_handler.LogHandler.log_msg(method=logging.warning, msg='not internet connected')
         is_insert_thumb = db_api.insert_thumbnail_info(
             hda_key_id=last_hda_key_id, dirpath=thumb_dirpath, filename=thumb_filename, version=node_ver)
         if is_insert_thumb:
@@ -2159,7 +2117,7 @@ But it didn't stop, so please wait a little longer.
         msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         reply = msgbox.exec_()
         if reply == QtWidgets.QMessageBox.Yes:
-            db_api = IndividualHDA.__db_api_wrap()
+            db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
             if db_api is None:
                 return
             self.__delete_unused_hda_record_info(db_api=db_api)
@@ -2314,7 +2272,7 @@ But it didn't stop, so please wait a little longer.
         record_data = index.data(ihda_record_model.RecordModel.record_data_role)
         if record_data is None:
             return
-        db_api = IndividualHDA.__db_api_wrap()
+        db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
         if db_api is None:
             return
         hda_id = index.data(ihda_record_model.RecordModel.hda_id_role)
@@ -2473,7 +2431,7 @@ similar to the current node type.
 Type of current node: "{1}"
                 '''.format(new_hda_name, hda_type_name))
             else:
-                db_api = IndividualHDA.__db_api_wrap()
+                db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
                 if db_api is None:
                     return
                 is_exist_hda_name = db_api.is_exist_hda_name(
@@ -2563,8 +2521,7 @@ Type of current node: "{1}"
         assert isinstance(old_hda_dirpath, pathlib2.Path)
         new_hda_dirpath = old_hda_dirpath.with_name(new_hda_name)
         old_hda_filename = data.get(public.Key.hda_filename)
-        new_hda_filename = houdini_api.HoudiniAPI.make_hda_filename(
-            name=new_hda_name, version=hda_version, is_encrypt_ihda=False)
+        new_hda_filename = houdini_api.HoudiniAPI.make_hda_filename(name=new_hda_name, version=hda_version)
         old_node_old_path = data.get(public.Key.node_old_path)
         _plst = old_node_old_path.split(public.Paths.houdini_path_sep)[:-1] + [new_hda_name]
         new_node_old_path = public.Paths.houdini_path_sep.join(_plst)
@@ -2771,8 +2728,8 @@ Type of current node: "{1}"
         self.__ihda_list_view.setSpacing(3)
 
     @staticmethod
-    def __get_hda_data(category=None, user_id=None):
-        db_api = IndividualHDA.__db_api_wrap()
+    def __get_hda_data(category=None, user_id=None, db_filepath=None):
+        db_api = IndividualHDA.__db_api_wrap(db_filepath)
         if db_api is None:
             return
         get_data = db_api.get_hda_data(category=category, user_id=user_id)
@@ -2781,8 +2738,8 @@ Type of current node: "{1}"
         return get_data
 
     @staticmethod
-    def __get_hda_hist_data(hda_key_id=None, user_id=None, search_date=None):
-        db_api = IndividualHDA.__db_api_wrap()
+    def __get_hda_hist_data(hda_key_id=None, user_id=None, search_date=None, db_filepath=None):
+        db_api = IndividualHDA.__db_api_wrap(db_filepath)
         if db_api is None:
             return
         get_data = db_api.get_hda_history(hda_key_id=hda_key_id, user_id=user_id, search_date=search_date)
@@ -2791,10 +2748,10 @@ Type of current node: "{1}"
         return get_data
 
     @staticmethod
-    def __get_hda_category(user_id=None):
+    def __get_hda_category(user_id=None, db_filepath=None):
         if user_id is None:
             return dict()
-        db_api = IndividualHDA.__db_api_wrap()
+        db_api = IndividualHDA.__db_api_wrap(db_filepath)
         if db_api is None:
             return
         cate_lst = db_api.get_hda_category(user_id=user_id)
@@ -2805,8 +2762,8 @@ Type of current node: "{1}"
     # node location record data
     # 모두 가져온 후 proxy model로 필터링한다. 그래서 조건을 주지 않고 데이터를 가져오도록 하였다.
     @staticmethod
-    def __get_hda_loc_record_data():
-        db_api = IndividualHDA.__db_api_wrap()
+    def __get_hda_loc_record_data(db_filepath):
+        db_api = IndividualHDA.__db_api_wrap(db_filepath)
         if db_api is None:
             return
         record_data = db_api.get_hda_node_location_record()
@@ -2876,8 +2833,6 @@ Type of current node: "{1}"
         action_context_menu_remove = context_menu.addAction('Delete')
         action_context_menu_remove.setIcon(
             QtGui.QIcon(QtGui.QPixmap(':/main/icons/ic_delete_forever_white.png')))
-        # 단축키 비활성화
-        # action_context_menu_remove.setShortcut(QtGui.QKeySequence(self.__shortcut_del_key))
         context_menu.addMenu(open_context_menu)
         context_menu.addSeparator()
         context_menu.addAction(action_context_menu_detail)
@@ -2974,8 +2929,6 @@ Type of current node: "{1}"
         action_hda_context_menu_remove = hda_context_menu.addAction('Delete')
         action_hda_context_menu_remove.setIcon(
             QtGui.QIcon(QtGui.QPixmap(':/main/icons/ic_delete_forever_white.png')))
-        # 단축키 비활성화
-        # action_hda_context_menu_remove.setShortcut(QtGui.QKeySequence(self.__shortcut_del_key))
         # History
         hist_context_menu = QtWidgets.QMenu('History', self)
         hist_context_menu.setIcon(
@@ -3018,7 +2971,7 @@ Type of current node: "{1}"
         elif action == action_hda_context_menu_detail:
             self.__detail_view_ihda_data(data=self.__curt_hda_item_data)
         elif action == action_hda_make_context_menu_thumbnail:
-            db_api = IndividualHDA.__db_api_wrap()
+            db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
             if db_api is None:
                 return
             IndividualHDA.__wrapper_execute_deferred(lambda: self.__slot_make_thumbnail(db_api=db_api))
@@ -3060,7 +3013,7 @@ Type of current node: "{1}"
                 return
             self.__remove_hda_item(indexes=indexes)
         elif action == action_hist_context_menu_ihda_history:
-            db_api = IndividualHDA.__db_api_wrap()
+            db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
             if db_api is None:
                 return
             hda_name = self.__curt_hda_item_name
@@ -3074,7 +3027,7 @@ Type of current node: "{1}"
         elif action == action_hist_context_menu_note_history:
             hda_name = self.__curt_hda_item_name
             hda_id = self.__curt_hda_item_id
-            db_api = IndividualHDA.__db_api_wrap()
+            db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
             if db_api is None:
                 return
             hist_note_data = db_api.get_hda_note_history(hda_key_id=hda_id, with_datetime=True)
@@ -3099,7 +3052,7 @@ Type of current node: "{1}"
             reply = msgbox.exec_()
             if reply == QtWidgets.QMessageBox.No:
                 return
-            db_api = IndividualHDA.__db_api_wrap()
+            db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
             if db_api is None:
                 return
             # player가 재생중이거나 일시정지 상태면 정지
@@ -3199,8 +3152,6 @@ Type of current node: "{1}"
         action_context_menu_remove = context_menu.addAction('Delete')
         action_context_menu_remove.setIcon(
             QtGui.QIcon(QtGui.QPixmap(':/main/icons/ic_delete_forever_white.png')))
-        # 단축키 비활성화
-        # action_context_menu_remove.setShortcut(QtGui.QKeySequence(self.__shortcut_del_key))
         context_menu.addMenu(open_context_menu)
         context_menu.addSeparator()
         context_menu.addSeparator()
@@ -3220,7 +3171,7 @@ Type of current node: "{1}"
             record_id = index.data(ihda_record_model.RecordModel.record_id_role)
             if record_id is None:
                 return
-            db_api = IndividualHDA.__db_api_wrap()
+            db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
             if db_api is None:
                 return
             record_data = db_api.get_only_detailview_record_data(record_id=record_id)
@@ -3274,7 +3225,7 @@ Type of current node: "{1}"
         if action == action_open_context_ihda_folder:
             if hda_id is None:
                 return
-            db_api = IndividualHDA.__db_api_wrap()
+            db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
             if db_api is None:
                 return
             hda_fpath = db_api.get_hda_filepath(hda_key_id=hda_id)
@@ -3282,7 +3233,7 @@ Type of current node: "{1}"
         elif action == action_open_context_ihda_video:
             if hda_id is None:
                 return
-            db_api = IndividualHDA.__db_api_wrap()
+            db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
             if db_api is None:
                 return
             hda_ver = index.data(ihda_inside_model.InsideModel.version_role)
@@ -3372,7 +3323,7 @@ Type of current node: "{1}"
         msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         reply = msgbox.exec_()
         if reply == QtWidgets.QMessageBox.Yes:
-            db_api = IndividualHDA.__db_api_wrap()
+            db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
             if db_api is None:
                 return
             item_row_dat = dict()
@@ -3427,7 +3378,7 @@ Type of current node: "{1}"
 
     # 모든 ihda/note history 삭제, 최신 버전의 파일을 제외한 파일들 삭제
     def __slot_delete_all_history(self):
-        db_api = IndividualHDA.__db_api_wrap()
+        db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
         if db_api is None:
             return
         cnt_hda_hist = db_api.count_hda_history()
@@ -3477,13 +3428,27 @@ iHDA note history: {1}
             self.__clear_hist_parms()
 
     def __slot_preference(self):
-        self.__set_is_ready()
         if self.__preference.is_ffmpeg_valid:
             self.__video_player.ffmpeg_dirpath = self.__preference.ffmpeg_dirpath
-        # data 디렉토리 명시함으로써 주석처리 함.
-        # if self.__preference.is_data_valid:
-        #     if not self.__preference.data_final_dirpath.exists():
-        #         self.__preference.data_final_dirpath.mkdir(parents=True)
+        if self.__preference.is_data_valid:
+            if not self.__preference.data_final_dirpath.exists():
+                self.__preference.data_final_dirpath.mkdir(parents=True)
+            # DB 파일이 존재하지 않는다면 생성
+            db_filepath = self.__db_filepath
+            assert isinstance(db_filepath, pathlib2.Path)
+            if not db_filepath.exists():
+                db_api = sqlite3_db_api.SQLite3DatabaseAPI(db_filepath=db_filepath)
+                db_api.create_tables()
+                is_done = db_api.insert_users(user_id=self.__user, email='anonymous@temp.com')
+                if not is_done:
+                    log_handler.LogHandler.log_msg(method=logging.error, msg='user creation failed')
+                    return
+                msgbox = QtWidgets.QMessageBox(self)
+                msgbox.setFont(IndividualHDA.__get_default_font())
+                msgbox.setIcon(QtWidgets.QMessageBox.Information)
+                msgbox.setWindowTitle('Individual iHDA')
+                msgbox.setText('Please restart the app.')
+                _ = msgbox.exec_()
         # app properties
         font_size, font_style = self.__get_font_properties(
             public.Name.PreferenceUI.spb_view_font_size, public.Name.PreferenceUI.cmb_view_font_style)
@@ -3540,8 +3505,11 @@ iHDA note history: {1}
     def __set_is_ready(self):
         self.__is_ready = False
         if self.__preference.is_data_valid:
-            self.__is_ready = True
-            self.centralwidget.setEnabled(True)
+            db_fpath = self.__preference.data_dirpath / public.SQLite.db_filename
+            if db_fpath.exists():
+                self.__is_ready = True
+                self.centralwidget.setEnabled(True)
+                self.toolBar.setEnabled(True)
 
     # preview 디렉토리 삭제 함수
     @staticmethod
@@ -3631,7 +3599,7 @@ iHDA note history: {1}
             return
         comment = ''
         #
-        db_api = IndividualHDA.__db_api_wrap()
+        db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
         if db_api is None:
             return
         row = self.__curt_hda_item_row
@@ -3704,7 +3672,7 @@ iHDA note history: {1}
         if self.__curt_hda_item_data is None:
             log_handler.LogHandler.log_msg(method=logging.error, msg='no node selected ')
             return
-        db_api = IndividualHDA.__db_api_wrap()
+        db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
         if db_api is None:
             return
         hda_id = self.__curt_hda_item_id
@@ -3739,7 +3707,7 @@ iHDA note history: {1}
             return
         record_id_list = self.__ihda_record_model.remove_selected_record_data(index=index)
         # DB 삭제
-        db_api = IndividualHDA.__db_api_wrap()
+        db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
         if db_api is None:
             return
         for record_id in sorted(record_id_list):
@@ -3768,7 +3736,7 @@ iHDA note history: {1}
         msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         reply = msgbox.exec_()
         if reply == QtWidgets.QMessageBox.Yes:
-            db_api = IndividualHDA.__db_api_wrap()
+            db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
             if db_api is None:
                 return
             # player가 재생중이거나 일시 정지상태면 정지
@@ -3782,7 +3750,7 @@ iHDA note history: {1}
         self.__clear_hist_parms()
 
     def __remove_hda_item(self, indexes=None):
-        db_api = IndividualHDA.__db_api_wrap()
+        db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
         if db_api is None:
             return
         # player가 재생중이거나 일시 정지상태면 정지
@@ -4185,7 +4153,7 @@ iHDA note history: {1}
         msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         reply = msgbox.exec_()
         if reply == QtWidgets.QMessageBox.Yes:
-            db_api = IndividualHDA.__db_api_wrap()
+            db_api = IndividualHDA.__db_api_wrap(self.__db_filepath)
             if db_api is None:
                 return
             if choice == 'note':
@@ -4275,7 +4243,8 @@ iHDA note history: {1}
     def __slot_import_data(self):
         self.__video_player.player_stop()
         self.__loading_show()
-        dat_stm = data_stream.DataStream(userid=self.__user, hda_base_dirpath=self.__hda_base_dirpath, parent=self)
+        dat_stm = data_stream.DataStream(userid=self.__user, hda_base_dirpath=self.__hda_base_dirpath,
+                                         data_dirpath=self.__preference.data_dirpath, parent=self)
         bak_fpath = dat_stm.import_ihda_data()
         self.__loading_close()
         if bak_fpath is not None:
@@ -4297,10 +4266,15 @@ iHDA note history: {1}
 
     # import data로 데이터를 가져온 경우 앱 종료 시점에 데이터 트랜스하는 함수
     def __solve_before_app_terminate_import_data(self):
+        db_filepath = self.__db_filepath
+        if db_filepath is None:
+            log_handler.LogHandler.log_msg(method=logging.error, msg='no data path')
+            return
         # import data를 실행했다면
         if self.__is_imported_data:
-            # .iHDAData의 houdini디렉토리 삭제
-            data_stream.DataStream.remove_ihda_houdini_dir(hda_base_dirpath=self.__hda_base_dirpath)
+            # 현재 houdini디렉토리 삭제
+            data_stream.DataStream.remove_ihda_houdini_dir(
+                hda_base_dirpath=self.__hda_base_dirpath, data_dirpath=self.__preference.data_dirpath)
             # tmp ihda dir .iHDAData로 옮김
             for child_dir in public.Paths.tmp_ihda_dirpath.glob('*'):
                 dst_dpath = self.__hda_base_dirpath / child_dir.name
@@ -4309,7 +4283,7 @@ iHDA note history: {1}
                 child_dir.rename(dst_dpath)
             # tmp DB파일 .iHDAData로 옮김
             is_moved = ihda_system.IHDASystem.rename_file(
-                src_filepath=public.SQLite.tmp_db_filepath, dst_filepath=public.SQLite.db_filepath, verbose=True)
+                src_filepath=public.SQLite.tmp_db_filepath, dst_filepath=db_filepath, verbose=True)
             if not is_moved:
                 return
             # houdini_temp에 임시 디렉토리 삭제
@@ -4318,7 +4292,8 @@ iHDA note history: {1}
 
     def __slot_export_data(self):
         self.__loading_show()
-        dat_stm = data_stream.DataStream(userid=self.__user, hda_base_dirpath=self.__hda_base_dirpath, parent=self)
+        dat_stm = data_stream.DataStream(userid=self.__user, hda_base_dirpath=self.__hda_base_dirpath,
+                                         data_dirpath=self.__preference.data_dirpath, parent=self)
         data_dpath = dat_stm.export_ihda_data()
         self.__loading_close()
         if data_dpath is not None:
@@ -4447,25 +4422,3 @@ QTextEdit {
         else:
             log_handler.LogHandler.log_msg(method=logging.warning, msg='codec download site could not be opened')
 
-
-# def __on_houdini():
-#     for i in QtWidgets.QApplication.allWidgets():
-#         if type(i).__name__ == 'IndividualHDA':
-#             i.close()
-#     fal = IndividualHDA()
-#     # fal.setWindowFlags(main.windowFlags() | QtCore.Qt.Tool)
-#     # fal.setStyleSheet(hou.ui.qtStyleSheet())
-#     fal.show()
-
-
-# def __on_system():
-#     import sys
-#     environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = public.Paths.qt_plugins_platforms_dirpath.as_posix()
-#     app = QtWidgets.QApplication(sys.argv)
-#     ihda = IndividualHDA()
-#     ihda.show()
-#     sys.exit(app.exec_())
-
-
-# if __name__ == '__main__':
-#     __on_system()

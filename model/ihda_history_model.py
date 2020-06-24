@@ -7,7 +7,6 @@
 # modify date       :
 # description       :
 
-import os
 from imp import reload
 
 from PySide2 import QtGui, QtCore
@@ -83,7 +82,7 @@ class HistoryModel(QtCore.QAbstractTableModel):
         return QtCore.QAbstractTableModel.headerData(self, section, orientation, role)
 
     def rowCount(self, parent=QtCore.QModelIndex()):
-        return len(self.__items)
+        return len(self.__items) if self.__items is not None else 0
 
     def columnCount(self, parent=QtCore.QModelIndex()):
         return len(self.__headers)

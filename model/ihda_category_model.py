@@ -149,6 +149,8 @@ class CategoryModel(QtCore.QAbstractItemModel):
         return {public.Type.root: {}}
 
     def __update_data(self, data=None):
+        if data is None:
+            return
         assert isinstance(data, dict)
         if (data is None) or (not len(data)):
             return

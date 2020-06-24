@@ -4,9 +4,13 @@
 
 **_Houdini Version: 18.0.460 or higher is recommended._**   
 
-> Friends, node drag and drop should be done with middle mouse click.   
-You cannot drag and drop with the left mouse button.    
-Do not send an email saying the node is not dragging and dropping :)
+> ***Friends, node drag and drop should be done with middle mouse click.   
+You cannot drag and drop with the left mouse button.***
+
+> For reference, this app is designed for personal use from the beginning. So it works as a lightweight SQLite3 DB file instead of a DB server.   
+For multi-user use, stable operation is possible only by operating DB servers such as MariaDB, MySQL, and MongoDB.   
+In addition, when an individual registers an asset, he must operate an API server that processes data so that it can be updated with other people's apps.
+Using the iHDA app as a multi-user can cause problems.   
 
 - [ ] Linux (Video playback and production has not been implemented yet)
 - [ ] Mac (Video playback and production has not been implemented yet)
@@ -15,6 +19,8 @@ Do not send an email saying the node is not dragging and dropping :)
 ---
 
 ## SUPPORT
+
+*If you like this app, please support it :)*   
 
 <a href="https://www.buymeacoffee.com/seongcheoljeon" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
 [![toonation](image/toonation.png)](https://toon.at/donate/637285216412057768)
