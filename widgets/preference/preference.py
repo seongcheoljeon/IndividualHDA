@@ -250,14 +250,3 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
     @property
     def ffmpeg_final_dirpath(self):
         return self.__ffmpeg_final_dirpath
-
-
-if __name__ == '__main__':
-    import os
-    import sys
-    os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = 'C:/Program Files/Side Effects Software/Houdini 18.0.460/bin/Qt_plugins'
-    app = QtWidgets.QApplication(sys.argv)
-    w = Preference()
-    w.show()
-    sys.exit(app.exec_())
-
