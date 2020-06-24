@@ -29,16 +29,18 @@ reload(ihda_system)
 
 
 class DataStream(object):
-    def __init__(self, userid=None, hda_base_dirpath=None, parent=None):
+    def __init__(self, userid=None, hda_base_dirpath=None, data_dirpath=None, parent=None):
         assert isinstance(hda_base_dirpath, pathlib2.Path)
+        assert isinstance(data_dirpath, pathlib2.Path)
         self.__user = userid
         self.__hda_base_dirpath = hda_base_dirpath
+        self.__data_dirpath = data_dirpath
         self.__parent = parent
 
-    # .iHDAData 디렉토리에 현재 데이터 백업하는 함수
+    # 현재 데이터 백업하는 함수
     def create_backup_file(self):
         try:
-            backup_dirpath = public.Paths.ihda_data_dirpath / public.Name.IHDAData.backup_dirname
+            backup_dirpath = self.__data_dirpath / public.Name.IHDAData.backup_dirname
             if not backup_dirpath.exists():
                 backup_dirpath.mkdir(parents=True)
             datetime_str = QDateTime.currentDateTime().toString('yyyy_MM_dd_hh_mm_ss')
@@ -58,9 +60,9 @@ class DataStream(object):
 
     # .iHDAData/houdini 디렉토리 삭제하는 함수
     @staticmethod
-    def remove_ihda_houdini_dir(hda_base_dirpath=None):
+    def remove_ihda_houdini_dir(hda_base_dirpath=None, data_dirpath=None):
         is_del = False
-        old_dat_dirpath = public.Paths.ihda_data_dirpath / public.Name.houdini_name
+        old_dat_dirpath = data_dirpath / public.Name.houdini_name
         if old_dat_dirpath.exists():
             is_del = ihda_system.IHDASystem.remove_dir(dirpath=old_dat_dirpath, verbose=False)
         # 삭제 실패면
@@ -73,7 +75,8 @@ class DataStream(object):
 
     def import_ihda_data(self):
         # 사용중인 DB 파일이 없다면 종료
-        if not public.SQLite.db_filepath.exists():
+        db_filepath = self.__data_dirpath / public.SQLite.db_filename
+        if not db_filepath.exists():
             log_handler.LogHandler.log_msg(method=logging.error, msg='DB file does not exist')
             return
         if self.__user is None:
@@ -177,6 +180,10 @@ class DataStream(object):
         return data_dirpath
 
     def __compress_ihda_data(self, data_filepath=None, is_print_log=True):
+        db_filepath = self.__data_dirpath / public.SQLite.db_filename
+        if not db_filepath.exists():
+            log_handler.LogHandler.log_msg(method=logging.error, msg='DB file does not exist')
+            return
         if is_print_log:
             log_handler.LogHandler.log_msg(method=logging.debug, msg='*** exporting iHDA data to the outside ***')
         with zipfile.ZipFile(data_filepath.as_posix(), 'w') as zip_fp:
@@ -187,8 +194,8 @@ class DataStream(object):
                 zip_fp.write(filepath.as_posix(), rel_filepath.as_posix())
                 if is_print_log:
                     log_handler.LogHandler.log_msg(method=logging.info, msg=rel_filepath.as_posix())
-            rel_filepath = public.SQLite.db_filepath.relative_to(public.SQLite.db_filepath.parent)
-            zip_fp.write(public.SQLite.db_filepath.as_posix(), rel_filepath.as_posix())
+            rel_filepath = db_filepath.relative_to(db_filepath.parent)
+            zip_fp.write(db_filepath.as_posix(), rel_filepath.as_posix())
             if is_print_log:
                 log_handler.LogHandler.log_msg(method=logging.info, msg=rel_filepath.as_posix())
         if is_print_log:

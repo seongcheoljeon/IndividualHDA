@@ -146,6 +146,8 @@ class IHDAIcons(object):
                     zip_fp=zip_fp, icon_lst=icon_lst)
 
     def make_pixmap_thumbnail_data(self, all_data=None):
+        if all_data is None:
+            return
         for data in all_data:
             hkey_id = data.get(public.Key.hda_id)
             thumb_filepath = data.get(public.Key.thumbnail_dirpath) / data.get(public.Key.thumbnail_filename)
@@ -156,6 +158,8 @@ class IHDAIcons(object):
             self.__pixmap_thumbnail_data[hkey_id] = thumbnail_pixmap
 
     def make_pixmap_hist_thumbnail_data(self, all_data=None):
+        if all_data is None:
+            return
         for data in all_data:
             hist_id = data.get(public.Key.History.hist_id)
             thumb_filepath = data.get(public.Key.History.thumb_dirpath) / data.get(public.Key.History.thumb_filename)

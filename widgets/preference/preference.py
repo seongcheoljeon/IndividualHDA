@@ -30,11 +30,8 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
         self.__ffmpeg_final_dirpath = None
         self.__is_data_valid = False
         self.__is_ffmpeg_valid = False
-        #
         self.__init_set()
         self.__connections()
-        #
-        self.data_dirpath = public.Paths.ihda_data_dirpath.as_posix()
 
     def __init_set(self):
         self.__pref_settings.load_main_window_geometry()
@@ -46,7 +43,6 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
             self.__slot_data_textchanged(self.lineEdit__data_dirpath.text().strip())
         if len(self.lineEdit__ffmpeg_dirpath.text().strip()):
             self.__slot_ffmpeg_textchanged(self.lineEdit__ffmpeg_dirpath.text().strip())
-        self.groupBox__data.setVisible(False)
 
     def __connections(self):
         self.lineEdit__data_dirpath.textChanged.connect(self.__slot_data_textchanged)
@@ -181,12 +177,12 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
             self.lineEdit__ffmpeg_dirpath.setText('')
 
     def is_valid_data_dirpath(self):
-        # data_dirpath = self.__pref_settings.get_data_dirpath_from_saved()
-        # if (data_dirpath is None) or (not len(data_dirpath)):
-        #     return False
-        # data_dirpath = pathlib2.Path(data_dirpath)
-        # if not data_dirpath.exists():
-        #     return False
+        data_dirpath = self.__pref_settings.get_data_dirpath_from_saved()
+        if (data_dirpath is None) or (not len(data_dirpath)):
+            return False
+        data_dirpath = pathlib2.Path(data_dirpath)
+        if not data_dirpath.exists():
+            return False
         return True
 
     def is_valid_ffmpeg_dirpath(self):
@@ -204,7 +200,7 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
         msgbox.setIcon(QtWidgets.QMessageBox.Warning)
         msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
         if not len(self.lineEdit__data_dirpath.text().strip()):
-            msgbox.setText('Specifies the directory where data is sotred')
+            msgbox.setText('Please specify the folder where the data is stored')
             msgbox.exec_()
         elif not self.data_dirpath.exists():
             msgbox.setText('Directory does not exist')
@@ -233,8 +229,7 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
 
     @property
     def is_data_valid(self):
-        # return self.__is_data_valid & self.is_valid_data_dirpath()
-        return True
+        return self.__is_data_valid & self.is_valid_data_dirpath()
 
     @is_data_valid.setter
     def is_data_valid(self, val):
@@ -258,4 +253,11 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
 
 
 if __name__ == '__main__':
-    pass
+    import os
+    import sys
+    os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = 'C:/Program Files/Side Effects Software/Houdini 18.0.460/bin/Qt_plugins'
+    app = QtWidgets.QApplication(sys.argv)
+    w = Preference()
+    w.show()
+    sys.exit(app.exec_())
+
