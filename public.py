@@ -184,7 +184,7 @@ class Value:
     UHD_res = (3840, 2160)
     _2K_res = (2048, 1080)
     _4K_res = (4096, 2160)
-    current_ver = 'v1.7.1'
+    current_ver = 'v1.7.2'
     qt_datetime_fmt_str = 'yyyy-MM-dd hh:mm:ss'
     qt_date_fmt_str = 'yyyy-MM-dd'
     datetime_fmt_str = '%Y-%m-%d %H:%M:%S'
@@ -504,7 +504,7 @@ class Info:
     def app_info(houdini_ver=None):
         info = '''
 <p>Individual HDA (Houdini built-in app)<br><br>
-Release Date: 2020.06.24<br>
+Release Date: 2020.08.07<br>
 Release Version: {0}<br>
 OS Available: {1}<br>
 Recommended Houdini Version: {2}<br>

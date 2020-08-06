@@ -8,6 +8,8 @@
 
 import logging
 
+from PySide2 import QtGui
+
 
 class LogHandler(logging.Handler):
     def __init__(self, out_stream=None):
@@ -22,6 +24,7 @@ class LogHandler(logging.Handler):
     def emit(self, record):
         msg = self.format(record)
         self.__out_stream.append(msg)
+        self.__out_stream.moveCursor(QtGui.QTextCursor.End)
 
     @staticmethod
     def log_msg(method=None, msg=''):
