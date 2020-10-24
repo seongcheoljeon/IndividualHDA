@@ -11,8 +11,8 @@
 #
 # author:           SeongcheolJeon
 # email:            saelly55@gmail.com
-# release date:     2020.06.23
-# release version:  1.7.1
+# release date:     2020.10.24
+# release version:  1.7.3
 # description:      Individual HDA
 #
 # https://github.com/seongcheoljeon/IndividualHDA
@@ -22,7 +22,7 @@ import sys
 from site import addsitedir
 
 
-ihda_dirpath = '{0}/scripts/python/individualHDA'.format(hou.getenv('HOUDINI_USER_PREF_DIR'))
+ihda_dirpath = '{0}/scripts/python/IndividualHDA'.format(hou.getenv('HOUDINI_USER_PREF_DIR'))
 
 addsitedir('{0}/libs/site-packages'.format(ihda_dirpath))
 sys.path.append(ihda_dirpath)
@@ -34,7 +34,7 @@ sys.path.append('{0}/widgets/video_player'.format(ihda_dirpath))
 sys.path.append('{0}/widgets/web_view'.format(ihda_dirpath))
 
 
-import individualHDA.main as ihda_main
+import IndividualHDA.main as ihda_main
 
 reload(ihda_main)
 
