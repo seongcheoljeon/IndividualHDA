@@ -33,6 +33,11 @@ Using the iHDA app as a multi-user can cause problems.
 
 ## UPDATE CONTENTS
 
+### v1.7.3
+**https://github.com/seongcheoljeon/IndividualHDA/releases/tag/v1.7.3**
+- Houdini 18.5
+- Fixed web view zoom.
+
 ### v1.7.2
 **https://github.com/seongcheoljeon/IndividualHDA/releases/tag/v1.7.2**
 - Debug scrollbar fixes.
