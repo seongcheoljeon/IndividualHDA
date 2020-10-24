@@ -77,20 +77,19 @@ SOFTWARE.
 
 ## INSTALL
 
->[iHDA Install Video](https://www.youtube.com/watch?v=wbHcrlRSPdY)
-
 1. Click the "Download ZIP" button to download. Or, if you use git, download it as git.
 2. If it is compressed, decompress it.
 3. Move "individualHDA.pypnal" file to your houdini python_panels directory. ex) $HOME/houdini18.0/python_panels
 4. Move the "individualHDA" directory to the houdini python directory. ex) $HOME/houdini18.0/scripts/python
 5. After running Houdini, launch the "Individual HDA" panel.
-6. Good Luck!!
+6. The downloaded iHDA folder name should be "IndividualHDA".
+7. Good Luck!!
 
 ---
 
 ## FEATURES
 
->[iHDA Demo Video](https://www.youtube.com/watch?v=m0Mykf7oBmg)
+>[iHDA Demo Video](https://vimeo.com/426157943)
 
 - Houdini internal application that systematically manages and supervises the nodes of
   Houdini artists.
