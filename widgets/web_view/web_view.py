@@ -160,7 +160,7 @@ class WebView(QtWidgets.QWidget, web_view_ui.Ui_Form__web):
             self.__set_view_by_zoom_factor(new_zoom)
 
     def __zoom_out(self):
-        new_zoom = self.webEngineView__webview.zoomFactor() / 1.1
+        new_zoom = self.webEngineView__webview.zoomFactor() / 2
         if new_zoom >= WebView.__minimum_zoom_factor():
             self.__set_view_by_zoom_factor(new_zoom)
 

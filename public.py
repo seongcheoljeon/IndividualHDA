@@ -2,8 +2,8 @@
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
-# create date:      2020.01.27 23:21:25
-# modified date:    
+# create date:      2020.01.27
+# modified date:    2020.10.24
 # description:      public file
 
 from os import getenv as os_getenv
@@ -184,7 +184,7 @@ class Value:
     UHD_res = (3840, 2160)
     _2K_res = (2048, 1080)
     _4K_res = (4096, 2160)
-    current_ver = 'v1.7.2'
+    current_ver = 'v1.7.3'
     qt_datetime_fmt_str = 'yyyy-MM-dd hh:mm:ss'
     qt_date_fmt_str = 'yyyy-MM-dd'
     datetime_fmt_str = '%Y-%m-%d %H:%M:%S'
@@ -504,7 +504,7 @@ class Info:
     def app_info(houdini_ver=None):
         info = '''
 <p>Individual HDA (Houdini built-in app)<br><br>
-Release Date: 2020.08.07<br>
+Release Date: 2020.10.24<br>
 Release Version: {0}<br>
 OS Available: {1}<br>
 Recommended Houdini Version: {2}<br>
@@ -513,8 +513,8 @@ Recommended Houdini Version: {2}<br>
 <br>
 <a href="https://www.buymeacoffee.com/seongcheoljeon" style="color:#ff6f00" target="_blank">Buy Me A Coffee</a><br>
 <br>
-<a href="https://www.youtube.com/channel/UCy4fuTNjIPeKPB4hacaP_6A?view_as=subscriber" style="color:red" 
-target="_blank">Youtube</a><br>
+<a href="https://vimeo.com/seongcheolzeon" style="color:red" 
+target="_blank">Vimeo</a><br>
         '''.format(
             Value.current_ver, platform_system().title(), houdini_ver)
         return info

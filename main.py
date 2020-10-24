@@ -5,7 +5,7 @@
 # email addr        : saelly55@gmail.com
 # project name      : individualHDA/main
 # create date       : 2020.01.27 11:15
-# modify date       : 2020.06.24 19:40
+# modify date       : 2020.10.24 19:40
 # description       : Individual Houdini Digital Assets
 
 import sys
@@ -105,7 +105,7 @@ sys.setrecursionlimit(500000)
 
 __author__ = 'Seongcheol Jeon'
 __version__ = public.Value.current_ver
-__date__ = '2020.06.24'
+__date__ = '2020.10.24'
 
 
 class IndividualHDA(QtWidgets.QMainWindow, main_ui.Ui_MainWindow__individualHDA):
