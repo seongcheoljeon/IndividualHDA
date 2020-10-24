@@ -1,6 +1,8 @@
 # Individual HDA
 
 ![iHDA Main](image/ihda_main.png)
+---
+![iHDA Main](image/ihda_main.gif)
 
 **_Houdini Version: 18.0.460 or higher is recommended._**   
 
