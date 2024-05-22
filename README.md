@@ -1,7 +1,8 @@
 # Individual HDA
 
+
 ![iHDA Main](image/ihda_main.png)
----
+
 ![iHDA Main](image/ihda_main.gif)
 
 **_Houdini Version: 18.0.460 or higher is recommended._**   
@@ -18,18 +19,6 @@ Using the iHDA app as a multi-user can cause problems.
 - [ ] Mac (Video playback and production has not been implemented yet)
 - [x] Windows (All works)
 
----
-
-## SUPPORT
-
-*If you like this app, please support it :)*   
-
-<a href="https://www.buymeacoffee.com/seongcheoljeon" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
-[![toonation](image/toonation.png)](https://toon.at/donate/637285216412057768)
-[![twitch donate](image/twitch.png)](https://twip.kr/saelly)
-
-
----
 
 ## UPDATE CONTENTS
 
@@ -47,7 +36,6 @@ Using the iHDA app as a multi-user can cause problems.
 - Changed so that the user can select a data storage location.
 - Fixed asset name change error.
 
----
 
 ## LICENSE
 
@@ -73,7 +61,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
----
 
 ## INSTALL
 
@@ -85,7 +72,6 @@ SOFTWARE.
 6. The downloaded iHDA folder name should be "IndividualHDA".
 7. Good Luck!!
 
----
 
 ## FEATURES
 
@@ -123,3 +109,10 @@ SOFTWARE.
 
 - Web view self-support and default is Houdini help.
   Users with Internet access can work on Houdini while watching YouTube or Houdini courses.
+
+
+## SUPPORT
+
+<a href="https://www.buymeacoffee.com/seongcheoljeon" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+<!-- [![toonation](image/toonation.png)](https://toon.at/donate/637285216412057768) -->
+<!-- [![twitch donate](image/twitch.png)](https://twip.kr/saelly) -->
