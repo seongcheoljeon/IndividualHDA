@@ -8,11 +8,10 @@ unchanged in logic; HOM work (HDA/thumbnail files) happens before they run.
 from __future__ import annotations
 
 import logging
-import shutil
 import sqlite3
 import threading
 from collections.abc import Callable, Sequence
-from contextlib import closing
+from contextlib import closing, suppress
 from pathlib import Path
 from typing import Any
 
@@ -56,15 +55,22 @@ class SqliteLibraryRepository:
     def ensure_user(self, user: str) -> None:
         with closing(self._open()) as db:
             if not db.is_exist_user_id(user):
-                db.insert_users(user_id=user, email=f"{user}@local")
+                if db.insert_users(user_id=user, email=f"{user}@local") is None:
+                    raise LibraryError(f"could not create library user {user!r}")
 
     def revision(self) -> int:
         # ponytail: file mtime is enough for a per-operation-connection design;
         # the server adapter returns a real monotonically increasing counter.
-        try:
-            return self._db_filepath.stat().st_mtime_ns
-        except OSError:
-            return 0
+        newest = 0
+        for path in (
+            self._db_filepath,
+            self._db_filepath.with_name(self._db_filepath.name + "-wal"),
+        ):
+            try:
+                newest = max(newest, path.stat().st_mtime_ns)
+            except OSError:
+                continue
+        return newest
 
     # --- reads ---------------------------------------------------------------
     def list_assets(
@@ -153,6 +159,40 @@ class SqliteLibraryRepository:
 
     # --- writes --------------------------------------------------------------
     def register_asset(self, payload: RegistrationPayload) -> RegistrationResult:
+        try:
+            return self._register_asset(payload)
+        except Exception:
+            self._discard_registration_files(payload)
+            raise
+
+    def add_version(
+        self, asset_id: int, payload: RegistrationPayload
+    ) -> RegistrationResult:
+        try:
+            return self._add_version(asset_id, payload)
+        except Exception:
+            self._discard_registration_files(payload)
+            raise
+
+    @staticmethod
+    def _discard_registration_files(p: RegistrationPayload) -> None:
+        """HOM wrote the HDA and thumbnail before the database write; both are new
+        files (names carry the version), so a failed registration removes them."""
+        for path in (
+            p.hda_dirpath / p.hda_filename,
+            p.thumb_dirpath / p.thumb_filename,
+        ):
+            try:
+                path.unlink(missing_ok=True)
+            except OSError as error:
+                log.warning(
+                    "Could not remove %s after a failed registration: %s", path, error
+                )
+        for directory in (p.thumb_dirpath, p.hda_dirpath):
+            with suppress(OSError):  # only when nothing else lives there
+                directory.rmdir()
+
+    def _register_asset(self, payload: RegistrationPayload) -> RegistrationResult:
         p = payload
         thumb_filepath = p.thumb_dirpath / p.thumb_filename
         with closing(self._open()) as db:
@@ -198,13 +238,14 @@ class SqliteLibraryRepository:
                             fps=p.fps,
                         ),
                     ]
-                    if not db.insert_thumbnail_info(
-                        hda_key_id=key_id,
-                        dirpath=p.thumb_dirpath,
-                        filename=p.thumb_filename,
-                        version=p.version,
-                    ):
-                        shutil.rmtree(p.thumb_dirpath, ignore_errors=True)
+                    ok.append(
+                        db.insert_thumbnail_info(
+                            hda_key_id=key_id,
+                            dirpath=p.thumb_dirpath,
+                            filename=p.thumb_filename,
+                            version=p.version,
+                        )
+                    )
                     ok.append(
                         db.insert_houdini_node_info(
                             hda_key_id=key_id,
@@ -250,7 +291,7 @@ class SqliteLibraryRepository:
         )
         return RegistrationResult(asset, history, int(history_id or 0), thumb_filepath)
 
-    def add_version(
+    def _add_version(
         self, asset_id: int, payload: RegistrationPayload
     ) -> RegistrationResult:
         p = payload
@@ -351,7 +392,10 @@ class SqliteLibraryRepository:
 
     def toggle_favorite(self, asset_id: int) -> bool:
         with closing(self._open()) as db:
-            return bool(db.update_hda_favorite(hda_key_id=asset_id))
+            done = db.update_hda_favorite(hda_key_id=asset_id)
+        if done is None:
+            raise LibraryError("favorite flag was not saved")
+        return bool(done)
 
     def rename_asset(self, plan: RenamePlan) -> tuple[int, int]:
         with closing(self._open()) as db:
@@ -359,7 +403,10 @@ class SqliteLibraryRepository:
 
     def delete_asset(self, asset_id: int, directory: Path) -> None:
         with closing(self._open()) as db:
-            asset_commands.delete_asset(db, asset_id, directory)
+            try:
+                asset_commands.delete_asset(db, asset_id, directory)
+            except RuntimeError as error:
+                raise LibraryError(str(error)) from error
 
     def delete_history(
         self, asset_id: int, history_id: int, files: Sequence[Path]
@@ -369,6 +416,8 @@ class SqliteLibraryRepository:
                 asset_commands.delete_history(db, asset_id, history_id, list(files))
             except ValueError as error:  # most recent history
                 raise LibraryConflict(str(error)) from error
+            except RuntimeError as error:
+                raise LibraryError(str(error)) from error
 
     # --- row builders (same column order the panel models expect) ----------
     @staticmethod
