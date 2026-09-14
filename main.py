@@ -31,8 +31,8 @@ import ui_settings
 from libs import houdini_api, loading_indicator, log_handler, ihda_icons
 from libs import dragdrop_overlay, ihda_system
 from widgets.make_video_info import make_video_info
-from widgets.video_player import video_player
-from widgets.web_view import web_view
+from widgets.video_player import make_video_player
+from widgets.web_view import make_web_view
 from widgets.preference import preference
 from widgets.rename_ihda import rename_ihda
 from widgets.panel.context_menus import ContextMenusMixin
@@ -135,11 +135,9 @@ class IndividualHDA(
         self._rename_ihda = rename_ihda.RenameIHDA(parent=self)
         self._preference = preference.Preference(parent=self)
         self._make_videoinfo = make_video_info.MakeVideoInfo(parent=self)
-        self._video_player = video_player.VideoPlayer(
-            ffmpeg_dirpath=self._preference.ffmpeg_dirpath, parent=self
-        )
+        self._video_player = make_video_player(self._preference.ffmpeg_dirpath, self)
         _help_site = hou.helpServerUrl if public.IS_HOUDINI else None
-        self._web_view = web_view.WebView(help_site=_help_site, parent=self)
+        self._web_view = make_web_view(_help_site, self)
         # iHDA icons
         self._ihda_icons = ihda_icons.IHDAIcons()
         # not have null node context
