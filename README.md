@@ -78,6 +78,22 @@ Open **Library Tools** in the panel menu for:
 
 Restore and path repair close the panel after completion. Reopen it to refresh the library. See the [Library Tools guide](docs/LIBRARY_TOOLS.md) for details.
 
+## Local AI (optional)
+
+The panel can suggest notes and tags for an asset with a model running on your
+own machine through [Ollama](https://ollama.com).
+
+1. Install Ollama and start it (the dialog shows the command for your OS).
+2. In the panel open **Tools → Local AI Models…**. The dialog recommends a
+   vision-capable model for your GPU memory; press **Download**, then **Use as
+   AI backend**, then **OK** in Preferences.
+3. Select an asset and press the **AI** button next to the tag editor (or use
+   the context menu). The suggestion fills the note and tag editors; press the
+   save buttons to keep it.
+
+Only asset metadata and the thumbnail are sent to the model, never file paths
+or user names. Nothing is written to the library without your click.
+
 ## Data safety
 
 The database uses SQLite schema v4 with foreign keys, validation checks, normalized tags, indexes, and transactional migrations. Existing databases are backed up before an upgrade.

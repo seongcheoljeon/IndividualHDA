@@ -19,6 +19,9 @@ unchanged apart from the items below.
   panel from opening.
 - **Panel state.** `LibraryContext` snapshot replaces Preference-dialog reads;
   category selection lives in `SelectionState`.
+- **Local AI.** Ollama backend; Tools > Local AI Models… detects the server,
+  recommends a vision-capable model for the GPU, downloads it with progress and
+  applies it; an AI button suggests a note and tags for the selected asset.
 
 ## 2.0.0 — Houdini 21+ (Qt 6 / PySide6 / Python 3.11)
 

@@ -223,3 +223,27 @@ Rules for adding a real backend or feature:
   "AI (Optional)" group is built in `widgets/preference/preference.py`. `FIELDS`
   in `libs/ai_provider.py` lists the fields each backend reads; the dialog enables
   only those (with `PLACEHOLDERS` as hints) and a backend must not read any other.
+
+Implemented so far:
+
+- `libs/ai_backends.py`: `OllamaProvider` (`POST /api/chat`, base64 images, 60 s
+  timeout, no retries) and `AIError`. Requests go through a proxy-free opener so a
+  studio `HTTP_PROXY` never captures localhost. `make_provider` dispatches
+  `kind == "local"` here; `anthropic`/`openai` still resolve to `NullProvider`.
+- `libs/ollama.py`: server management for the Local AI Models dialog — version
+  probe, installed models, streaming `pull` with progress and cancel, GPU memory
+  detection (`nvidia-smi`, macOS unified memory) and the `RECOMMENDED` catalog of
+  vision-capable multilingual models with `choose_recommended(vram_gb)`. The
+  catalog was verified against ollama.com on 2026-09-14; update the tuple when
+  models move on.
+- `widgets/ai_models/dialog.py` (`LocalModelsDialog`, opened from Tools > Local AI
+  Models… or Preferences > AI): all HTTP on its own `TaskController`; the pull
+  reports progress by emitting a dialog signal from the worker thread. "Use as AI
+  backend" only fills the Preference fields; OK saves them. No automatic
+  installation of Ollama itself — the dialog shows the download page and the OS
+  install command.
+- Feature A, `libs/ai_features.py` + `widgets/panel/ai_actions.py`: the AI button
+  next to the tag editor (and the asset context menu) asks the model for a summary
+  and tags from stored metadata, the studio tag vocabulary and the thumbnail. The
+  prompt never contains paths, users or hip locations (tested). The answer only
+  fills the note/tag editors; the user's Save click persists it.
