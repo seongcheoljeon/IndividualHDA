@@ -1,0 +1,64 @@
+"""AI backend contract; no Qt or HOM imports.
+
+Every future feature (asset description/tags, natural-language search, effect
+generation from text or images) is a function layered on ``AIProvider.complete``.
+Real backends must use only the standard library (``urllib.request``) and always
+pass a timeout; nothing is installed into Houdini's Python.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Protocol
+
+KINDS = ("none", "local", "anthropic", "openai")
+
+# Which AISettings fields each backend needs; the Preference dialog enables only
+# these and a backend must not read anything else. Placeholders are hints only.
+FIELDS: dict[str, tuple[str, ...]] = {
+    "none": (),
+    "local": ("endpoint", "model"),
+    "anthropic": ("model", "api_key_env"),
+    "openai": ("endpoint", "model", "api_key_env"),
+}
+PLACEHOLDERS: dict[str, dict[str, str]] = {
+    "local": {"endpoint": "http://localhost:11434", "model": "llama3"},
+    "anthropic": {"model": "claude-sonnet-5", "api_key_env": "ANTHROPIC_API_KEY"},
+    "openai": {
+        "endpoint": "https://api.openai.com/v1",
+        "model": "gpt-4o",
+        "api_key_env": "OPENAI_API_KEY",
+    },
+}
+
+
+@dataclass(frozen=True, slots=True)
+class AISettings:
+    kind: str = "none"
+    endpoint: str = ""  # e.g. http://localhost:11434 for a local server
+    model: str = ""
+    api_key_env: str = ""  # NAME of the environment variable holding the key
+
+
+@dataclass(frozen=True, slots=True)
+class Prompt:
+    text: str
+    system: str = ""
+    images: tuple[bytes, ...] = ()  # encoded image bytes for multimodal backends
+
+
+class AIProvider(Protocol):
+    def complete(self, prompt: Prompt) -> str: ...
+
+
+class NullProvider:
+    """Default backend: every request completes immediately with no text."""
+
+    def complete(self, prompt: Prompt) -> str:
+        return ""
+
+
+def make_provider(settings: AISettings) -> AIProvider:
+    # ponytail: every kind resolves to Null until the first real backend lands;
+    # dispatch on settings.kind here (local/anthropic/openai), urllib + timeout only.
+    return NullProvider()

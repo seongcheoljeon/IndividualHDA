@@ -5,6 +5,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from PySide6.QtCore import QObject
+from libs.ai_provider import AIProvider, AISettings, make_provider
 from libs.archive_transfer import ArchiveTransfer
 from libs.asset_rename import AssetNames, RenameRepository
 from libs.database.rename_repository import SQLiteRenameRepository
@@ -23,6 +24,7 @@ class PanelServices:
     rename_repository: Callable[[SQLite3DatabaseAPI], RenameRepository] = (
         SQLiteRenameRepository
     )
+    ai: Callable[[AISettings], AIProvider] = make_provider
 
     def reader(self) -> LibraryReader:
         return LibraryReader(self.open_database)

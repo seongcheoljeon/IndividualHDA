@@ -102,6 +102,9 @@ class IndividualHDA(
         self._tasks = self._services.tasks(self)
         self._tasks.result.connect(self._file_result)
         self._tasks.idle.connect(self._file_finished)
+        # AI calls get their own controller so network latency never shares the
+        # archive/encoder busy gate or the whole-window lock of _start_file_job.
+        self._ai_tasks = self._services.tasks(self)
         self._import_stream: ArchiveTransfer | None = None
         self._close_requested = False
         self._closing = False
@@ -204,6 +207,7 @@ class IndividualHDA(
         self._ihda_icons.shutdown()
         self._closing = True
         self._tasks.shutdown_process()
+        self._ai_tasks.drain()
         if public.IS_HOUDINI:
             # clean event
             self._loading_close()

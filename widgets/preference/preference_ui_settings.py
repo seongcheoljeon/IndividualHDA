@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Any
-# -*- coding: utf-8 -*-
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
@@ -11,6 +10,8 @@ from typing import Any
 
 import os
 import json
+import dataclasses
+from libs.ai_provider import AISettings
 from libs.settings_store import save_json
 import copy
 
@@ -41,6 +42,9 @@ class PreferenceUISettings(object):
             ffmpeg_dirpath = self.__window.ffmpeg_dirpath.as_posix()
         self.__cfg_dict[public.Name.PreferenceUI.lineedit_ffmpeg_dirpath] = (
             ffmpeg_dirpath
+        )
+        self.__cfg_dict[public.Name.PreferenceUI.ai] = dataclasses.asdict(
+            self.__window.ai_settings
         )
         # properties
         view_font_size = self.__window.spinBox__view_font_size.value()
@@ -142,6 +146,11 @@ class PreferenceUISettings(object):
                 self.__cfg_dict = {}
                 self.__setting_json.replace(self.__setting_json.with_suffix(".corrupt"))
                 return
+        # Outside the KeyError block below: older files have no "ai" key and
+        # must still load every other setting.
+        self.__window.ai_settings = AISettings(
+            **self.__cfg_dict.get(public.Name.PreferenceUI.ai, {})
+        )
         try:
             self.__window.data_dirpath = self.__cfg_dict[
                 public.Name.PreferenceUI.lineedit_data_dirpath

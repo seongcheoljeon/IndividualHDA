@@ -53,6 +53,8 @@ from libs.asset_store import AssetStore
 from libs.asset_rename import build_rename_plan
 from libs.asset_commands import delete_asset
 from libs.library_reader import LibraryReader
+from libs.ai_provider import AISettings, Prompt, make_provider
+assert make_provider(AISettings(kind='anthropic')).complete(Prompt('x')) == ''
 store = AssetStore()
 store.insert({'hda_id': 1, 'hda_name': 'A'})
 assert store.id_rows[1] == 0

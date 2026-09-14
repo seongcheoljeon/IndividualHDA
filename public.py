@@ -318,6 +318,7 @@ class Name:
         main_window_state = "main_window_state"
 
     class PreferenceUI:
+        ai = "ai"
         lineedit_data_dirpath = "lineedit_data_dirpath"
         lineedit_ffmpeg_dirpath = "lineedit_ffmpeg_dirpath"
         cmb_view_font_style = "cmb_view_font_style"

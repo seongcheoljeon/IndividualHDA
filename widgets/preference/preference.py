@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import Any
 import pathlib
 from PySide6 import QtWidgets
-# -*- coding: utf-8 -*-
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
@@ -15,6 +14,7 @@ from PySide6 import QtWidgets
 from PySide6 import QtGui
 
 import public
+from libs.ai_provider import FIELDS, KINDS, PLACEHOLDERS, AISettings
 from libs.ffmpeg_api import FFmpegAPI
 
 
@@ -25,6 +25,7 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super(Preference, self).__init__(parent)
         self.setupUi(self)
+        self.__build_ai_group()
         self.__pref_settings = preference_ui_settings.PreferenceUISettings(window=self)
         self.__data_final_dirpath = None
         self.__ffmpeg_final_dirpath = None
@@ -32,6 +33,55 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
         self.__is_ffmpeg_valid = False
         self.__init_set()
         self.__connections()
+
+    def __build_ai_group(self) -> None:
+        # Built in code rather than Designer: four fields, no styling of its own.
+        box = QtWidgets.QGroupBox("AI (Optional)", self)
+        form = QtWidgets.QFormLayout(box)
+        self.comboBox__ai_kind = QtWidgets.QComboBox(box)
+        self.comboBox__ai_kind.addItems(KINDS)
+        self.lineEdit__ai_endpoint = QtWidgets.QLineEdit(box)
+        self.lineEdit__ai_model = QtWidgets.QLineEdit(box)
+        self.lineEdit__ai_api_key_env = QtWidgets.QLineEdit(box)
+        self.__ai_fields = {
+            "endpoint": self.lineEdit__ai_endpoint,
+            "model": self.lineEdit__ai_model,
+            "api_key_env": self.lineEdit__ai_api_key_env,
+        }
+        form.addRow("Backend", self.comboBox__ai_kind)
+        form.addRow("Endpoint", self.lineEdit__ai_endpoint)
+        form.addRow("Model", self.lineEdit__ai_model)
+        form.addRow("API key env var", self.lineEdit__ai_api_key_env)
+        # Between the FFmpeg group and APP Properties.
+        self.verticalLayout_13.insertWidget(2, box)
+        self.comboBox__ai_kind.currentTextChanged.connect(self.__slot_ai_kind_changed)
+        self.__slot_ai_kind_changed(self.comboBox__ai_kind.currentText())
+
+    def __slot_ai_kind_changed(self, kind: str) -> None:
+        # Only the fields a backend reads are editable; the rest keep their text
+        # so switching back and forth loses nothing.
+        needed = FIELDS.get(kind, ())
+        hints = PLACEHOLDERS.get(kind, {})
+        for name, edit in self.__ai_fields.items():
+            edit.setEnabled(name in needed)
+            edit.setPlaceholderText(hints.get(name, ""))
+
+    @property
+    def ai_settings(self) -> AISettings:
+        return AISettings(
+            kind=self.comboBox__ai_kind.currentText(),
+            endpoint=self.lineEdit__ai_endpoint.text().strip(),
+            model=self.lineEdit__ai_model.text().strip(),
+            api_key_env=self.lineEdit__ai_api_key_env.text().strip(),
+        )
+
+    @ai_settings.setter
+    def ai_settings(self, val: AISettings) -> None:
+        index = self.comboBox__ai_kind.findText(val.kind)
+        self.comboBox__ai_kind.setCurrentIndex(index if index >= 0 else 0)
+        self.lineEdit__ai_endpoint.setText(val.endpoint)
+        self.lineEdit__ai_model.setText(val.model)
+        self.lineEdit__ai_api_key_env.setText(val.api_key_env)
 
     def __init_set(self) -> None:
         self.__pref_settings.load_main_window_geometry()
