@@ -9,7 +9,7 @@ _test_config = tempfile.TemporaryDirectory(prefix="ihda-tests-")
 os.environ["IHDA_CONFIG_DIR"] = _test_config.name
 os.environ.setdefault("IHDA_USER", "tester")
 
-import pytest
+import pytest  # noqa: E402  (env vars above must be set before Qt/app imports)
 
 
 @pytest.fixture(scope="session")

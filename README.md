@@ -115,6 +115,8 @@ python -m ruff format --check .
 python -m mypy
 ```
 
+Run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once so `git blame` skips the mechanical formatting commits listed in that file.
+
 Run the Houdini smoke test with `hython`:
 
 ```sh

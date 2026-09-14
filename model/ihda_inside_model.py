@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import contextlib
 import pathlib
 from bisect import bisect_right
 
@@ -14,10 +15,10 @@ from typing import Any
 
 from PySide6 import QtCore, QtGui
 
-try:
-    import hou
-except ImportError:
+with contextlib.suppress(ImportError):
     pass
+
+import contextlib
 
 import public
 from libs import houdini_api
@@ -35,7 +36,7 @@ class Node(QtCore.QObject):
         self.__name = node_name
         self.__depth = node_depth
         self._parent = parent
-        self._children = list()
+        self._children = []
         self.setParent(parent)
 
     def name(self) -> str | None:
@@ -400,13 +401,10 @@ class InsideModel(QtCore.QAbstractItemModel):
                 ]
                 if val[0] is None:
                     if add_item is not None:
-                        if isinstance(add_item, list):
-                            val = [add_item]
-                        else:
-                            val = [[add_item]]
+                        val = [add_item] if isinstance(add_item, list) else [[add_item]]
                     else:
                         val = [None]
-                return dict(zip([key], val))
+                return dict(zip([key], val, strict=False))
             except IndexError:
                 pass
 
@@ -468,20 +466,19 @@ class InsideModel(QtCore.QAbstractItemModel):
             return data
         if isinstance(key_data, dict):
             for key, val in key_data.items():
-                if val is None:
-                    if isinstance(data, list):
-                        return [x for x in data if x[2] == key]
+                if val is None and isinstance(data, list):
+                    return [x for x in data if x[2] == key]
                 get_data = data.get(key)
                 return self.__get_inside_data_from_key_data(data=get_data, key_data=val)
 
     # 선택한 부모에 존재하는 모든 inside data의 id를 찾아 반환하는 함수
     # 이렇게 찾은 id를 DB에서 제거하기 위함.
     def __find_inside_id_from_selected_inside_data(self, data: Any = None) -> list[Any]:
-        inside_id_lst = list()
+        inside_id_lst = []
         if isinstance(data, list):
             return [x[0] for x in data]
         if isinstance(data, dict):
-            for key, val in data.items():
+            for _key, val in data.items():
                 if isinstance(val, dict):
                     inside_id_lst += self.__find_inside_id_from_selected_inside_data(
                         data=val
@@ -493,23 +490,22 @@ class InsideModel(QtCore.QAbstractItemModel):
     # hda_id를 가진 노드의 [[이름/hda_id/노드경로],]를 반환하는 함수
     def get_ihda_node_list(self) -> Any:
         root_index = self.index(0, 0, QtCore.QModelIndex())
-        tmp_id_lst = list()
+        tmp_id_lst = []
         return self.__find_inside_ihda_node(index=root_index, tmp_id_lst=tmp_id_lst)
 
     # tmp_id_lst는 데이터가 중복 저장되는 것을 방지하는 위한 임시 변수이다.
     def __find_inside_ihda_node(
         self, index: QtCore.QModelIndex = None, tmp_id_lst: Any = None
     ) -> list[Any]:
-        find_lst = list()
+        find_lst = []
         for row in range(0, self.rowCount(index)):
             child_index = self.index(row, 0, index)
             hda_id = child_index.data(InsideModel.hda_id_role)
-            if hda_id is not None:
-                if hda_id not in tmp_id_lst:
-                    hda_org_name = child_index.data(InsideModel.hda_org_name_role)
-                    node_path = child_index.data(InsideModel.node_path_role)
-                    find_lst.append([hda_org_name, hda_id, node_path])
-                    tmp_id_lst.append(hda_id)
+            if hda_id is not None and hda_id not in tmp_id_lst:
+                hda_org_name = child_index.data(InsideModel.hda_org_name_role)
+                node_path = child_index.data(InsideModel.node_path_role)
+                find_lst.append([hda_org_name, hda_id, node_path])
+                tmp_id_lst.append(hda_id)
             find_lst += self.__find_inside_ihda_node(
                 index=child_index, tmp_id_lst=tmp_id_lst
             )
@@ -522,7 +518,7 @@ class InsideModel(QtCore.QAbstractItemModel):
         key_data: Any = None,
         find_item: Any = None,
     ) -> list[Any]:
-        find_lst = list()
+        find_lst = []
         for row in range(0, self.rowCount(index)):
             child_index = self.index(row, 0, index)
             key = child_index.data(QtCore.Qt.ItemDataRole.DisplayRole)
@@ -542,7 +538,7 @@ class InsideModel(QtCore.QAbstractItemModel):
     def __find_invalid_hull_inside_item_model(
         self, index: QtCore.QModelIndex = None
     ) -> list[Any]:
-        find_invalid_lst = list()
+        find_invalid_lst = []
         for row in range(0, self.rowCount(index)):
             child_index = self.index(row, 0, index)
             is_invalid_data = self.__is_exist_invalid_inside_data(index=child_index)
@@ -578,10 +574,8 @@ class InsideModel(QtCore.QAbstractItemModel):
                     data=data.get(remove_data_key), remove_key_data=remove_data_val
                 )
             else:
-                try:
+                with contextlib.suppress(KeyError):
                     del data[remove_data_key]
-                except KeyError:
-                    pass
         else:
             if isinstance(data, list):
                 if isinstance(remove_key_data, dict):
@@ -597,9 +591,9 @@ class InsideModel(QtCore.QAbstractItemModel):
     # 변환해 이것으로 지워야 정확함. 현재 노드 이름과 버전이 공존하여 이것을 기반으로 삭제한다. 이름과 버전은 unique하기 때문.
     # ex) ['root', 'c:/users/scii', aaa.hip', '/obj/cam', 'bakeoedtest']
     def __get_all_inside_parent_by_index(self, index: QtCore.QModelIndex) -> Any:
-        plist = list()
+        plist = []
         if not index.isValid():
-            return list()
+            return []
         plist.append(index.data(QtCore.Qt.ItemDataRole.DisplayRole))
         return self.__get_all_inside_parent_by_index(index.parent()) + plist
 
@@ -625,8 +619,8 @@ class InsideModel(QtCore.QAbstractItemModel):
 
     # 유효하지 않는 레코드 데이터, 모델 데이터 취합하는 함수의 랩퍼 함수
     def __find_invalid_inside_data(self) -> None | list[Any]:
-        find_model_lst = list()
-        parent_key_lst = list()
+        find_model_lst = []
+        parent_key_lst = []
         self.__find_invalid_item_from_inside_data(
             index=self.index(0, 0, QtCore.QModelIndex()),
             collect_model_lst=find_model_lst,
@@ -660,14 +654,11 @@ class InsideModel(QtCore.QAbstractItemModel):
 
     # 해당 부모를 지워도 되는지 확인하는 함수. 자식 중 하나라도 유효한 데이터가 있다면 부모를 지울 수 없다.
     def __is_can_remove_data(self, parent: QtCore.QModelIndex = None) -> Any:
-        flag_lst = list()
+        flag_lst = []
         if self.rowCount(parent) == 0:
             hda_filepath = parent.data(InsideModel.hda_filepath_role)
             if hda_filepath is not None:
-                if hda_filepath.exists():
-                    return False
-                else:
-                    return True
+                return not hda_filepath.exists()
         else:
             for row in range(0, self.rowCount(parent)):
                 child = self.index(row, 0, parent)
@@ -682,8 +673,8 @@ class InsideModel(QtCore.QAbstractItemModel):
     # iHDA 삭제 시, inside 데이터 삭제되도록 DB에서 Constraint 걸어 놓아서 여기서만 삭제하면 된다.
     # 해당 hda_id를 가진 자식의 부모가 자식이 하나라면 가장 끝 부모를 삭제해야하기 때문에 is_find_parent를 True로 주었다.
     def remove_inside_item_by_hda_id(self, hda_id: int | None = None) -> None:
-        find_model_lst = list()
-        parent_key_lst = list()
+        find_model_lst = []
+        parent_key_lst = []
         self.__find_item_from_inside_data(
             index=self.index(0, 0, QtCore.QModelIndex()),
             collect_model_lst=find_model_lst,
@@ -713,8 +704,8 @@ class InsideModel(QtCore.QAbstractItemModel):
         hda_dirpath: pathlib.Path | None = None,
         hda_version: str | None = None,
     ) -> None:
-        find_model_lst = list()
-        parent_key_lst = list()
+        find_model_lst = []
+        parent_key_lst = []
         self.__find_item_from_inside_data(
             index=self.index(0, 0, QtCore.QModelIndex()),
             collect_model_lst=find_model_lst,
@@ -724,7 +715,7 @@ class InsideModel(QtCore.QAbstractItemModel):
         )
         if not len(find_model_lst):
             return None
-        collect_update_key_data = dict()
+        collect_update_key_data = {}
         for pkey in parent_key_lst:
             # 찾은 정확한 데이터의 바로 위의 부모에서 list 데이터를 for문으로 돌리려고 아래의 명령을 추가했다.
             del pkey[-1]
@@ -881,7 +872,6 @@ class InsideModel(QtCore.QAbstractItemModel):
     ) -> QtCore.Qt.ItemFlag:
         if not index.isValid():
             return QtCore.Qt.ItemFlag.ItemIsDropEnabled
-        flags = super().flags(index)
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
         return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable

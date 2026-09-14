@@ -85,10 +85,7 @@ class ContextMenusMixin:
             pass
 
     def _build_context_ihda_menu(self, point: QtCore.QPoint) -> None:
-        if self._is_icon_mode:
-            view = self._ihda_list_view
-        else:
-            view = self._ihda_table_view
+        view = self._ihda_list_view if self._is_icon_mode else self._ihda_table_view
         index = view.indexAt(point)
         if not index.isValid():
             return
@@ -312,7 +309,7 @@ class ContextMenusMixin:
                 return
             # player가 재생중이거나 일시정지 상태면 정지
             self._video_player.player_stop()
-            del_hist_data_lst = list()
+            del_hist_data_lst = []
             for index in sorted(indexes, key=lambda x: x.row(), reverse=True):
                 if not index.isValid():
                     continue
@@ -467,7 +464,6 @@ class ContextMenusMixin:
         context_menu.addSeparator()
         action_open_context_ihda_folder = None
         action_open_context_ihda_video = None
-        action_context_menu_detail = None
         if is_ihda_node:
             open_context_menu = QtWidgets.QMenu("Open", self)
             open_context_menu.setIcon(

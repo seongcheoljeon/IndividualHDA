@@ -26,7 +26,6 @@ class HistoryOperations(DatabaseSession):
         VALUES (?, ?, ?, ?, ?, ?,
             (SELECT DATETIME('now', 'localtime')), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-        query_params: tuple[Any, ...] = ()
         try:
             hist_key_lst = [
                 public.Key.History.hda_id,
@@ -53,7 +52,7 @@ class HistoryOperations(DatabaseSession):
                 public.Key.History.video_dirpath,
             ]
             assert len(hist_key_lst) == len(data)
-            hist_dat = collections.OrderedDict(zip(hist_key_lst, data))
+            hist_dat = collections.OrderedDict(zip(hist_key_lst, data, strict=False))
             del hist_dat[public.Key.History.reg_time]
             hist_dat[public.Key.History.ihda_dirpath] = hist_dat[
                 public.Key.History.ihda_dirpath
@@ -104,7 +103,7 @@ class HistoryOperations(DatabaseSession):
             updates = []
             for row in rows:
                 values: list[str | None] = []
-                for directory, filename in zip(row[1::2], row[2::2]):
+                for directory, filename in zip(row[1::2], row[2::2], strict=False):
                     if directory is not None and filename is not None:
                         path = relocated_path(
                             pathlib.Path(directory) / filename, path_moves
@@ -359,7 +358,7 @@ class HistoryOperations(DatabaseSession):
         cursor = self._cursor.execute(query, query_params)
         fetch_dat = cursor.fetchall()
         if (fetch_dat is None) or (not len(fetch_dat)):
-            return list()
+            return []
         return fetch_dat
 
     def get_hist_hda_license(
@@ -385,7 +384,7 @@ class HistoryOperations(DatabaseSession):
         fetch_dat = cursor.fetchall()
         if fetch_dat is None:
             return None
-        dat = list()
+        dat = []
         for video_info in fetch_dat:
             dat.append(pathlib.Path(video_info[0]) / video_info[1])
         return dat
@@ -398,15 +397,15 @@ class HistoryOperations(DatabaseSession):
         cursor = self._cursor.execute(query, query_params)
         fetch_dat = cursor.fetchall()
         if (fetch_dat is None) or (not len(fetch_dat)):
-            return list()
-        dat = list()
+            return []
+        dat = []
         key_lst = [
             public.Key.History.hist_id,
             public.Key.History.thumb_dirpath,
             public.Key.History.thumb_filename,
         ]
         for row_val in fetch_dat:
-            tmp_dict = dict(zip(key_lst, row_val))
+            tmp_dict = dict(zip(key_lst, row_val, strict=False))
             tmp_dict[public.Key.History.thumb_dirpath] = pathlib.Path(
                 tmp_dict[public.Key.History.thumb_dirpath]
             )
@@ -455,13 +454,13 @@ class HistoryOperations(DatabaseSession):
         key_lst = DatabaseValues.hda_history_key_lst()
         fetch_dat = cursor.fetchall()
         if (fetch_dat is None) or (not len(fetch_dat)):
-            return list()
-        dat = list()
+            return []
+        dat = []
         for row_val in fetch_dat:
-            tmp_dict = dict(zip(key_lst, row_val))
+            tmp_dict = dict(zip(key_lst, row_val, strict=False))
             tags = tmp_dict[public.Key.History.tags]
             if tags is None:
-                tmp_dict[public.Key.History.tags] = list()
+                tmp_dict[public.Key.History.tags] = []
             else:
                 tmp_dict[public.Key.History.tags] = tags.split("#")
             tmp_dict[public.Key.History.icon] = tmp_dict[public.Key.History.icon].split(
@@ -500,7 +499,7 @@ class HistoryOperations(DatabaseSession):
         cursor = self._cursor.execute(query, query_params)
         dat = cursor.fetchall()
         if (dat is None) or (not len(dat)):
-            return list()
+            return []
         return [x[0] for x in dat]
 
     def get_hda_note_history(
@@ -538,7 +537,7 @@ class HistoryOperations(DatabaseSession):
         dat = cursor.fetchone()
         if (dat is None) or (not len(dat)):
             return None
-        if any(map(lambda x: x is None, dat)):
+        if any(x is None for x in dat):
             return None
         # dirpath
         dat = list(dat)

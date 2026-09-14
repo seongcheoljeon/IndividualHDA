@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 
 # author            : SeongCheol Jeon
@@ -12,9 +13,7 @@ from PySide6 import QtCore, QtGui
 
 from libs.domain import AssetData
 
-try:
-    import hou
-except ImportError:
+with contextlib.suppress(ImportError):
     pass
 
 import public
@@ -163,27 +162,26 @@ class TableModel(QtCore.QAbstractTableModel):
                 else self.__hda_def_column
             )
             hda_id = data.get(public.Key.hda_id)
-            if self.show_thumbnail:
-                if column == self.__hda_name_column:
-                    thumb_pixmap = self.__pixmap_thumb_data.get(hda_id)
-                    if thumb_pixmap is None:
-                        return QtGui.QPixmap(":/main/icons/no_img_available.png")
-                    if thumb_pixmap.isNull():
-                        thumb_filename = data.get(public.Key.thumbnail_filename)
-                        thumb_filepath = (
-                            data.get(public.Key.thumbnail_dirpath) / thumb_filename
-                        )
-                        if (thumb_filepath is None) or (not thumb_filepath.exists()):
-                            thumb_pixmap = QtGui.QPixmap(
-                                ":/main/icons/no_img_available.png"
-                            )
-                        else:
-                            thumb_pixmap = QtGui.QPixmap(thumb_filepath.as_posix())
-                            self.__pixmap_thumb_data.update({hda_id: thumb_pixmap})
-                    return thumb_pixmap.scaled(
-                        QtCore.QSize(self.__thumb_size, self.__thumb_size),
-                        QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+            if self.show_thumbnail and column == self.__hda_name_column:
+                thumb_pixmap = self.__pixmap_thumb_data.get(hda_id)
+                if thumb_pixmap is None:
+                    return QtGui.QPixmap(":/main/icons/no_img_available.png")
+                if thumb_pixmap.isNull():
+                    thumb_filename = data.get(public.Key.thumbnail_filename)
+                    thumb_filepath = (
+                        data.get(public.Key.thumbnail_dirpath) / thumb_filename
                     )
+                    if (thumb_filepath is None) or (not thumb_filepath.exists()):
+                        thumb_pixmap = QtGui.QPixmap(
+                            ":/main/icons/no_img_available.png"
+                        )
+                    else:
+                        thumb_pixmap = QtGui.QPixmap(thumb_filepath.as_posix())
+                        self.__pixmap_thumb_data.update({hda_id: thumb_pixmap})
+                return thumb_pixmap.scaled(
+                    QtCore.QSize(self.__thumb_size, self.__thumb_size),
+                    QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                )
             if column == node_icon_column:
                 icon_pixmap = self.__pixmap_ihda_data.get(hda_id)
                 if icon_pixmap is None:

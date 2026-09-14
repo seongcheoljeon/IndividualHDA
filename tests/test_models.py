@@ -48,15 +48,15 @@ def test_shared_model_notifications_and_drag(app: Any, tmp_path: pathlib.Path) -
 
     owner._assets = AssetStore()
     rows = owner._assets.rows
-    kwargs = dict(
-        items=rows,
-        pixmap_ihda_data={1: QtGui.QPixmap(32, 32)},
-        pixmap_thumb_data={},
-        font_size=11,
-        font_style="Sans",
-        icon_size=38,
-        thumb_size=76,
-    )
+    kwargs = {
+        "items": rows,
+        "pixmap_ihda_data": {1: QtGui.QPixmap(32, 32)},
+        "pixmap_thumb_data": {},
+        "font_size": 11,
+        "font_style": "Sans",
+        "icon_size": 38,
+        "thumb_size": 76,
+    }
     first = ListModel(padding=20, **kwargs)
     second = TableModel(**kwargs)
     owner._ihda_list_model = first
@@ -66,7 +66,7 @@ def test_shared_model_notifications_and_drag(app: Any, tmp_path: pathlib.Path) -
         lambda kind, context, msg: messages.append(msg)
     )
     try:
-        testers = [
+        _testers = [  # must stay alive while testing
             QtTest.QAbstractItemModelTester(
                 model, QtTest.QAbstractItemModelTester.Warning
             )

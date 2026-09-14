@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import contextlib
 import logging
 import math
 import pathlib
@@ -107,16 +108,16 @@ class HoudiniAPI:
         self.__hda_filepath = val
 
     @staticmethod
-    @_return_value_by_none(list())
+    @_return_value_by_none([])
     def __node_type_path_list(node: hou.Node) -> list[str] | None:
-        node_type_lst = list()
+        node_type_lst = []
         node_type_lst.append(HoudiniAPI.node_type_name(node))
         return HoudiniAPI.__node_type_path_list(node.parent()) + node_type_lst
 
     @staticmethod
-    @_return_value_by_none(list())
+    @_return_value_by_none([])
     def __node_category_path_list(node: hou.Node) -> list[str] | None:
-        node_category_lst = list()
+        node_category_lst = []
         node_category_lst.append(HoudiniAPI.node_category_type_name(node))
         return HoudiniAPI.__node_category_path_list(node.parent()) + node_category_lst
 
@@ -217,7 +218,7 @@ class HoudiniAPI:
 
     @staticmethod
     def __get_node_input_connections_lst(node: hou.Node) -> list[Any]:
-        conn_lst = list()
+        conn_lst = []
         for connect in node.inputConnections():
             conn_node = connect.inputNode()
             if conn_node is None:
@@ -231,7 +232,7 @@ class HoudiniAPI:
 
     @staticmethod
     def __get_node_output_connections_lst(node: hou.Node) -> list[Any]:
-        conn_lst = list()
+        conn_lst = []
         for connect in node.outputConnections():
             conn_node = connect.outputNode()
             if conn_node is None:
@@ -290,7 +291,7 @@ class HoudiniAPI:
     @staticmethod
     def __get_child_type_by_name_dict(node: hou.Node) -> dict[str, Any]:
         parent_node = node.parent()
-        d = dict()
+        d = {}
         for child in parent_node.children():
             d[child.name()] = child.type().name()
         return d
@@ -387,13 +388,12 @@ class HoudiniAPI:
                     msg=f'node "{node.name()}" cannot be registered because it is of type "{node_descript}"',
                 )
                 return False
-        if hasattr(node, "inputs"):
-            if len(node.inputs()) >= 5:
-                log_handler.LogHandler.log_msg(
-                    method=logging.error,
-                    msg=f'"{node.name()}" nodes have more than five inputs',
-                )
-                return False
+        if hasattr(node, "inputs") and len(node.inputs()) >= 5:
+            log_handler.LogHandler.log_msg(
+                method=logging.error,
+                msg=f'"{node.name()}" nodes have more than five inputs',
+            )
+            return False
         return True
 
     @staticmethod
@@ -476,10 +476,8 @@ class HoudiniAPI:
                 finally:
                     for temporary_node in (hda, subnet, copied):
                         if temporary_node is not None:
-                            try:
+                            with contextlib.suppress(hou.ObjectWasDeleted):
                                 temporary_node.destroy()
-                            except hou.ObjectWasDeleted:
-                                pass
                     node.setName(node_name, unique_name=True)
                     if tmp_filepath.as_posix() in hou.hda.loadedFiles():
                         hou.hda.uninstallFile(tmp_filepath.as_posix())
@@ -560,7 +558,7 @@ class HoudiniAPI:
         is_crop_out_mask: bool = False,
     ) -> bool:
         assert isinstance(filepath, pathlib.Path)
-        assert isinstance(frame_range, tuple) or isinstance(frame_range, list)
+        assert isinstance(frame_range, (tuple, list))
         curt_desktop = hou.ui.curDesktop()
         scene_viewer = curt_desktop.paneTabOfType(hou.paneTabType.SceneViewer)
         if not scene_viewer:
@@ -678,7 +676,7 @@ class HoudiniAPI:
     def __info_dict_individual_node(
         self, node: hou.Node | None = None
     ) -> dict[str, Any]:
-        d = dict()
+        d = {}
         # houdini node instance
         d[public.Key.node] = node
         # houdini hda version
@@ -793,10 +791,8 @@ class HoudiniAPI:
             except (hou.Error, OSError, ValueError) as error:
                 for created in (node, hda_node):
                     if created is not None:
-                        try:
+                        with contextlib.suppress(hou.ObjectWasDeleted):
                             created.destroy()
-                        except hou.ObjectWasDeleted:
-                            pass
                 logging.error("Could not import asset: %s", error)
                 return None
             finally:
@@ -974,9 +970,7 @@ class HoudiniAPI:
             if parent_node is None:
                 return False
             hda_info = HoudiniAPI.get_hda_info_by_selection_node(node=parent_node)
-            if hda_info is not None:
-                return True
-            return False
+            return hda_info is not None
         if len(leaves) == 0:
             hda_info = HoudiniAPI.get_hda_info_by_selection_node(node=parent_node)
             if hda_info is not None:
@@ -993,13 +987,13 @@ class HoudiniAPI:
     def get_ihda_node_instance_data(
         parent_node: hou.Node | None = None,
     ) -> dict[str, Any]:
-        node_data = dict()
+        node_data = {}
         for child_node in parent_node.children():
             hda_info = HoudiniAPI.get_hda_info_by_selection_node(node=child_node)
             is_exist = HoudiniAPI.__is_exist_ihda_node(parent_node=child_node)
             if not is_exist and hda_info is None:
                 continue
-            node_data[child_node] = dict()
+            node_data[child_node] = {}
             if hasattr(child_node, "isLockedHDA"):
                 if child_node.isLockedHDA():
                     continue
@@ -1012,7 +1006,7 @@ class HoudiniAPI:
     def get_ihda_node_instance_nested_list(
         parent_node: hou.Node | None = None,
     ) -> list[Any]:
-        node_data = list()
+        node_data = []
         for child_node in parent_node.children():
             hda_info = HoudiniAPI.get_hda_info_by_selection_node(node=child_node)
             is_exist = HoudiniAPI.__is_exist_ihda_node(parent_node=child_node)

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import contextlib
 import logging
 import sqlite3
 from re import compile as re_compile
@@ -47,10 +48,8 @@ from widgets.rename_ihda import rename_ihda
 from widgets.video_player import make_video_player
 from widgets.web_view import make_web_view
 
-try:
+with contextlib.suppress(ImportError):
     import hou
-except ImportError:
-    pass
 
 __author__ = "Seongcheol Jeon"
 __version__ = public.Value.current_ver

@@ -44,7 +44,10 @@ def test_process_success_and_failure(app: Any) -> None:
         result = []
         job = ProcessJob(command)
         job.finished.connect(
-            lambda code, output: (result.append((code, output)), loop.quit())
+            lambda code, output, result=result, loop=loop: (
+                result.append((code, output)),
+                loop.quit(),
+            )
         )
         timer = QtCore.QTimer()
         timer.setSingleShot(True)

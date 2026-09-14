@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 
 # author            : SeongCheol Jeon
@@ -10,9 +11,7 @@ from typing import Any
 # description       :
 from PySide6 import QtCore, QtGui
 
-try:
-    import hou
-except ImportError:
+with contextlib.suppress(ImportError):
     pass
 
 import public
@@ -29,7 +28,7 @@ class Node(QtCore.QObject):
         self.__name = node_name
         self.__depth = node_depth
         self.__parent = parent
-        self.__children = list()
+        self.__children = []
         self.setParent(parent)
 
     @property
@@ -246,7 +245,6 @@ class CategoryModel(QtCore.QAbstractItemModel):
     def flags(
         self, index: QtCore.QModelIndex = QtCore.QModelIndex()
     ) -> QtCore.Qt.ItemFlag:
-        flags = super().flags(index)
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
         return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable

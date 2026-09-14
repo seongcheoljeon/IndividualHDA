@@ -37,7 +37,7 @@ class DetailView(QtWidgets.QDialog, detail_view_ui.Ui_Dialog__detail_view):
             if key in [public.Key.hda_note]:
                 continue
             self.textBrowser__detail.append(
-                "{0}: {1}".format(key.replace("_", " ").upper(), val)
+                "{}: {}".format(key.replace("_", " ").upper(), val)
             )
         if is_histview:
             thumbnail_filename = data.get(public.Key.History.thumb_filename)
@@ -60,7 +60,7 @@ class DetailView(QtWidgets.QDialog, detail_view_ui.Ui_Dialog__detail_view):
         self.show()
 
     def show_detail_record_data(self, data: Any = None) -> None:
-        frinfo = data["FRAME INFO"] = (
+        data["FRAME INFO"] = (
             f"[{data.get(public.Key.Record.sf)} - {data.get(public.Key.Record.ef)}], fps: {data.get(public.Key.Record.fps)}"
         )
         for key, val in sorted(data.items()):
@@ -73,7 +73,7 @@ class DetailView(QtWidgets.QDialog, detail_view_ui.Ui_Dialog__detail_view):
             ]:
                 continue
             self.textBrowser__detail.append(
-                "{0}: {1}".format(key.replace("_", " ").upper(), val)
+                "{}: {}".format(key.replace("_", " ").upper(), val)
             )
         thumbnail_dirpath = data.get(public.Key.Record.thumb_dirpath)
         thumbnail_filename = data.get(public.Key.Record.thumb_filename)

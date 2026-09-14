@@ -190,7 +190,7 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
         return self.__pref_settings.cfg_dict
 
     def __get_font_data(self) -> dict[str, Any]:
-        font_lst = dict()
+        font_lst = {}
         for idx in range(self.fontComboBox__view_font_style.count()):
             font = self.fontComboBox__view_font_style.itemText(idx)
             font_lst[font] = idx
@@ -230,9 +230,8 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
 
     def __slot_select_data_dir(self) -> None:
         start_dirpath = pathlib.Path.home().as_posix()
-        if self.data_dirpath is not None:
-            if self.data_dirpath.exists():
-                start_dirpath = self.data_dirpath.resolve().as_posix()
+        if self.data_dirpath is not None and self.data_dirpath.exists():
+            start_dirpath = self.data_dirpath.resolve().as_posix()
         sel_dir = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select Data Directory", start_dirpath
         )
@@ -242,9 +241,8 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
 
     def __slot_select_ffmpeg_dir(self) -> None:
         start_dirpath = pathlib.Path.home().as_posix()
-        if self.ffmpeg_dirpath is not None:
-            if self.ffmpeg_dirpath.exists():
-                start_dirpath = self.ffmpeg_dirpath.resolve().as_posix()
+        if self.ffmpeg_dirpath is not None and self.ffmpeg_dirpath.exists():
+            start_dirpath = self.ffmpeg_dirpath.resolve().as_posix()
         sel_dir = QtWidgets.QFileDialog.getExistingDirectory(
             self, "Select FFmpeg Directory", start_dirpath
         )
@@ -279,9 +277,7 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
         if (data_dirpath is None) or (not len(data_dirpath)):
             return False
         data_dirpath = pathlib.Path(data_dirpath)
-        if not data_dirpath.exists():
-            return False
-        return True
+        return data_dirpath.exists()
 
     def is_valid_ffmpeg_dirpath(self) -> bool:
         try:

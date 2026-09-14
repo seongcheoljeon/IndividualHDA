@@ -154,7 +154,7 @@ def main() -> None:
     parser.add_argument("--counts", nargs="+", type=int, default=[10000, 50000])
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
-    app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+    QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     results = {
         "python": sys.version.split()[0],
         "qt": QtCore.qVersion(),

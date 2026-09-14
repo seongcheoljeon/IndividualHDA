@@ -5,6 +5,7 @@ Shares protected panel state; Qt and HOM calls stay on the GUI thread.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from operator import itemgetter
 from typing import Any
@@ -21,10 +22,8 @@ from model import (
     ihda_table_model,
 )
 
-try:
+with contextlib.suppress(ImportError):
     import hou
-except ImportError:
-    pass
 
 
 class SelectionMixin:
@@ -214,7 +213,7 @@ class SelectionMixin:
         self._ihda_inside_view.expandAll()
 
     def _slot_hist_ihda_search_date(self, *args: Any) -> None:
-        datetime_lst = list()
+        datetime_lst = []
         if self.checkBox__hist_search_date.isChecked():
             date_start = self.dateEdit__hist_search_start.date()
             date_end = self.dateEdit__hist_search_end.date()
@@ -230,7 +229,7 @@ class SelectionMixin:
             ]
             log_handler.LogHandler.log_msg(
                 method=logging.info,
-                msg='historical data in the range of "{0} ~ {1}" were retrieved'.format(
+                msg='historical data in the range of "{} ~ {}" were retrieved'.format(
                     *datetime_lst
                 ),
             )
@@ -274,7 +273,7 @@ class SelectionMixin:
         hist_row = self._ihda_history_view.currentIndex().data(
             ihda_history_model.HistoryModel.row_role
         )
-        hist_col = self._ihda_history_view.currentIndex().data(
+        self._ihda_history_view.currentIndex().data(
             ihda_history_model.HistoryModel.col_role
         )
         hist_hkey_id = self._ihda_history_view.currentIndex().data(
@@ -309,7 +308,6 @@ class SelectionMixin:
             row = self._ihda_list_view.currentIndex().data(
                 ihda_list_model.ListModel.row_role
             )
-            column = 0
             # hda_data = self._ihda_list_model.items[row]
             hda_data = self._ihda_list_view.currentIndex().data(
                 ihda_list_model.ListModel.data_role
@@ -333,7 +331,7 @@ class SelectionMixin:
             row = self._ihda_table_view.currentIndex().data(
                 ihda_table_model.TableModel.row_role
             )
-            column = self._ihda_table_view.currentIndex().data(
+            self._ihda_table_view.currentIndex().data(
                 ihda_table_model.TableModel.col_role
             )
             # hda_data = self._ihda_table_model.items[row]
@@ -411,7 +409,7 @@ class SelectionMixin:
             parent_node=root_node
         )
         if not len(node_data):
-            node_data = dict()
+            node_data = {}
             log_handler.LogHandler.log_msg(
                 method=logging.debug, msg="iHDA node not found in current HIP file"
             )
@@ -476,7 +474,7 @@ class SelectionMixin:
                 model_idx = index
         except AttributeError:
             model_idx = index
-        if isinstance(model_idx, list) or isinstance(model_idx, tuple):
+        if isinstance(model_idx, (list, tuple)):
             model_idx = model_idx[0]
         if not isinstance(model_idx, QtCore.QModelIndex):
             return
@@ -605,7 +603,7 @@ class SelectionMixin:
                 model_idx = index
         except AttributeError:
             model_idx = index
-        if isinstance(model_idx, list) or isinstance(model_idx, tuple):
+        if isinstance(model_idx, (list, tuple)):
             model_idx = model_idx[0]
         # 카테고리를 검색했을 때, 아무것도 검색이 안되면 column 속성이 없다는 에러 발생하여 예외처리 함.
         try:
@@ -634,7 +632,7 @@ class SelectionMixin:
                 model_idx = index
         except AttributeError:
             model_idx = index
-        if isinstance(model_idx, list) or isinstance(model_idx, tuple):
+        if isinstance(model_idx, (list, tuple)):
             model_idx = model_idx[0]
 
     def _slot_stackedwidget_hda_infos(self) -> None:

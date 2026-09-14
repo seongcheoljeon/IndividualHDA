@@ -5,6 +5,7 @@ Shares protected panel state; Qt and HOM calls stay on the GUI thread.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import pathlib
 from typing import Any
@@ -15,10 +16,8 @@ import public
 from libs import ihda_system, log_handler
 from libs.domain import LibraryContext
 
-try:
+with contextlib.suppress(ImportError):
     import hou
-except ImportError:
-    pass
 
 
 class PresentationMixin:
@@ -46,18 +45,16 @@ class PresentationMixin:
             font_size = hou.ui.scaledSize(int(font_size))
         font_style = public.UISetting.view_font_style
         properties_data = self._preference.get_properties_data()
-        if properties_data is not None:
-            if size_key in properties_data:
-                font_size = properties_data.get(size_key)
-                font_style = properties_data.get(style_key)
+        if properties_data is not None and size_key in properties_data:
+            font_size = properties_data.get(size_key)
+            font_style = properties_data.get(style_key)
         return [font_size, font_style]
 
     def _get_padding_properties(self, dft_pad: Any, pad_key: Any) -> float:
         padding = dft_pad
         properties_data = self._preference.get_properties_data()
-        if properties_data is not None:
-            if pad_key in properties_data:
-                padding = properties_data.get(pad_key)
+        if properties_data is not None and pad_key in properties_data:
+            padding = properties_data.get(pad_key)
         return padding
 
     def _get_treeview_properties(self) -> int:
@@ -277,11 +274,10 @@ class PresentationMixin:
 
     def _set_is_ready(self) -> None:
         self._is_ready = False
-        if self._library is not None:
-            if self._library.db_filepath.exists():
-                self._is_ready = True
-                self.centralwidget.setEnabled(True)
-                self.toolBar.setEnabled(True)
+        if self._library is not None and self._library.db_filepath.exists():
+            self._is_ready = True
+            self.centralwidget.setEnabled(True)
+            self.toolBar.setEnabled(True)
 
     @staticmethod
     def _change_org_node_name(parent_node: Any = None, node_name: Any = None) -> None:
@@ -532,9 +528,7 @@ QTextEdit {
 
     @staticmethod
     def _slot_donate() -> None:
-        is_done = ihda_system.IHDASystem.open_browser(
-            "https://buymeacoffee.com/seongcheol"
-        )
+        ihda_system.IHDASystem.open_browser("https://buymeacoffee.com/seongcheol")
 
     @staticmethod
     def _slot_download_ffmpeg_site() -> None:

@@ -31,7 +31,6 @@ class AssetsOperations(DatabaseSession):
             initial_registration_datetime, modified_registration_datetime)
         VALUES (?, ?, ?, ?, ?, ?, (SELECT DATETIME('now', 'localtime')), (SELECT DATETIME('now', 'localtime')))
         """
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (
                 hda_key_id,
@@ -58,7 +57,6 @@ class AssetsOperations(DatabaseSession):
         if not icon_lst:
             return None
         query = """INSERT INTO icon_info (hda_key_id, icon) VALUES (?, ?)"""
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (
                 hda_key_id,
@@ -81,7 +79,6 @@ class AssetsOperations(DatabaseSession):
         if not tag_lst:
             return None
         query = """INSERT INTO tag_info (hda_key_id, tag) VALUES (?, ?)"""
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (
                 hda_key_id,
@@ -116,7 +113,6 @@ class AssetsOperations(DatabaseSession):
         (hda_key_id, filename, dirpath, houdini_version, hda_license, operating_system, sf, ef, fps)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (
                 hda_key_id,
@@ -158,7 +154,6 @@ class AssetsOperations(DatabaseSession):
         (hda_key_id, country, timezone, region, city, ip, localx, localy, org, postal)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (
                 hda_key_id,
@@ -193,7 +188,6 @@ class AssetsOperations(DatabaseSession):
         assert isinstance(dirpath, pathlib.Path)
         query = """INSERT INTO video_info (hda_key_id, filename, dirpath, version)
         VALUES (?, ?, ?, ?)"""
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (hda_key_id, filename, dirpath.as_posix(), version)
             cursor = self._cursor.execute(query, dat)
@@ -217,7 +211,6 @@ class AssetsOperations(DatabaseSession):
         assert isinstance(dirpath, pathlib.Path)
         query = """INSERT INTO thumbnail_info (hda_key_id, filename, dirpath, version)
         VALUES (?, ?, ?, ?)"""
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (hda_key_id, filename, dirpath.as_posix(), version)
             cursor = self._cursor.execute(query, dat)
@@ -235,7 +228,6 @@ class AssetsOperations(DatabaseSession):
         self, hda_key_id: int | None = None, note: str | None = None
     ) -> int | None:
         query = """INSERT INTO note_info (hda_key_id, note) VALUES (?, ?)"""
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (hda_key_id, note)
             cursor = self._cursor.execute(query, dat)
@@ -726,7 +718,7 @@ class AssetsOperations(DatabaseSession):
         cursor = self._cursor.execute(query, query_params)
         fetch_dat = cursor.fetchall()
         if (fetch_dat is None) or (not len(fetch_dat)):
-            return list()
+            return []
         return fetch_dat
 
     def get_update_before_data(
@@ -760,11 +752,11 @@ class AssetsOperations(DatabaseSession):
             public.Key.video_dirpath,
             public.Key.video_filename,
         ]
-        data = dict(zip(key_lst, fetch_dat))
+        data = dict(zip(key_lst, fetch_dat, strict=False))
         # dirpath
         tags = data.get(public.Key.hda_tags)
         if tags is None:
-            data[public.Key.hda_tags] = list()
+            data[public.Key.hda_tags] = []
         else:
             data[public.Key.hda_tags] = tags.split("#")
         video_dirpath = data.get(public.Key.video_dirpath)
@@ -779,7 +771,7 @@ class AssetsOperations(DatabaseSession):
         fetch_dat = cursor.fetchone()
         if (fetch_dat is None) or (not len(fetch_dat)):
             return None
-        if any(map(lambda x: x is None, fetch_dat)):
+        if any(x is None for x in fetch_dat):
             return None
         filepath = pathlib.Path(fetch_dat[0]) / fetch_dat[1]
         return filepath
@@ -806,7 +798,7 @@ class AssetsOperations(DatabaseSession):
             query_params = (user_id,)
         cursor = self._cursor.execute(query, query_params)
         fetch_dat = cursor.fetchall()
-        dat = list()
+        dat = []
         for row_val in sorted(fetch_dat, key=lambda x: x[0]):
             tmp_dat = list(row_val)
             tmp_dat[-1] = list(map(str, tmp_dat[-1].split(",")))
@@ -962,10 +954,10 @@ WHERE (? IS NULL OR hkey.user_id = ?)
         key_lst = DatabaseValues.hda_info_key_lst()
         fetch_dat = cursor.fetchall()
         if fetch_dat is None:
-            return list()
-        dat = list()
+            return []
+        dat = []
         for row_val in fetch_dat:
-            tmp_dict = dict(zip(key_lst, row_val))
+            tmp_dict = dict(zip(key_lst, row_val, strict=False))
             icon = tmp_dict[public.Key.hda_icon]
             tmp_dict[public.Key.hda_icon] = icon.split(",") if icon else []
             for flag in (
@@ -976,7 +968,7 @@ WHERE (? IS NULL OR hkey.user_id = ?)
                 tmp_dict[flag] = bool(tmp_dict[flag])
             tags = tmp_dict[public.Key.hda_tags]
             if tags is None:
-                tmp_dict[public.Key.hda_tags] = list()
+                tmp_dict[public.Key.hda_tags] = []
             else:
                 tmp_dict[public.Key.hda_tags] = tags.split("#")
             tmp_dict[public.Key.hda_dirpath] = pathlib.Path(

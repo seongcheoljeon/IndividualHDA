@@ -150,8 +150,11 @@ def test_version_one_migration_adds_operation_markers(tmp_path: Path) -> None:
 def test_durable_operation_requires_outermost_database_transaction(
     tmp_path: Path,
 ) -> None:
-    with SQLite3DatabaseAPI(tmp_path / "ihda.db") as db, db.transaction():
-        with pytest.raises(RuntimeError, match="outer database transaction"):
-            with durable_operation(tmp_path, db):
-                pytest.fail("must reject before any file work")
+    with (
+        SQLite3DatabaseAPI(tmp_path / "ihda.db") as db,
+        db.transaction(),
+        pytest.raises(RuntimeError, match="outer database transaction"),
+        durable_operation(tmp_path, db),
+    ):
+        pytest.fail("must reject before any file work")
     assert not list(tmp_path.glob(".ihda-operation-*.json"))

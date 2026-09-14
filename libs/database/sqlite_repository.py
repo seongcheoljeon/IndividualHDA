@@ -444,4 +444,4 @@ class SqliteLibraryRepository:
         ]
         keys = DatabaseValues.hda_info_key_lst()
         assert len(keys) == len(values)
-        return dict(zip(keys, values))  # type: ignore[return-value]
+        return dict(zip(keys, values, strict=False))  # type: ignore[return-value]

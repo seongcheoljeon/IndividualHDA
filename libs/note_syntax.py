@@ -24,7 +24,7 @@ class NoteHighLighter(QtGui.QSyntaxHighlighter):
         important = QtGui.QTextCharFormat()
         string = QtGui.QTextCharFormat()
         sing_quoted_string = QtGui.QTextCharFormat()
-        self.__highlightingRules = list()
+        self.__highlightingRules = []
 
         brush = QtGui.QBrush(QtGui.QColor("#268BD2"), QtCore.Qt.SolidPattern)
         keyword.setForeground(brush)

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.03.23 02:03:49
@@ -18,10 +20,8 @@ import public
 from libs import log_handler
 from widgets.web_view import web_ui_settings, web_view_ui
 
-try:
+with contextlib.suppress(ImportError):
     import hou
-except ImportError:
-    pass
 
 
 class WebView(QtWidgets.QWidget, web_view_ui.Ui_Form__web):

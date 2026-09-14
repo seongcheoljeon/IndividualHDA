@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from libs.sqlite3_db_api import SQLite3DatabaseAPI
 
+import contextlib
 import logging
 import pathlib
 from datetime import datetime
@@ -22,10 +23,8 @@ import public
 from libs import houdini_api, log_handler
 from libs.repository import LibraryError, RegistrationPayload
 
-try:
+with contextlib.suppress(ImportError):
     import hou
-except ImportError:
-    pass
 
 
 class AssetRegistrationMixin:
@@ -410,7 +409,7 @@ But it didn't stop, so please wait a little longer.
         self.label__hda_count.setText(str(self._ihda_list_proxy_model.rowCount()))
         self.label__cate_count.setText(str(self._get_category_count()))
         self._insert_ihda_history_data_model(
-            data=result.history, hist_id=result.history_id, tags=list()
+            data=result.history, hist_id=result.history_id, tags=[]
         )
         self._set_hist_ihda_to_combobox(hkey_id=key_id, hda_name=payload.node_name)
         self._hda_info_to_node_comment(

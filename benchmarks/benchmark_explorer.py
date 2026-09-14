@@ -27,13 +27,17 @@ def main() -> None:
                     "assets": count,
                     "full_snapshot_ms": full,
                     "first_200_ms": milliseconds(
-                        lambda: search_assets(database, "bench", "")
+                        lambda database=database: search_assets(database, "bench", "")
                     ),
                     "filtered_200_ms": milliseconds(
-                        lambda: search_assets(database, "bench", "Asset 00")
+                        lambda database=database: search_assets(
+                            database, "bench", "Asset 00"
+                        )
                     ),
                     "second_200_ms": milliseconds(
-                        lambda: search_assets(database, "bench", "", offset=200)
+                        lambda database=database: search_assets(
+                            database, "bench", "", offset=200
+                        )
                     ),
                 }
             )

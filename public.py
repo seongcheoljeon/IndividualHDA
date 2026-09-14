@@ -386,10 +386,7 @@ class Extensions:
     video = ".mp4"
     zip_file = ".zip"
     database_file = ".db"
-    if is_windows():
-        executable = ".exe"
-    else:
-        executable = ""
+    executable = ".exe" if is_windows() else ""
 
 
 class UISetting:

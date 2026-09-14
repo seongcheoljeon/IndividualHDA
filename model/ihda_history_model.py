@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 from typing import Any
 
@@ -14,9 +15,7 @@ from PySide6 import QtCore, QtGui
 from libs.domain import HistoryData
 from libs.path_updates import PathMoves, relocated_path
 
-try:
-    import hou
-except ImportError:
+with contextlib.suppress(ImportError):
     pass
 
 import public
@@ -434,7 +433,7 @@ class HistoryModel(QtCore.QAbstractTableModel):
     def get_hist_data_by_hkey_id_from_model(
         self, hkey_id: int | None = None
     ) -> list[Any]:
-        hist_data_lst = list()
+        hist_data_lst = []
         for row in range(0, self.rowCount()):
             index = self.index(row, 0, QtCore.QModelIndex())
             if not index.isValid():
@@ -446,7 +445,7 @@ class HistoryModel(QtCore.QAbstractTableModel):
 
     # hist_id와 item_row의 맵 데이터
     def get_hist_id_row_map_from_model(self) -> dict[str, Any]:
-        map_lst = list()
+        map_lst = []
         for row in range(0, self.rowCount()):
             index = self.index(row, 0, QtCore.QModelIndex())
             if not index.isValid():

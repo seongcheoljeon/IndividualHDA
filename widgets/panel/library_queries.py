@@ -202,9 +202,9 @@ class LibraryQueriesMixin:
         self, user_id: str | None = None, db_filepath: pathlib.Path | None = None
     ) -> dict[str, Any] | None:
         if user_id is None or self._repository is None:
-            return dict()
+            return {}
         cate_lst = self._repository.categories(owner=user_id)
-        return dict(zip(cate_lst, [None] * len(cate_lst)))
+        return dict(zip(cate_lst, [None] * len(cate_lst), strict=False))
 
     def _get_hda_loc_record_data(
         self, db_filepath: pathlib.Path
@@ -219,9 +219,9 @@ class LibraryQueriesMixin:
     def _get_all_category_parent_by_selected_item(
         self, index: QtCore.QModelIndex
     ) -> list[Any]:
-        plist = list()
+        plist = []
         if not index.isValid():
-            return list()
+            return []
         plist.append(index.data(QtCore.Qt.DisplayRole))
         return self._get_all_category_parent_by_selected_item(index.parent()) + plist
 

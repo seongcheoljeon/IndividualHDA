@@ -25,7 +25,6 @@ class NodesOperations(DatabaseSession):
             (hda_key_id, node_type_name, node_def_desc, is_network, is_sub_network, node_old_path)
         VALUES (?, ?, ?, ?, ?, ?)
         """
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (
                 hda_key_id,
@@ -53,7 +52,6 @@ class NodesOperations(DatabaseSession):
             return None
         join_str = ",".join([x.strip() for x in node_category_lst])
         query = """INSERT INTO houdini_node_category_path_info (info_id, node_category) VALUES (?, ?)"""
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (info_id, join_str)
             cursor = self._cursor.execute(query, dat)
@@ -74,7 +72,6 @@ class NodesOperations(DatabaseSession):
             return None
         join_str = ",".join([x.strip() for x in node_type_lst])
         query = """INSERT INTO houdini_node_type_path_info (info_id, node_type) VALUES (?, ?)"""
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (info_id, join_str)
             cursor = self._cursor.execute(query, dat)
@@ -97,7 +94,6 @@ class NodesOperations(DatabaseSession):
         VALUES
             (?, ?, ?, ?, ?)
         """
-        query_params: tuple[Any, ...] = ()
         try:
             dat = tuple([tuple([info_id] + x) for x in node_input_connect_lst])
             cursor = self._cursor.executemany(query, dat)
@@ -121,7 +117,6 @@ class NodesOperations(DatabaseSession):
         VALUES
             (?, ?, ?, ?, ?)
         """
-        query_params: tuple[Any, ...] = ()
         try:
             dat = tuple([tuple([info_id] + x) for x in node_output_connect_lst])
             cursor = self._cursor.executemany(query, dat)

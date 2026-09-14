@@ -17,7 +17,6 @@ class CatalogOperations(DatabaseSession):
         INSERT INTO users (user_id, email, join_datetime)
         VALUES (?, ?, (SELECT DATETIME('now', 'localtime')))
         """
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (user_id, email)
             cursor = self._cursor.execute(query, dat)
@@ -39,7 +38,6 @@ class CatalogOperations(DatabaseSession):
             SELECT ?, ?
             WHERE NOT EXISTS (SELECT * FROM hda_category WHERE category = ? AND user_id = ?)
         """
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (category, user_id, category, user_id)
             cursor = self._cursor.execute(query, dat)
@@ -60,7 +58,6 @@ class CatalogOperations(DatabaseSession):
         user_id: str | None = None,
     ) -> int | None:
         query = """INSERT INTO hda_key (name, category, user_id) VALUES (?, ?, ?)"""
-        query_params: tuple[Any, ...] = ()
         try:
             dat: tuple[Any, ...] = (name, category, user_id)
             cursor = self._cursor.execute(query, dat)
@@ -163,7 +160,7 @@ class CatalogOperations(DatabaseSession):
         query = "SELECT user_id FROM users"
         query_params: tuple[Any, ...] = ()
         cursor = self._cursor.execute(query, query_params)
-        dat = list([x[0] for x in cursor.fetchall()])
+        dat = [x[0] for x in cursor.fetchall()]
         return dat
 
     def get_email(self, user_id: str | None = None) -> list[str]:
@@ -175,7 +172,7 @@ class CatalogOperations(DatabaseSession):
             """
             query_params = (user_id,)
         cursor = self._cursor.execute(query, query_params)
-        dat = list([x[0] for x in cursor.fetchall()])
+        dat = [x[0] for x in cursor.fetchall()]
         return dat
 
     def get_hda_category(self, user_id: str | None = None) -> list[str]:
@@ -184,7 +181,7 @@ class CatalogOperations(DatabaseSession):
         """
         query_params: tuple[Any, ...] = (user_id,)
         cursor = self._cursor.execute(query, query_params)
-        dat = list([x[0] for x in cursor.fetchall()])
+        dat = [x[0] for x in cursor.fetchall()]
         return dat
 
     def get_hda_key_id(
@@ -214,7 +211,6 @@ class CatalogOperations(DatabaseSession):
         filters = {"name": name, "category": category, "user_id": user_id}
         selected = [(key, value) for key, value in filters.items() if value is not None]
         query = "SELECT COUNT(*) FROM hda_key"
-        query_params: tuple[Any, ...] = ()
         if selected:
             query += " WHERE " + " AND ".join(key + " = ?" for key, _ in selected)
         return self._cursor.execute(

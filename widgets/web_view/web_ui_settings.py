@@ -23,7 +23,7 @@ class WebUISettings:
             public.Paths.ini_web_filepath.as_posix(), QtCore.QSettings.IniFormat
         )
         self.__setting_json = public.Paths.json_web_filepath
-        self.__cfg_dict = dict()
+        self.__cfg_dict = {}
 
     def save_cfg_dict_to_file(self) -> None:
         self.__cfg_dict[public.Name.WebUI.url_addr] = (

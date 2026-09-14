@@ -34,8 +34,8 @@ class IHDAIcons:
             )
         self.__pattern_icon_map = compile(r"(?P<dirname>^[A-Z_]+)(?P<filename>.+)")
         self.__default_pixmap = QtGui.QPixmap(":/main/icons/no_img_available.png")
-        self.__pixmap_ihda_data = dict()
-        self.__pixmap_cate_data = dict()
+        self.__pixmap_ihda_data = {}
+        self.__pixmap_cate_data = {}
         self.__pixmap_thumbnail_data = ThumbnailCache(self.__default_pixmap)
         self.__pixmap_hist_thumbnail_data = ThumbnailCache(self.__default_pixmap)
         self.__icons_map = self.__icons_mapping_from_file() or {}
@@ -249,16 +249,17 @@ class IHDAIcons:
         split_str = ":="
         pattern_split = compile(rf"{split_str}")
         pattern_del = compile(r"[\s;]")
-        icons_dict = dict()
-        with self._icon_archive() as zip_fp:
-            with zip_fp.open(public.Name.Icons.filename, "r") as fp:
-                for line in fp:
-                    line = line.decode("utf-8")
-                    if pattern_split.search(line) is not None:
-                        lst = [
-                            pattern_del.sub("", x) for x in line.split(f"{split_str}")
-                        ]
-                        icons_dict[lst[0]] = lst[1]
+        icons_dict = {}
+        with (
+            self._icon_archive() as zip_fp,
+            zip_fp.open(public.Name.Icons.filename, "r") as fp,
+        ):
+            for line in fp:
+                line = line.decode("utf-8")
+                if pattern_split.search(line) is not None:
+                    lst = [pattern_del.sub("", x) for x in line.split(f"{split_str}")]
+                    icons_dict[lst[0]] = lst[1]
+
         if len(icons_dict):
             return icons_dict
         return None

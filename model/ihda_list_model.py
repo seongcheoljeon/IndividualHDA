@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import contextlib
 from typing import Any
 
 # author            : SeongCheol Jeon
@@ -12,9 +13,7 @@ from PySide6 import QtCore, QtGui
 
 from libs.domain import AssetData
 
-try:
-    import hou
-except ImportError:
+with contextlib.suppress(ImportError):
     pass
 
 import public

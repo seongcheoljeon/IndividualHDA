@@ -5,6 +5,7 @@ Uses the shared panel protected state; no independent QObject ownership.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import pathlib
 from datetime import datetime
@@ -16,10 +17,8 @@ import public
 from libs import houdini_api, log_handler, sqlite3_db_api
 from libs.drag_payload import decode_payload
 
-try:
+with contextlib.suppress(ImportError):
     import hou
-except ImportError:
-    pass
 
 
 class HoudiniActionsMixin:
@@ -368,7 +367,7 @@ class HoudiniActionsMixin:
     def _insert_hda_node_loc_record(self, record_data: Any = None) -> None:
         key_lst = sqlite3_db_api.SQLite3DatabaseAPI.hda_record_key_lst()
         assert len(key_lst) == len(record_data)
-        rdata = dict(zip(key_lst, record_data))
+        rdata = dict(zip(key_lst, record_data, strict=False))
         hip_dpath = rdata.get(public.Key.Record.hip_dirpath).as_posix()
         hip_fname = rdata.get(public.Key.Record.hip_filename)
         hda_dpath = rdata.get(public.Key.Record.hda_dirpath)
@@ -545,7 +544,7 @@ class HoudiniActionsMixin:
     ) -> None:
         # iHDA 노트 내용을 Houdini Sticky Note로
         if self.actionSticky_Note.isChecked():
-            net_item = [x for x in items]
+            net_item = list(items)
             # hda note의 내용이 있다면, subnet안에 sticky note 생성 후 내용 입력
             sticky = self._hda_note_to_sticky_note(
                 node=node, note_contents=note_contents
@@ -566,7 +565,7 @@ class HoudiniActionsMixin:
                         houdini_api.HoudiniAPI.items_position(items=node.allItems())
                     )
             # networkbox 생성
-            net_box = houdini_api.HoudiniAPI.create_network_box(
+            houdini_api.HoudiniAPI.create_network_box(
                 node=node, comment=hda_name, items=net_item
             )
 

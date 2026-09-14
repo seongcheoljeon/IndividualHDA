@@ -123,7 +123,7 @@ class MediaActionsMixin:
             is_crop=self._make_videoinfo.is_crop_mask,
         )
         if preview_filepath is None:
-            is_del = self._remove_preview_dir(preview_dirpath=preview_dirpath)
+            self._remove_preview_dir(preview_dirpath=preview_dirpath)
             self._loading_close()
             return
         # $F4 --> %04d
@@ -251,7 +251,7 @@ class MediaActionsMixin:
                 self._insert_hist_db_from_curt_hist_data(
                     db_api=db_api, comment=comment, data=self._assets.rows[row]
                 )
-        is_del = self._remove_preview_dir(preview_dirpath=preview_dirpath)
+        self._remove_preview_dir(preview_dirpath=preview_dirpath)
         self._loading_close()
 
     @staticmethod

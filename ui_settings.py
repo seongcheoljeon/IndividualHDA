@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import copy
 import json
 
@@ -15,10 +16,8 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from libs.settings_store import save_json
 
-try:
+with contextlib.suppress(ImportError):
     import hou
-except ImportError:
-    pass
 
 import public
 from libs.qt_helpers import dark_stylesheet
@@ -32,7 +31,7 @@ class UISettings:
         )
         self.__setting_json = public.Paths.json_filepath
         self.__zoom_val = 1.0
-        self.__cfg_dict = dict()
+        self.__cfg_dict = {}
 
     @property
     def zoom_val(self) -> int:

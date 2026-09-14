@@ -63,10 +63,10 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
         self.__shortcut_play_tgl = QtGui.QShortcut(QtGui.QKeySequence("Space"), self)
         self.__shortcut_full_screen_tgl = QtGui.QShortcut(QtGui.QKeySequence("f"), self)
         #
-        self.__video_filter_str = "Video files ({0})".format(
+        self.__video_filter_str = "Video files ({})".format(
             " ".join(self.__video_extensions)
         )
-        self.__audio_filter_str = "Audio files ({0})".format(
+        self.__audio_filter_str = "Audio files ({})".format(
             " ".join(self.__audio_extensions)
         )
         self.__playlist_filter_str = "Playlist files (*.m3u *.m3u8 *.M3U *.M3U8)"
@@ -227,7 +227,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
         self.__dragdrop_overlay.close()
-        filepath_lst = list()
+        filepath_lst = []
         for url in event.mimeData().urls():
             video_filepath = url.toLocalFile()
             exts = ["mp4", "avi", "mkv", "mov", "mp3", "wav", "m3u"]
@@ -501,11 +501,11 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
         assert isinstance(filepath_lst[0], pathlib.Path)
         all_playlist_path = self.get_all_playlist_path()
         if filepath_lst[0] in all_playlist_path:
-            idx = 0
-            for filepath in all_playlist_path:
+            idx = len(all_playlist_path)
+            for position, filepath in enumerate(all_playlist_path):
                 if filepath == filepath_lst[0]:
+                    idx = position
                     break
-                idx += 1
         else:
             self.add_playlist(filepath_lst=[filepath_lst[0].as_posix()])
             idx = self.__playlist.mediaCount() - len(filepath_lst)
@@ -687,7 +687,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
         self.__playback_idx = val % 5
 
     def get_all_playlist_path(self) -> list[Any]:
-        all_playlist = list()
+        all_playlist = []
         for i in range(self.listWidget__playlist.count()):
             vpath = pathlib.Path(self.listWidget__playlist.item(i).text())
             all_playlist.append(vpath)

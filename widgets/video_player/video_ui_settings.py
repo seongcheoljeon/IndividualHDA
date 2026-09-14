@@ -23,7 +23,7 @@ class VideoUISettings:
             public.Paths.ini_video_filepath.as_posix(), QtCore.QSettings.IniFormat
         )
         self.__setting_json = public.Paths.json_video_filepath
-        self.__cfg_dict = dict()
+        self.__cfg_dict = {}
 
     def save_cfg_dict_to_file(self) -> None:
         # button
@@ -106,7 +106,7 @@ class VideoUISettings:
             # playlist
             playlist = self.__cfg_dict.get(public.Name.VideoUI.playlist)
             if (playlist is not None) and (len(playlist)):
-                self.__window.add_playlist(filepath_lst=[x for x in playlist])
+                self.__window.add_playlist(filepath_lst=list(playlist))
             # last dirpath
             last_dirpath = self.__cfg_dict.get(public.Name.VideoUI.last_dirpath)
             if last_dirpath is not None:

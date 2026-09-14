@@ -99,7 +99,7 @@ def rebuild_base_tables(
                 "INSERT INTO sqlite_sequence(name, seq) VALUES (?, ?)",
                 (table, sequence[0]),
             )
-    for kind, name, sql in objects:
+    for _kind, name, sql in objects:
         if not connection.execute(
             "SELECT 1 FROM sqlite_master WHERE name=?", (name,)
         ).fetchone():

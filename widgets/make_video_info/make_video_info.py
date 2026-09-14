@@ -35,6 +35,7 @@ class MakeVideoInfo(QtWidgets.QDialog, make_video_info_ui.Ui_Dialog__makevideoin
                     public.Value.FHD_res,
                     public.Value.QHD_res,
                 ],
+                strict=False,
             )
         )
         self.__res_dat_share = dict(
@@ -45,6 +46,7 @@ class MakeVideoInfo(QtWidgets.QDialog, make_video_info_ui.Ui_Dialog__makevideoin
                     public.Key.Resolution.fhd,
                 ],
                 [public.Value.SD_res, public.Value.HD_res, public.Value.FHD_res],
+                strict=False,
             )
         )
         self.__init_set()

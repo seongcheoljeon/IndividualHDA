@@ -220,7 +220,7 @@ class RecordsOperations(DatabaseSession):
         cursor = self._cursor.execute(query, query_params)
         fetch_dat = cursor.fetchall()
         if (fetch_dat is None) or (not len(fetch_dat)):
-            return list()
+            return []
         return fetch_dat
 
     def get_hda_node_location_record(
@@ -268,12 +268,12 @@ class RecordsOperations(DatabaseSession):
         cursor = self._cursor.execute(query, query_params)
         fetch_dat = cursor.fetchall()
         if (fetch_dat is None) or (not len(fetch_dat)):
-            return dict()
+            return {}
         key_lst = DatabaseValues.hda_record_key_lst()
         assert len(fetch_dat[0]) == len(key_lst)
-        dat: dict[str, Any] = dict()
+        dat: dict[str, Any] = {}
         for row_val in fetch_dat:
-            tmp_dict = dict(zip(key_lst, row_val))
+            tmp_dict = dict(zip(key_lst, row_val, strict=False))
             hip_dpath = tmp_dict[public.Key.Record.hip_dirpath]
             hip_fname = tmp_dict[public.Key.Record.hip_filename]
             hda_dpath = tmp_dict[public.Key.Record.hda_dirpath]
@@ -296,11 +296,11 @@ class RecordsOperations(DatabaseSession):
             # 노드와 버전이 함께 보여지도록. 그리고 이래야 key data로 record데이터를 지울 때 명확하다.
             node_name_with_ver = f"{node_name} (v{node_ver})"
             if hip_dpath not in dat:
-                dat[hip_dpath] = dict()
+                dat[hip_dpath] = {}
             if hip_fname not in dat[hip_dpath]:
-                dat[hip_dpath][hip_fname] = dict()
+                dat[hip_dpath][hip_fname] = {}
             if pnode_path not in dat[hip_dpath][hip_fname]:
-                dat[hip_dpath][hip_fname][pnode_path] = list()
+                dat[hip_dpath][hip_fname][pnode_path] = []
             dat[hip_dpath][hip_fname][pnode_path].append(
                 [
                     record_id,
@@ -343,12 +343,12 @@ class RecordsOperations(DatabaseSession):
         cursor = self._cursor.execute(query, query_params)
         fetch_dat = cursor.fetchone()
         if (fetch_dat is None) or (not len(fetch_dat)):
-            return dict()
+            return {}
         key_lst = DatabaseValues.hda_record_key_lst()
         key_lst.append(public.Key.Record.thumb_dirpath)
         key_lst.append(public.Key.Record.thumb_filename)
         assert len(fetch_dat) == len(key_lst)
-        dat: dict[str, Any] = dict(zip(key_lst, fetch_dat))
+        dat: dict[str, Any] = dict(zip(key_lst, fetch_dat, strict=False))
         thumb_dirpath = dat.get(public.Key.Record.thumb_dirpath)
         if thumb_dirpath is not None:
             dat[public.Key.Record.thumb_dirpath] = pathlib.Path(thumb_dirpath)

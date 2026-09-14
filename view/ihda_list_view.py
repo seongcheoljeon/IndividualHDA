@@ -85,7 +85,7 @@ class ListView(QtWidgets.QListView):
         if not len(indexes):
             return
         drag = QtGui.QDrag(self)
-        model_data_lst = list()
+        model_data_lst = []
         for index in indexes:
             if not index.isValid():
                 continue

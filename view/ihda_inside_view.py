@@ -88,16 +88,13 @@ class InsideView(QtWidgets.QTreeView):
         if not len(indexes):
             return
         is_all_ihda_type = all(
-            [
-                x.data(ihda_record_model.RecordModel.record_type_role)
-                == public.Type.ihda
-                for x in indexes
-            ]
+            x.data(ihda_record_model.RecordModel.record_type_role) == public.Type.ihda
+            for x in indexes
         )
         if not is_all_ihda_type:
             return
         drag = QtGui.QDrag(self)
-        model_data_lst = list()
+        model_data_lst = []
         for index in indexes:
             if not index.isValid():
                 continue

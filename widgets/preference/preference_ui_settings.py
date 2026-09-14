@@ -26,7 +26,7 @@ class PreferenceUISettings:
             public.Paths.ini_pref_filepath.as_posix(), QtCore.QSettings.IniFormat
         )
         self.__setting_json = public.Paths.json_pref_filepath
-        self.__cfg_dict = dict()
+        self.__cfg_dict = {}
 
     @property
     def cfg_dict(self) -> dict[str, Any]:

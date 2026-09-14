@@ -319,7 +319,7 @@ Type of current node: "{hda_type_name}"
             db_api = self._db_api_wrap(self._db_filepath)
             if db_api is None:
                 return
-            item_row_dat = dict()
+            item_row_dat = {}
             for hda_info_dat in db_api.get_all_hda_fileinfo(user_id=self._user):
                 hda_id, hda_dirpath, hda_filename, hda_cate = hda_info_dat
                 hda_dirpath = pathlib.Path(hda_dirpath)
@@ -342,7 +342,7 @@ Type of current node: "{hda_type_name}"
                     self._remove_category_item(category=hcate, category_list=cate_lst)
             if chkbox.isChecked():
                 # history 정리
-                item_row_lst = list()
+                item_row_lst = []
                 for hist_info_dat in db_api.get_all_hda_history_fileinfo(
                     user_id=self._user
                 ):
@@ -416,7 +416,7 @@ iHDA note history: {cnt_hda_note_hist}
                 return
             # player가 재생중이거나 일시정지 상태면 정지
             self._video_player.player_stop()
-            del_hist_data_lst = list()
+            del_hist_data_lst = []
             for hkey_id in sorted(all_hkey_id, reverse=True):
                 # video playlist 삭제
                 # 현재 iHDA 노드의 모든 video file 정보
@@ -550,7 +550,7 @@ iHDA note history: {cnt_hda_note_hist}
         # player가 재생중이거나 일시 정지상태면 정지
         self._video_player.player_stop()
         # 삭제할 히스토리 데이터 수거
-        del_hist_data_lst = list()
+        del_hist_data_lst = []
         # iHDA 노드 데이터 삭제
         role = (
             ihda_list_model.ListModel.data_role

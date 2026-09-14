@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
+import contextlib
 import pathlib
 from bisect import bisect_right
 
@@ -14,10 +15,10 @@ from typing import Any
 
 from PySide6 import QtCore, QtGui
 
-try:
-    import hou
-except ImportError:
+with contextlib.suppress(ImportError):
     pass
+
+import contextlib
 
 import public
 from libs import houdini_api
@@ -35,7 +36,7 @@ class Node(QtCore.QObject):
         self.__name = node_name
         self.__depth = node_depth
         self._parent = parent
-        self._children = list()
+        self._children = []
         self.setParent(parent)
 
     def name(self) -> str | None:
@@ -354,7 +355,7 @@ class RecordModel(QtCore.QAbstractItemModel):
             if not len(data):
                 return
             for val in sorted(data, key=itemgetter(2)):
-                rdata = dict(zip(self.__data_key_lst, val))
+                rdata = dict(zip(self.__data_key_lst, val, strict=False))
                 record_id = rdata.get(public.Key.Record.record_id)
                 hda_id = rdata.get(public.Key.Record.hda_id)
                 node_name = rdata.get(public.Key.Record.node_name)
@@ -466,13 +467,10 @@ class RecordModel(QtCore.QAbstractItemModel):
                 ]
                 if val[0] is None:
                     if add_item is not None:
-                        if isinstance(add_item, list):
-                            val = [add_item]
-                        else:
-                            val = [[add_item]]
+                        val = [add_item] if isinstance(add_item, list) else [[add_item]]
                     else:
                         val = [None]
-                return dict(zip([key], val))
+                return dict(zip([key], val, strict=False))
             except IndexError:
                 pass
 
@@ -527,20 +525,19 @@ class RecordModel(QtCore.QAbstractItemModel):
             return data
         if isinstance(key_data, dict):
             for key, val in key_data.items():
-                if val is None:
-                    if isinstance(data, list):
-                        return [x for x in data if x[2] == key]
+                if val is None and isinstance(data, list):
+                    return [x for x in data if x[2] == key]
                 get_data = data.get(key)
                 return self.__get_record_data_from_key_data(data=get_data, key_data=val)
 
     # 선택한 부모에 존재하는 모든 record data의 id를 찾아 반환하는 함수
     # 이렇게 찾은 id를 DB에서 제거하기 위함.
     def __find_record_id_from_selected_record_data(self, data: Any = None) -> list[Any]:
-        record_id_lst = list()
+        record_id_lst = []
         if isinstance(data, list):
             return [x[0] for x in data]
         if isinstance(data, dict):
-            for key, val in data.items():
+            for _key, val in data.items():
                 if isinstance(val, dict):
                     record_id_lst += self.__find_record_id_from_selected_record_data(
                         data=val
@@ -556,7 +553,7 @@ class RecordModel(QtCore.QAbstractItemModel):
         key_data: Any = None,
         find_item: Any = None,
     ) -> list[Any]:
-        find_lst = list()
+        find_lst = []
         for row in range(0, self.rowCount(index)):
             child_index = self.index(row, 0, index)
             key = child_index.data(QtCore.Qt.ItemDataRole.DisplayRole)
@@ -576,7 +573,7 @@ class RecordModel(QtCore.QAbstractItemModel):
     def __find_invalid_hull_record_item_model(
         self, index: QtCore.QModelIndex = None
     ) -> list[Any]:
-        find_invalid_lst = list()
+        find_invalid_lst = []
         for row in range(0, self.rowCount(index)):
             child_index = self.index(row, 0, index)
             is_invalid_data = self.__is_exist_invalid_record_data(index=child_index)
@@ -612,10 +609,8 @@ class RecordModel(QtCore.QAbstractItemModel):
                     data=data.get(remove_data_key), remove_key_data=remove_data_val
                 )
             else:
-                try:
+                with contextlib.suppress(KeyError):
                     del data[remove_data_key]
-                except KeyError:
-                    pass
         else:
             if isinstance(data, list):
                 if isinstance(remove_key_data, dict):
@@ -631,9 +626,9 @@ class RecordModel(QtCore.QAbstractItemModel):
     # 변환해 이것으로 지워야 정확함. 현재 노드 이름과 버전이 공존하여 이것을 기반으로 삭제한다. 이름과 버전은 unique하기 때문.
     # ex) ['root', 'c:/users/scii', aaa.hip', '/obj/cam', 'bakeoedtest']
     def __get_all_record_parent_by_index(self, index: QtCore.QModelIndex) -> Any:
-        plist = list()
+        plist = []
         if not index.isValid():
-            return list()
+            return []
         plist.append(index.data(QtCore.Qt.ItemDataRole.DisplayRole))
         return self.__get_all_record_parent_by_index(index.parent()) + plist
 
@@ -659,8 +654,8 @@ class RecordModel(QtCore.QAbstractItemModel):
 
     # 유효하지 않는 레코드 데이터, 모델 데이터 취합하는 함수의 랩퍼 함수
     def __find_invalid_record_data(self) -> None | list[Any]:
-        find_model_lst = list()
-        parent_key_lst = list()
+        find_model_lst = []
+        parent_key_lst = []
         self.__find_invalid_item_from_record_data(
             index=self.index(0, 0, QtCore.QModelIndex()),
             collect_model_lst=find_model_lst,
@@ -694,14 +689,11 @@ class RecordModel(QtCore.QAbstractItemModel):
 
     # 해당 부모를 지워도 되는지 확인하는 함수. 자식 중 하나라도 유효한 데이터가 있다면 부모를 지울 수 없다.
     def __is_can_remove_data(self, parent: QtCore.QModelIndex = None) -> Any:
-        flag_lst = list()
+        flag_lst = []
         if self.rowCount(parent) == 0:
             hda_filepath = parent.data(RecordModel.hda_filepath_role)
             if hda_filepath is not None:
-                if hda_filepath.exists():
-                    return False
-                else:
-                    return True
+                return not hda_filepath.exists()
         else:
             for row in range(0, self.rowCount(parent)):
                 child = self.index(row, 0, parent)
@@ -716,8 +708,8 @@ class RecordModel(QtCore.QAbstractItemModel):
     # iHDA 삭제 시, record 데이터 삭제되도록 DB에서 Constraint 걸어 놓아서 여기서만 삭제하면 된다.
     # 해당 hda_id를 가진 자식의 부모가 자식이 하나라면 가장 끝 부모를 삭제해야하기 때문에 is_find_parent를 True로 주었다.
     def remove_record_item_by_hda_id(self, hda_id: int | None = None) -> None:
-        find_model_lst = list()
-        parent_key_lst = list()
+        find_model_lst = []
+        parent_key_lst = []
         self.__find_item_from_record_data(
             index=self.index(0, 0, QtCore.QModelIndex()),
             collect_model_lst=find_model_lst,
@@ -747,8 +739,8 @@ class RecordModel(QtCore.QAbstractItemModel):
         hda_dirpath: pathlib.Path | None = None,
         hda_version: str | None = None,
     ) -> None:
-        find_model_lst = list()
-        parent_key_lst = list()
+        find_model_lst = []
+        parent_key_lst = []
         self.__find_item_from_record_data(
             index=self.index(0, 0, QtCore.QModelIndex()),
             collect_model_lst=find_model_lst,
@@ -758,7 +750,7 @@ class RecordModel(QtCore.QAbstractItemModel):
         )
         if not len(find_model_lst):
             return None
-        collect_update_key_data = dict()
+        collect_update_key_data = {}
         for pkey in parent_key_lst:
             # 찾은 정확한 데이터의 바로 위의 부모에서 list 데이터를 for문으로 돌리려고 아래의 명령을 추가했다.
             del pkey[-1]
@@ -915,7 +907,6 @@ class RecordModel(QtCore.QAbstractItemModel):
     ) -> QtCore.Qt.ItemFlag:
         if not index.isValid():
             return QtCore.Qt.ItemFlag.ItemIsDropEnabled
-        flags = super().flags(index)
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
         return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable

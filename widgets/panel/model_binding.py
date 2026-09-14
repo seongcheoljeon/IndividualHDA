@@ -246,7 +246,7 @@ class ModelBindingMixin:
             public.UISetting.padding_inside, public.Name.PreferenceUI.pad_inside
         )
         self._ihda_inside_model = ihda_inside_model.InsideModel(
-            data=dict(),
+            data={},
             pixmap_cate_data=self._ihda_icons.pixmap_cate_data,
             pixmap_ihda_data=self._ihda_icons.pixmap_ihda_data,
             inst_ihda_icon=self._ihda_icons,
@@ -277,7 +277,7 @@ class ModelBindingMixin:
         data.insert(index_hist_id, hist_id)
         data.insert(index_tags, tags)
         assert len(key_lst) == len(data)
-        dat = dict(zip(key_lst, data))
+        dat = dict(zip(key_lst, data, strict=False))
         if comment is not None:
             dat[public.Key.History.comment] = comment
         self._ihda_history_model.append_item(dat)

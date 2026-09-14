@@ -189,7 +189,7 @@ def test_tree_model_mutation_notifications(app: Any) -> None:
         lambda kind, context, text: messages.append(text)
     )
     try:
-        tester = QtTest.QAbstractItemModelTester(
+        _tester = QtTest.QAbstractItemModelTester(  # must stay alive while testing
             model, QtTest.QAbstractItemModelTester.Warning
         )
         root = model.index(0, 0)
@@ -226,7 +226,7 @@ def test_every_source_model_and_proxy_obeys_qt_contract(app: Any, kind: str) -> 
         lambda level, context, text: messages.append(text)
     )
     try:
-        testers = [
+        _testers = [  # must stay alive while testing
             QtTest.QAbstractItemModelTester(
                 model, QtTest.QAbstractItemModelTester.Warning
             )
@@ -270,7 +270,7 @@ def test_source_change_rechecks_active_filter(app: Any) -> None:
     rows = [{public.Key.hda_id: 1, public.Key.hda_name: "Old", public.Key.hda_tags: []}]
     first, second = ListModel(items=rows), TableModel(items=rows)
     proxies = [ListProxyModel(), TableProxyModel()]
-    for proxy, source in zip(proxies, (first, second)):
+    for proxy, source in zip(proxies, (first, second), strict=False):
         proxy.setSourceModel(source)
         proxy.setFilterRegularExpression("New")
         assert proxy.rowCount() == 0

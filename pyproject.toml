@@ -18,7 +18,7 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["F", "E", "W", "I", "B", "UP", "SIM", "C4", "ANN"]
 # E501: the formatter owns line length. B008: Qt idiom `index: QModelIndex = QModelIndex()`.
-ignore = ["ANN401", "E501", "B008"]
+ignore = ["ANN401", "E501", "B008", "SIM102"]  # SIM102: guard chains stay nested
 
 
 [tool.mypy]
