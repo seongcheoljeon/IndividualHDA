@@ -13,11 +13,16 @@ from libs.task_controller import TaskController
 from widgets.panel.services import PanelServices
 
 
-def test_null_provider_for_every_kind() -> None:
+def test_provider_dispatch_by_kind() -> None:
+    from libs.ai_backends import OllamaProvider
+
     for kind in KINDS:
-        provider = PanelServices().ai(AISettings(kind=kind))
-        assert isinstance(provider, NullProvider)
-        assert provider.complete(Prompt("describe", images=(b"png",))) == ""
+        provider = PanelServices().ai(AISettings(kind=kind, model="m"))
+        if kind == "local":
+            assert isinstance(provider, OllamaProvider)
+        else:  # cloud backends arrive in a later phase
+            assert isinstance(provider, NullProvider)
+            assert provider.complete(Prompt("describe", images=(b"png",))) == ""
     assert make_provider(AISettings()).complete(Prompt("x")) == ""
 
 

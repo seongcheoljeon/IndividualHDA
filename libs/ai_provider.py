@@ -22,7 +22,7 @@ FIELDS: dict[str, tuple[str, ...]] = {
     "openai": ("endpoint", "model", "api_key_env"),
 }
 PLACEHOLDERS: dict[str, dict[str, str]] = {
-    "local": {"endpoint": "http://localhost:11434", "model": "llama3"},
+    "local": {"endpoint": "http://localhost:11434", "model": "qwen3-vl:8b"},
     "anthropic": {"model": "claude-sonnet-5", "api_key_env": "ANTHROPIC_API_KEY"},
     "openai": {
         "endpoint": "https://api.openai.com/v1",
@@ -59,6 +59,9 @@ class NullProvider:
 
 
 def make_provider(settings: AISettings) -> AIProvider:
-    # ponytail: every kind resolves to Null until the first real backend lands;
-    # dispatch on settings.kind here (local/anthropic/openai), urllib + timeout only.
+    if settings.kind == "local":
+        from libs.ai_backends import OllamaProvider  # local import: no cycle
+
+        return OllamaProvider(settings)
+    # ponytail: anthropic/openai resolve to Null until implemented (Phase 3b).
     return NullProvider()

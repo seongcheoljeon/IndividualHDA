@@ -54,6 +54,9 @@ from libs.asset_commands import delete_asset
 from libs.repository import LibraryRepository, RegistrationPayload
 from libs.ai_provider import AISettings, Prompt, make_provider
 assert make_provider(AISettings(kind='anthropic')).complete(Prompt('x')) == ''
+from libs.ai_backends import OllamaProvider
+from libs.ollama import choose_recommended
+assert type(make_provider(AISettings(kind='local', model='m'))) is OllamaProvider
 store = AssetStore()
 store.insert({'hda_id': 1, 'hda_name': 'A'})
 assert store.id_rows[1] == 0
