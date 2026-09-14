@@ -23,6 +23,9 @@ class DatabaseSession:
             self._connection = sqlite3.connect(str(self._db_filepath), timeout=5.0)
             self._connect.execute("PRAGMA foreign_keys = ON")
             self._connect.execute("PRAGMA busy_timeout = 5000")
+            # WAL: readers (search worker, revision poller, a second panel) no longer
+            # block writers. Persistent; requires a local filesystem (see README).
+            self._connect.execute("PRAGMA journal_mode = WAL")
             migrate(self._connect, self._db_filepath)
             self._db_cursor = self._connect.cursor()
         except BaseException:

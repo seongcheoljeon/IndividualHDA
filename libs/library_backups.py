@@ -63,6 +63,40 @@ def list_backups(directory: Path) -> list[BackupEntry]:
     return result
 
 
+AUTO_BACKUP_PREFIX = "ihda.db.auto-"
+
+
+def auto_backup(
+    database: Path, *, keep: int = 7, max_age_hours: float = 24.0
+) -> Path | None:
+    """Daily database-only copy next to the library, keeping the newest ``keep``.
+
+    Uses SQLite's backup API (consistent under WAL). Returns the new file, or None
+    when a copy younger than ``max_age_hours`` exists. Full-media ZIP backups stay
+    manual: they re-compress every video.
+    """
+    if not database.is_file():
+        return None
+    existing = sorted(database.parent.glob(AUTO_BACKUP_PREFIX + "*.bak"))
+    now = datetime.now(UTC)
+    if existing:
+        newest = datetime.fromtimestamp(existing[-1].stat().st_mtime, UTC)
+        if (now - newest).total_seconds() < max_age_hours * 3600:
+            return None
+    import sqlite3
+    from contextlib import closing
+
+    from libs.database_migrations import backup_database
+
+    stamp = now.strftime("%Y%m%dT%H%M%SZ")
+    target = database.with_name(f"{AUTO_BACKUP_PREFIX}{stamp}.bak")
+    with closing(sqlite3.connect(str(database), timeout=5.0)) as connection:
+        backup_database(connection, target)
+    for stale in sorted(database.parent.glob(AUTO_BACKUP_PREFIX + "*.bak"))[:-keep]:
+        stale.unlink(missing_ok=True)
+    return target
+
+
 def create_backup(database: Path, assets: Path, reason: str) -> Path:
     with operation_lock(database.parent):
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")

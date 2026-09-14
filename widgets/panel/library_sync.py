@@ -12,6 +12,7 @@ from typing import Any
 from PySide6 import QtCore
 
 from libs import log_handler
+from libs.library_backups import auto_backup
 from model.asset_notifications import QtAssetNotifications
 
 SYNC_INTERVAL_MS = 10_000
@@ -34,6 +35,18 @@ class LibrarySyncMixin:
         self._sync_tasks.idle.connect(self._sync_idle)
         self._sync_tasks.result.connect(self._sync_result)
         self.actionReload.triggered.connect(self.reload_library)
+        library = self._library
+        if library is not None and library.db_filepath.is_file():
+            database = library.db_filepath
+            self._sync_tasks.start(
+                lambda: auto_backup(database), self._auto_backup_done
+            )
+
+    def _auto_backup_done(self, path: Any) -> None:
+        if path is not None:
+            log_handler.LogHandler.log_msg(
+                method=logging.info, msg=f"daily database backup written: {path}"
+            )
 
     def _stop_library_sync(self) -> None:
         self._sync_timer.stop()

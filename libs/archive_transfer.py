@@ -76,6 +76,16 @@ class ArchiveTransfer:
             if self.assets.exists():
                 journal.move(self.assets, old_assets)
             journal.move(database, old_db)
+            # A WAL database is three files; moving only ihda.db corrupts it.
+            for suffix in ("-wal", "-shm"):
+                sidecar = database.with_name(database.name + suffix)
+                if sidecar.exists():
+                    journal.move(sidecar, old_db.with_name(old_db.name + suffix))
+                staged_sidecar = staged_db.with_name(staged_db.name + suffix)
+                if staged_sidecar.exists():
+                    journal.move(
+                        staged_sidecar, database.with_name(database.name + suffix)
+                    )
             journal.move(staged_db, database)
             journal.move(self.stage, self.assets)
         self.stage = None
