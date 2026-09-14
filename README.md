@@ -84,7 +84,7 @@ The database uses SQLite schema v4 with foreign keys, validation checks, normali
 
 File operations use a persistent journal. Imports, renames, deletions, path repairs, and restores can be recovered after an interrupted operation. Recovery copies are retained until you remove them through **Library Tools**.
 
-The application is designed for a single local user. Network filesystems and simultaneous writers from multiple processes are not supported.
+Local mode is designed for a single writer. Several panels on the same machine may open one library; changes made elsewhere appear within about ten seconds or on Reload. Network filesystems and simultaneous writers from multiple machines are not supported in local mode; a server mode is planned for shared studios.
 
 ## Development
 

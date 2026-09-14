@@ -128,17 +128,73 @@ argument, so a dependency can be replaced without modifying feature methods.
 
 | Extension point | Contract | Default |
 | --- | --- | --- |
+| Library storage | `LibraryRepository` (`libs/repository.py`) | `SqliteLibraryRepository` via `PanelServices.repository(context)` |
 | Naming | `AssetNames` | `HoudiniAPI` |
-| Rename persistence | `RenameRepository` | `SQLiteRenameRepository` |
+| Rename persistence | `RenameRepository` (inside the SQLite adapter) | `SQLiteRenameRepository` |
 | Durable file/DB operations | `OperationFactory` | `durable_operation` |
 | Database, archives, tasks | callables on `PanelServices` | `SQLite3DatabaseAPI`, `ArchiveTransfer`, `TaskController` |
 | AI backend | `AIProvider` | `NullProvider` via `make_provider` |
 
 `AssetStore` emits changes through `RowNotifications`, with `QtAssetNotifications`
 coordinating list/table models. `ArchiveTransfer` owns path-based archive work.
-`LibraryReader` owns snapshot connection cleanup. Rename planning/execution uses
-`RenamePlan` and `SQLiteRenameRepository`. `TaskController` owns file jobs and
-process startup/completion; callers cannot replace its active-job properties.
+Rename planning/execution uses `RenamePlan` and `SQLiteRenameRepository`.
+`TaskController` owns file jobs and process startup/completion; callers cannot
+replace its active-job properties.
+
+## Library repository
+
+`libs/repository.py` is the storage boundary: `LibraryRepository` (list, categories,
+histories, search, tags/notes, favorite, rename, delete, `register_asset`,
+`add_version`, `revision`), `RegistrationPayload`/`RegistrationResult`, the
+`LibraryError` hierarchy and `LibrarySettings`. It imports neither Qt nor HOM.
+`libs/database/sqlite_repository.py` adapts the existing `SQLite3DatabaseAPI` facade
+and the journaled file commands; registration bodies live there. Rules:
+
+- The panel gathers everything HOM knows (node info, HDA file, thumbnail, hip, frame
+  range) on the GUI thread into a `RegistrationPayload`; the repository only writes.
+- Local mode calls the repository synchronously (milliseconds). The HTTP adapter
+  for server mode (Phase 2) plugs into `PanelServices.repository`; the panel then
+  wraps writes in `_start_file_job` without changing the call sites.
+- Remaining direct facade uses (`_db_api_wrap`) are local-only paths: DB cleanup,
+  path repair, backups, scene records and context-menu lookups. They are the Phase 2
+  worklist and are disabled in server mode.
+- Errors surface as `LibraryError` subclasses; `LibraryConflict` means reload and retry.
+
+## Identity and LibraryContext
+
+`libs/identity.current_user()` is `IHDA_USER` or the OS login. A local SQLite library
+adopts the single user row it already has (`resolve_local_user`), so libraries
+created as `anonymous` open unchanged. `LibraryContext` (`libs/domain.py`) is an
+immutable snapshot of user, data directory, database path, asset root and per-user
+HDA root, rebuilt only when Preferences change (which already requires a restart).
+Mixins read `self._library`; the Preference dialog is not a settings service.
+
+## Search
+
+Asset search runs in the repository (`search_asset_ids`, implemented over SQLite
+`LIKE`/`GLOB` in `libs/library_explorer.py`): whitespace tokens are ANDed, `*`/`?` are
+wildcards, and `name:`/`tag:`/`type:`/`note:` prefixes restrict a token. Tags come from
+the trigger-maintained `asset_tags` index; notes and definition comments are
+searchable through the `Note`/`All` fields. `libs/asset_search.AssetSearch` runs the
+query off the GUI thread and drops superseded results; the list/table proxies then
+show only the returned ids (`set_id_filter`). Empty queries never start a job. FTS5
+was rejected because its tokenizers break one- and two-character Korean searches;
+the swap point is `search_asset_ids` alone. `AssetSearch.rewrite` is the hook where
+the AI natural-language search will translate text into this syntax.
+
+## Change detection
+
+`widgets/panel/library_sync.py` polls `repository.revision()` every 10 s on a third
+`TaskController` and reloads rows, categories, histories and icons when it changes,
+keeping the selection if the asset still exists. The toolbar Reload action runs the
+same `reload_library()`. Locally the revision is the database file mtime; the server
+returns a counter bumped by every write.
+
+## Optional media modules
+
+`widgets/video_player.make_video_player` and `widgets/web_view.make_web_view` import
+`QtMultimedia`/`QtWebEngine` lazily and return a placeholder widget with the same
+method surface when a Houdini build lacks them, so the panel always opens.
 
 ## AI provider
 

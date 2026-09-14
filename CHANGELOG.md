@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.1.0 (unreleased) — shared-library foundations
+
+Client-only groundwork for a multi-user library; behavior in local mode is
+unchanged apart from the items below.
+
+- **Storage boundary.** `LibraryRepository` protocol + SQLite adapter; panel
+  registration, versioning, tags/notes, favorites, rename and deletion go
+  through it. Prepares the HTTP/PostgreSQL server mode.
+- **Identity.** User = `IHDA_USER` or OS login; existing local libraries keep
+  their single user row.
+- **Search.** Repository-side `LIKE`/`GLOB` search over name, tags, type,
+  definition comment and note with `field:` prefixes and wildcards, run off the
+  GUI thread; new `Note` and `All` fields. Tags are normalized on write.
+- **Reload and change detection.** Toolbar Reload plus a revision poller that
+  refreshes the panel when another process changes the library.
+- **Optional media.** Missing `QtMultimedia`/`QtWebEngine` no longer prevent the
+  panel from opening.
+- **Panel state.** `LibraryContext` snapshot replaces Preference-dialog reads;
+  category selection lives in `SelectionState`.
+
 ## 2.0.0 — Houdini 21+ (Qt 6 / PySide6 / Python 3.11)
 
 Decisions that shaped this release. Verification details live in
