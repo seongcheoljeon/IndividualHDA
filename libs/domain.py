@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Generic, TypedDict, TypeVar
 
+from libs.paths import SQLite, hda_base_dirpath
+
 
 class AssetData(TypedDict, total=False):
     hda_id: int
@@ -150,14 +152,13 @@ class LibraryContext:
     def from_preference(cls, preference: Any, user: str) -> LibraryContext | None:
         if not preference.is_data_valid:
             return None
-        import public
 
         data_dirpath = Path(preference.data_dirpath)
-        asset_root = public.hda_base_dirpath(base_dirpath=data_dirpath)
+        asset_root = hda_base_dirpath(base_dirpath=data_dirpath)
         return cls(
             user=user,
             data_dirpath=data_dirpath,
-            db_filepath=data_dirpath / public.SQLite.db_filename,
+            db_filepath=data_dirpath / SQLite.db_filename,
             asset_root=asset_root,
             hda_base_dirpath=asset_root / user,
         )

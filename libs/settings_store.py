@@ -10,6 +10,8 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
+from libs.paths import Paths
+
 log = logging.getLogger(__name__)
 
 
@@ -81,15 +83,13 @@ def initialize_config() -> None:
     """Carry existing settings into the writable per-user location on first use."""
     from shutil import copy2
 
-    import public
-
-    target = public.Paths.config_dirpath
+    target = Paths.config_dirpath
     target.mkdir(parents=True, exist_ok=True)
     if os.getenv("IHDA_CONFIG_DIR"):
         return
     for source in (
-        public.Paths._legacy_config,
-        public.Paths.curt_script_dirpath / ".config",
+        Paths._legacy_config,
+        Paths.curt_script_dirpath / ".config",
     ):
         if source.resolve() == target.resolve() or not source.is_dir():
             continue

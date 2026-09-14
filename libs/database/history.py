@@ -7,11 +7,11 @@ import logging
 import pathlib
 from typing import Any, cast
 
-import public
 from libs import log_handler
 from libs.database.session import DatabaseSession
 from libs.database.values import DatabaseValues
 from libs.domain import HistoryData
+from libs.keys import Key
 from libs.path_updates import PathMoves, relocated_path
 
 
@@ -28,48 +28,48 @@ class HistoryOperations(DatabaseSession):
         """
         try:
             hist_key_lst = [
-                public.Key.History.hda_id,
-                public.Key.History.comment,
-                public.Key.History.org_hda_name,
-                public.Key.History.version,
-                public.Key.History.ihda_filename,
-                public.Key.History.ihda_dirpath,
-                public.Key.History.reg_time,
-                public.Key.History.hou_version,
-                public.Key.History.hip_filename,
-                public.Key.History.hip_dirpath,
-                public.Key.History.hda_license,
-                public.Key.History.os,
-                public.Key.History.node_old_path,
-                public.Key.History.node_def_desc,
-                public.Key.History.node_type_name,
-                public.Key.History.node_category,
-                public.Key.History.userid,
-                public.Key.History.icon,
-                public.Key.History.thumb_filename,
-                public.Key.History.thumb_dirpath,
-                public.Key.History.video_filename,
-                public.Key.History.video_dirpath,
+                Key.History.hda_id,
+                Key.History.comment,
+                Key.History.org_hda_name,
+                Key.History.version,
+                Key.History.ihda_filename,
+                Key.History.ihda_dirpath,
+                Key.History.reg_time,
+                Key.History.hou_version,
+                Key.History.hip_filename,
+                Key.History.hip_dirpath,
+                Key.History.hda_license,
+                Key.History.os,
+                Key.History.node_old_path,
+                Key.History.node_def_desc,
+                Key.History.node_type_name,
+                Key.History.node_category,
+                Key.History.userid,
+                Key.History.icon,
+                Key.History.thumb_filename,
+                Key.History.thumb_dirpath,
+                Key.History.video_filename,
+                Key.History.video_dirpath,
             ]
             assert len(hist_key_lst) == len(data)
             hist_dat = collections.OrderedDict(zip(hist_key_lst, data, strict=False))
-            del hist_dat[public.Key.History.reg_time]
-            hist_dat[public.Key.History.ihda_dirpath] = hist_dat[
-                public.Key.History.ihda_dirpath
+            del hist_dat[Key.History.reg_time]
+            hist_dat[Key.History.ihda_dirpath] = hist_dat[
+                Key.History.ihda_dirpath
             ].as_posix()
-            hist_dat[public.Key.History.hip_dirpath] = hist_dat[
-                public.Key.History.hip_dirpath
+            hist_dat[Key.History.hip_dirpath] = hist_dat[
+                Key.History.hip_dirpath
             ].as_posix()
-            if hist_dat.get(public.Key.History.thumb_dirpath) is not None:
-                hist_dat[public.Key.History.thumb_dirpath] = hist_dat[
-                    public.Key.History.thumb_dirpath
+            if hist_dat.get(Key.History.thumb_dirpath) is not None:
+                hist_dat[Key.History.thumb_dirpath] = hist_dat[
+                    Key.History.thumb_dirpath
                 ].as_posix()
-            if hist_dat.get(public.Key.History.video_dirpath) is not None:
-                hist_dat[public.Key.History.video_dirpath] = hist_dat[
-                    public.Key.History.video_dirpath
+            if hist_dat.get(Key.History.video_dirpath) is not None:
+                hist_dat[Key.History.video_dirpath] = hist_dat[
+                    Key.History.video_dirpath
                 ].as_posix()
-            hist_dat[public.Key.History.icon] = DatabaseValues._make_icon_to_string(
-                hist_dat[public.Key.History.icon]
+            hist_dat[Key.History.icon] = DatabaseValues._make_icon_to_string(
+                hist_dat[Key.History.icon]
             )
             dat = tuple(hist_dat.values())
             cursor = self._cursor.execute(query, dat)
@@ -400,14 +400,14 @@ class HistoryOperations(DatabaseSession):
             return []
         dat = []
         key_lst = [
-            public.Key.History.hist_id,
-            public.Key.History.thumb_dirpath,
-            public.Key.History.thumb_filename,
+            Key.History.hist_id,
+            Key.History.thumb_dirpath,
+            Key.History.thumb_filename,
         ]
         for row_val in fetch_dat:
             tmp_dict = dict(zip(key_lst, row_val, strict=False))
-            tmp_dict[public.Key.History.thumb_dirpath] = pathlib.Path(
-                tmp_dict[public.Key.History.thumb_dirpath]
+            tmp_dict[Key.History.thumb_dirpath] = pathlib.Path(
+                tmp_dict[Key.History.thumb_dirpath]
             )
             dat.append(tmp_dict)
         return dat
@@ -458,26 +458,24 @@ class HistoryOperations(DatabaseSession):
         dat = []
         for row_val in fetch_dat:
             tmp_dict = dict(zip(key_lst, row_val, strict=False))
-            tags = tmp_dict[public.Key.History.tags]
+            tags = tmp_dict[Key.History.tags]
             if tags is None:
-                tmp_dict[public.Key.History.tags] = []
+                tmp_dict[Key.History.tags] = []
             else:
-                tmp_dict[public.Key.History.tags] = tags.split("#")
-            tmp_dict[public.Key.History.icon] = tmp_dict[public.Key.History.icon].split(
-                ","
+                tmp_dict[Key.History.tags] = tags.split("#")
+            tmp_dict[Key.History.icon] = tmp_dict[Key.History.icon].split(",")
+            tmp_dict[Key.History.ihda_dirpath] = pathlib.Path(
+                tmp_dict[Key.History.ihda_dirpath]
             )
-            tmp_dict[public.Key.History.ihda_dirpath] = pathlib.Path(
-                tmp_dict[public.Key.History.ihda_dirpath]
+            tmp_dict[Key.History.hip_dirpath] = pathlib.Path(
+                tmp_dict[Key.History.hip_dirpath]
             )
-            tmp_dict[public.Key.History.hip_dirpath] = pathlib.Path(
-                tmp_dict[public.Key.History.hip_dirpath]
+            tmp_dict[Key.History.thumb_dirpath] = pathlib.Path(
+                tmp_dict[Key.History.thumb_dirpath]
             )
-            tmp_dict[public.Key.History.thumb_dirpath] = pathlib.Path(
-                tmp_dict[public.Key.History.thumb_dirpath]
-            )
-            if tmp_dict[public.Key.History.video_dirpath] is not None:
-                tmp_dict[public.Key.History.video_dirpath] = pathlib.Path(
-                    tmp_dict[public.Key.History.video_dirpath]
+            if tmp_dict[Key.History.video_dirpath] is not None:
+                tmp_dict[Key.History.video_dirpath] = pathlib.Path(
+                    tmp_dict[Key.History.video_dirpath]
                 )
             dat.append(cast(HistoryData, tmp_dict))
         return dat

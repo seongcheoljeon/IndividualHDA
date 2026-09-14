@@ -7,11 +7,11 @@ import pathlib
 from collections.abc import Sequence
 from typing import Any, cast
 
-import public
 from libs import log_handler
 from libs.database.session import DatabaseSession
 from libs.database.values import DatabaseValues, normalize_tags
 from libs.domain import AssetData
+from libs.keys import Key, Type
 
 
 class AssetsOperations(DatabaseSession):
@@ -630,24 +630,24 @@ class AssetsOperations(DatabaseSession):
         if (fetch_dat is None) or (not len(fetch_dat)):
             return None
         key_lst = [
-            public.Key.is_favorite_hda,
-            public.Key.hda_load_count,
-            public.Key.hda_ctime,
-            public.Key.hda_tags,
-            public.Key.hda_note,
-            public.Key.video_dirpath,
-            public.Key.video_filename,
+            Key.is_favorite_hda,
+            Key.hda_load_count,
+            Key.hda_ctime,
+            Key.hda_tags,
+            Key.hda_note,
+            Key.video_dirpath,
+            Key.video_filename,
         ]
         data = dict(zip(key_lst, fetch_dat, strict=False))
         # dirpath
-        tags = data.get(public.Key.hda_tags)
+        tags = data.get(Key.hda_tags)
         if tags is None:
-            data[public.Key.hda_tags] = []
+            data[Key.hda_tags] = []
         else:
-            data[public.Key.hda_tags] = tags.split("#")
-        video_dirpath = data.get(public.Key.video_dirpath)
+            data[Key.hda_tags] = tags.split("#")
+        video_dirpath = data.get(Key.video_dirpath)
         if video_dirpath is not None:
-            data[public.Key.video_dirpath] = pathlib.Path(video_dirpath)
+            data[Key.video_dirpath] = pathlib.Path(video_dirpath)
         return data
 
     def get_hda_filepath(self, hda_key_id: int | None = None) -> pathlib.Path | None:
@@ -737,7 +737,7 @@ class AssetsOperations(DatabaseSession):
     def get_hda_data(
         self, category: str | None = None, user_id: str | None = None
     ) -> list[AssetData]:
-        if category == public.Type.root:
+        if category == Type.root:
             category = None
         query = """
 SELECT hkey.id,
@@ -793,32 +793,26 @@ WHERE (? IS NULL OR hkey.user_id = ?)
         dat = []
         for row_val in fetch_dat:
             tmp_dict = dict(zip(key_lst, row_val, strict=False))
-            icon = tmp_dict[public.Key.hda_icon]
-            tmp_dict[public.Key.hda_icon] = icon.split(",") if icon else []
+            icon = tmp_dict[Key.hda_icon]
+            tmp_dict[Key.hda_icon] = icon.split(",") if icon else []
             for flag in (
-                public.Key.is_favorite_hda,
-                public.Key.is_network,
-                public.Key.is_sub_network,
+                Key.is_favorite_hda,
+                Key.is_network,
+                Key.is_sub_network,
             ):
                 tmp_dict[flag] = bool(tmp_dict[flag])
-            tags = tmp_dict[public.Key.hda_tags]
+            tags = tmp_dict[Key.hda_tags]
             if tags is None:
-                tmp_dict[public.Key.hda_tags] = []
+                tmp_dict[Key.hda_tags] = []
             else:
-                tmp_dict[public.Key.hda_tags] = tags.split("#")
-            tmp_dict[public.Key.hda_dirpath] = pathlib.Path(
-                tmp_dict[public.Key.hda_dirpath]
-            )
-            tmp_dict[public.Key.hip_dirpath] = pathlib.Path(
-                tmp_dict[public.Key.hip_dirpath]
-            )
-            if tmp_dict[public.Key.thumbnail_dirpath] is not None:
-                tmp_dict[public.Key.thumbnail_dirpath] = pathlib.Path(
-                    tmp_dict[public.Key.thumbnail_dirpath]
+                tmp_dict[Key.hda_tags] = tags.split("#")
+            tmp_dict[Key.hda_dirpath] = pathlib.Path(tmp_dict[Key.hda_dirpath])
+            tmp_dict[Key.hip_dirpath] = pathlib.Path(tmp_dict[Key.hip_dirpath])
+            if tmp_dict[Key.thumbnail_dirpath] is not None:
+                tmp_dict[Key.thumbnail_dirpath] = pathlib.Path(
+                    tmp_dict[Key.thumbnail_dirpath]
                 )
-            if tmp_dict[public.Key.video_dirpath] is not None:
-                tmp_dict[public.Key.video_dirpath] = pathlib.Path(
-                    tmp_dict[public.Key.video_dirpath]
-                )
+            if tmp_dict[Key.video_dirpath] is not None:
+                tmp_dict[Key.video_dirpath] = pathlib.Path(tmp_dict[Key.video_dirpath])
             dat.append(cast(AssetData, tmp_dict))
         return dat

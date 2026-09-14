@@ -16,6 +16,54 @@ from libs import houdini_api, ihda_system, log_handler
 from libs.domain import LibraryContext
 
 
+def app_info(houdini_ver: Any = None) -> str:
+    info = f"""
+<p>Individual HDA (Houdini built-in app)<br><br>
+Release Date: 2026.09.11<br>
+Release Version: {public.Value.current_ver}<br>
+OS Available: {public.platform_system().title()}<br>
+Recommended Houdini Version: {houdini_ver}<br>
+<br>
+<b><i>Please donate if you like this app.<i><b><br>
+<br>
+<a href="https://buymeacoffee.com/seongcheol" style="color:#ff6f00" target="_blank">Buy Me A Coffee</a><br>
+<br>
+<a href="https://vimeo.com/seongcheolzeon" style="color:red"
+target="_blank">Vimeo</a><br>
+    """
+    return info
+
+
+def license_info() -> str:
+    lic_info = """
+MIT License
+
+Copyright (c) 2020 Seongcheol Jeon
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+
+    """
+    return lic_info
+
+
 class PresentationMixin:
     @staticmethod
     def _get_default_font(font_size: int | None = None) -> QtGui.QFont:
@@ -429,9 +477,9 @@ class PresentationMixin:
         msgbox.setWindowTitle("Individual HDA (Houdini built-in app)")
         msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
         msgbox.setIconPixmap(QtGui.QPixmap(":/main/icons/viewport_logo_trans.png"))
-        msgbox.setText(public.Info.app_info(self._RECOMMENDED_HOUDINI_VERSION))
+        msgbox.setText(app_info(self._RECOMMENDED_HOUDINI_VERSION))
         msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        msgbox.setDetailedText(public.Info.license_info())
+        msgbox.setDetailedText(license_info())
         msgbox.setStyleSheet("""
 QLabel {
     min-width: 800px;

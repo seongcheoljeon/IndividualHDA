@@ -6,11 +6,11 @@ import logging
 import pathlib
 from typing import Any, cast
 
-import public
 from libs import log_handler
 from libs.database.session import DatabaseSession
 from libs.database.values import DatabaseValues
 from libs.domain import SceneRecord
+from libs.keys import Key
 
 
 class RecordsOperations(DatabaseSession):
@@ -260,25 +260,25 @@ class RecordsOperations(DatabaseSession):
         dat: dict[str, Any] = {}
         for row_val in fetch_dat:
             tmp_dict = dict(zip(key_lst, row_val, strict=False))
-            hip_dpath = tmp_dict[public.Key.Record.hip_dirpath]
-            hip_fname = tmp_dict[public.Key.Record.hip_filename]
-            hda_dpath = tmp_dict[public.Key.Record.hda_dirpath]
-            hda_fname = tmp_dict[public.Key.Record.hda_filename]
-            pnode_path = tmp_dict[public.Key.Record.parent_node_path]
-            node_name = tmp_dict[public.Key.Record.node_name]
-            node_ver = tmp_dict[public.Key.Record.node_ver]
-            node_type = tmp_dict[public.Key.Record.node_type]
-            node_cate = tmp_dict[public.Key.Record.node_cate]
-            record_id = tmp_dict[public.Key.Record.record_id]
-            hda_id = tmp_dict[public.Key.Record.hda_id]
-            ctime = tmp_dict[public.Key.Record.ctime]
-            mtime = tmp_dict[public.Key.Record.mtime]
-            hou_version = tmp_dict[public.Key.Record.houdini_version]
-            hou_license = tmp_dict[public.Key.Record.houdini_license]
-            operating_system = tmp_dict[public.Key.Record.operating_system]
-            sf = tmp_dict[public.Key.Record.sf]
-            ef = tmp_dict[public.Key.Record.ef]
-            fps = tmp_dict[public.Key.Record.fps]
+            hip_dpath = tmp_dict[Key.Record.hip_dirpath]
+            hip_fname = tmp_dict[Key.Record.hip_filename]
+            hda_dpath = tmp_dict[Key.Record.hda_dirpath]
+            hda_fname = tmp_dict[Key.Record.hda_filename]
+            pnode_path = tmp_dict[Key.Record.parent_node_path]
+            node_name = tmp_dict[Key.Record.node_name]
+            node_ver = tmp_dict[Key.Record.node_ver]
+            node_type = tmp_dict[Key.Record.node_type]
+            node_cate = tmp_dict[Key.Record.node_cate]
+            record_id = tmp_dict[Key.Record.record_id]
+            hda_id = tmp_dict[Key.Record.hda_id]
+            ctime = tmp_dict[Key.Record.ctime]
+            mtime = tmp_dict[Key.Record.mtime]
+            hou_version = tmp_dict[Key.Record.houdini_version]
+            hou_license = tmp_dict[Key.Record.houdini_license]
+            operating_system = tmp_dict[Key.Record.operating_system]
+            sf = tmp_dict[Key.Record.sf]
+            ef = tmp_dict[Key.Record.ef]
+            fps = tmp_dict[Key.Record.fps]
             # 노드와 버전이 함께 보여지도록. 그리고 이래야 key data로 record데이터를 지울 때 명확하다.
             node_name_with_ver = f"{node_name} (v{node_ver})"
             if hip_dpath not in dat:
@@ -331,14 +331,14 @@ class RecordsOperations(DatabaseSession):
         if (fetch_dat is None) or (not len(fetch_dat)):
             return {}
         key_lst = DatabaseValues.hda_record_key_lst()
-        key_lst.append(public.Key.Record.thumb_dirpath)
-        key_lst.append(public.Key.Record.thumb_filename)
+        key_lst.append(Key.Record.thumb_dirpath)
+        key_lst.append(Key.Record.thumb_filename)
         assert len(fetch_dat) == len(key_lst)
         dat: dict[str, Any] = dict(zip(key_lst, fetch_dat, strict=False))
-        thumb_dirpath = dat.get(public.Key.Record.thumb_dirpath)
+        thumb_dirpath = dat.get(Key.Record.thumb_dirpath)
         if thumb_dirpath is not None:
-            dat[public.Key.Record.thumb_dirpath] = pathlib.Path(thumb_dirpath)
-        for key in (public.Key.Record.hip_dirpath, public.Key.Record.hda_dirpath):
+            dat[Key.Record.thumb_dirpath] = pathlib.Path(thumb_dirpath)
+        for key in (Key.Record.hip_dirpath, Key.Record.hda_dirpath):
             if dat.get(key) is not None:
                 dat[key] = pathlib.Path(dat[key])
         return cast(SceneRecord, dat)

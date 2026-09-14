@@ -24,15 +24,9 @@ HOST_BOUNDARY = {"libs.host", "libs.houdini_api"}
 HOU_IMPORTERS: set[str] = set()
 # Debt: modules that reach the god module `public` instead of its real homes.
 PUBLIC_IMPORTERS = {
-    "libs.database.assets",
-    "libs.database.history",
-    "libs.database.records",
-    "libs.database.values",
-    "libs.domain",
     "libs.houdini_api",
     "libs.ihda_icons",
     "libs.ihda_system",
-    "libs.settings_store",
     "main",
     "model.ihda_category_model",
     "model.ihda_history_model",
