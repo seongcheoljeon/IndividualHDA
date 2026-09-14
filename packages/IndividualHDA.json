@@ -3,7 +3,7 @@
   "load_package_once": true,
   "env": [
     {
-      "IHDA_ROOT": "C:/Users/admin/source/repos/IndividualHDA"
+      "IHDA_ROOT": "/path/to/IndividualHDA"
     }
   ],
   "hpath": "$IHDA_ROOT"

@@ -7,6 +7,7 @@ pull a model with progress, and pick a sensible default for the machine.
 from __future__ import annotations
 
 import json
+import logging
 import platform
 import shutil
 import subprocess
@@ -17,6 +18,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from libs.ai_backends import AIError, _open, normalize_endpoint
+
+log = logging.getLogger(__name__)
 
 DEFAULT_ENDPOINT = "http://localhost:11434"
 DOWNLOAD_PAGE = "https://ollama.com/download"
@@ -70,7 +73,8 @@ def version(endpoint: str, timeout: float = 2.0) -> str | None:
                 "version", ""
             )
         )
-    except (urllib.error.URLError, OSError, ValueError, TimeoutError):
+    except (urllib.error.URLError, OSError, ValueError, TimeoutError) as error:
+        log.debug("Ollama not reachable at %s: %s", endpoint, error)
         return None
 
 
@@ -161,7 +165,8 @@ def detect_vram_gb() -> float | None:
         )
         values = [float(line) for line in out.stdout.split() if line.strip().isdigit()]
         return round(max(values) / 1024, 1) if values else None
-    except (OSError, ValueError, subprocess.SubprocessError):
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        log.debug("GPU memory detection failed: %s", error)
         return None
 
 
