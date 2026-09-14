@@ -9,6 +9,7 @@ from typing import Any
 import logging
 from PySide6 import QtWidgets, QtGui, QtCore
 import public
+from libs.database.values import normalize_tags
 from libs import note_syntax, log_handler
 from widgets.detail_view import detail_view
 
@@ -170,11 +171,7 @@ class NotesMixin:
     @staticmethod
     def _split_tag_string(tag_str: str = "") -> list[str]:
 
-        hda_tag = [
-            x.strip().strip("\n").strip("\r").strip("\t")
-            for x in [x for x in tag_str.split("#") if len(x)]
-        ]
-        return sorted(list(set(hda_tag)))
+        return sorted(normalize_tags(tag_str))
 
     @staticmethod
     def _set_tag_string(tag_lst: list[str]) -> str:

@@ -10,7 +10,7 @@ import pathlib
 import logging
 import public
 from libs import log_handler
-from libs.database.values import DatabaseValues
+from libs.database.values import DatabaseValues, normalize_tags
 
 
 class AssetsOperations(DatabaseSession):
@@ -578,10 +578,7 @@ class AssetsOperations(DatabaseSession):
     def update_tag_info(
         self, hda_key_id: int | None = None, tag_lst: Sequence[str] = ()
     ) -> int | None:
-        if tag_lst:
-            tag_join_str = "#".join([x.strip() for x in tag_lst])
-        else:
-            tag_join_str = ""
+        tag_join_str = "#".join(normalize_tags(tag_lst))
         query = """
         UPDATE tag_info SET tag = ? WHERE hda_key_id = ?
         """
@@ -885,6 +882,17 @@ class AssetsOperations(DatabaseSession):
         dat = list(dat)
         dat[0] = pathlib.Path(dat[0])
         return dat[0] / dat[1]
+
+    def distinct_tags(self, user_id: str | None = None) -> list[str]:
+        """Vocabulary for completion and AI prompts; reads the trigger-maintained index."""
+        query = """
+        SELECT DISTINCT t.tag FROM asset_tags AS t
+        JOIN hda_key AS k ON k.id = t.hda_key_id
+        WHERE (? IS NULL OR k.user_id = ?)
+        ORDER BY t.tag COLLATE NOCASE
+        """
+        cursor = self._cursor.execute(query, (user_id, user_id))
+        return [row[0] for row in cursor.fetchall()]
 
     def get_tag_info(self, hda_key_id: int | None = None) -> None | list[Any]:
         query = "SELECT tag FROM tag_info WHERE hda_key_id = ?"

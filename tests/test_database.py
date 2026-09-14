@@ -43,6 +43,20 @@ def test_quoted_data_and_tags(db: Any, tmp_path: pathlib.Path) -> None:
     assert db.get_count_hda_key(name="' OR 1=1 --") == 0
 
 
+def test_normalize_tags_and_vocabulary(db: Any, tmp_path: pathlib.Path) -> None:
+    from libs.database.values import normalize_tags
+
+    assert normalize_tags("#smoke, Fire\nsmoke #SMOKE #  ") == ["smoke", "Fire"]
+    assert normalize_tags(["a#b", " c ", "", "A"]) == ["a", "b", "c"]
+    assert normalize_tags(None) == []
+    key = seed(db)
+    assert db.insert_hda_info(key, "1.0", filename="a.hda", dirpath=tmp_path) == 1
+    assert db.insert_tag_info(key, ["물", "Smoke#fire", "smoke"]) == 1
+    assert db.get_tag_info(key) == ["물", "Smoke", "fire"]
+    assert db.distinct_tags() == ["fire", "Smoke", "물"]
+    assert db.distinct_tags(user_id="nobody") == []
+
+
 def test_transaction_rolls_back(db: Any) -> None:
     with pytest.raises(sqlite3.DatabaseError):
         with db.transaction():
