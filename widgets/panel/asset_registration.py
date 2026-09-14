@@ -50,7 +50,7 @@ class AssetRegistrationMixin:
             msgbox = QtWidgets.QMessageBox(self)
             msgbox.setFont(self._get_default_font())
             msgbox.setWindowTitle("iHDA Node Registration")
-            msgbox.setIcon(QtWidgets.QMessageBox.Warning)
+            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setText("Too many nodes to register")
             msgbox.setDetailedText(
                 f"""
@@ -59,7 +59,7 @@ Total Nodes: {total_node_cnt}
             """
             )
             # msgbox.resize(msgbox.sizeHint())
-            msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
             _ = msgbox.exec()
             return
         # 만약 등록하려는 노드 개수가 10개를 초과하면 등록할 것인지 메시지박스를 띄운다.
@@ -67,7 +67,7 @@ Total Nodes: {total_node_cnt}
             msgbox = QtWidgets.QMessageBox(self)
             msgbox.setFont(self._get_default_font())
             msgbox.setWindowTitle("iHDA Node Registration")
-            msgbox.setIcon(QtWidgets.QMessageBox.Warning)
+            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setText(
                 f"""
 The number of nodes you are trying to register exceeds {public.Value.warning_num_of_node_regist}.
@@ -80,10 +80,11 @@ But it didn't stop, so please wait a little longer.
             msgbox.setDetailedText(f"Total Nodes: {total_node_cnt}")
             # msgbox.resize(msgbox.sizeHint())
             msgbox.setStandardButtons(
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No
             )
             reply = msgbox.exec()
-            if reply == QtWidgets.QMessageBox.No:
+            if reply == QtWidgets.QMessageBox.StandardButton.No:
                 log_handler.LogHandler.log_msg(
                     method=logging.info, msg="Node registration has been canceled"
                 )
@@ -202,7 +203,7 @@ But it didn't stop, so please wait a little longer.
             # 업데이트 할 것인지 물어 본 다음 업데이트 진행
             msgbox = QtWidgets.QMessageBox(self)
             msgbox.setFont(self._get_default_font())
-            msgbox.setIcon(QtWidgets.QMessageBox.Warning)
+            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setWindowTitle("Update iHDA Node")
             msgbox.setText(
                 f"""
@@ -210,10 +211,11 @@ But it didn't stop, so please wait a little longer.
 <font color=red size=5>{node_name}</font> do you want to update iHDA node?"""
             )
             msgbox.setStandardButtons(
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No
             )
             reply = msgbox.exec()
-            if reply == QtWidgets.QMessageBox.No:
+            if reply == QtWidgets.QMessageBox.StandardButton.No:
                 log_handler.LogHandler.log_msg(
                     method=logging.info, msg="update has been canceled"
                 )

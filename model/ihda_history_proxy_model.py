@@ -23,7 +23,9 @@ class HistoryProxyModel(AssetProxyModel):
         self._dates: tuple[str, str] | None = None
 
     def filterAcceptsRow(
-        self, source_row: int, source_parent: QtCore.QModelIndex
+        self,
+        source_row: int,
+        source_parent: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> bool:
         if not super().filterAcceptsRow(source_row, source_parent):
             return False

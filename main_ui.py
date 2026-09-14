@@ -245,7 +245,7 @@ class Ui_MainWindow__individualHDA(object):
         self.verticalLayout_18.setContentsMargins(1, 1, 1, 1)
         self.splitter__whole_vertical = QSplitter(self.centralwidget)
         self.splitter__whole_vertical.setObjectName(u"splitter__whole_vertical")
-        self.splitter__whole_vertical.setOrientation(Qt.Vertical)
+        self.splitter__whole_vertical.setOrientation(Qt.Orientation.Vertical)
         self.splitter__whole_vertical.setHandleWidth(3)
         self.stackedWidget__whole = QStackedWidget(self.splitter__whole_vertical)
         self.stackedWidget__whole.setObjectName(u"stackedWidget__whole")
@@ -257,7 +257,7 @@ class Ui_MainWindow__individualHDA(object):
         self.verticalLayout_15.setContentsMargins(1, 1, 1, 1)
         self.splitter__whole_horizontal = QSplitter(self.page__ihda)
         self.splitter__whole_horizontal.setObjectName(u"splitter__whole_horizontal")
-        self.splitter__whole_horizontal.setOrientation(Qt.Horizontal)
+        self.splitter__whole_horizontal.setOrientation(Qt.Orientation.Horizontal)
         self.splitter__whole_horizontal.setHandleWidth(3)
         self.layoutWidget = QWidget(self.splitter__whole_horizontal)
         self.layoutWidget.setObjectName(u"layoutWidget")
@@ -267,7 +267,7 @@ class Ui_MainWindow__individualHDA(object):
         self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
         self.splitter__cate_whole_vertical = QSplitter(self.layoutWidget)
         self.splitter__cate_whole_vertical.setObjectName(u"splitter__cate_whole_vertical")
-        self.splitter__cate_whole_vertical.setOrientation(Qt.Vertical)
+        self.splitter__cate_whole_vertical.setOrientation(Qt.Orientation.Vertical)
         self.splitter__cate_whole_vertical.setHandleWidth(3)
         self.layoutWidget1 = QWidget(self.splitter__cate_whole_vertical)
         self.layoutWidget1.setObjectName(u"layoutWidget1")
@@ -322,7 +322,7 @@ class Ui_MainWindow__individualHDA(object):
 
         self.label__cate_count = QLabel(self.layoutWidget)
         self.label__cate_count.setObjectName(u"label__cate_count")
-        self.label__cate_count.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.label__cate_count.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_12.addWidget(self.label__cate_count)
 
@@ -343,7 +343,7 @@ class Ui_MainWindow__individualHDA(object):
         self.verticalLayout_6.setContentsMargins(0, 0, 0, 0)
         self.splitter__ihda_whole_vertical = QSplitter(self.layoutWidget2)
         self.splitter__ihda_whole_vertical.setObjectName(u"splitter__ihda_whole_vertical")
-        self.splitter__ihda_whole_vertical.setOrientation(Qt.Vertical)
+        self.splitter__ihda_whole_vertical.setOrientation(Qt.Orientation.Vertical)
         self.splitter__ihda_whole_vertical.setHandleWidth(3)
         self.layoutWidget3 = QWidget(self.splitter__ihda_whole_vertical)
         self.layoutWidget3.setObjectName(u"layoutWidget3")
@@ -408,7 +408,7 @@ class Ui_MainWindow__individualHDA(object):
         self.doubleSpinBox__zoom = QDoubleSpinBox(self.layoutWidget3)
         self.doubleSpinBox__zoom.setObjectName(u"doubleSpinBox__zoom")
         self.doubleSpinBox__zoom.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.doubleSpinBox__zoom.setAlignment(Qt.AlignCenter)
+        self.doubleSpinBox__zoom.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.doubleSpinBox__zoom.setDecimals(0)
         self.doubleSpinBox__zoom.setMinimum(10.000000000000000)
         self.doubleSpinBox__zoom.setMaximum(500.000000000000000)
@@ -538,7 +538,7 @@ class Ui_MainWindow__individualHDA(object):
         self.label__tag_pixmap.setMaximumSize(QSize(20, 20))
         self.label__tag_pixmap.setPixmap(QPixmap(u":/main/icons/ic_bookmark_white.png"))
         self.label__tag_pixmap.setScaledContents(True)
-        self.label__tag_pixmap.setAlignment(Qt.AlignCenter)
+        self.label__tag_pixmap.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.horizontalLayout_8.addWidget(self.label__tag_pixmap)
 
@@ -561,13 +561,13 @@ class Ui_MainWindow__individualHDA(object):
         self.label__logged_id_pixmap.setMaximumSize(QSize(20, 20))
         self.label__logged_id_pixmap.setPixmap(QPixmap(u":/main/icons/ic_account_box_white.png"))
         self.label__logged_id_pixmap.setScaledContents(True)
-        self.label__logged_id_pixmap.setAlignment(Qt.AlignCenter)
+        self.label__logged_id_pixmap.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.horizontalLayout_9.addWidget(self.label__logged_id_pixmap)
 
         self.label__logged_id = QLabel(self.layoutWidget2)
         self.label__logged_id.setObjectName(u"label__logged_id")
-        self.label__logged_id.setAlignment(Qt.AlignCenter)
+        self.label__logged_id.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.horizontalLayout_9.addWidget(self.label__logged_id)
 
@@ -580,7 +580,7 @@ class Ui_MainWindow__individualHDA(object):
         self.horizontalLayout_7.setObjectName(u"horizontalLayout_7")
         self.label__hda_count = QLabel(self.layoutWidget2)
         self.label__hda_count.setObjectName(u"label__hda_count")
-        self.label__hda_count.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.label__hda_count.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_7.addWidget(self.label__hda_count)
 
@@ -598,12 +598,12 @@ class Ui_MainWindow__individualHDA(object):
         self.splitter__whole_horizontal.addWidget(self.layoutWidget2)
         self.splitter__hda_info_whole_vertical = QSplitter(self.splitter__whole_horizontal)
         self.splitter__hda_info_whole_vertical.setObjectName(u"splitter__hda_info_whole_vertical")
-        self.splitter__hda_info_whole_vertical.setOrientation(Qt.Vertical)
+        self.splitter__hda_info_whole_vertical.setOrientation(Qt.Orientation.Vertical)
         self.splitter__hda_info_whole_vertical.setHandleWidth(3)
         self.frame__hda_info = QFrame(self.splitter__hda_info_whole_vertical)
         self.frame__hda_info.setObjectName(u"frame__hda_info")
-        self.frame__hda_info.setFrameShape(QFrame.NoFrame)
-        self.frame__hda_info.setFrameShadow(QFrame.Raised)
+        self.frame__hda_info.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame__hda_info.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_11 = QHBoxLayout(self.frame__hda_info)
         self.horizontalLayout_11.setSpacing(3)
         self.horizontalLayout_11.setObjectName(u"horizontalLayout_11")
@@ -672,7 +672,7 @@ class Ui_MainWindow__individualHDA(object):
         self.verticalLayout_3.setContentsMargins(1, 1, 1, 1)
         self.splitter__hda_info_vertical = QSplitter(self.page__hda_info)
         self.splitter__hda_info_vertical.setObjectName(u"splitter__hda_info_vertical")
-        self.splitter__hda_info_vertical.setOrientation(Qt.Vertical)
+        self.splitter__hda_info_vertical.setOrientation(Qt.Orientation.Vertical)
         self.splitter__hda_info_vertical.setHandleWidth(3)
         self.layoutWidget4 = QWidget(self.splitter__hda_info_vertical)
         self.layoutWidget4.setObjectName(u"layoutWidget4")
@@ -682,7 +682,7 @@ class Ui_MainWindow__individualHDA(object):
         self.verticalLayout.setContentsMargins(1, 1, 1, 1)
         self.textEdit__note = QTextEdit(self.layoutWidget4)
         self.textEdit__note.setObjectName(u"textEdit__note")
-        self.textEdit__note.setFrameShape(QFrame.NoFrame)
+        self.textEdit__note.setFrameShape(QFrame.Shape.NoFrame)
         self.textEdit__note.setTabStopDistance(40.000000000000000)
 
         self.verticalLayout.addWidget(self.textEdit__note)
@@ -718,7 +718,7 @@ class Ui_MainWindow__individualHDA(object):
         self.verticalLayout_2.setContentsMargins(1, 1, 1, 1)
         self.textEdit__tag = QTextEdit(self.layoutWidget5)
         self.textEdit__tag.setObjectName(u"textEdit__tag")
-        self.textEdit__tag.setFrameShape(QFrame.NoFrame)
+        self.textEdit__tag.setFrameShape(QFrame.Shape.NoFrame)
         self.textEdit__tag.setTabStopDistance(40.000000000000000)
 
         self.verticalLayout_2.addWidget(self.textEdit__tag)
@@ -818,7 +818,7 @@ class Ui_MainWindow__individualHDA(object):
 
         self.label__loc_record_count = QLabel(self.page__hda_loc_record)
         self.label__loc_record_count.setObjectName(u"label__loc_record_count")
-        self.label__loc_record_count.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.label__loc_record_count.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_13.addWidget(self.label__loc_record_count)
 
@@ -905,7 +905,7 @@ class Ui_MainWindow__individualHDA(object):
 
         self.label__found_hda_inside_hipfile_count = QLabel(self.page__hda_inside_hipfile)
         self.label__found_hda_inside_hipfile_count.setObjectName(u"label__found_hda_inside_hipfile_count")
-        self.label__found_hda_inside_hipfile_count.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.label__found_hda_inside_hipfile_count.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_19.addWidget(self.label__found_hda_inside_hipfile_count)
 
@@ -959,7 +959,7 @@ class Ui_MainWindow__individualHDA(object):
         self.verticalLayout_7.setObjectName(u"verticalLayout_7")
         self.splitter__ihda_hist_whole_vertical = QSplitter(self.page__history)
         self.splitter__ihda_hist_whole_vertical.setObjectName(u"splitter__ihda_hist_whole_vertical")
-        self.splitter__ihda_hist_whole_vertical.setOrientation(Qt.Vertical)
+        self.splitter__ihda_hist_whole_vertical.setOrientation(Qt.Orientation.Vertical)
         self.splitter__ihda_hist_whole_vertical.setHandleWidth(3)
         self.layoutWidget6 = QWidget(self.splitter__ihda_hist_whole_vertical)
         self.layoutWidget6.setObjectName(u"layoutWidget6")
@@ -1024,7 +1024,7 @@ class Ui_MainWindow__individualHDA(object):
         self.dateEdit__hist_search_start = QDateEdit(self.layoutWidget6)
         self.dateEdit__hist_search_start.setObjectName(u"dateEdit__hist_search_start")
         self.dateEdit__hist_search_start.setFrame(False)
-        self.dateEdit__hist_search_start.setAlignment(Qt.AlignCenter)
+        self.dateEdit__hist_search_start.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.dateEdit__hist_search_start.setCalendarPopup(True)
         self.dateEdit__hist_search_start.setDate(QDate(2020, 1, 1))
 
@@ -1037,14 +1037,14 @@ class Ui_MainWindow__individualHDA(object):
         sizePolicy2.setVerticalStretch(0)
         sizePolicy2.setHeightForWidth(self.label__join_str.sizePolicy().hasHeightForWidth())
         self.label__join_str.setSizePolicy(sizePolicy2)
-        self.label__join_str.setAlignment(Qt.AlignCenter)
+        self.label__join_str.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.horizontalLayout_14.addWidget(self.label__join_str)
 
         self.dateEdit__hist_search_end = QDateEdit(self.layoutWidget6)
         self.dateEdit__hist_search_end.setObjectName(u"dateEdit__hist_search_end")
         self.dateEdit__hist_search_end.setFrame(False)
-        self.dateEdit__hist_search_end.setAlignment(Qt.AlignCenter)
+        self.dateEdit__hist_search_end.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.dateEdit__hist_search_end.setCalendarPopup(True)
         self.dateEdit__hist_search_end.setDate(QDate(2020, 12, 31))
 
@@ -1079,7 +1079,7 @@ class Ui_MainWindow__individualHDA(object):
         self.label__hist_tag_pixmap.setMaximumSize(QSize(20, 20))
         self.label__hist_tag_pixmap.setPixmap(QPixmap(u":/main/icons/ic_bookmark_white_18dp.png"))
         self.label__hist_tag_pixmap.setScaledContents(True)
-        self.label__hist_tag_pixmap.setAlignment(Qt.AlignCenter)
+        self.label__hist_tag_pixmap.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.horizontalLayout_17.addWidget(self.label__hist_tag_pixmap)
 
@@ -1097,7 +1097,7 @@ class Ui_MainWindow__individualHDA(object):
         self.horizontalLayout_16.setObjectName(u"horizontalLayout_16")
         self.label__hist_cnt = QLabel(self.page__history)
         self.label__hist_cnt.setObjectName(u"label__hist_cnt")
-        self.label__hist_cnt.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
+        self.label__hist_cnt.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
 
         self.horizontalLayout_16.addWidget(self.label__hist_cnt)
 
@@ -1125,7 +1125,7 @@ class Ui_MainWindow__individualHDA(object):
         self.verticalLayout_14.setContentsMargins(0, 0, 0, 0)
         self.textBrowser__debug = QTextBrowser(self.verticalLayoutWidget)
         self.textBrowser__debug.setObjectName(u"textBrowser__debug")
-        self.textBrowser__debug.setFrameShape(QFrame.NoFrame)
+        self.textBrowser__debug.setFrameShape(QFrame.Shape.NoFrame)
         self.textBrowser__debug.setTabStopDistance(40.000000000000000)
         self.textBrowser__debug.setOpenExternalLinks(True)
 

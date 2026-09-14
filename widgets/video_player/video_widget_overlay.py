@@ -14,25 +14,29 @@ class Overlay(QtWidgets.QWidget):
         super().__init__(parent)
         self.__parent = parent
         palette = QtGui.QPalette(self.palette())
-        palette.setColor(QtGui.QPalette.ColorRole.Window, QtCore.Qt.transparent)
+        palette.setColor(
+            QtGui.QPalette.ColorRole.Window, QtCore.Qt.GlobalColor.transparent
+        )
         self.setPalette(palette)
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         painter = QtGui.QPainter()
         painter.begin(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         painter.fillRect(event.rect(), QtGui.QBrush(QtGui.QColor(255, 255, 255, 20)))
-        painter.setPen(QtCore.Qt.darkGray)
+        painter.setPen(QtCore.Qt.GlobalColor.darkGray)
         painter.setFont(QtGui.QFont("Arial", 33))
         painter.drawText(
             event.rect(),
-            QtCore.Qt.AlignCenter | QtCore.Qt.AlignCenter,
+            QtCore.Qt.AlignmentFlag.AlignCenter | QtCore.Qt.AlignmentFlag.AlignCenter,
             "iHDA Video Player",
         )
-        painter.setPen(QtCore.Qt.darkGray)
+        painter.setPen(QtCore.Qt.GlobalColor.darkGray)
         painter.setFont(QtGui.QFont("Arial", 13))
         painter.drawText(
-            event.rect(), QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop, "Individual HDA"
+            event.rect(),
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop,
+            "Individual HDA",
         )
         painter.end()
 

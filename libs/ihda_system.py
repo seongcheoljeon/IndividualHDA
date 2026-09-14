@@ -45,7 +45,7 @@ class IHDASystem:
             )
             return
         if public.is_windows():
-            os.startfile(dirpath.as_posix())
+            os.startfile(dirpath.as_posix())  # type: ignore[attr-defined]  # Windows only
         elif public.is_linux():
             Popen(["xdg-open", str(dirpath)])
         elif public.is_mac():
@@ -130,11 +130,11 @@ class IHDASystem:
             except OSError as error:
                 if error.errno != errno.EXDEV:
                     raise
-                descriptor, staged = tempfile.mkstemp(
+                descriptor, staged_name = tempfile.mkstemp(
                     prefix=".ihda-move-", dir=dst_filepath.parent
                 )
                 os.close(descriptor)
-                staged = pathlib.Path(staged)
+                staged = pathlib.Path(staged_name)
                 try:
                     copy2(src_filepath, staged)
                     staged.replace(dst_filepath)
@@ -158,7 +158,7 @@ class IHDASystem:
 
     @staticmethod
     def open_browser(url: str | None = None) -> Any:
-        return open_new(url)
+        return open_new(url or "")
 
     @staticmethod
     def open_hipfile_using_thread(hip_filepath: pathlib.Path | None = None) -> None:

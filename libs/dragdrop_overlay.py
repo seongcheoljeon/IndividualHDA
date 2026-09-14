@@ -16,7 +16,9 @@ class Overlay(QtWidgets.QWidget):
         self.__text = text
         self.__fontsize = 30
         palette = QtGui.QPalette(self.palette())
-        palette.setColor(QtGui.QPalette.ColorRole.Window, QtCore.Qt.transparent)
+        palette.setColor(
+            QtGui.QPalette.ColorRole.Window, QtCore.Qt.GlobalColor.transparent
+        )
         self.setPalette(palette)
 
     @property
@@ -38,17 +40,21 @@ class Overlay(QtWidgets.QWidget):
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         painter = QtGui.QPainter()
         painter.begin(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         painter.fillRect(event.rect(), QtGui.QBrush(QtGui.QColor(0, 0, 0, 100)))
-        painter.setPen(QtCore.Qt.white)
+        painter.setPen(QtCore.Qt.GlobalColor.white)
         painter.setFont(QtGui.QFont("Arial", self.fontsize))
         painter.drawText(
-            event.rect(), QtCore.Qt.AlignCenter | QtCore.Qt.AlignCenter, self.text
+            event.rect(),
+            QtCore.Qt.AlignmentFlag.AlignCenter | QtCore.Qt.AlignmentFlag.AlignCenter,
+            self.text,
         )
-        painter.setPen(QtCore.Qt.darkGray)
+        painter.setPen(QtCore.Qt.GlobalColor.darkGray)
         painter.setFont(QtGui.QFont("Arial", 13))
         painter.drawText(
-            event.rect(), QtCore.Qt.AlignRight | QtCore.Qt.AlignTop, "Individual HDA"
+            event.rect(),
+            QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignTop,
+            "Individual HDA",
         )
         painter.end()
 

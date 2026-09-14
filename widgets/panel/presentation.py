@@ -159,20 +159,23 @@ class PresentationMixin:
                 i.setChecked(False)
 
     def _resizing_listview(self) -> None:
-        self._ihda_list_view.setResizeMode(QtWidgets.QListView.Adjust)
+        self._ihda_list_view.setResizeMode(QtWidgets.QListView.ResizeMode.Adjust)
         self._ihda_list_view.setSpacing(3)
 
     def _open_houdini_file(self, hip_filepath: pathlib.Path | None = None) -> None:
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font())
         msgbox.setWindowTitle("Open Houdini File")
-        msgbox.setIcon(QtWidgets.QMessageBox.Question)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setText("""
 <font color=white size=3>Open the Houdini file?</font><br><br>
 <font color=red size=5>[Note]</font> <font color=white size=4>Open the file with the new Houdini.</font>""")
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        msgbox.setStandardButtons(
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No
+        )
         reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.Yes:
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             ihda_system.IHDASystem.open_hipfile_using_thread(hip_filepath)
 
     def _slot_local_ai_models(self) -> None:
@@ -202,7 +205,7 @@ class PresentationMixin:
                     return
                 msgbox = QtWidgets.QMessageBox(self)
                 msgbox.setFont(self._get_default_font())
-                msgbox.setIcon(QtWidgets.QMessageBox.Information)
+                msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
                 msgbox.setWindowTitle("Individual iHDA")
                 msgbox.setText("Please restart the app.")
                 _ = msgbox.exec()
@@ -397,11 +400,14 @@ class PresentationMixin:
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font())
         msgbox.setWindowTitle("iHDA Reset APP Properties")
-        msgbox.setIcon(QtWidgets.QMessageBox.Question)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setText("Do you want to reset app properties?")
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        msgbox.setStandardButtons(
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No
+        )
         reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.No:
+        if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
         self._is_reset_app_properties = True
         self.centralwidget.setDisabled(True)
@@ -413,9 +419,9 @@ class PresentationMixin:
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font())
         msgbox.setWindowTitle("iHDA Reset APP Properties")
-        msgbox.setIcon(QtWidgets.QMessageBox.Information)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
         msgbox.setText("App property initialization is complete. Please start again.")
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
         _ = msgbox.exec()
 
     def _set_theme(self, theme: str = "Default") -> None:
@@ -425,10 +431,10 @@ class PresentationMixin:
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font(font_size=15))
         msgbox.setWindowTitle("Individual HDA (Houdini built-in app)")
-        msgbox.setTextFormat(QtCore.Qt.RichText)
+        msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
         msgbox.setIconPixmap(QtGui.QPixmap(":/main/icons/viewport_logo_trans.png"))
         msgbox.setText(public.Info.app_info(self._RECOMMENDED_HOUDINI_VERSION))
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
         msgbox.setDetailedText(public.Info.license_info())
         msgbox.setStyleSheet("""
 QLabel {
@@ -443,7 +449,7 @@ QTextEdit {
         """)
         btn_detail = None
         for btn in msgbox.buttons():
-            if msgbox.buttonRole(btn) == QtWidgets.QMessageBox.ActionRole:
+            if msgbox.buttonRole(btn) == QtWidgets.QMessageBox.ButtonRole.ActionRole:
                 btn_detail = btn
                 break
         if btn_detail is not None:
@@ -455,8 +461,8 @@ QTextEdit {
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font(font_size=15))
         msgbox.setWindowTitle("Individual HDA Help")
-        msgbox.setTextFormat(QtCore.Qt.RichText)
-        msgbox.setIcon(QtWidgets.QMessageBox.Information)
+        msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
         msgbox.setText(
             """
             <a href="https://www.youtube.com/watch?v=XR7h8uGR_iI" style="color:red"
@@ -466,7 +472,7 @@ QTextEdit {
             target="_blank">Codec & FFmpeg Setup Help video</a>
             """
         )
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
         msgbox.setStyleSheet("QLabel {min-width: 500px;}")
         msgbox.resize(msgbox.sizeHint())
         _ = msgbox.exec()
@@ -475,13 +481,13 @@ QTextEdit {
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font(font_size=15))
         msgbox.setWindowTitle("Submit Bug Report")
-        msgbox.setTextFormat(QtCore.Qt.RichText)
-        msgbox.setIcon(QtWidgets.QMessageBox.Information)
+        msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
         msgbox.setText(
             '<a href="mailto:saelly55@gmail.com?Subject=[iHDA] Bug Report" style="color:red"'
             'target="_top">Send Bug Report</a><br>'
         )
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
         msgbox.setDetailedText("Click the link to send an email.")
         msgbox.resize(msgbox.sizeHint())
         _ = msgbox.exec()
@@ -490,13 +496,13 @@ QTextEdit {
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font(font_size=15))
         msgbox.setWindowTitle("Submit Feedback")
-        msgbox.setTextFormat(QtCore.Qt.RichText)
-        msgbox.setIcon(QtWidgets.QMessageBox.Information)
+        msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
         msgbox.setText(
             '<a href="mailto:saelly55@gmail.com?Subject=[iHDA] Feedback" style="color:red"'
             'target="_top">Send Feedback</a><br>'
         )
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
         msgbox.setDetailedText("Click the link to send an email.")
         msgbox.resize(msgbox.sizeHint())
         _ = msgbox.exec()

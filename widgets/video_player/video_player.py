@@ -79,9 +79,11 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
 
     def __init_set(self) -> None:
         self.doubleSpinBox__play_speed.setValue(1.0)
-        self.listWidget__playlist.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.listWidget__playlist.setContextMenuPolicy(
+            QtCore.Qt.ContextMenuPolicy.CustomContextMenu
+        )
         self.listWidget__playlist.setSelectionMode(
-            QtWidgets.QAbstractItemView.ExtendedSelection
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
         )
         self.__load_config()
         self.__set_playback_mode()
@@ -152,23 +154,23 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
 
     def __handle_cursor(self, status: Any) -> None:
         if status in (
-            QtMultimedia.QMediaPlayer.LoadingMedia,
-            QtMultimedia.QMediaPlayer.BufferingMedia,
-            QtMultimedia.QMediaPlayer.StalledMedia,
+            QtMultimedia.QMediaPlayer.MediaStatus.LoadingMedia,
+            QtMultimedia.QMediaPlayer.MediaStatus.BufferingMedia,
+            QtMultimedia.QMediaPlayer.MediaStatus.StalledMedia,
         ):
-            self.setCursor(QtCore.Qt.BusyCursor)
+            self.setCursor(QtCore.Qt.CursorShape.BusyCursor)
         else:
             self.unsetCursor()
 
     def __slot_status_changed(self, status: Any) -> None:
         self.__handle_cursor(status)
-        if status == QtMultimedia.QMediaPlayer.LoadingMedia:
+        if status == QtMultimedia.QMediaPlayer.MediaStatus.LoadingMedia:
             self.__set_status_info("Loading...")
-        elif status == QtMultimedia.QMediaPlayer.StalledMedia:
+        elif status == QtMultimedia.QMediaPlayer.MediaStatus.StalledMedia:
             self.__set_status_info("Media Stalled")
-        elif status == QtMultimedia.QMediaPlayer.EndOfMedia:
+        elif status == QtMultimedia.QMediaPlayer.MediaStatus.EndOfMedia:
             QtWidgets.QApplication.alert(self)
-        elif status == QtMultimedia.QMediaPlayer.InvalidMedia:
+        elif status == QtMultimedia.QMediaPlayer.MediaStatus.InvalidMedia:
             self.__display_error_msg(None)
         else:
             self.__set_status_info("")
@@ -250,7 +252,10 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
             filepath_lst.append(video_filepath)
         if len(filepath_lst):
             self.add_playlist(filepath_lst=filepath_lst)
-            if self.__player.playbackState() != QtMultimedia.QMediaPlayer.PlayingState:
+            if (
+                self.__player.playbackState()
+                != QtMultimedia.QMediaPlayer.PlaybackState.PlayingState
+            ):
                 idx = self.__playlist.mediaCount() - len(filepath_lst)
                 self.listWidget__playlist.setCurrentRow(idx)
                 self.__playlist.setCurrentIndex(idx)
@@ -447,13 +452,22 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
             self.__player.stop()
 
     def __is_playing(self) -> bool:
-        return self.__player.playbackState() == QtMultimedia.QMediaPlayer.PlayingState
+        return (
+            self.__player.playbackState()
+            == QtMultimedia.QMediaPlayer.PlaybackState.PlayingState
+        )
 
     def __is_paused(self) -> bool:
-        return self.__player.playbackState() == QtMultimedia.QMediaPlayer.PausedState
+        return (
+            self.__player.playbackState()
+            == QtMultimedia.QMediaPlayer.PlaybackState.PausedState
+        )
 
     def __is_stopped(self) -> bool:
-        return self.__player.playbackState() == QtMultimedia.QMediaPlayer.StoppedState
+        return (
+            self.__player.playbackState()
+            == QtMultimedia.QMediaPlayer.PlaybackState.StoppedState
+        )
 
     def __slot_playlist_doubleclicked(self, index: QtCore.QModelIndex) -> None:
         row = index.listWidget().currentRow()
@@ -522,7 +536,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
     def __slot_select_video_file(self, filter_str: str = "") -> None:
         if self.last_dirpath is None:
             last_dpath = QtCore.QStandardPaths.writableLocation(
-                QtCore.QStandardPaths.MoviesLocation
+                QtCore.QStandardPaths.StandardLocation.MoviesLocation
             )
         else:
             last_dpath = self.last_dirpath.as_posix()
@@ -548,12 +562,13 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setWindowTitle("Delete Video From Playlist")
         msgbox.setText(f"delete {len(item_lst)} selected video from playlist?")
-        msgbox.setIcon(QtWidgets.QMessageBox.Warning)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
         msgbox.setStandardButtons(
-            QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel
+            QtWidgets.QMessageBox.StandardButton.Ok
+            | QtWidgets.QMessageBox.StandardButton.Cancel
         )
         reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.Cancel:
+        if reply == QtWidgets.QMessageBox.StandardButton.Cancel:
             return
         for item in item_lst:
             row = self.listWidget__playlist.row(item)
@@ -633,12 +648,12 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
         self.pushButton__next_video.setEnabled(media_cnt > 0)
         if media_cnt <= 0:
             return
-        if state == QtMultimedia.QMediaPlayer.PlayingState:
+        if state == QtMultimedia.QMediaPlayer.PlaybackState.PlayingState:
             self.__video_widget.overlay.close()
             icon = "ic_pause_white.png"
             self.pushButton__stop.setEnabled(True)
             self.pushButton__play.setToolTip("pause")
-        elif state == QtMultimedia.QMediaPlayer.PausedState:
+        elif state == QtMultimedia.QMediaPlayer.PlaybackState.PausedState:
             self.__video_widget.overlay.close()
             icon = "ic_play_arrow_white.png"
             self.pushButton__stop.setEnabled(True)

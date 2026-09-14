@@ -172,6 +172,8 @@ class SqliteLibraryRepository:
                     ):
                         raise sqlite3.DatabaseError("Could not create asset key")
                     key_id = db.get_last_insert_id
+                    if key_id is None:
+                        raise sqlite3.DatabaseError("No asset id after insert")
                     ok = [
                         db.insert_hda_info(
                             hda_key_id=key_id,
@@ -306,7 +308,7 @@ class SqliteLibraryRepository:
                     ]
                     if any(value is None for value in ok):
                         raise sqlite3.DatabaseError("Incomplete asset update")
-                    before = db.get_update_before_data(hda_key_id=asset_id)
+                    before = db.get_update_before_data(hda_key_id=asset_id) or {}
                     video = (before.get("video_dirpath"), before.get("video_filename"))
                     history = self._history_row(
                         asset_id, "NODE (UPDATE)", p, video[1], video[0]

@@ -31,16 +31,19 @@ class AssetManagementMixin:
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font())
         msgbox.setWindowTitle("Cleanup iHDA Record")
-        msgbox.setIcon(QtWidgets.QMessageBox.Question)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setText(
             "Are you sure you want to remove all unnecessary iHDA record data that does not exist?"
         )
         msgbox.setDetailedText(
             "NOTE: Don't worry. Only unused information is cleaned up."
         )
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        msgbox.setStandardButtons(
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No
+        )
         reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.Yes:
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             db_api = self._db_api_wrap(self._db_filepath)
             if db_api is None:
                 return
@@ -118,9 +121,9 @@ class AssetManagementMixin:
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font())
         msgbox.setWindowTitle("iHDA Node Rename")
-        msgbox.setIcon(QtWidgets.QMessageBox.Warning)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
         msgbox.setText("It's not a valid iHDA name.")
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
         _ = msgbox.exec()
 
     def _slot_hda_name_changed(self) -> None:
@@ -300,7 +303,7 @@ Type of current node: "{hda_type_name}"
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font())
         msgbox.setWindowTitle("iHDA Database Optimization")
-        msgbox.setIcon(QtWidgets.QMessageBox.Question)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setText("Cleanup unnecessary information from database?")
         msgbox.setDetailedText(
             "NOTE: Don't worry. Only unused information is cleaned up."
@@ -313,9 +316,12 @@ Type of current node: "{hda_type_name}"
         )
         chkbox.setToolTip("Cleanup other information together (history & record)")
         msgbox.setCheckBox(chkbox)
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        msgbox.setStandardButtons(
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No
+        )
         reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.Yes:
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             db_api = self._db_api_wrap(self._db_filepath)
             if db_api is None:
                 return
@@ -375,9 +381,9 @@ Type of current node: "{hda_type_name}"
             msgbox = QtWidgets.QMessageBox(self)
             msgbox.setFont(self._get_default_font())
             msgbox.setWindowTitle("Cleanup iHDA Database")
-            msgbox.setIcon(QtWidgets.QMessageBox.Warning)
+            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setText("iHDA database optimization is complete.")
-            msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
             _ = msgbox.exec()
 
     def _slot_delete_all_history(self) -> None:
@@ -389,7 +395,7 @@ Type of current node: "{hda_type_name}"
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font())
         msgbox.setWindowTitle("Delete all iHDA history")
-        msgbox.setIcon(QtWidgets.QMessageBox.Question)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setText("Delete all iHDA node's node/note history?")
         # chkbox = QtWidgets.QCheckBox(msgbox)
         # chkbox.setText('Delete All History Files')
@@ -404,11 +410,14 @@ iHDA node history: {cnt_hda_hist}
 iHDA note history: {cnt_hda_note_hist}
         """
         )
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        msgbox.setStandardButtons(
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No
+        )
         msgbox.setStyleSheet("QLabel {min-width: 500px;}")
         msgbox.resize(msgbox.sizeHint())
         reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.Yes:
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             # 만약 파일들까지 삭제한다면
             # if chkbox.isChecked():
             all_hkey_id = db_api.get_hda_key_id(user_id=self._user)
@@ -472,17 +481,20 @@ iHDA note history: {cnt_hda_note_hist}
     def _remove_selected_record_item(self, index: QtCore.QModelIndex = None) -> None:
         if not index.isValid():
             return
-        record_data_name = index.data(QtCore.Qt.DisplayRole)
+        record_data_name = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font())
-        msgbox.setIcon(QtWidgets.QMessageBox.Question)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setWindowTitle("Remove iHDA Record Information")
         msgbox.setText(
             f'Are you sure you want to delete the selected "{record_data_name}" record information?'
         )
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        msgbox.setStandardButtons(
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No
+        )
         reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.No:
+        if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
         record_id_list = self._ihda_record_model.remove_selected_record_data(
             index=index
@@ -513,15 +525,18 @@ iHDA note history: {cnt_hda_note_hist}
             return
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font())
-        msgbox.setIcon(QtWidgets.QMessageBox.Information)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
         msgbox.setWindowTitle("Remove iHDA History Node")
         msgbox.setText(
             f'Delete the <font color=red>"{len(indexes)}"</font> selected iHDA nodes?\n'
             "File/DB is also deleted"
         )
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        msgbox.setStandardButtons(
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No
+        )
         reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.Yes:
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             db_api = self._db_api_wrap(self._db_filepath)
             if db_api is None:
                 return

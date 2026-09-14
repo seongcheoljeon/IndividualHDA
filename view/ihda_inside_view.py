@@ -29,13 +29,15 @@ class InsideView(QtWidgets.QTreeView):
         self.setDragEnabled(True)
         self.setDropIndicatorShown(True)
         self.setMouseTracking(True)
-        self.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
-        self.setDragDropMode(QtWidgets.QAbstractItemView.InternalMove)
+        self.setSelectionMode(
+            QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
+        )
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.InternalMove)
         self.setHeaderHidden(False)
-        self.setFrameShape(QtWidgets.QFrame.NoFrame)
+        self.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         self.setSortingEnabled(True)
-        self.sortByColumn(0, QtCore.Qt.AscendingOrder)
-        self.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.sortByColumn(0, QtCore.Qt.SortOrder.AscendingOrder)
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
         self.setAlternatingRowColors(False)
         self.header().setStretchLastSection(True)
         self.resizeColumnToContents(0)
@@ -57,21 +59,21 @@ class InsideView(QtWidgets.QTreeView):
         if event.mimeData().hasText():
             event.acceptProposedAction()
         elif event.mimeData().hasFormat(public.Type.mime_type):
-            event.setDropAction(QtCore.Qt.CopyAction)
+            event.setDropAction(QtCore.Qt.DropAction.CopyAction)
             event.acceptProposedAction()
         else:
             super().dragEnterEvent(event)
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
         if event.mimeData().hasText():
-            event.setDropAction(QtCore.Qt.CopyAction)
+            event.setDropAction(QtCore.Qt.DropAction.CopyAction)
             event.acceptProposedAction()
             mime_dat = [
                 x for x in self.__comp_space.split(event.mimeData().text()) if len(x)
             ]
             self.signal.signal_object.emit(mime_dat)
         elif event.mimeData().hasFormat(public.Type.mime_type):
-            event.setDropAction(QtCore.Qt.CopyAction)
+            event.setDropAction(QtCore.Qt.DropAction.CopyAction)
             event.acceptProposedAction()
             self.signal.signal_object.emit(
                 [event.mimeData().data(public.Type.mime_type)]
@@ -80,7 +82,7 @@ class InsideView(QtWidgets.QTreeView):
             super().dropEvent(event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
-        if not (event.buttons() & QtCore.Qt.MiddleButton):
+        if not (event.buttons() & QtCore.Qt.MouseButton.MiddleButton):
             return
         indexes = self.selectionModel().selectedRows(
             public.Value.drag_column_record_view
@@ -103,13 +105,13 @@ class InsideView(QtWidgets.QTreeView):
             model_data = mime_data.data(public.Type.mime_type).data()
             drag.setMimeData(mime_data)
             model_data_lst.append(model_data)
-            pixmap = index.data(QtCore.Qt.DecorationRole)
+            pixmap = index.data(QtCore.Qt.ItemDataRole.DecorationRole)
             if pixmap is not None:
                 drag.setHotSpot(
                     QtCore.QPoint(pixmap.width() // 3, pixmap.height() // 3)
                 )
                 drag.setPixmap(pixmap)
-        drop_action = drag.exec(QtCore.Qt.CopyAction)
+        drop_action = drag.exec(QtCore.Qt.DropAction.CopyAction)
         self.signal.mouse_signal_object.emit([drop_action, model_data_lst])
         stdout.flush()
         super().mouseMoveEvent(event)

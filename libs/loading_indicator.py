@@ -17,17 +17,19 @@ class Overlay(QtWidgets.QWidget):
         super().__init__(parent)
         self.__counter = 0
         palette = QtGui.QPalette(self.palette())
-        palette.setColor(QtGui.QPalette.ColorRole.Window, QtCore.Qt.transparent)
+        palette.setColor(
+            QtGui.QPalette.ColorRole.Window, QtCore.Qt.GlobalColor.transparent
+        )
         self.setPalette(palette)
 
     def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         painter = QtGui.QPainter()
         painter.begin(self)
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         painter.fillRect(
             event.rect(), QtGui.QBrush(QtGui.QColor(255, 255, 255, 127 * 0.5))
         )
-        painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
+        painter.setPen(QtGui.QPen(QtCore.Qt.PenStyle.NoPen))
         range_num = 5
         for i in range(range_num):
             if (self.counter / (range_num - 1)) % range_num == i:

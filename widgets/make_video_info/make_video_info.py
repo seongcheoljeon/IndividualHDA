@@ -55,18 +55,18 @@ class MakeVideoInfo(QtWidgets.QDialog, make_video_info_ui.Ui_Dialog__makevideoin
     def __init_set(self) -> None:
         # hide
         self.groupBox__share.setVisible(False)
-        self.buttonBox__confirm.button(QtWidgets.QDialogButtonBox.Ok).setToolTip(
-            "Start Make Video"
-        )
-        self.buttonBox__confirm.button(QtWidgets.QDialogButtonBox.Ok).setStatusTip(
-            "Start Make Video"
-        )
-        self.buttonBox__confirm.button(QtWidgets.QDialogButtonBox.Cancel).setToolTip(
-            "Cancel Make Video"
-        )
-        self.buttonBox__confirm.button(QtWidgets.QDialogButtonBox.Cancel).setStatusTip(
-            "Cancel Make Video"
-        )
+        self.buttonBox__confirm.button(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+        ).setToolTip("Start Make Video")
+        self.buttonBox__confirm.button(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+        ).setStatusTip("Start Make Video")
+        self.buttonBox__confirm.button(
+            QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        ).setToolTip("Cancel Make Video")
+        self.buttonBox__confirm.button(
+            QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        ).setStatusTip("Cancel Make Video")
         self.spinBox__sf.setValue(self.sf)
         self.spinBox__ef.setValue(self.ef)
         self.spinBox__fps.setValue(self.fps)

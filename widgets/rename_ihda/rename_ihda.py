@@ -91,10 +91,10 @@ class RenameIHDA(QtWidgets.QDialog, rename_ihda_ui.Ui_Dialog__rename_ihda):
         if not self.__is_valid_ihda_name:
             msgbox = QtWidgets.QMessageBox(self)
             msgbox.setWindowTitle("iHDA Rename")
-            msgbox.setIcon(QtWidgets.QMessageBox.Warning)
+            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setText("It's not a valid iHDA name.")
             msgbox.setDetailedText(f"{self.label__confirm_ihda_name.text()}")
-            msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
             _ = msgbox.exec()
 
     def clear_parms(self) -> None:

@@ -33,7 +33,7 @@ class HoudiniActionsMixin:
             return
         drop_action, model_data_lst = drop_data
         assert isinstance(model_data_lst, list)
-        if drop_action != QtCore.Qt.IgnoreAction:
+        if drop_action != QtCore.Qt.DropAction.IgnoreAction:
             self._dragdrop_overlay_close()
             return
         network_editor = houdini_api.HoudiniAPI.find_network_editor_by_cursor()
@@ -55,7 +55,7 @@ class HoudiniActionsMixin:
             msgbox = QtWidgets.QMessageBox(self)
             msgbox.setFont(self._get_default_font())
             msgbox.setWindowTitle("Import iHDA Node")
-            msgbox.setIcon(QtWidgets.QMessageBox.Warning)
+            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setText("Too many nodes to import")
             msgbox.setDetailedText(
                 f"""
@@ -64,7 +64,7 @@ class HoudiniActionsMixin:
             """
             )
             # msgbox.resize(msgbox.sizeHint())
-            msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+            msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
             _ = msgbox.exec()
             return
         # 만약 등록하려는 노드 개수가 10개를 초과하면 등록할 것인지 메시지박스를 띄운다.
@@ -72,7 +72,7 @@ class HoudiniActionsMixin:
             msgbox = QtWidgets.QMessageBox(self)
             msgbox.setFont(self._get_default_font())
             msgbox.setWindowTitle("Import iHDA Node")
-            msgbox.setIcon(QtWidgets.QMessageBox.Warning)
+            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setText(
                 f"""
             The number of iHDA nodes you are trying to import exceeds {public.Value.warning_num_of_node_regist}.
@@ -85,10 +85,11 @@ class HoudiniActionsMixin:
             msgbox.setDetailedText(f"Total Nodes: {total_node_cnt}")
             # msgbox.resize(msgbox.sizeHint())
             msgbox.setStandardButtons(
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No
             )
             reply = msgbox.exec()
-            if reply == QtWidgets.QMessageBox.No:
+            if reply == QtWidgets.QMessageBox.StandardButton.No:
                 log_handler.LogHandler.log_msg(
                     method=logging.info, msg="importing iHDA nodes was canceled"
                 )
@@ -215,7 +216,7 @@ class HoudiniActionsMixin:
                 msgbox = QtWidgets.QMessageBox(self)
                 msgbox.setFont(self._get_default_font())
                 msgbox.setWindowTitle("Import iHDA Node")
-                msgbox.setIcon(QtWidgets.QMessageBox.Warning)
+                msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
                 msgbox.setText(
                     f"""
                 [{node_cnt + 1}/{total_node_cnt}] Imported "{hda_name} (v{hda_ver})" iHDA are not commercial.
@@ -230,10 +231,11 @@ class HoudiniActionsMixin:
                 )
                 # msgbox.resize(msgbox.sizeHint())
                 msgbox.setStandardButtons(
-                    QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+                    QtWidgets.QMessageBox.StandardButton.Yes
+                    | QtWidgets.QMessageBox.StandardButton.No
                 )
                 reply = msgbox.exec()
-                if reply == QtWidgets.QMessageBox.No:
+                if reply == QtWidgets.QMessageBox.StandardButton.No:
                     log_handler.LogHandler.log_msg(
                         method=logging.info,
                         msg=f'[{node_cnt + 1}/{total_node_cnt}] importing "{hda_name} (v{hda_ver})" iHDA nodes was canceled',

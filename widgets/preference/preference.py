@@ -290,8 +290,8 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
     def accept(self) -> None:
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setWindowTitle("iHDA Preference")
-        msgbox.setIcon(QtWidgets.QMessageBox.Warning)
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
+        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
         if not len(self.lineEdit__data_dirpath.text().strip()):
             msgbox.setText("Please specify the folder where the data is stored")
             msgbox.exec()

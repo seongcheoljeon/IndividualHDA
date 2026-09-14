@@ -8,13 +8,12 @@ from typing import Any
 # create date       : 2020.01.28 23:03
 # modify date       :
 # decription        :
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui
 
 
 class NoteHighLighter(QtGui.QSyntaxHighlighter):
-    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
+    def __init__(self, parent: QtGui.QTextDocument | QtCore.QObject) -> None:
         super().__init__(parent)
-        self.parent = parent
         keyword = QtGui.QTextCharFormat()
         importantkeyword = QtGui.QTextCharFormat()
         assignment_operator = QtGui.QTextCharFormat()
@@ -26,9 +25,9 @@ class NoteHighLighter(QtGui.QSyntaxHighlighter):
         sing_quoted_string = QtGui.QTextCharFormat()
         self.__highlightingRules = []
 
-        brush = QtGui.QBrush(QtGui.QColor("#268BD2"), QtCore.Qt.SolidPattern)
+        brush = QtGui.QBrush(QtGui.QColor("#268BD2"), QtCore.Qt.BrushStyle.SolidPattern)
         keyword.setForeground(brush)
-        keyword.setFontWeight(QtGui.QFont.Bold)
+        keyword.setFontWeight(QtGui.QFont.Weight.Bold)
         tmplst = [
             "load",
             "loaded",
@@ -136,9 +135,9 @@ class NoteHighLighter(QtGui.QSyntaxHighlighter):
             rule = HighlightingRule(pattern, keyword)
             self.__highlightingRules.append(rule)
 
-        brush = QtGui.QBrush(QtGui.QColor("#B85900"), QtCore.Qt.SolidPattern)
+        brush = QtGui.QBrush(QtGui.QColor("#B85900"), QtCore.Qt.BrushStyle.SolidPattern)
         importantkeyword.setForeground(brush)
-        importantkeyword.setFontWeight(QtGui.QFont.Bold)
+        importantkeyword.setFontWeight(QtGui.QFont.Weight.Bold)
         tmplst = [
             "important",
             "critical",
@@ -156,49 +155,61 @@ class NoteHighLighter(QtGui.QSyntaxHighlighter):
             rule = HighlightingRule(pattern, importantkeyword)
             self.__highlightingRules.append(rule)
 
-        brush = QtGui.QBrush(QtCore.Qt.darkCyan, QtCore.Qt.SolidPattern)
+        brush = QtGui.QBrush(
+            QtCore.Qt.GlobalColor.darkCyan, QtCore.Qt.BrushStyle.SolidPattern
+        )
         pattern = QtCore.QRegularExpression("(<){1,2}-")
         assignment_operator.setForeground(brush)
-        assignment_operator.setFontWeight(QtGui.QFont.Bold)
+        assignment_operator.setFontWeight(QtGui.QFont.Weight.Bold)
         rule = HighlightingRule(pattern, assignment_operator)
         self.__highlightingRules.append(rule)
 
-        brush = QtGui.QBrush(QtGui.QColor("#859900"), QtCore.Qt.SolidPattern)
+        brush = QtGui.QBrush(QtGui.QColor("#859900"), QtCore.Qt.BrushStyle.SolidPattern)
         pattern = QtCore.QRegularExpression(r"[\)\(]+|[\{\}]+|[][]+")
         delimiter.setForeground(brush)
-        delimiter.setFontWeight(QtGui.QFont.Bold)
+        delimiter.setFontWeight(QtGui.QFont.Weight.Bold)
         rule = HighlightingRule(pattern, delimiter)
         self.__highlightingRules.append(rule)
 
-        brush = QtGui.QBrush(QtGui.QColor("#94558D"), QtCore.Qt.SolidPattern)
+        brush = QtGui.QBrush(QtGui.QColor("#94558D"), QtCore.Qt.BrushStyle.SolidPattern)
         pattern = QtCore.QRegularExpression(r"[-+]?[0-9]*\.?[0-9]+([eE][-+]?[0-9]+)?")
-        pattern.setPatternOptions(QtCore.QRegularExpression.InvertedGreedinessOption)
+        pattern.setPatternOptions(
+            QtCore.QRegularExpression.PatternOption.InvertedGreedinessOption
+        )
         number.setForeground(brush)
         rule = HighlightingRule(pattern, number)
         self.__highlightingRules.append(rule)
 
-        brush = QtGui.QBrush(QtCore.Qt.red, QtCore.Qt.SolidPattern)
+        brush = QtGui.QBrush(
+            QtCore.Qt.GlobalColor.red, QtCore.Qt.BrushStyle.SolidPattern
+        )
         pattern = QtCore.QRegularExpression("^!!![^\n]*")
         important.setForeground(brush)
-        important.setFontWeight(QtGui.QFont.Bold)
+        important.setFontWeight(QtGui.QFont.Weight.Bold)
         rule = HighlightingRule(pattern, important)
         self.__highlightingRules.append(rule)
 
-        brush = QtGui.QBrush(QtCore.Qt.darkGray, QtCore.Qt.SolidPattern)
+        brush = QtGui.QBrush(
+            QtCore.Qt.GlobalColor.darkGray, QtCore.Qt.BrushStyle.SolidPattern
+        )
         pattern = QtCore.QRegularExpression("#[^\n]*")
         comment.setForeground(brush)
         rule = HighlightingRule(pattern, comment)
         self.__highlightingRules.append(rule)
 
-        brush = QtGui.QBrush(QtGui.QColor("#DC322F"), QtCore.Qt.SolidPattern)
+        brush = QtGui.QBrush(QtGui.QColor("#DC322F"), QtCore.Qt.BrushStyle.SolidPattern)
         pattern = QtCore.QRegularExpression('".*"')
-        pattern.setPatternOptions(QtCore.QRegularExpression.InvertedGreedinessOption)
+        pattern.setPatternOptions(
+            QtCore.QRegularExpression.PatternOption.InvertedGreedinessOption
+        )
         string.setForeground(brush)
         rule = HighlightingRule(pattern, string)
         self.__highlightingRules.append(rule)
 
         pattern = QtCore.QRegularExpression("'.*'")
-        pattern.setPatternOptions(QtCore.QRegularExpression.InvertedGreedinessOption)
+        pattern.setPatternOptions(
+            QtCore.QRegularExpression.PatternOption.InvertedGreedinessOption
+        )
         sing_quoted_string.setForeground(brush)
         rule = HighlightingRule(pattern, sing_quoted_string)
         self.__highlightingRules.append(rule)

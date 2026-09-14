@@ -34,8 +34,8 @@ class IHDAIcons:
             )
         self.__pattern_icon_map = compile(r"(?P<dirname>^[A-Z_]+)(?P<filename>.+)")
         self.__default_pixmap = QtGui.QPixmap(":/main/icons/no_img_available.png")
-        self.__pixmap_ihda_data = {}
-        self.__pixmap_cate_data = {}
+        self.__pixmap_ihda_data: dict[int, QtGui.QPixmap] = {}
+        self.__pixmap_cate_data: dict[str, QtGui.QPixmap] = {}
         self.__pixmap_thumbnail_data = ThumbnailCache(self.__default_pixmap)
         self.__pixmap_hist_thumbnail_data = ThumbnailCache(self.__default_pixmap)
         self.__icons_map = self.__icons_mapping_from_file() or {}
@@ -72,11 +72,11 @@ class IHDAIcons:
             del self.__pixmap_cate_data[category]
 
     def remove_pixmap_thumbnail_data(self, hkey_id: int | None = None) -> None:
-        if hkey_id in self.__pixmap_thumbnail_data:
+        if hkey_id is not None and hkey_id in self.__pixmap_thumbnail_data:
             del self.__pixmap_thumbnail_data[hkey_id]
 
     def remove_pixmap_hist_thumbnail_data(self, hist_id: int | None = None) -> None:
-        if hist_id in self.__pixmap_hist_thumbnail_data:
+        if hist_id is not None and hist_id in self.__pixmap_hist_thumbnail_data:
             del self.__pixmap_hist_thumbnail_data[hist_id]
 
     def clear_pixmap_hist_thumbnail_data(self) -> None:
@@ -85,14 +85,14 @@ class IHDAIcons:
     def add_pixmap_ihda_data(
         self, hkey_id: int | None = None, icon_lst: list[str] | None = None
     ) -> None:
-        if hkey_id not in self.__pixmap_ihda_data:
+        if hkey_id is not None and hkey_id not in self.__pixmap_ihda_data:
             with self._icon_archive() as zip_fp:
                 self.__pixmap_ihda_data[hkey_id] = self.__get_icon_from_zipfile(
                     zip_fp=zip_fp, icon_lst=icon_lst
                 )
 
     def add_pixmap_cate_data(self, category: str | None = None) -> None:
-        if category not in self.__pixmap_cate_data:
+        if category is not None and category not in self.__pixmap_cate_data:
             with self._icon_archive() as zip_fp:
                 net_dirname = public.Name.Icons.networks
                 icon_lst = [net_dirname, category]
@@ -177,7 +177,7 @@ class IHDAIcons:
 
     def get_category_icon(self, category: str | None = None) -> QtGui.QPixmap:
         with self._icon_archive() as zip_fp:
-            icon_lst = [public.Name.Icons.networks, category]
+            icon_lst = [public.Name.Icons.networks, category or ""]
             return self.__get_icon_from_zipfile(zip_fp=zip_fp, icon_lst=icon_lst)
 
     @contextmanager
@@ -214,9 +214,9 @@ class IHDAIcons:
                     [public.Name.Icons.desktop, public.Name.Icons.blank + icon_file_ext]
                 )
             else:
+                matched = self.__pattern_icon_map.match(icon_map)
                 icon_map_lst = [
-                    str(x.strip("_"))
-                    for x in self.__pattern_icon_map.match(icon_map).groups()
+                    str(x.strip("_")) for x in (matched.groups() if matched else ())
                 ]
                 icon_filepath = "/".join(
                     [icon_map_lst[0], icon_map_lst[1] + icon_file_ext]

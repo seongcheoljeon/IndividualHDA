@@ -39,7 +39,7 @@ class Ui_Form__web(object):
         self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
         self.splitter__webview_whole_vertical = QSplitter(Form__web)
         self.splitter__webview_whole_vertical.setObjectName(u"splitter__webview_whole_vertical")
-        self.splitter__webview_whole_vertical.setOrientation(Qt.Vertical)
+        self.splitter__webview_whole_vertical.setOrientation(Qt.Orientation.Vertical)
         self.splitter__webview_whole_vertical.setHandleWidth(3)
         self.layoutWidget = QWidget(self.splitter__webview_whole_vertical)
         self.layoutWidget.setObjectName(u"layoutWidget")

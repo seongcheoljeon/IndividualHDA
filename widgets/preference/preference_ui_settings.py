@@ -23,7 +23,7 @@ class PreferenceUISettings:
     def __init__(self, window: QtWidgets.QWidget | None = None) -> None:
         self.__window = window
         self.__setting_ini = QtCore.QSettings(
-            public.Paths.ini_pref_filepath.as_posix(), QtCore.QSettings.IniFormat
+            public.Paths.ini_pref_filepath.as_posix(), QtCore.QSettings.Format.IniFormat
         )
         self.__setting_json = public.Paths.json_pref_filepath
         self.__cfg_dict = {}

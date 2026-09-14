@@ -222,7 +222,7 @@ class LibraryQueriesMixin:
         plist = []
         if not index.isValid():
             return []
-        plist.append(index.data(QtCore.Qt.DisplayRole))
+        plist.append(index.data(QtCore.Qt.ItemDataRole.DisplayRole))
         return self._get_all_category_parent_by_selected_item(index.parent()) + plist
 
     @property

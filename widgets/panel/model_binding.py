@@ -42,7 +42,7 @@ class ModelBindingMixin:
                 model.dataChanged.emit(
                     model.index(row, 0),
                     model.index(row, model.columnCount() - 1),
-                    [QtCore.Qt.DecorationRole],
+                    [QtCore.Qt.ItemDataRole.DecorationRole],
                 )
 
     @QtCore.Slot(int)
@@ -301,9 +301,9 @@ class ModelBindingMixin:
     @QtCore.Slot(str)
     def _search_filter_regexp_hist_hda_item(self, text: str) -> None:
         if self.checkBox__casesensitive_hda_hist.isChecked():
-            casesensitivity = QtCore.Qt.CaseSensitive
+            casesensitivity = QtCore.Qt.CaseSensitivity.CaseSensitive
         else:
-            casesensitivity = QtCore.Qt.CaseInsensitive
+            casesensitivity = QtCore.Qt.CaseSensitivity.CaseInsensitive
         regexp = wildcard_expression(text.strip(), casesensitivity)
         self._ihda_history_proxy_model.setFilterRegularExpression(regexp)
         self.label__hist_cnt.setText(str(self._ihda_history_proxy_model.rowCount()))
@@ -318,7 +318,9 @@ class ModelBindingMixin:
             # Empty query: purely local, no job. Regex "" accepts every row.
             self._asset_search.cancel()
             casesensitivity = (
-                QtCore.Qt.CaseSensitive if case_sensitive else QtCore.Qt.CaseInsensitive
+                QtCore.Qt.CaseSensitivity.CaseSensitive
+                if case_sensitive
+                else QtCore.Qt.CaseSensitivity.CaseInsensitive
             )
             regexp = wildcard_expression(text, casesensitivity)
             for proxy in proxies:
@@ -360,9 +362,9 @@ class ModelBindingMixin:
     @QtCore.Slot(str)
     def _search_filter_regexp_hda_cate(self, text: str) -> None:
         if self.checkBox__casesensitive_cate.isChecked():
-            casesensitivity = QtCore.Qt.CaseSensitive
+            casesensitivity = QtCore.Qt.CaseSensitivity.CaseSensitive
         else:
-            casesensitivity = QtCore.Qt.CaseInsensitive
+            casesensitivity = QtCore.Qt.CaseSensitivity.CaseInsensitive
         regexp = wildcard_expression(text.strip(), casesensitivity)
         self._ihda_category_proxy_model.setFilterRegularExpression(regexp)
         self.label__cate_count.setText(str(self._get_category_count()))
@@ -371,7 +373,7 @@ class ModelBindingMixin:
     @QtCore.Slot(str)
     def _search_filter_regexp_hda_record(self, text: str) -> None:
         # 대소문자 구별하지 않음.
-        casesensitivity = QtCore.Qt.CaseInsensitive
+        casesensitivity = QtCore.Qt.CaseSensitivity.CaseInsensitive
         regexp = wildcard_expression(text.strip(), casesensitivity)
         self._ihda_record_proxy_model.setFilterRegularExpression(regexp)
         self.label__loc_record_count.setText(
@@ -382,7 +384,7 @@ class ModelBindingMixin:
     @QtCore.Slot(str)
     def _search_filter_regexp_hda_inside(self, text: str) -> None:
         # 대소문자 구별하지 않음.
-        casesensitivity = QtCore.Qt.CaseInsensitive
+        casesensitivity = QtCore.Qt.CaseSensitivity.CaseInsensitive
         regexp = wildcard_expression(text.strip(), casesensitivity)
         self._ihda_inside_proxy_model.setFilterRegularExpression(regexp)
         self.label__found_hda_inside_hipfile_count.setText(

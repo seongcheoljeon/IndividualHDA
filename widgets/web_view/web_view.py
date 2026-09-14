@@ -105,7 +105,7 @@ class WebView(QtWidgets.QWidget, web_view_ui.Ui_Form__web):
         if not self.__initial_load_pending:
             self.__ui_settings.save_cfg_dict_to_file()
         self.webEngineView__webview.page().profile().clearHttpCache()
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
         event.accept()
 
     def __load_config(self) -> None:

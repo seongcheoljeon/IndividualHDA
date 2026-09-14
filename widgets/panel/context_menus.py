@@ -235,7 +235,7 @@ class ContextMenusMixin:
                 return
             msgbox = QtWidgets.QMessageBox(self)
             msgbox.setFont(self._get_default_font())
-            msgbox.setIcon(QtWidgets.QMessageBox.Question)
+            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
             msgbox.setWindowTitle("Remove iHDA Node")
             msgbox.setText(
                 f'Delete the <font color=red>"{len(indexes)}"</font> selected iHDA nodes?'
@@ -245,12 +245,13 @@ class ContextMenusMixin:
                 "history and reocrds, will be deleted. (Folder/File/DB is also deleted)"
             )
             msgbox.setStandardButtons(
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No
             )
             msgbox.setStyleSheet("QLabel {min-width: 500px;}")
             msgbox.resize(msgbox.sizeHint())
             reply = msgbox.exec()
-            if reply != QtWidgets.QMessageBox.Yes:
+            if reply != QtWidgets.QMessageBox.StandardButton.Yes:
                 return
             self._remove_hda_item(indexes=indexes)
         elif action == action_hist_context_menu_ihda_history:
@@ -294,15 +295,16 @@ class ContextMenusMixin:
             msgbox = QtWidgets.QMessageBox(self)
             msgbox.setFont(self._get_default_font())
             msgbox.setWindowTitle("Delete iHDA node history")
-            msgbox.setIcon(QtWidgets.QMessageBox.Question)
+            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
             msgbox.setText(
                 f'Delete the selected <font color=red>"{len(indexes)}"</font> iHDA node history?'
             )
             msgbox.setStandardButtons(
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No
             )
             reply = msgbox.exec()
-            if reply == QtWidgets.QMessageBox.No:
+            if reply == QtWidgets.QMessageBox.StandardButton.No:
                 return
             db_api = self._db_api_wrap(self._db_filepath)
             if db_api is None:

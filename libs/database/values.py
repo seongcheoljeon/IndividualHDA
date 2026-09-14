@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import socket
 import struct
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 
 import public
 
@@ -45,7 +45,7 @@ class DatabaseValues:
         return socket.inet_ntoa(struct.pack(">L", packed_ip))
 
     @staticmethod
-    def _make_icon_to_string(icon_lst: list[str] | None = None) -> None | str:
+    def _make_icon_to_string(icon_lst: Sequence[str] | None = None) -> None | str:
         if not icon_lst:
             return None
         return ",".join([x.strip() for x in icon_lst])

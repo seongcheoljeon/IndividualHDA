@@ -97,8 +97,10 @@ class LibraryManager(QtWidgets.QDialog):
     def _table(layout: QtWidgets.QLayout, columns: list[str]) -> QtWidgets.QTableWidget:
         table = QtWidgets.QTableWidget(0, len(columns))
         table.setHorizontalHeaderLabels(columns)
-        table.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectRows)
-        table.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
+        table.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
         table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(table)
         return table
@@ -235,10 +237,11 @@ class LibraryManager(QtWidgets.QDialog):
                 self,
                 "Library Manager",
                 message,
-                QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-                QtWidgets.QMessageBox.No,
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No,
+                QtWidgets.QMessageBox.StandardButton.No,
             )
-            == QtWidgets.QMessageBox.Yes
+            == QtWidgets.QMessageBox.StandardButton.Yes
         )
 
     def _health_tab(self) -> None:

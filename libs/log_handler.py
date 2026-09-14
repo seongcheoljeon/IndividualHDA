@@ -15,15 +15,15 @@ from PySide6 import QtCore, QtGui, QtWidgets
 class _LogRelay(QtCore.QObject):
     message = QtCore.Signal(str)
 
-    def __init__(self, widget: QtWidgets.QWidget) -> None:
+    def __init__(self, widget: QtWidgets.QTextEdit) -> None:
         super().__init__(widget)
         self.widget = widget
-        self.message.connect(self.append, QtCore.Qt.QueuedConnection)
+        self.message.connect(self.append, QtCore.Qt.ConnectionType.QueuedConnection)
 
     @QtCore.Slot(str)
     def append(self, message: str) -> None:
         self.widget.append(message)
-        self.widget.moveCursor(QtGui.QTextCursor.End)
+        self.widget.moveCursor(QtGui.QTextCursor.MoveOperation.End)
 
 
 class LogHandler(logging.Handler):
@@ -52,7 +52,7 @@ class LogHandler(logging.Handler):
         super().close()
 
     @staticmethod
-    def log_msg(method: Callable[..., Any] | None = None, msg: str = "") -> None:
+    def log_msg(method: Callable[..., Any] | None = None, msg: object = "") -> None:
         if method is None:
             return
         if method.__name__ == "info":

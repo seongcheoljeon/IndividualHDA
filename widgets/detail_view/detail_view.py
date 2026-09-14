@@ -17,7 +17,9 @@ class DetailView(QtWidgets.QDialog, detail_view_ui.Ui_Dialog__detail_view):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setupUi(self)
-        self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+        self.setWindowFlags(
+            self.windowFlags() | QtCore.Qt.WindowType.WindowStaysOnTopHint
+        )
         self.resize(1200, 620)
         self.textBrowser__detail.setFontPointSize(12)
         self.__pixmap_size = 600
@@ -55,7 +57,9 @@ class DetailView(QtWidgets.QDialog, detail_view_ui.Ui_Dialog__detail_view):
             pixmap = QtGui.QPixmap(":/main/icons/no_img_available.png")
         self.label__pixmap.resize(self.__pixmap_size, self.__pixmap_size)
         self.label__pixmap.setPixmap(
-            pixmap.scaled(self.label__pixmap.size(), QtCore.Qt.IgnoreAspectRatio)
+            pixmap.scaled(
+                self.label__pixmap.size(), QtCore.Qt.AspectRatioMode.IgnoreAspectRatio
+            )
         )
         self.show()
 
@@ -87,6 +91,8 @@ class DetailView(QtWidgets.QDialog, detail_view_ui.Ui_Dialog__detail_view):
                 pixmap = QtGui.QPixmap(":/main/icons/no_img_available.png")
         self.label__pixmap.resize(self.__pixmap_size, self.__pixmap_size)
         self.label__pixmap.setPixmap(
-            pixmap.scaled(self.label__pixmap.size(), QtCore.Qt.IgnoreAspectRatio)
+            pixmap.scaled(
+                self.label__pixmap.size(), QtCore.Qt.AspectRatioMode.IgnoreAspectRatio
+            )
         )
         self.show()

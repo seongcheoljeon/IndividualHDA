@@ -39,11 +39,11 @@ class Ui_Form__video_player(object):
         self.verticalLayout_3.setContentsMargins(0, 0, 0, 0)
         self.splitter__vertical = QSplitter(Form__video_player)
         self.splitter__vertical.setObjectName(u"splitter__vertical")
-        self.splitter__vertical.setOrientation(Qt.Vertical)
+        self.splitter__vertical.setOrientation(Qt.Orientation.Vertical)
         self.splitter__vertical.setHandleWidth(3)
         self.splitter__horizontal = QSplitter(self.splitter__vertical)
         self.splitter__horizontal.setObjectName(u"splitter__horizontal")
-        self.splitter__horizontal.setOrientation(Qt.Horizontal)
+        self.splitter__horizontal.setOrientation(Qt.Orientation.Horizontal)
         self.splitter__horizontal.setHandleWidth(3)
         self.horizontalLayoutWidget = QWidget(self.splitter__horizontal)
         self.horizontalLayoutWidget.setObjectName(u"horizontalLayoutWidget")
@@ -64,7 +64,7 @@ class Ui_Form__video_player(object):
         font1.setFamilies([u"MS Shell Dlg 2"])
         font1.setPointSize(11)
         self.listWidget__playlist.setFont(font1)
-        self.listWidget__playlist.setFrameShape(QFrame.NoFrame)
+        self.listWidget__playlist.setFrameShape(QFrame.Shape.NoFrame)
 
         self.verticalLayout.addWidget(self.listWidget__playlist)
 
@@ -115,7 +115,7 @@ class Ui_Form__video_player(object):
         self.horizontalLayout_3.setContentsMargins(3, 3, 3, 1)
         self.horizontalSlider__progress = QSlider(self.layoutWidget1)
         self.horizontalSlider__progress.setObjectName(u"horizontalSlider__progress")
-        self.horizontalSlider__progress.setOrientation(Qt.Horizontal)
+        self.horizontalSlider__progress.setOrientation(Qt.Orientation.Horizontal)
 
         self.horizontalLayout_3.addWidget(self.horizontalSlider__progress)
 
@@ -147,8 +147,8 @@ class Ui_Form__video_player(object):
         self.horizontalSlider__volume.setSizePolicy(sizePolicy)
         self.horizontalSlider__volume.setMaximum(100)
         self.horizontalSlider__volume.setValue(30)
-        self.horizontalSlider__volume.setOrientation(Qt.Horizontal)
-        self.horizontalSlider__volume.setTickPosition(QSlider.TicksBelow)
+        self.horizontalSlider__volume.setOrientation(Qt.Orientation.Horizontal)
+        self.horizontalSlider__volume.setTickPosition(QSlider.TickPosition.TicksBelow)
         self.horizontalSlider__volume.setTickInterval(10)
 
         self.horizontalLayout.addWidget(self.horizontalSlider__volume)
@@ -261,7 +261,7 @@ class Ui_Form__video_player(object):
         self.doubleSpinBox__play_speed.setObjectName(u"doubleSpinBox__play_speed")
         self.doubleSpinBox__play_speed.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.doubleSpinBox__play_speed.setFrame(False)
-        self.doubleSpinBox__play_speed.setAlignment(Qt.AlignCenter)
+        self.doubleSpinBox__play_speed.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.doubleSpinBox__play_speed.setDecimals(1)
         self.doubleSpinBox__play_speed.setMinimum(0.100000000000000)
         self.doubleSpinBox__play_speed.setMaximum(10.000000000000000)
@@ -289,19 +289,19 @@ class Ui_Form__video_player(object):
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.label__current_time = QLabel(self.layoutWidget1)
         self.label__current_time.setObjectName(u"label__current_time")
-        self.label__current_time.setAlignment(Qt.AlignCenter)
+        self.label__current_time.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.horizontalLayout_2.addWidget(self.label__current_time)
 
         self.label__sep = QLabel(self.layoutWidget1)
         self.label__sep.setObjectName(u"label__sep")
-        self.label__sep.setAlignment(Qt.AlignCenter)
+        self.label__sep.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.horizontalLayout_2.addWidget(self.label__sep)
 
         self.label__total_time = QLabel(self.layoutWidget1)
         self.label__total_time.setObjectName(u"label__total_time")
-        self.label__total_time.setAlignment(Qt.AlignCenter)
+        self.label__total_time.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.horizontalLayout_2.addWidget(self.label__total_time)
 

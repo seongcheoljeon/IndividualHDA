@@ -118,7 +118,7 @@ class IndividualHDA(
         self._host_destroying = False
         self._embedded = embedded
         if public.IS_HOUDINI and not embedded:
-            self.setParent(hou.qt.mainWindow(), QtCore.Qt.Window)
+            self.setParent(hou.qt.mainWindow(), QtCore.Qt.WindowType.Window)
         self.setAcceptDrops(True)
         self.centralwidget.setEnabled(False)
         self.toolBar.setEnabled(False)
@@ -276,7 +276,7 @@ class IndividualHDA(
             self._dragdrop_overlay_show(
                 text="Drop the iHDA node onto the network", fontsize=15
             )
-            event.setDropAction(QtCore.Qt.CopyAction)
+            event.setDropAction(QtCore.Qt.DropAction.CopyAction)
             event.acceptProposedAction()
         else:
             super().dragEnterEvent(event)

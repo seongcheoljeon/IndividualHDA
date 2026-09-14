@@ -27,7 +27,7 @@ class UISettings:
     def __init__(self, window: QtWidgets.QWidget | None = None) -> None:
         self.__window = window
         self.__setting_ini = QtCore.QSettings(
-            public.Paths.ini_filepath.as_posix(), QtCore.QSettings.IniFormat
+            public.Paths.ini_filepath.as_posix(), QtCore.QSettings.Format.IniFormat
         )
         self.__setting_json = public.Paths.json_filepath
         self.__zoom_val = 1.0

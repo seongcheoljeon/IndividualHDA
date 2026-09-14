@@ -36,7 +36,9 @@ class AssetProxyModel(QtCore.QSortFilterProxyModel):
         self.setDynamicSortFilter(True)
 
     def filterAcceptsRow(
-        self, source_row: int, source_parent: QtCore.QModelIndex
+        self,
+        source_row: int,
+        source_parent: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> bool:
         model = self.sourceModel()
         if model is None:
@@ -115,7 +117,9 @@ class TreeProxyModel(QtCore.QSortFilterProxyModel):
         return True
 
     def filterAcceptsRow(
-        self, source_row: int, source_parent: QtCore.QModelIndex
+        self,
+        source_row: int,
+        source_parent: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> bool:
         model = self.sourceModel()
         if model is None:

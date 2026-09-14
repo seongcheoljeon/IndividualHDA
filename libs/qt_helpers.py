@@ -12,11 +12,14 @@ def wildcard_expression(
 ) -> QtCore.QRegularExpression:
     # Qt 5 wildcard searches were unanchored; Qt 6 conversion anchors by default.
     pattern = QtCore.QRegularExpression.wildcardToRegularExpression(
-        text, QtCore.QRegularExpression.UnanchoredWildcardConversion
+        text,
+        QtCore.QRegularExpression.WildcardConversionOption.UnanchoredWildcardConversion,
     )
     expression = QtCore.QRegularExpression(pattern)
-    if sensitivity == QtCore.Qt.CaseInsensitive:
-        expression.setPatternOptions(QtCore.QRegularExpression.CaseInsensitiveOption)
+    if sensitivity == QtCore.Qt.CaseSensitivity.CaseInsensitive:
+        expression.setPatternOptions(
+            QtCore.QRegularExpression.PatternOption.CaseInsensitiveOption
+        )
     return expression
 
 
@@ -25,9 +28,9 @@ def dark_stylesheet() -> str:
     # so direct callers and first-time theme switches work without other imports.
     import_module("libs.darkstyle_rc")
     resource = QtCore.QFile(":/qdarkstyle/style.qss")
-    if not resource.open(QtCore.QIODevice.ReadOnly):
+    if not resource.open(QtCore.QIODevice.OpenModeFlag.ReadOnly):
         raise RuntimeError("Bundled dark stylesheet is unavailable")
     try:
-        return bytes(resource.readAll()).decode("utf-8")
+        return bytes(resource.readAll().data()).decode("utf-8")
     finally:
         resource.close()

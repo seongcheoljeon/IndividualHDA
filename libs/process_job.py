@@ -16,7 +16,9 @@ class ProcessJob(QtCore.QObject):
     ) -> None:
         super().__init__(parent)
         self.process = QtCore.QProcess(self)
-        self.process.setProcessChannelMode(QtCore.QProcess.MergedChannels)
+        self.process.setProcessChannelMode(
+            QtCore.QProcess.ProcessChannelMode.MergedChannels
+        )
         self.command = list(command)
         self.output = bytearray()
         self._done = False
@@ -34,17 +36,17 @@ class ProcessJob(QtCore.QObject):
             self.timer.start(self.timeout_ms)
 
     def _read(self) -> None:
-        self.output.extend(bytes(self.process.readAllStandardOutput()))
+        self.output.extend(self.process.readAllStandardOutput().data())
         del self.output[:-1048576]
 
     def _error(self, error: QtCore.QProcess.ProcessError) -> None:
-        if error == QtCore.QProcess.FailedToStart:
+        if error == QtCore.QProcess.ProcessError.FailedToStart:
             self._complete(-1, self.process.errorString())
 
     def _finished(self, code: int, status: QtCore.QProcess.ExitStatus) -> None:
         self._read()
         self._complete(
-            code if status == QtCore.QProcess.NormalExit else -1,
+            code if status == QtCore.QProcess.ExitStatus.NormalExit else -1,
             self.output.decode("utf-8", errors="replace"),
         )
 
@@ -60,6 +62,6 @@ class ProcessJob(QtCore.QObject):
 
     def shutdown(self) -> None:
         self.timer.stop()
-        if self.process.state() != QtCore.QProcess.NotRunning:
+        if self.process.state() != QtCore.QProcess.ProcessState.NotRunning:
             self.process.kill()
             self.process.waitForFinished(1000)

@@ -25,7 +25,7 @@ class MediaPlaylist(QtCore.QObject):
     ) -> None:
         super().__init__(parent)
         self.player = player
-        self.urls = []
+        self.urls: list[QtCore.QUrl] = []
         self.index = -1
         self.mode = self.Sequential
         player.mediaStatusChanged.connect(self._status_changed)
@@ -43,7 +43,10 @@ class MediaPlaylist(QtCore.QObject):
         index = index if 0 <= index < len(self.urls) else -1
         if index == self.index:
             return
-        playing = self.player.playbackState() == QtMultimedia.QMediaPlayer.PlayingState
+        playing = (
+            self.player.playbackState()
+            == QtMultimedia.QMediaPlayer.PlaybackState.PlayingState
+        )
         self.index = index
         self.player.setSource(self.urls[index] if index >= 0 else QtCore.QUrl())
         self.currentIndexChanged.emit(index)
@@ -93,7 +96,7 @@ class MediaPlaylist(QtCore.QObject):
         return True
 
     def _status_changed(self, status: Any) -> None:
-        if status != QtMultimedia.QMediaPlayer.EndOfMedia:
+        if status != QtMultimedia.QMediaPlayer.MediaStatus.EndOfMedia:
             return
         next_index = self.nextIndex()
         if next_index < 0:

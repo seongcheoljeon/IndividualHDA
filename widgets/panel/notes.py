@@ -142,7 +142,7 @@ class NotesMixin:
             text = f"{datetime_text}\n"
             # inst.setPlainText('%s\n\n%s' % (text, inst.toPlainText()))
             cursor = inst.textCursor()
-            cursor.movePosition(QtGui.QTextCursor.End)
+            cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
             cursor.insertText(text)
             scroll_bar = inst.verticalScrollBar()
             scroll_bar.setValue(scroll_bar.maximum())
@@ -150,7 +150,7 @@ class NotesMixin:
     @staticmethod
     def _set_move_cursor_textedit(inst: Any) -> None:
         cursor = inst.textCursor()
-        cursor.movePosition(QtGui.QTextCursor.End)
+        cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
         scroll_bar = inst.verticalScrollBar()
         scroll_bar.setValue(scroll_bar.maximum())
 
@@ -185,14 +185,17 @@ class NotesMixin:
             return
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font())
-        msgbox.setIcon(QtWidgets.QMessageBox.Question)
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setWindowTitle(f"Save iHDA {choice}s")
         msgbox.setText(
             f'Save {choice}s to "{self._selection.asset.name} ({self._selection.asset.cate})" path iHDA node?'
         )
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
+        msgbox.setStandardButtons(
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No
+        )
         reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.Yes:
+        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             db_api = self._db_api_wrap(self._db_filepath)
             if db_api is None:
                 return
