@@ -2123,6 +2123,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="actionOpen_the_hda_directory"/>
+   <addaction name="actionReload"/>
    <addaction name="separator"/>
    <addaction name="separator"/>
    <addaction name="actioniHDA"/>
@@ -2152,6 +2153,18 @@
    </property>
    <property name="text">
     <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionReload">
+   <property name="icon">
+    <iconset resource="icons.qrc">
+     <normaloff>:/main/icons/ic_refresh_white.png</normaloff>:/main/icons/ic_refresh_white.png</iconset>
+   </property>
+   <property name="text">
+    <string>Reload</string>
+   </property>
+   <property name="toolTip">
+    <string>Reload the library from storage</string>
    </property>
   </action>
   <action name="actionHelp">
