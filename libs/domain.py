@@ -3,7 +3,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TypedDict, Generic, TypeVar
+from typing import Any, TypedDict, Generic, TypeVar
 
 
 class AssetData(TypedDict, total=False):
@@ -119,8 +119,44 @@ class SelectionState:
     asset: ItemSelection[AssetData] = field(default_factory=ItemSelection)
     history: ItemSelection[HistoryData] = field(default_factory=ItemSelection)
 
+    # Category tree selection (owned here; formerly scattered panel attributes).
+    parents: list[str] = field(default_factory=list)
+    column_idx: int | None = None
+    item_text: str | None = None
+
     def clear_asset(self) -> None:
         self.asset = ItemSelection()
 
     def clear_history(self) -> None:
         self.history = ItemSelection()
+
+
+@dataclass(frozen=True, slots=True)
+class LibraryContext:
+    """Where this session's library lives and who is working in it.
+
+    Immutable for the session: changing the data directory already requires a
+    panel restart, so mixins read one snapshot instead of the Preference dialog.
+    """
+
+    user: str
+    data_dirpath: Path
+    db_filepath: Path  # data_dirpath / ihda.db
+    asset_root: Path  # data_dirpath / houdini / IndividualHDA
+    hda_base_dirpath: Path  # asset_root / user
+
+    @classmethod
+    def from_preference(cls, preference: Any, user: str) -> LibraryContext | None:
+        if not preference.is_data_valid:
+            return None
+        import public
+
+        data_dirpath = Path(preference.data_dirpath)
+        asset_root = public.hda_base_dirpath(base_dirpath=data_dirpath)
+        return cls(
+            user=user,
+            data_dirpath=data_dirpath,
+            db_filepath=data_dirpath / public.SQLite.db_filename,
+            asset_root=asset_root,
+            hda_base_dirpath=asset_root / user,
+        )

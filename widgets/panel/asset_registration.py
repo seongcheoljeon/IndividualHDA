@@ -189,7 +189,7 @@ But it didn't stop, so please wait a little longer.
                 ),
             )
         if is_declare:
-            self._select_category(category=self._sel_item_text)
+            self._select_category(category=self._selection.item_text)
         self._dragdrop_overlay_close()
 
     def _node_declare(
@@ -207,7 +207,7 @@ But it didn't stop, so please wait a little longer.
         is_exist_hda_name = db_api.is_exist_hda_name(
             user_id=self._user, category=node_cate, hda_name=node_name
         )
-        self._sel_parent_lst = item_key_lst
+        self._selection.parents = item_key_lst
         # 만약 등록하려는 Category의 HDA의 이름이 DB에 존재한다면,
         if is_exist_hda_name:
             log_handler.LogHandler.log_msg(

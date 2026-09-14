@@ -61,12 +61,17 @@ class ArchiveActionsMixin:
         self._video_player.player_stop()
         stream = self._services.archives(
             self._hda_base_dirpath,
-            self._preference.data_dirpath,
+            self._library.data_dirpath,
         )
         self._import_stream = stream
         self._start_file_job(
             lambda: stream.import_ihda_data(source), self._import_complete
         )
+
+    def _stage_import(self, stream: Any) -> None:
+        """Owns the staged-import state that is committed on shutdown."""
+        self._import_stream = stream
+        self._is_imported_data = True
 
     def _import_complete(self, backup: Any) -> None:
         if backup is None:
@@ -74,7 +79,7 @@ class ArchiveActionsMixin:
         self.centralwidget.setEnabled(False)
         self.toolBar.setEnabled(False)
         self.menubar.setEnabled(False)
-        self._is_imported_data = True
+        self._stage_import(self._import_stream)
         if self._host_destroying:
             return
         QtWidgets.QMessageBox.information(
@@ -96,7 +101,7 @@ class ArchiveActionsMixin:
             return
         stream = self._services.archives(
             self._hda_base_dirpath,
-            self._preference.data_dirpath,
+            self._library.data_dirpath,
         )
         self._start_file_job(
             lambda: stream.export_ihda_data(destination), self._export_complete

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from widgets.panel.library_tools import LibraryToolsMixin
 from widgets.panel.services import PanelServices
-from libs.domain import SelectionState
+from libs.domain import LibraryContext, SelectionState
 from libs.asset_store import AssetStore
 from libs.archive_transfer import ArchiveTransfer
 
@@ -138,6 +138,7 @@ class IndividualHDA(
         # widgets
         self._rename_ihda = rename_ihda.RenameIHDA(parent=self)
         self._preference = preference.Preference(parent=self)
+        self._library = LibraryContext.from_preference(self._preference, self._user)
         self._make_videoinfo = make_video_info.MakeVideoInfo(parent=self)
         self._video_player = make_video_player(self._preference.ffmpeg_dirpath, self)
         _help_site = hou.helpServerUrl if public.IS_HOUDINI else None
@@ -155,9 +156,6 @@ class IndividualHDA(
         self._current_panetab = None
         # iHDA data
         self._assets = AssetStore()
-        self._sel_column_idx = None
-        self._sel_parent_lst = list()
-        self._sel_item_text = None
         self._infoDat = None
         self._ihda_category_view = None
         self._ihda_category_model = None

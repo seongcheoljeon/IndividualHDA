@@ -13,6 +13,7 @@ from PySide6 import QtWidgets, QtCore
 import public
 from libs import log_handler
 from libs import ihda_system
+from libs.domain import LibraryContext
 
 try:
     import hou
@@ -180,9 +181,9 @@ class PresentationMixin:
     def _slot_preference(self) -> None:
         if self._preference.is_ffmpeg_valid:
             self._video_player.ffmpeg_dirpath = self._preference.ffmpeg_dirpath
-        if self._preference.is_data_valid:
-            if not self._preference.data_final_dirpath.exists():
-                self._preference.data_final_dirpath.mkdir(parents=True)
+        self._library = LibraryContext.from_preference(self._preference, self._user)
+        if self._library is not None:
+            self._library.asset_root.mkdir(parents=True, exist_ok=True)
             # DB 파일이 존재하지 않는다면 생성
             db_filepath = self._db_filepath
             assert isinstance(db_filepath, pathlib.Path)
@@ -271,9 +272,8 @@ class PresentationMixin:
 
     def _set_is_ready(self) -> None:
         self._is_ready = False
-        if self._preference.is_data_valid:
-            db_fpath = self._preference.data_dirpath / public.SQLite.db_filename
-            if db_fpath.exists():
+        if self._library is not None:
+            if self._library.db_filepath.exists():
                 self._is_ready = True
                 self.centralwidget.setEnabled(True)
                 self.toolBar.setEnabled(True)

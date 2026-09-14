@@ -24,9 +24,7 @@ from libs import sqlite3_db_api
 class LibraryQueriesMixin:
     @property
     def _db_filepath(self) -> pathlib.Path | None:
-        if not self._preference.is_data_valid:
-            return None
-        return self._preference.data_dirpath / public.SQLite.db_filename
+        return self._library.db_filepath if self._library is not None else None
 
     def _db_api_wrap(
         self,
@@ -232,10 +230,7 @@ class LibraryQueriesMixin:
 
     @property
     def _hda_base_dirpath(self) -> pathlib.Path | None:
-        try:
-            return self._preference.data_final_dirpath / self._user
-        except TypeError as err:
-            return None
+        return self._library.hda_base_dirpath if self._library is not None else None
 
     @property
     def _is_valid_current_hda_item_data(self) -> bool:

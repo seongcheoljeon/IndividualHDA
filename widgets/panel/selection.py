@@ -610,12 +610,12 @@ class SelectionMixin:
             model_idx = model_idx[0]
         # 카테고리를 검색했을 때, 아무것도 검색이 안되면 column 속성이 없다는 에러 발생하여 예외처리 함.
         try:
-            self._sel_column_idx = model_idx.column()
+            self._selection.column_idx = model_idx.column()
             index_item = self._ihda_category_proxy_model.mapToSource(model_idx)
             item_text = str(index_item.data()).strip()
-            self._sel_item_text = item_text
+            self._selection.item_text = item_text
             par_lst = self._get_all_category_parent_by_selected_item(index_item)
-            self._sel_parent_lst = par_lst
+            self._selection.parents = par_lst
             # 어느 카테고리를 클릭했는지 로깅하는 것인데 비활성화함.
             # log_handler.LogHandler.log_msg(method=logging.info, msg=' > '.join(par_lst))
             node_cate = None if item_text == public.Type.root else item_text

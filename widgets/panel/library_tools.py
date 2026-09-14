@@ -51,8 +51,7 @@ class LibraryToolsMixin:
         self._library_manager.raise_()
 
     def _tools_restore_ready(self, stream: Any) -> None:
-        self._import_stream = stream
-        self._is_imported_data = True
+        self._stage_import(stream)
         self._tools_require_restart = True
 
     def _tools_paths_changed(self) -> None:
