@@ -1030,8 +1030,8 @@
                      <property name="frameShape">
                       <enum>QFrame::NoFrame</enum>
                      </property>
-                     <property name="tabStopWidth">
-                      <number>40</number>
+                     <property name="tabStopDistance">
+                      <double>40.000000000000000</double>
                      </property>
                      <property name="placeholderText">
                       <string>This is a note to write the selected iHDA.</string>
@@ -1120,8 +1120,8 @@
                      <property name="frameShape">
                       <enum>QFrame::NoFrame</enum>
                      </property>
-                     <property name="tabStopWidth">
-                      <number>40</number>
+                     <property name="tabStopDistance">
+                      <double>40.000000000000000</double>
                      </property>
                      <property name="placeholderText">
                       <string>ex) #basic #explosion #smoke &lt;Separated by #&gt;</string>
@@ -1978,8 +1978,8 @@
           <property name="frameShape">
            <enum>QFrame::NoFrame</enum>
           </property>
-          <property name="tabStopWidth">
-           <number>40</number>
+          <property name="tabStopDistance">
+           <double>40.000000000000000</double>
           </property>
           <property name="openExternalLinks">
            <bool>true</bool>
