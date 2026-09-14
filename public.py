@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pathlib
 from collections.abc import Callable
+from contextlib import suppress
 from functools import wraps
 from logging import info
 from os import W_OK
@@ -19,16 +20,12 @@ from time import gmtime, time
 from typing import Any, ParamSpec, TypeVar
 
 from libs import log_handler
+from libs.host import (
+    IS_HOUDINI,  # noqa: F401  (re-export; tests patch public.IS_HOUDINI)
+)
 
-try:
+with suppress(ImportError):
     import hou
-
-    try:
-        IS_HOUDINI = hou.isUIAvailable()
-    except NameError:
-        IS_HOUDINI = False
-except ImportError:
-    IS_HOUDINI = False
 
 
 class Key:

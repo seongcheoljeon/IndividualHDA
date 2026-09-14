@@ -15,6 +15,7 @@ import re
 import shutil
 import tempfile
 from collections.abc import Callable
+from contextlib import suppress
 from copy import copy
 from functools import wraps
 from inspect import signature
@@ -22,14 +23,10 @@ from typing import Any, ParamSpec, TypeVar
 
 import public
 from libs import log_handler
+from libs.host import IS_HOUDINI
 
-IS_HOUDINI = False
-try:
+with suppress(ImportError):
     import hou
-
-    IS_HOUDINI = hou.isUIAvailable()
-except ImportError:
-    pass
 
 
 P = ParamSpec("P")
