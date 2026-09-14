@@ -15,6 +15,7 @@ from libs.operation_journal import recover_operations
 from libs import note_syntax, log_handler
 from libs import ihda_system, identity
 from libs.domain import LibraryContext
+from PySide6 import QtGui
 
 
 class BootstrapMixin:
@@ -336,6 +337,11 @@ class BootstrapMixin:
             lambda: self._slot_select_view(inst=self.actionHistory)
         )
         self.actionPreference.triggered.connect(lambda: self._preference.show())
+        self.actionLocal_AI_Models = QtGui.QAction("Local AI Models…", self)
+        self.menuTools.insertAction(
+            self.menuDownload.menuAction(), self.actionLocal_AI_Models
+        )
+        self.actionLocal_AI_Models.triggered.connect(self._slot_local_ai_models)
         self.actionSubmit_a_Bug_Report.triggered.connect(self._slot_submit_bug_report)
         self.actionSubmit_Feedback.triggered.connect(self._slot_submit_feedback)
         self.actionFFmpeg.triggered.connect(self._slot_download_ffmpeg_site)

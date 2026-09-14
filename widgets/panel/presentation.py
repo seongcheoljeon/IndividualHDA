@@ -178,6 +178,10 @@ class PresentationMixin:
         if reply == QtWidgets.QMessageBox.Yes:
             ihda_system.IHDASystem.open_hipfile_using_thread(hip_filepath)
 
+    def _slot_local_ai_models(self) -> None:
+        self._preference.show()
+        self._preference.open_local_models()
+
     def _slot_preference(self) -> None:
         if self._preference.is_ffmpeg_valid:
             self._video_player.ffmpeg_dirpath = self._preference.ffmpeg_dirpath

@@ -14,6 +14,8 @@ from PySide6 import QtWidgets
 from PySide6 import QtGui
 
 import public
+from dataclasses import replace
+
 from libs.ai_provider import FIELDS, KINDS, PLACEHOLDERS, AISettings
 from libs.ffmpeg_api import FFmpegAPI
 
@@ -52,6 +54,10 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
         form.addRow("Endpoint", self.lineEdit__ai_endpoint)
         form.addRow("Model", self.lineEdit__ai_model)
         form.addRow("API key env var", self.lineEdit__ai_api_key_env)
+        self.pushButton__ai_models = QtWidgets.QPushButton("Manage local models…", box)
+        self.pushButton__ai_models.clicked.connect(self.open_local_models)
+        form.addRow("Local models", self.pushButton__ai_models)
+        self.__local_models: Any = None
         # Between the FFmpeg group and APP Properties.
         self.verticalLayout_13.insertWidget(2, box)
         self.comboBox__ai_kind.currentTextChanged.connect(self.__slot_ai_kind_changed)
@@ -65,6 +71,38 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
         for name, edit in self.__ai_fields.items():
             edit.setEnabled(name in needed)
             edit.setPlaceholderText(hints.get(name, ""))
+
+    def open_local_models(self) -> None:
+        """Ollama manager; Use applies kind/endpoint/model here, OK saves them."""
+        if self.__local_models is None:
+            from widgets.ai_models.dialog import LocalModelsDialog
+
+            endpoint = (
+                self.lineEdit__ai_endpoint.text().strip()
+                or PLACEHOLDERS["local"]["endpoint"]
+            )
+            self.__local_models = LocalModelsDialog(endpoint, parent=self)
+            self.__local_models.settingsChosen.connect(self.__apply_local_settings)
+            self.__local_models.finished.connect(self.__local_models_closed)
+        self.__local_models.show()
+        self.__local_models.raise_()
+
+    def __apply_local_settings(self, settings: Any) -> None:
+        self.ai_settings = replace(
+            self.ai_settings,
+            kind="local",
+            endpoint=settings.endpoint,
+            model=settings.model,
+        )
+
+    def __local_models_closed(self, result: int) -> None:
+        dialog, self.__local_models = self.__local_models, None
+        if dialog is not None:
+            dialog.deleteLater()
+
+    def shutdown(self) -> None:
+        if self.__local_models is not None:
+            self.__local_models.shutdown()
 
     @property
     def ai_settings(self) -> AISettings:

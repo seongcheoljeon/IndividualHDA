@@ -203,6 +203,7 @@ class IndividualHDA(
             self._library_manager = None
             manager.shutdown()
             manager.deleteLater()
+        self._preference.shutdown()
         if self._tasks.file_job is not None:
             self._close_requested = True
             event.ignore()
