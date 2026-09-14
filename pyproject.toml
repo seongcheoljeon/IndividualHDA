@@ -37,5 +37,5 @@ files = [
   "libs/background_job.py", "libs/process_job.py", "libs/drag_payload.py",
   "libs/settings_store.py", "libs/archive_service.py", "libs/database_migrations.py",
   "libs/ffmpeg_api.py", "libs/data_stream.py", "libs/database", "libs/sqlite3_db_api.py",
-  "libs/ai_provider.py", "libs/ai_backends.py", "libs/ollama.py",
+  "libs/ai_provider.py", "libs/ai_backends.py", "libs/ollama.py", "libs/ai_features.py",
 ]

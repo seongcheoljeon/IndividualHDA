@@ -129,6 +129,10 @@ class ContextMenusMixin:
         action_hda_context_menu_detail.setIcon(
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_format_quote_white.png"))
         )
+        action_hda_context_menu_ai = hda_context_menu.addAction("AI: Suggest Note/Tags")
+        action_hda_context_menu_ai.setIcon(
+            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_new_releases_white.png"))
+        )
         action_hda_make_context_menu_rename = hda_context_menu.addAction("Rename")
         action_hda_make_context_menu_rename.setIcon(
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_border_color_white.png"))
@@ -199,6 +203,8 @@ class ContextMenusMixin:
             self._hda_favorite()
         elif action == action_hda_context_menu_detail:
             self._detail_view_ihda_data(data=self._selection.asset.data)
+        elif action == action_hda_context_menu_ai:
+            self._slot_ai_suggest()
         elif action == action_hda_make_context_menu_thumbnail:
             db_api = self._db_api_wrap(self._db_filepath)
             if db_api is None:

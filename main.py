@@ -44,6 +44,7 @@ from widgets.panel.asset_registration import AssetRegistrationMixin
 from widgets.panel.houdini_actions import HoudiniActionsMixin
 from widgets.panel.model_binding import ModelBindingMixin
 from widgets.panel.library_sync import LibrarySyncMixin
+from widgets.panel.ai_actions import AIActionsMixin
 
 try:
     import hou
@@ -79,6 +80,7 @@ class IndividualHDA(
     ArchiveActionsMixin,
     AssetRegistrationMixin,
     LibrarySyncMixin,
+    AIActionsMixin,
     QtWidgets.QMainWindow,
     main_ui.Ui_MainWindow__individualHDA,
 ):
@@ -196,6 +198,7 @@ class IndividualHDA(
         self._init_select_ihda_category_model()
         self._setup_library_tools()
         self._init_library_sync()
+        self._init_ai_actions()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         manager = getattr(self, "_library_manager", None)
