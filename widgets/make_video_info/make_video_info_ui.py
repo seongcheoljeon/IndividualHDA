@@ -4,11 +4,11 @@
 # licensing of 'make_video_info.ui' applies.
 #
 # Created: Mon May 25 17:20:01 2020
-#      by: pyside2-uic  running on PySide2 5.13.1
+#      by: pyside2-uic  running on PySide6 5.13.1
 #
 # WARNING! All changes made in this file will be lost!
 
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 class Ui_Dialog__makevideoinfo(object):
     def setupUi(self, Dialog__makevideoinfo):
@@ -237,7 +237,7 @@ class Ui_Dialog__makevideoinfo(object):
         self.checkBox__initialize_sim.setToolTip(QtWidgets.QApplication.translate("Dialog__makevideoinfo", "When enabled, all simulations are re-initialized when the flipbook begins.", None, -1))
         self.checkBox__initialize_sim.setText(QtWidgets.QApplication.translate("Dialog__makevideoinfo", "Initialize Simulations", None, -1))
 
-import icons_rc
+from . import icons_rc
 
 if __name__ == "__main__":
     import sys
@@ -246,5 +246,5 @@ if __name__ == "__main__":
     ui = Ui_Dialog__makevideoinfo()
     ui.setupUi(Dialog__makevideoinfo)
     Dialog__makevideoinfo.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 

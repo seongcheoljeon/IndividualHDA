@@ -1,0 +1,10 @@
+{
+  "enable": true,
+  "load_package_once": true,
+  "env": [
+    {
+      "IHDA_ROOT": "C:/Users/admin/source/repos/IndividualHDA"
+    }
+  ],
+  "hpath": "$IHDA_ROOT"
+}

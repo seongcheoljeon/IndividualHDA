@@ -1,0 +1,20 @@
+{
+  "python": "3.12.3",
+  "measurement": "Median of 3 warm read calls, synthetic libraries, excludes UI rendering and initial panel load",
+  "workloads": [
+    {
+      "assets": 10000,
+      "full_snapshot_ms": 208.85,
+      "first_200_ms": 3.536,
+      "filtered_200_ms": 4.002,
+      "second_200_ms": 4.857
+    },
+    {
+      "assets": 50000,
+      "full_snapshot_ms": 1712.581,
+      "first_200_ms": 22.79,
+      "filtered_200_ms": 15.342,
+      "second_200_ms": 28.113
+    }
+  ]
+}

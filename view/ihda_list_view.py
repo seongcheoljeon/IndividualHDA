@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any
+from PySide6 import QtCore, QtGui, QtWidgets
 # encoding=utf-8
 
 # author            : SeongCheol Jeon
@@ -7,14 +11,10 @@
 # description       :
 
 from re import compile as re_compile
-from imp import reload
 from sys import stdout
 
-from PySide2 import QtWidgets, QtCore, QtGui
 
 import public
-
-reload(public)
 
 
 class Object(QtCore.QObject):
@@ -24,7 +24,7 @@ class Object(QtCore.QObject):
 
 # list view overwrite class
 class ListView(QtWidgets.QListView):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super(ListView, self).__init__(parent)
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
@@ -43,19 +43,19 @@ class ListView(QtWidgets.QListView):
         self.setWrapping(True)
         #
         self.__signal = Object()
-        self.__comp_space = re_compile(r'\s')
+        self.__comp_space = re_compile(r"\s")
         #
         self.entered.connect(self.on_entered)
 
     @property
-    def signal(self):
+    def signal(self) -> Any:
         return self.__signal
 
-    def on_entered(self, index):
+    def on_entered(self, index: QtCore.QModelIndex) -> None:
         if index.isValid():
             self.setCurrentIndex(index)
 
-    def dragEnterEvent(self, event):
+    def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         if event.mimeData().hasText():
             event.acceptProposedAction()
         elif event.mimeData().hasFormat(public.Type.mime_type):
@@ -64,20 +64,24 @@ class ListView(QtWidgets.QListView):
         else:
             super(ListView, self).dragEnterEvent(event)
 
-    def dropEvent(self, event):
+    def dropEvent(self, event: QtGui.QDropEvent) -> None:
         if event.mimeData().hasText():
             event.setDropAction(QtCore.Qt.CopyAction)
             event.acceptProposedAction()
-            mime_dat = filter(lambda x: len(x), self.__comp_space.split(event.mimeData().data('text/plain')))
+            mime_dat = [
+                x for x in self.__comp_space.split(event.mimeData().text()) if len(x)
+            ]
             self.signal.signal_object.emit(mime_dat)
         elif event.mimeData().hasFormat(public.Type.mime_type):
             event.setDropAction(QtCore.Qt.CopyAction)
             event.acceptProposedAction()
-            self.signal.signal_object.emit([event.mimeData().data(public.Type.mime_type)])
+            self.signal.signal_object.emit(
+                [event.mimeData().data(public.Type.mime_type)]
+            )
         else:
             super(ListView, self).dropEvent(event)
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         if not (event.buttons() & QtCore.Qt.MiddleButton):
             return
         indexes = self.selectedIndexes()
@@ -94,9 +98,9 @@ class ListView(QtWidgets.QListView):
             drag.setMimeData(mime_data)
             model_data_lst.append(model_data)
             pixmap = index.data(QtCore.Qt.DecorationRole)
-            drag.setHotSpot(QtCore.QPoint(pixmap.width() / 3, pixmap.height() / 3))
+            drag.setHotSpot(QtCore.QPoint(pixmap.width() // 3, pixmap.height() // 3))
             drag.setPixmap(pixmap)
-        drop_action = drag.exec_(QtCore.Qt.CopyAction)
+        drop_action = drag.exec(QtCore.Qt.CopyAction)
         self.signal.mouse_signal_object.emit([drop_action, model_data_lst])
         stdout.flush()
         super(ListView, self).mouseMoveEvent(event)

@@ -1,0 +1,26 @@
+name: Python and Qt regression tests
+on: [push, pull_request]
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ['3.11', '3.12']
+    runs-on: ${{ matrix.os }}
+    env:
+      QT_QPA_PLATFORM: offscreen
+      QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install Linux Qt runtime libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0 libnss3 libxkbcommon0 libasound2t64
+      - name: Install test tools
+        run: python -m pip install pytest ruff mypy "PySide6>=6.5.3,<7"
+      - run: python -m ruff check .
+      - run: python -m mypy
+      - run: python -m pytest -q

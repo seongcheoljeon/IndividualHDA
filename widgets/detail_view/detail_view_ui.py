@@ -4,11 +4,11 @@
 # licensing of 'detail_view.ui' applies.
 #
 # Created: Mon May 25 17:19:28 2020
-#      by: pyside2-uic  running on PySide2 5.13.1
+#      by: pyside2-uic  running on PySide6 5.13.1
 #
 # WARNING! All changes made in this file will be lost!
 
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 class Ui_Dialog__detail_view(object):
     def setupUi(self, Dialog__detail_view):
@@ -37,7 +37,7 @@ class Ui_Dialog__detail_view(object):
         self.verticalLayout.addWidget(self.label__pixmap)
         self.horizontalLayout.addLayout(self.verticalLayout)
         self.textBrowser__detail = QtWidgets.QTextBrowser(Dialog__detail_view)
-        self.textBrowser__detail.setTabStopWidth(40)
+        self.textBrowser__detail.setTabStopDistance(40)
         self.textBrowser__detail.setObjectName("textBrowser__detail")
         self.horizontalLayout.addWidget(self.textBrowser__detail)
         self.verticalLayout_2.addLayout(self.horizontalLayout)
@@ -48,7 +48,7 @@ class Ui_Dialog__detail_view(object):
     def retranslateUi(self, Dialog__detail_view):
         Dialog__detail_view.setWindowTitle(QtWidgets.QApplication.translate("Dialog__detail_view", "iHDA Detail View", None, -1))
 
-import detail_view_rc
+from . import detail_view_rc
 
 if __name__ == "__main__":
     import sys
@@ -57,5 +57,5 @@ if __name__ == "__main__":
     ui = Ui_Dialog__detail_view()
     ui.setupUi(Dialog__detail_view)
     Dialog__detail_view.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 

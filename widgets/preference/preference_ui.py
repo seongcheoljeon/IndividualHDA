@@ -4,11 +4,11 @@
 # licensing of 'preference.ui' applies.
 #
 # Created: Fri May 29 21:09:48 2020
-#      by: pyside2-uic  running on PySide2 5.13.1
+#      by: pyside2-uic  running on PySide6 5.13.1
 #
 # WARNING! All changes made in this file will be lost!
 
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 class Ui_Dialog__preference(object):
     def setupUi(self, Dialog__preference):
@@ -667,7 +667,7 @@ class Ui_Dialog__preference(object):
         self.label__debug_font_style.setText(QtWidgets.QApplication.translate("Dialog__preference", "Font Style", None, -1))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_text), QtWidgets.QApplication.translate("Dialog__preference", "Text", None, -1))
 
-import preference_icons_rc
+from . import preference_icons_rc
 
 if __name__ == "__main__":
     import sys
@@ -676,5 +676,5 @@ if __name__ == "__main__":
     ui = Ui_Dialog__preference()
     ui.setupUi(Dialog__preference)
     Dialog__preference.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 

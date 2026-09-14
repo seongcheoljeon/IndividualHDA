@@ -1,74 +1,61 @@
-#!/usr/bin/env python
-# encoding=utf-8
+"""History search with inclusive calendar-day bounds."""
 
-# author            : SeongCheol Jeon
-# email addr        : saelly55@gmail.com
-# create date       : 2020.01.28 01:36
-# modify date       :
-# description       :
-
-from imp import reload
-
-from PySide2 import QtCore
-
-from model import ihda_history_model
-
-reload(ihda_history_model)
+from __future__ import annotations
+from collections.abc import Sequence
+from PySide6 import QtCore
+from model.ihda_history_model import HistoryModel
+from model.proxy_filters import AssetProxyModel
 
 
-class HistoryProxyModel(QtCore.QSortFilterProxyModel):
-    def __init__(self, search_target_idx=None, parent=None):
-        super(HistoryProxyModel, self).__init__(parent)
-        self.__search_target_idx = search_target_idx
-        self.__name_column = 1
-        self.__hda_id = None
-        self.__datetime_lst = None
-        self.setFilterKeyColumn(self.__name_column)
-        self.setDynamicSortFilter(True)
+class HistoryProxyModel(AssetProxyModel):
+    name_column = 1
+    tag_role = HistoryModel.tag_role
+    type_role = HistoryModel.type_role
 
-    def filterAcceptsRow(self, source_row, source_parent):
-        model = self.sourceModel()
-        if model is None:
+    def __init__(
+        self, search_target_idx: int | None = None, parent: QtCore.QObject | None = None
+    ) -> None:
+        super().__init__(search_target_idx, parent)
+        self._hda_id: int | None = None
+        self._dates: tuple[str, str] | None = None
+
+    def filterAcceptsRow(
+        self, source_row: int, source_parent: QtCore.QModelIndex
+    ) -> bool:
+        if not super().filterAcceptsRow(source_row, source_parent):
             return False
-        index = model.index(source_row, self.__name_column, source_parent)
-        # data = self.sourceModel().data(index)
-        #
-        is_filtering = True
+        index = self.sourceModel().index(source_row, self.name_column, source_parent)
+        if (
+            self._hda_id is not None
+            and index.data(HistoryModel.id_role) != self._hda_id
+        ):
+            return False
+        if self._dates is not None:
+            value = index.data(HistoryModel.datetime_role)
+            day = str(value)[:10] if value is not None else ""
+            if not QtCore.QDate.fromString(day, "yyyy-MM-dd").isValid():
+                return False
+            return self._dates[0] <= day <= self._dates[1]
+        return True
 
-        if self.__hda_id is not None:
-            is_hda_id = index.data(ihda_history_model.HistoryModel.id_role) == self.__hda_id
-            is_filtering &= is_hda_id
-
-        if self.__datetime_lst is not None:
-            datetime_reg = index.data(ihda_history_model.HistoryModel.datetime_role)
-            is_valid_datetime = (datetime_reg >= self.__datetime_lst[0]) and (datetime_reg <= self.__datetime_lst[1])
-            is_filtering &= is_valid_datetime
-
-        if self.__search_target_idx == 1:
-            return self.__is_regex(
-                ' '.join(index.data(ihda_history_model.HistoryModel.tag_role))) and is_filtering
-        elif self.__search_target_idx == 2:
-            return self.__is_regex(index.data(ihda_history_model.HistoryModel.type_role)) and is_filtering
-        else:
-            return super(HistoryProxyModel, self).filterAcceptsRow(
-                source_row, source_parent) and self.__is_regex(index.data()) and is_filtering
-
-    def reload(self):
+    def set_hda_id(self, hda_id: int | None = None) -> None:
+        self._hda_id = hda_id if hda_id != -1 else None
         self.invalidate()
-        self.invalidateFilter()
 
-    def __is_regex(self, data):
-        return self.filterRegExp().indexIn(data) >= 0
-
-    def set_search_target_idx(self, idx):
-        self.__search_target_idx = idx
-        self.invalidateFilter()
-
-    def set_hda_id(self, hda_id=None):
-        self.__hda_id = hda_id if hda_id != -1 else None
-        self.invalidateFilter()
-
-    def set_datetime(self, datetime_lst=None):
-        self.__datetime_lst = datetime_lst if len(datetime_lst) else None
-        self.invalidateFilter()
-
+    def set_datetime(self, datetime_lst: Sequence[str] | None = None) -> None:
+        dates = None
+        if datetime_lst:
+            if (
+                len(datetime_lst) != 2
+                or any(
+                    not QtCore.QDate.fromString(value, "yyyy-MM-dd").isValid()
+                    for value in datetime_lst
+                )
+                or datetime_lst[0] > datetime_lst[1]
+            ):
+                raise ValueError(
+                    "History filter requires two ordered ISO calendar dates"
+                )
+            dates = (datetime_lst[0], datetime_lst[1])
+        self._dates = dates
+        self.invalidate()

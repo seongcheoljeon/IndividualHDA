@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+from __future__ import annotations
+
+from typing import Any
+from PySide6 import QtGui, QtWidgets
 # encoding=utf-8
 
 # author            : SeongCheol Jeon
@@ -8,46 +12,62 @@
 # description       :
 
 import math
-from PySide2 import QtWidgets, QtGui, QtCore
+from PySide6 import QtCore
 
 
 class Overlay(QtWidgets.QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super(Overlay, self).__init__(parent)
         self.__counter = 0
         palette = QtGui.QPalette(self.palette())
-        palette.setColor(palette.Background, QtCore.Qt.transparent)
+        palette.setColor(QtGui.QPalette.ColorRole.Window, QtCore.Qt.transparent)
         self.setPalette(palette)
 
-    def paintEvent(self, event):
+    def paintEvent(self, event: QtGui.QPaintEvent) -> None:
         painter = QtGui.QPainter()
         painter.begin(self)
         painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        painter.fillRect(event.rect(), QtGui.QBrush(QtGui.QColor(255, 255, 255, 127 * 0.5)))
+        painter.fillRect(
+            event.rect(), QtGui.QBrush(QtGui.QColor(255, 255, 255, 127 * 0.5))
+        )
         painter.setPen(QtGui.QPen(QtCore.Qt.NoPen))
         range_num = 5
         for i in range(range_num):
             if (self.counter / (range_num - 1)) % range_num == i:
-                painter.setBrush(QtGui.QBrush(QtGui.QColor(127 + (self.counter % (range_num - 1)) * 32, 127, 127)))
+                painter.setBrush(
+                    QtGui.QBrush(
+                        QtGui.QColor(
+                            127 + (self.counter % (range_num - 1)) * 32, 127, 127
+                        )
+                    )
+                )
             else:
-                painter.setBrush(QtGui.QBrush(QtGui.QColor(127 * 0.5, 127 * 0.5, 127 * 0.5)))
+                painter.setBrush(
+                    QtGui.QBrush(QtGui.QColor(127 * 0.5, 127 * 0.5, 127 * 0.5))
+                )
             painter.drawEllipse(
-                self.width() / 2 + 30 * math.cos(2 * math.pi * i / float(range_num)) - 10,
-                self.height() / 2 + 30 * math.sin(2 * math.pi * i / float(range_num)) - 10,
-                20, 20)
+                self.width() / 2
+                + 30 * math.cos(2 * math.pi * i / float(range_num))
+                - 10,
+                self.height() / 2
+                + 30 * math.sin(2 * math.pi * i / float(range_num))
+                - 10,
+                20,
+                20,
+            )
         painter.end()
 
     @property
-    def counter(self):
+    def counter(self) -> int:
         return self.__counter
 
     @counter.setter
-    def counter(self, val):
+    def counter(self, val: Any) -> None:
         self.__counter += val
-        
-    def showEvent(self, event):
-        self.__counter = 0
-        
 
-if __name__ == '__main__':
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        self.__counter = 0
+
+
+if __name__ == "__main__":
     pass

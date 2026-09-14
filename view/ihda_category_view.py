@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+from __future__ import annotations
+
+from typing import Any
+from PySide6 import QtWidgets
 # encoding=utf-8
 
 # author            : SeongCheol Jeon
@@ -7,7 +11,7 @@
 # modify date       :
 # description       :
 
-from PySide2 import QtWidgets, QtCore
+from PySide6 import QtCore
 
 
 class Object(QtCore.QObject):
@@ -16,7 +20,7 @@ class Object(QtCore.QObject):
 
 # tree view overwirte class
 class CategoryView(QtWidgets.QTreeView):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super(CategoryView, self).__init__(parent)
         self.__signal = Object()
         self.setHeaderHidden(False)
@@ -30,9 +34,9 @@ class CategoryView(QtWidgets.QTreeView):
         self.resizeColumnToContents(0)
 
     @property
-    def signal(self):
+    def signal(self) -> Any:
         return self.__signal
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

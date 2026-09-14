@@ -1,0 +1,40 @@
+[project]
+name = "individual-hda"
+version = "2.0.0"
+description = "Personal Houdini digital asset library for Houdini 21+ Qt 6 builds"
+requires-python = ">=3.11"
+
+[project.optional-dependencies]
+test = ["pytest>=8", "PySide6>=6.5.3,<7", "ruff>=0.11", "mypy>=1.15"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+exclude = ["libs/site-packages", "*_rc.py", "*_ui.py"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["F821", "F823", "ANN"]
+ignore = ["ANN401"]
+
+
+[tool.mypy]
+python_version = "3.11"
+follow_imports = "skip"
+ignore_missing_imports = true
+check_untyped_defs = true
+files = [
+  "libs/library_maintenance.py", "libs/library_backups.py", "libs/library_explorer.py",
+  "libs/version_compare.py", "libs/debounce.py", "widgets/library_manager/dialog.py",
+  "libs/path_updates.py", "libs/database_rebuild.py",
+  "libs/contracts.py", "libs/archive_transfer.py", "libs/asset_rename.py",
+  "libs/library_reader.py", "model/asset_notifications.py", "widgets/panel/services.py",
+  "libs/asset_commands.py", "libs/domain.py", "libs/asset_store.py", "libs/task_controller.py",
+  "libs/operation_journal.py", "libs/thumbnail_cache.py",
+  "model/ihda_list_model.py", "model/ihda_table_model.py", "model/ihda_history_model.py",
+  "libs/background_job.py", "libs/process_job.py", "libs/drag_payload.py",
+  "libs/settings_store.py", "libs/archive_service.py", "libs/database_migrations.py",
+  "libs/ffmpeg_api.py", "libs/data_stream.py", "libs/database", "libs/sqlite3_db_api.py",
+]

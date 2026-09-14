@@ -1,23 +1,22 @@
+from __future__ import annotations
+
+from typing import Any
+from PySide6 import QtGui, QtWidgets
 # -*- coding: utf-8 -*-
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.03.20 00:49:52
-# modified date:    
-# description:      
+# modified date:
+# description:
 
-from imp import reload
-from PySide2 import QtWidgets, QtGui, QtCore, QtMultimediaWidgets
+from PySide6 import QtCore, QtMultimediaWidgets
 
-import public
 from widgets.video_player import video_widget_overlay
-
-reload(public)
-reload(video_widget_overlay)
 
 
 class VideoWidget(QtMultimediaWidgets.QVideoWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super(VideoWidget, self).__init__(parent)
         self.__parent = parent
         self.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
@@ -30,10 +29,10 @@ class VideoWidget(QtMultimediaWidgets.QVideoWidget):
         self.__overlay.show()
 
     @property
-    def overlay(self):
+    def overlay(self) -> Any:
         return self.__overlay
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if event.key() == QtCore.Qt.Key_Escape and self.isFullScreen():
             self.setFullScreen(False)
             event.accept()
@@ -46,14 +45,14 @@ class VideoWidget(QtMultimediaWidgets.QVideoWidget):
         else:
             super(VideoWidget, self).keyPressEvent(event)
 
-    def mouseDoubleClickEvent(self, event):
+    def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:
         self.setFullScreen(not self.isFullScreen())
         event.accept()
 
-    def resizeEvent(self, event):
+    def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         self.__overlay.resize(event.size())
         super(VideoWidget, self).resizeEvent(event)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pass

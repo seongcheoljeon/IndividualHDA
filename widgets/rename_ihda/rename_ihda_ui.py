@@ -4,11 +4,11 @@
 # licensing of 'rename_ihda.ui' applies.
 #
 # Created: Tue May 26 00:10:18 2020
-#      by: pyside2-uic  running on PySide2 5.13.1
+#      by: pyside2-uic  running on PySide6 5.13.1
 #
 # WARNING! All changes made in this file will be lost!
 
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 class Ui_Dialog__rename_ihda(object):
     def setupUi(self, Dialog__rename_ihda):
@@ -132,7 +132,7 @@ class Ui_Dialog__rename_ihda(object):
         self.label__input_ihda_name_prefix.setText(QtWidgets.QApplication.translate("Dialog__rename_ihda", "Input Name: ", None, -1))
         self.lineEdit__input_ihda_name.setPlaceholderText(QtWidgets.QApplication.translate("Dialog__rename_ihda", "Caution: Do not overlap with Houdini node type.", None, -1))
 
-import rename_ihda_icons_rc
+from . import rename_ihda_icons_rc
 
 if __name__ == "__main__":
     import sys
@@ -141,5 +141,5 @@ if __name__ == "__main__":
     ui = Ui_Dialog__rename_ihda()
     ui.setupUi(Dialog__rename_ihda)
     Dialog__rename_ihda.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 

@@ -4,11 +4,11 @@
 # licensing of 'video_player.ui' applies.
 #
 # Created: Fri May 29 21:03:13 2020
-#      by: pyside2-uic  running on PySide2 5.13.1
+#      by: pyside2-uic  running on PySide6 5.13.1
 #
 # WARNING! All changes made in this file will be lost!
 
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 class Ui_Form__video_player(object):
     def setupUi(self, Form__video_player):
@@ -278,7 +278,7 @@ class Ui_Form__video_player(object):
         self.label__total_time.setToolTip(QtWidgets.QApplication.translate("Form__video_player", "Total time of the video", None, -1))
         self.label__total_time.setText(QtWidgets.QApplication.translate("Form__video_player", "00:00:00", None, -1))
 
-import video_player_icons_rc
+from . import video_player_icons_rc
 
 if __name__ == "__main__":
     import sys
@@ -287,5 +287,5 @@ if __name__ == "__main__":
     ui = Ui_Form__video_player()
     ui.setupUi(Form__video_player)
     Form__video_player.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 

@@ -4,11 +4,11 @@
 # licensing of 'web_view.ui' applies.
 #
 # Created: Mon May 25 17:32:10 2020
-#      by: pyside2-uic  running on PySide2 5.13.1
+#      by: pyside2-uic  running on PySide6 5.13.1
 #
 # WARNING! All changes made in this file will be lost!
 
-from PySide2 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 class Ui_Form__web(object):
     def setupUi(self, Form__web):
@@ -250,8 +250,8 @@ class Ui_Form__web(object):
         self.pushButton__vimeo.setStatusTip(QtWidgets.QApplication.translate("Form__web", "go to vimeo", None, -1))
         self.lineEdit__address.setText(QtWidgets.QApplication.translate("Form__web", "https://www.google.co.kr/?gws_rd=ssl", None, -1))
 
-from PySide2.QtWebEngineWidgets import QWebEngineView
-import web_view_icons_rc
+from PySide6.QtWebEngineWidgets import QWebEngineView
+from . import web_view_icons_rc
 
 if __name__ == "__main__":
     import sys
@@ -260,5 +260,5 @@ if __name__ == "__main__":
     ui = Ui_Form__web()
     ui.setupUi(Form__web)
     Form__web.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
