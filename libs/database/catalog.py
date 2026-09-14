@@ -140,6 +140,10 @@ class CatalogOperations(DatabaseSession):
         cursor = self._cursor.execute(query, query_params)
         return cursor.fetchone() is not None
 
+    def list_user_ids(self) -> list[str]:
+        cursor = self._cursor.execute("SELECT user_id FROM users ORDER BY user_id")
+        return [row[0] for row in cursor.fetchall()]
+
     def is_exist_user_id(self, user_id: str) -> bool:
         query = """SELECT COUNT(user_id) FROM users WHERE user_id = ?
         """

@@ -52,6 +52,8 @@ For video features, select the FFmpeg installation or its `bin` directory. Both 
 
 Settings are stored under `$HOUDINI_USER_PREF_DIR/IndividualHDA/.config`. Set `IHDA_CONFIG_DIR` to override that location.
 
+Assets are registered under your OS login name. Set `IHDA_USER` to use a pipeline-assigned name instead. An existing local library keeps the single user it already has, so older libraries created as `anonymous` open unchanged.
+
 ## Use
 
 - Drag a node with the middle mouse button to register it or import an asset.

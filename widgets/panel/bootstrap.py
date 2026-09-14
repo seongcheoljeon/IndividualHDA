@@ -13,7 +13,7 @@ from view import ihda_category_view, ihda_list_view, ihda_table_view, ihda_histo
 from view import ihda_record_view, ihda_inside_view
 from libs.operation_journal import recover_operations
 from libs import note_syntax, log_handler
-from libs import ihda_system
+from libs import ihda_system, identity
 
 
 class BootstrapMixin:
@@ -29,8 +29,10 @@ class BootstrapMixin:
             assert isinstance(db_filepath, pathlib.Path)
             recover_operations(db_filepath.parent)
             db_api = self._services.open_database(db_filepath)
+            # A local library has one owner: adopt the row it already has.
+            self._user = identity.resolve_local_user(db_api.list_user_ids())
             if not db_api.is_exist_user_id(self._user):
-                db_api.insert_users(user_id=self._user, email="anonymous@temp.com")
+                db_api.insert_users(user_id=self._user, email=f"{self._user}@local")
             db_api.close()
 
     def _init_set(self) -> None:

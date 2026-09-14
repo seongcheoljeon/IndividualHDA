@@ -190,7 +190,7 @@ class PresentationMixin:
                 db_api = self._services.open_database(db_filepath)
                 db_api.create_tables()
                 is_done = db_api.insert_users(
-                    user_id=self._user, email="anonymous@temp.com"
+                    user_id=self._user, email=f"{self._user}@local"
                 )
                 if not is_done:
                     log_handler.LogHandler.log_msg(

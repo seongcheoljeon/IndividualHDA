@@ -29,7 +29,7 @@ import public
 import main_ui
 import ui_settings
 from libs import houdini_api, loading_indicator, log_handler, ihda_icons
-from libs import dragdrop_overlay, ihda_system
+from libs import dragdrop_overlay, ihda_system, identity
 from widgets.make_video_info import make_video_info
 from widgets.video_player import make_video_player
 from widgets.web_view import make_web_view
@@ -120,7 +120,7 @@ class IndividualHDA(
         # regex
         self._regex_squence_str = re_compile(r"\$F4")
         # user id
-        self._user = public.Name.username
+        self._user = identity.current_user()
         # ui_settings
         self._ui_settings = ui_settings.UISettings(window=self)
         # logging

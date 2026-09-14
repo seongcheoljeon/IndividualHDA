@@ -7,6 +7,7 @@ import tempfile
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 _test_config = tempfile.TemporaryDirectory(prefix="ihda-tests-")
 os.environ["IHDA_CONFIG_DIR"] = _test_config.name
+os.environ.setdefault("IHDA_USER", "tester")
 
 import pytest
 

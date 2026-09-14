@@ -269,8 +269,6 @@ class Name:
     # theme (toolbar에 등록된 디스플레이 이름이랑 똑같아야 한다)
     default_theme = "Default"
     darkblue_theme = "Dark blue"
-    # 임시 사용자 이름
-    username = "anonymous"
     # ######################### #
 
     class Icons:
@@ -343,13 +341,6 @@ class Name:
         pad_category = "pad_category"
         pad_record = "pad_record"
         pad_inside = "pad_inside"
-        # ini file names
-        main_window_geometry = "main_window_geometry"
-        main_window_state = "main_window_state"
-
-    class LoginUI:
-        logid = "logid"
-        chk_stay_signed = "chk_stay_signed"
         # ini file names
         main_window_geometry = "main_window_geometry"
         main_window_state = "main_window_state"
@@ -459,22 +450,18 @@ class Paths:
     __json_video_filename = "video_config.json"
     __json_web_filename = "web_config.json"
     __json_pref_filename = "preference.json"
-    __json_login_filename = "login.json"
     __ini_filename = "window_ui.ini"
     __ini_video_filename = "video_window_ui.ini"
     __ini_web_filename = "web_window_ui.ini"
     __ini_pref_filename = "preference_ui.ini"
-    __ini_login_filename = "login_ui.ini"
     json_filepath = config_dirpath / __json_filename
     json_video_filepath = config_dirpath / __json_video_filename
     json_web_filepath = config_dirpath / __json_web_filename
     json_pref_filepath = config_dirpath / __json_pref_filename
-    json_login_filepath = config_dirpath / __json_login_filename
     ini_filepath = config_dirpath / __ini_filename
     ini_video_filepath = config_dirpath / __ini_video_filename
     ini_web_filepath = config_dirpath / __ini_web_filename
     ini_pref_filepath = config_dirpath / __ini_pref_filename
-    ini_login_filepath = config_dirpath / __ini_login_filename
     # HDA default icon dir path
     icons_hda_default_dirpath = curt_script_dirpath / "icons"
     # HDA default icon file path
