@@ -103,7 +103,7 @@ Run the Houdini smoke test with `hython`:
 hython tests/houdini_smoke.py
 ```
 
-It uses temporary files and a fresh Houdini process. Architecture, schema, recovery, and validation details are in [`docs/`](docs/).
+It uses temporary files and a fresh Houdini process. Architecture, schema, recovery, and validation details are in [`docs/`](docs/); release decisions are in [`CHANGELOG.md`](CHANGELOG.md).
 
 ## Support
 
@@ -111,4 +111,4 @@ It uses temporary files and a fresh Houdini process. Architecture, schema, recov
 
 ## License
 
-MIT License. Copyright (c) 2020 Seongcheol Jeon.
+MIT License. Copyright (c) 2020 Seongcheol Jeon. Third-party notices are in [`THIRD_PARTY_LICENSES.txt`](THIRD_PARTY_LICENSES.txt).

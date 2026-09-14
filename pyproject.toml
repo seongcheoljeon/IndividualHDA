@@ -12,7 +12,7 @@ testpaths = ["tests"]
 pythonpath = ["."]
 
 [tool.ruff]
-exclude = ["*_rc.py", "*_ui.py"]
+exclude = ["*_rc.py", "*_ui.py", "*.md"]
 target-version = "py311"
 
 [tool.ruff.lint]

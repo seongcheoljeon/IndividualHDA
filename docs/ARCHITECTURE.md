@@ -66,13 +66,11 @@ queries between files does not require or change the database schema version.
 
 ## Verification
 
-The 59-test suite includes populated-panel search, model notifications, archive
-roundtrips and rollback, schema migration, and process lifecycle checks. New
-structural-refactor cases verify rollback across catalog/assets/nodes/history and
-actual panel background completion, failure, duplicate-job prevention and deferred
-close, host destruction and annotation coverage. Windows Houdini 21.0.559 also passed the native HDA roundtrip and panel smoke
-script after extraction. Platform and interactive limitations are recorded in
-[VALIDATION.md](VALIDATION.md).
+The regression suite (`python -m pytest -q`) covers populated-panel search, model
+notifications, archive roundtrips and rollback, schema migration, process
+lifecycle, cross-module transaction rollback, panel background completion and
+deferred close, host destruction and annotation coverage. Host-side checks and
+their limits are recorded in [VALIDATION.md](VALIDATION.md).
 
 ## Houdini host contract
 
@@ -97,8 +95,8 @@ confirm the main-thread deferred-execution behavior.
 
 All functions/methods in maintained production Python files have parameter
 and return annotations (implicit `self`/`cls` excluded), as do the Python Panel
-hooks. Test helpers are annotated too. Generated Designer/resource modules and
-vendored dependencies are excluded from manual annotation edits.
+hooks. Test helpers are annotated too. Generated Designer/resource modules are
+excluded from manual annotation edits.
 
 The syntax target is Python 3.11, matching the installed Houdini 21 build. Modern
 union/container annotations, postponed annotation evaluation, `Self`, `ParamSpec`
@@ -108,34 +106,64 @@ annotations on future changes.
 
 `Any` remains at dynamic boundaries such as Qt item roles, signal payloads and
 heterogeneous legacy asset dictionaries. It does not establish a fully static
-schema for those values. `python -m mypy` checks the 17 database, filesystem,
-serialization and process modules configured in `pyproject.toml`. It does not
+schema for those values. `python -m mypy` checks the database, filesystem,
+serialization, process and service modules configured in `pyproject.toml`. It does not
 claim that the complete Qt mixin graph or generated widgets pass strict type
 checking; imported host/widget implementations are outside that configured check.
 
-## Proxy and theme audit
+## Proxy models and themes
 
 Shared predicates are in `model/proxy_filters.py`. Tree descendant propagation
 uses Qt's recursive filtering; record/file constraints must match the same row.
 Selection uses explicit source/proxy mapping. Model mutations must emit the
 appropriate structural/data notifications before dependent proxies are read.
-Dark resources are registered by the loader itself, and default theme overrides
-are combined with Houdini's stylesheet on the panel only.
-See [AUDIT.md](AUDIT.md) for findings, fixes and acceptance limits.
+Dark resources are registered by `libs.qt_helpers.dark_stylesheet()` itself, and
+default theme overrides are combined with Houdini's stylesheet on the panel only.
 
+## Service boundaries
 
-## Follow-up items 2–5
+`widgets/panel/services.py` is the composition root. `PanelServices` selects
+concrete adapters and the panel accepts it through an optional constructor
+argument, so a dependency can be replaced without modifying feature methods.
 
-See [REFACTOR_2_5.md](REFACTOR_2_5.md) for explicit state owners, typed payloads, schema v2 crash recovery, asynchronous bounded thumbnails, measured performance and remaining limitations.
+| Extension point | Contract | Default |
+| --- | --- | --- |
+| Naming | `AssetNames` | `HoudiniAPI` |
+| Rename persistence | `RenameRepository` | `SQLiteRenameRepository` |
+| Durable file/DB operations | `OperationFactory` | `durable_operation` |
+| Database, archives, tasks | callables on `PanelServices` | `SQLite3DatabaseAPI`, `ArchiveTransfer`, `TaskController` |
+| AI backend | `AIProvider` | `NullProvider` via `make_provider` |
 
-
-## SOLID service boundaries
-
-See [SOLID.md](SOLID.md) for the current dependency map. `PanelServices` selects
-concrete adapters; the panel accepts it through an optional constructor argument.
 `AssetStore` emits changes through `RowNotifications`, with `QtAssetNotifications`
-coordinating list/table models. `ArchiveTransfer` owns path-based archive work and
-`DataStream` delegates for legacy dialog callers. `LibraryReader` owns snapshot
-connection cleanup. Rename planning/execution uses `RenamePlan` and
-`SQLiteRenameRepository`. `TaskController` now owns process startup/completion as
-well as file jobs; callers cannot replace its active-job properties.
+coordinating list/table models. `ArchiveTransfer` owns path-based archive work.
+`LibraryReader` owns snapshot connection cleanup. Rename planning/execution uses
+`RenamePlan` and `SQLiteRenameRepository`. `TaskController` owns file jobs and
+process startup/completion; callers cannot replace its active-job properties.
+
+## AI provider
+
+`libs/ai_provider.py` is the only AI-facing module and imports neither Qt nor
+HOM (the domain import-guard test enforces this). It defines `AISettings`
+(backend kind, endpoint, model, API-key environment variable name), `Prompt`
+(text, system, optional image bytes), the `AIProvider` protocol with a single
+`complete(prompt) -> str`, `NullProvider`, and `make_provider(settings)`.
+
+Rules for adding a real backend or feature:
+
+- Backends implement `complete` only and are selected in `make_provider` by
+  `settings.kind` (`local`, `anthropic`, `openai`). Use the standard library
+  (`urllib.request`) with an explicit timeout on every request; do not add
+  packages to Houdini's Python. Read the API key from
+  `os.environ[settings.api_key_env]` at call time; never persist the key.
+- Features (asset description/tags, natural-language search, effect generation
+  from text or images) are functions layered on `complete`: build a `Prompt`
+  from plain data, parse the returned text. They live in `libs/`, not in mixins.
+- The panel obtains a provider with `self._services.ai(self._preference.ai_settings)`
+  and runs the call on `self._ai_tasks` (a second `TaskController`), never on the
+  archive/encoder controller, so network latency does not block imports or
+  encoding and does not take the whole-window lock. One AI call runs at a time;
+  the completion callback executes on the GUI thread; `closeEvent` drains it.
+- Preferences keep the settings under one `"ai"` key in `preference.json`; the
+  "AI (Optional)" group is built in `widgets/preference/preference.py`. `FIELDS`
+  in `libs/ai_provider.py` lists the fields each backend reads; the dialog enables
+  only those (with `PLACEHOLDERS` as hints) and a backend must not read any other.

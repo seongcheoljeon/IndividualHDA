@@ -2,34 +2,36 @@
 
 ## Local checks
 
-See [audit findings and regression coverage](AUDIT.md) for the model/proxy/theme review.
+```sh
+python -m ruff check .
+python -m ruff format --check .
+python -m mypy
+python -m pytest -q
+```
 
-Final regression run: **59 passed**. `ruff check .`, `ruff format --check .`, and `git diff --check` passed.
-`python -m mypy` passed for the 17 configured core modules.
-
-- Linux Python 3.12.3 / PySide6 6.11.2: regression suite covers schema upgrade,
-  backup contents, migration rejection/rollback, quoted Unicode values, normalized
-  tags, transaction rollback, archive traversal, relocation, WAL snapshots,
-  import rollback, Qt model notifications, drag payloads, search, process failure,
-  cancellation, playlist behavior, settings atomicity and populated panel startup.
-  Structural-refactor coverage additionally verifies cross-module transaction
-  rollback and panel worker success/failure/deferred close with GUI-thread delivery,
-  host-destruction cleanup, deferred callback suppression and complete maintained
-  signature annotation coverage with Python 3.11 syntax.
-- Windows Houdini 21.0.559 / Python 3.11.7 / Qt 6.5.3: `tests/houdini_smoke.py`
+- Linux Python 3.11 / PySide6 6.x (offscreen): the regression suite covers schema
+  upgrade, backup contents, migration rejection/rollback, quoted Unicode values,
+  normalized tags, transaction rollback, archive traversal, relocation, WAL
+  snapshots, import rollback, Qt model notifications, drag payloads, search,
+  process failure, cancellation, playlist behavior, settings atomicity, populated
+  panel startup, panel worker success/failure/deferred close with GUI-thread
+  delivery, host-destruction cleanup, Library Tools service paths, AI provider
+  settings roundtrip, and complete signature annotation coverage with Python 3.11
+  syntax.
+- Windows Houdini 21.0.559 / Python 3.11.7 / Qt 6.5.3: `hython tests/houdini_smoke.py`
   creates a temporary SOP asset, exports and reimports it, verifies original node
-  identity and absence of leaked wrapper output nodes, exercises SQLite/Unicode,
-  and constructs/closes the panel offscreen, including dark/default theme switching.
-- Windows Houdini 22.0.368: verification blocked by a native crash in
-  `PYsetArgvForPythonInitialization`. The same crash occurs with only
-  `hython -c 'print("HOUDINI_BASELINE_OK")'`, before loading this project.
-  No Houdini 22 compatibility claim is made from this environment.
-- `.ui` Designer files are unchanged. Generated Qt/resource code is updated.
+  identity and absence of leaked wrapper output nodes, compares versions without
+  changing installed definitions, exercises SQLite/Unicode and legacy migration,
+  and constructs/closes the panel and six-tab manager offscreen, including
+  dark/default theme switching.
+- CI also runs the suite on Python 3.12. Whether Houdini 21 ships a Python 3.12
+  build has not been confirmed against SideFX's platform notes; 3.11 is the
+  verified host interpreter.
 - No existing user library or HIP was used for tests.
 
-The local Qt tests run with a temporary configuration. A restrictive sandbox can
-block Qt's native audio initialization; the full UI suite was run outside that
-sandbox in offscreen mode. Pure database/archive tests run inside it.
+The local Qt tests run with a temporary configuration (`IHDA_CONFIG_DIR`). A
+restrictive sandbox can block Qt's native audio initialization; run the UI suite
+outside it in offscreen mode.
 
 ## Interactive acceptance checks still required
 
@@ -55,13 +57,17 @@ headless tests. The OS CI matrix is configured but has not been run from this wo
 
 ## SQLite migration and backups
 
-Schema version is `PRAGMA user_version = 1`. The original tables, primary keys,
-asset IDs, version strings and local timestamp values remain. Changes add indexes,
-normalized `asset_tags` maintained by triggers, validation of new favorite/load-count
-writes, and category cleanup scoped by both category and user.
+The current schema version is `SCHEMA_VERSION = 4` in `libs/database_migrations.py`.
+The original tables, primary keys, asset IDs, version strings and local timestamp
+values remain across upgrades. Version steps: v1 indexes, trigger-maintained
+`asset_tags`, favorite/load-count validation and user-scoped category cleanup;
+v2 `operation_commits` for crash recovery and savepoint-based nested transactions;
+v3 user predicate on the category-cleanup trigger and synced tag index; v4 removal
+of redundant UNIQUE constraints, typed/constrained numeric columns (fractional FPS
+preserved, zero FPS rejected) and in-place legacy table rebuilds.
 
 An existing unversioned database is backed up next to itself as
-`ihda.db.pre-v1-<UTC timestamp>-<unique suffix>.bak` before migration. DDL, indexes,
+`ihda.db.pre-v<N>-<UTC timestamp>-<unique suffix>.bak` before migration. DDL, indexes,
 triggers and `user_version` advance in one transaction. Foreign-key violations
 abort the upgrade; newer unsupported schema versions are refused. Migration
 backups are not silently overwritten or deleted.
@@ -72,7 +78,7 @@ own connection. Exports use SQLite's backup API so committed WAL data is include
 
 To restore a pre-upgrade DB, close every iHDA panel/process using it, preserve the
 current database and its sidecars, and copy the desired `.bak` to `ihda.db`.
-Use the old app for a true downgrade; this app upgrades version 0 on reopening.
+Use the old app for a true downgrade; this app upgrades older versions on reopening.
 
 ## Archive imports
 
@@ -102,55 +108,10 @@ owned worker and finish before panel/application shutdown. This is not a migrati
 to an asset server or a redesign of the UI.
 
 
-## Follow-up items 2–5
+## Library Tools
 
-See [REFACTOR_2_5.md](REFACTOR_2_5.md) for explicit state owners, typed payloads, schema v2 crash recovery, asynchronous bounded thumbnails, measured performance and remaining limitations.
-
-Latest items 2–5 regression result: **72 passed** (7.10 s), Ruff lint/format passed, mypy passed for **26** files, whitespace check passed. Native Houdini 21.0.559 / Qt 6.5.3 smoke passed during this change. See the follow-up document for scope and limitations.
-
-
-Latest SOLID verification: **83 tests passed** (7.78 s), Ruff lint/format passed,
-mypy passed for **33 configured source files**, and `git diff --check` passed.
-Native Houdini **21.0.559 / Qt 6.5.3** smoke checks passed after the dependency
-changes. Interactive three-platform acceptance remains pending.
-
-
-## Integrity review follow-up
-
-The latest full regression run passed **93 tests** (7.98 s). Ruff lint and format
-checks passed across 121 Python files; mypy passed for its 34 configured files;
-`git diff --check` passed. Native Windows Houdini 21.0.559 / Qt 6.5.3 passed HDA
-export/import, original-node preservation, Unicode SQLite paths, and offscreen
-panel construction/shutdown after these fixes. See [INTEGRITY_REVIEW.md](INTEGRITY_REVIEW.md)
-for the corrected paths and remaining verification limits.
-
-
-## Schema v3 follow-up
-
-The subsequent [schema review](SCHEMA_REVIEW.md) passed **96 tests** (8.46 s),
-including v2-to-v3 migration, tag synchronization and index query plans. Native
-Houdini 21.0.559 smoke checks passed after the schema change.
-
-
-## Schema v4 structural upgrade
-
-Current regression result: **116 tests passed** (10.69 s), Ruff lint/format and
-mypy passed (35 configured files), and whitespace checks passed. The native
-Houdini 21.0.559 smoke now also executes legacy table reconstruction and checks
-fractional FPS preservation and invalid numeric write rejection. See
-[SCHEMA_REVIEW.md](SCHEMA_REVIEW.md) for backup, rollback and compatibility details.
-
-
-## Library Tools verification
-
-The full regression suite passed **131 tests** (16.46 s). Ruff lint/format checks
-and mypy passed; mypy now covers **41 configured files**. Whitespace checks passed.
-Native Windows **Houdini 21.0.559 / Qt 6.5.3** passed HDA export/import, original-node
-preservation, version comparison without changes to installed definitions or scene
-nodes, Unicode SQLite paths, legacy migration, and six-tab manager/panel lifecycle.
-
-The new tests exercise all six service paths, staged restoration, path backups and
-stale previews, referenced recovery files, malformed backups, delayed and cancelled
-searches, reopening the manager and closing during work. Full interactive acceptance
-on Windows, macOS and Linux remains pending. No live library was modified.
-See [LIBRARY_TOOLS.md](LIBRARY_TOOLS.md) and [Explorer measurements](explorer-benchmark.json).
+Service paths, staged restoration, path backups, recovery files, malformed
+backups and search paging/cancellation are covered by the regression suite; see
+[LIBRARY_TOOLS.md](LIBRARY_TOOLS.md) for behavior, limits and how to reproduce the
+explorer measurements. Full interactive acceptance on Windows, macOS and Linux
+remains pending.

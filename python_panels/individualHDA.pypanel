@@ -11,8 +11,6 @@
 #
 # author:           SeongcheolJeon
 # email:            saelly55@gmail.com
-# release date:     2020.10.24
-# release version:  1.7.3
 # description:      Individual HDA
 #
 # https://github.com/seongcheoljeon/IndividualHDA
@@ -22,6 +20,7 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Any
 import hou
 
 package_root = hou.getenv('IHDA_ROOT')
@@ -31,14 +30,17 @@ if not (root / 'main.py').is_file():
     raise RuntimeError(f'Individual HDA installation not found: {root}. Check IHDA_ROOT in the Houdini package.')
 if str(root) not in sys.path:
     sys.path.insert(0, str(root))
-from main import IndividualHDA
 
-iHDA: IndividualHDA | None = None
+iHDA: Any = None
 
-def onCreateInterface() -> IndividualHDA:
+def onCreateInterface() -> Any:
     global iHDA
     if not hou.isUIAvailable():
         raise RuntimeError('Individual HDA requires the Houdini graphical interface')
+    if hou.applicationVersion()[0] < 21:
+        raise RuntimeError('Individual HDA requires Houdini 21 or later (Qt 6 / PySide6)')
+    # Imported here so the version message above is shown before PySide6 is loaded.
+    from main import IndividualHDA
     iHDA = IndividualHDA(embedded=True)
     return iHDA
 

@@ -78,7 +78,7 @@ Main-panel asset/history text filters are also debounced by 200 ms when their
 source contains at least 1,000 rows. Smaller lists retain immediate filtering.
 The original initial full snapshot and Qt proxy sorting are still synchronous;
 Explorer is an additional bounded browsing path, not a conversion of every
-existing view to server-side paging. See [query measurements](explorer-benchmark.json).
+existing view to server-side paging. Measurements are in "Limits and verification" below.
 
 ## Recovery files
 
@@ -119,19 +119,6 @@ Explorer query measurements (Linux/WSL, Python 3.12, median of three warm calls)
 | 50,000 | 1,712.58 ms | 22.79 ms | 15.34 ms | 28.11 ms |
 
 Run `python benchmarks/benchmark_explorer.py` from the repository root to reproduce
-the workload. These measurements exclude UI rendering and initial panel loading.
-
-
-## Library Tools verification
-
-The full regression suite passed **131 tests** (16.46 s). Ruff lint/format checks
-and mypy passed; mypy now covers **41 configured files**. Whitespace checks passed.
-Native Windows **Houdini 21.0.559 / Qt 6.5.3** passed HDA export/import, original-node
-preservation, version comparison without changes to installed definitions or scene
-nodes, Unicode SQLite paths, legacy migration, and six-tab manager/panel lifecycle.
-
-The new tests exercise all six service paths, staged restoration, path backups and
-stale previews, referenced recovery files, malformed backups, delayed and cancelled
-searches, reopening the manager and closing during work. Full interactive acceptance
-on Windows, macOS and Linux remains pending. No live library was modified.
+the workload (results are written to `benchmarks/explorer-benchmark.json`, which is
+not tracked). These measurements exclude UI rendering and initial panel loading.
 

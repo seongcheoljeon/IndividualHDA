@@ -1,18 +1,14 @@
+Third-party components used by Individual HDA
 
-PySide2
-https://pypi.org/project/PySide2/
-QtWidgets, QtGui, QtCore, QtMultimediaWidgets, QMultimedia, QtWebEngineWidgets
-Copyright (c) 2020 Qt for Python Team
-
-
-pathlib2
-https://pypi.org/project/pathlib2/
-Path
-Copyright (c) 2020 Matthias C. M. Troffaes
+PySide6 (Qt for Python)
+https://pypi.org/project/PySide6/
+Provided by the Houdini 21+ installation; not redistributed by this project.
+Licensed under LGPLv3. Copyright (c) The Qt Company Ltd.
 
 
-QDarkStyleSheet
+QDarkStyleSheet 2.8.1
 https://github.com/ColinDuquesnoy/QDarkStyleSheet/
+Redistributed only as the compiled Qt resource libs/darkstyle_rc.py.
 Copyright (c) 2013-2019 Colin Duquesnoy
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
 associated documentation files (the "Software"), to deal in the Software without restriction,
@@ -26,4 +22,3 @@ INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PA
 AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-

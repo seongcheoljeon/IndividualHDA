@@ -285,3 +285,4 @@ cython_debug/
 # my settings
 .config
 .idea
+benchmarks/*.json

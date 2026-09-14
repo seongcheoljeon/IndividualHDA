@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from PySide6 import QtGui, QtWidgets
-# encoding=utf-8
 
 # author            : SeongCheol Jeon
 # email addr        : seongcheolzeon@gmail.com

@@ -43,7 +43,7 @@ def main() -> None:
         "measurement": "Median of 3 warm read calls, synthetic libraries, excludes UI rendering and initial panel load",
         "workloads": results,
     }
-    Path("docs/explorer-benchmark.json").write_text(
+    Path("benchmarks/explorer-benchmark.json").write_text(
         json.dumps(output, indent=2) + "\n", encoding="utf-8"
     )
 
