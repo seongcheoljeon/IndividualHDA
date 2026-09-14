@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import json
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
@@ -13,7 +12,7 @@ import os
 from PySide6 import QtCore, QtGui, QtWidgets
 
 import public
-from libs.settings_store import save_json
+from libs.settings_store import apply_settings, load_json, save_json
 
 
 class WebUISettings:
@@ -61,25 +60,13 @@ class WebUISettings:
             self.__window.splitter__webview_whole_vertical.restoreState(vertical)
 
     def load_cfg_dict_from_file(self) -> None:
-        if not self.__setting_json.exists():
+        self.__cfg_dict = copy.copy(load_json(self.__setting_json))
+        if not self.__cfg_dict:
             return
-        with self.__setting_json.open("r", encoding="utf-8") as fp:
-            try:
-                data = json.load(fp)
-                if not isinstance(data, dict):
-                    raise ValueError("Settings must contain a JSON object")
-                self.__cfg_dict = copy.copy(data)
-            except ValueError:
-                self.__cfg_dict = {}
-                self.__setting_json.replace(self.__setting_json.with_suffix(".corrupt"))
-                return
-        try:
-            self.__window.lineEdit__address.setText(
-                self.__cfg_dict[public.Name.WebUI.url_addr]
-            )
-        except KeyError:
-            # Retain older/partial settings; unspecified controls keep their defaults.
-            return
+        apply_settings(
+            self.__cfg_dict,
+            [(public.Name.WebUI.url_addr, self.__window.lineEdit__address.setText)],
+        )
 
     @staticmethod
     def __center_on_screen(inst: QtWidgets.QWidget) -> None:

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 import copy
-import json
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
@@ -14,7 +13,7 @@ from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from libs.settings_store import save_json
+from libs.settings_store import apply_settings, load_json, save_json
 
 with contextlib.suppress(ImportError):
     import hou
@@ -284,110 +283,65 @@ QMenuBar {
             )
 
     def load_cfg_dict_from_file(self) -> None:
-        if not self.__setting_json.exists():
+        self.__cfg_dict = copy.copy(load_json(self.__setting_json))
+        if not self.__cfg_dict:
             return
-        with self.__setting_json.open("r", encoding="utf-8") as fp:
-            try:
-                data = json.load(fp)
-                if not isinstance(data, dict):
-                    raise ValueError("Settings must contain a JSON object")
-                self.__cfg_dict = copy.copy(data)
-            except ValueError:
-                self.__cfg_dict = {}
-                self.__setting_json.replace(self.__setting_json.with_suffix(".corrupt"))
-                return
-        try:
-            # checkbox
-            self.__window.checkBox__casesensitive_hda.setChecked(
-                self.__cfg_dict[public.Name.chk_casesensitive_hda]
-            )
-            self.__window.checkBox__casesensitive_cate.setChecked(
-                self.__cfg_dict[public.Name.chk_casesensitive_cate]
-            )
-            self.__window.actionUnpack_Subnet.setChecked(
-                self.__cfg_dict[public.Name.chk_unpack_subnet]
-            )
-            self.__window.actionCategory_Synchronization.setChecked(
-                self.__cfg_dict[public.Name.chk_sync_network_cate]
-            )
-            self.__window.actionNode_Synchronization.setChecked(
-                self.__cfg_dict[public.Name.chk_sync_node]
-            )
-            self.__window.actionSticky_Note.setChecked(
-                self.__cfg_dict[public.Name.chk_note_to_sticky]
-            )
-            self.__window.actionDefault.setChecked(
-                self.__cfg_dict[public.Name.chk_action_default]
-            )
-            self.__window.actionDark_blue.setChecked(
-                self.__cfg_dict[public.Name.chk_action_darkblue]
-            )
-            self.__window.actionComment.setChecked(
-                self.__cfg_dict[public.Name.chk_action_comment]
-            )
-            self.__window.actionNull.setChecked(
-                self.__cfg_dict[public.Name.chk_action_null]
-            )
-            self.__window.actionInput.setChecked(
-                self.__cfg_dict[public.Name.chk_action_input]
-            )
-            self.__window.actionOuput.setChecked(
-                self.__cfg_dict[public.Name.chk_action_output]
-            )
-            self.__window.actionBoth.setChecked(
-                self.__cfg_dict[public.Name.chk_action_both]
-            )
-            self.__window.actionAutomatic_Name_Change.setChecked(
-                self.__cfg_dict[public.Name.chk_auto_rename]
-            )
-            # record checkbox
-            self.__window.checkBox__record_only_current_hipfile.setChecked(
-                self.__cfg_dict[public.Name.chk_record_only_curt_hipfile]
-            )
-            self.__window.checkBox__record_only_current_ihda.setChecked(
-                self.__cfg_dict[public.Name.chk_record_only_curt_ihda]
-            )
-            # inside checkbox
-            self.__window.checkBox__hda_inside_connect_to_view.setChecked(
-                self.__cfg_dict[public.Name.chk_inside_connect_to_view]
-            )
-            # button
-            self.__window.pushButton__icon_mode.setChecked(
-                self.__cfg_dict[public.Name.btn_icon_mode]
-            )
-            self.__window.pushButton__table_mode.setChecked(
-                self.__cfg_dict[public.Name.btn_table_mode]
-            )
-            self.__window.pushButton__hda_info.setChecked(
-                self.__cfg_dict[public.Name.btn_hda_info]
-            )
-            self.__window.pushButton__hda_loc_record.setChecked(
-                self.__cfg_dict[public.Name.btn_hda_loc_record]
-            )
-            self.__window.pushButton__hda_inside_node_view.setChecked(
-                self.__cfg_dict[public.Name.btn_hda_inside_node]
-            )
-            self.__window.pushButton__thumbnail.setChecked(
-                self.__cfg_dict[public.Name.btn_show_thumbnail]
-            )
-            # combobox
-            self.__window.comboBox__search_type.setCurrentIndex(
-                self.__cfg_dict[public.Name.cmb_search_type]
-            )
-            # zoom value
-            self.__zoom_val = self.__cfg_dict[public.Name.zoom_value]
-            # spinbox
-            self.__window.doubleSpinBox__zoom.setValue(
-                self.__cfg_dict[public.Name.spinbox_zoom]
-            )
-            # stacked widget whole
-            self.__window.stackedWidget__whole.setCurrentIndex(
-                self.__cfg_dict[public.Name.stacked_widget_whole]
-            )
+        w = self.__window
+        names = public.Name
 
-        except KeyError:
-            # Retain older/partial settings; unspecified controls keep their defaults.
-            return
+        def zoom(value: Any) -> None:
+            self.__zoom_val = float(value)
+
+        apply_settings(
+            self.__cfg_dict,
+            [
+                (names.chk_casesensitive_hda, w.checkBox__casesensitive_hda.setChecked),
+                (
+                    names.chk_casesensitive_cate,
+                    w.checkBox__casesensitive_cate.setChecked,
+                ),
+                (names.chk_unpack_subnet, w.actionUnpack_Subnet.setChecked),
+                (
+                    names.chk_sync_network_cate,
+                    w.actionCategory_Synchronization.setChecked,
+                ),
+                (names.chk_sync_node, w.actionNode_Synchronization.setChecked),
+                (names.chk_note_to_sticky, w.actionSticky_Note.setChecked),
+                (names.chk_action_default, w.actionDefault.setChecked),
+                (names.chk_action_darkblue, w.actionDark_blue.setChecked),
+                (names.chk_action_comment, w.actionComment.setChecked),
+                (names.chk_action_null, w.actionNull.setChecked),
+                (names.chk_action_input, w.actionInput.setChecked),
+                (names.chk_action_output, w.actionOuput.setChecked),
+                (names.chk_action_both, w.actionBoth.setChecked),
+                (names.chk_auto_rename, w.actionAutomatic_Name_Change.setChecked),
+                (
+                    names.chk_record_only_curt_hipfile,
+                    w.checkBox__record_only_current_hipfile.setChecked,
+                ),
+                (
+                    names.chk_record_only_curt_ihda,
+                    w.checkBox__record_only_current_ihda.setChecked,
+                ),
+                (
+                    names.chk_inside_connect_to_view,
+                    w.checkBox__hda_inside_connect_to_view.setChecked,
+                ),
+                (names.btn_icon_mode, w.pushButton__icon_mode.setChecked),
+                (names.btn_table_mode, w.pushButton__table_mode.setChecked),
+                (names.btn_hda_info, w.pushButton__hda_info.setChecked),
+                (names.btn_hda_loc_record, w.pushButton__hda_loc_record.setChecked),
+                (
+                    names.btn_hda_inside_node,
+                    w.pushButton__hda_inside_node_view.setChecked,
+                ),
+                (names.btn_show_thumbnail, w.pushButton__thumbnail.setChecked),
+                (names.cmb_search_type, w.comboBox__search_type.setCurrentIndex),
+                (names.zoom_value, zoom),
+                (names.spinbox_zoom, w.doubleSpinBox__zoom.setValue),
+                (names.stacked_widget_whole, w.stackedWidget__whole.setCurrentIndex),
+            ],
+        )
 
     @staticmethod
     def __center_on_screen(inst: QtWidgets.QWidget) -> None:

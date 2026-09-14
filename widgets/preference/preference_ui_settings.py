@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import dataclasses
-import json
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
@@ -10,13 +9,14 @@ import json
 # modified date:
 # description:      preference UI 관련
 import os
+from collections.abc import Callable
 from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 import public
 from libs.ai_provider import AISettings
-from libs.settings_store import save_json
+from libs.settings_store import apply_settings, load_json, save_json
 
 
 class PreferenceUISettings:
@@ -133,152 +133,92 @@ class PreferenceUISettings:
         pass
 
     def load_cfg_dict_from_file(self) -> None:
-        if not self.__setting_json.exists():
+        self.__cfg_dict = copy.copy(load_json(self.__setting_json))
+        if not self.__cfg_dict:
             return
-        with self.__setting_json.open("r", encoding="utf-8") as fp:
-            try:
-                data = json.load(fp)
-                if not isinstance(data, dict):
-                    raise ValueError("Settings must contain a JSON object")
-                self.__cfg_dict = copy.copy(data)
-            except ValueError:
-                self.__cfg_dict = {}
-                self.__setting_json.replace(self.__setting_json.with_suffix(".corrupt"))
-                return
-        # Outside the KeyError block below: older files have no "ai" key and
-        # must still load every other setting.
-        self.__window.ai_settings = AISettings(
-            **self.__cfg_dict.get(public.Name.PreferenceUI.ai, {})
+        window = self.__window
+        keys = public.Name.PreferenceUI
+        known = {field.name for field in dataclasses.fields(AISettings)}
+        ai = self.__cfg_dict.get(keys.ai) or {}
+        window.ai_settings = AISettings(**{k: v for k, v in ai.items() if k in known})
+
+        def font(combo: QtWidgets.QFontComboBox) -> Callable[[Any], None]:
+            def apply(value: Any) -> None:
+                index = combo.findText(str(value))
+                if index != -1:
+                    combo.setCurrentIndex(index)
+
+            return apply
+
+        def path(name: str) -> Callable[[Any], None]:
+            return lambda value: setattr(window, name, value)
+
+        apply_settings(
+            self.__cfg_dict,
+            [
+                (keys.lineedit_data_dirpath, path("data_dirpath")),
+                (keys.lineedit_ffmpeg_dirpath, path("ffmpeg_dirpath")),
+                (keys.cmb_view_font_style, font(window.fontComboBox__view_font_style)),
+                (keys.cmb_note_font_style, font(window.fontComboBox__note_font_style)),
+                (keys.cmb_tags_font_style, font(window.fontComboBox__tags_font_style)),
+                (
+                    keys.cmb_debug_font_style,
+                    font(window.fontComboBox__debug_font_style),
+                ),
+                (keys.spb_view_font_size, window.spinBox__view_font_size.setValue),
+                (
+                    keys.spb_listview_icon_size,
+                    window.spinBox__default_listview_icon_size.setValue,
+                ),
+                (
+                    keys.spb_tableview_icon_size,
+                    window.spinBox__default_tableview_icon_size.setValue,
+                ),
+                (
+                    keys.spb_treeview_icon_size,
+                    window.spinBox__default_treeview_icon_size.setValue,
+                ),
+                (
+                    keys.dspb_listview_thumb_scale,
+                    window.doubleSpinBox__default_listview_thumb_scale.setValue,
+                ),
+                (
+                    keys.dspb_tableview_thumb_scale,
+                    window.doubleSpinBox__default_tableview_thumb_scale.setValue,
+                ),
+                (keys.spb_note_font_size, window.spinBox__note_font_size.setValue),
+                (keys.spb_tags_font_size, window.spinBox__tags_font_size.setValue),
+                (keys.spb_debug_font_size, window.spinBox__debug_font_size.setValue),
+                (
+                    keys.spb_main_icon_size,
+                    window.spinBox__default_main_icon_size.setValue,
+                ),
+                (
+                    keys.pad_listview,
+                    window.doubleSpinBox__default_list_item_padding.setValue,
+                ),
+                (
+                    keys.pad_tableview,
+                    window.doubleSpinBox__default_table_item_padding.setValue,
+                ),
+                (
+                    keys.pad_history,
+                    window.doubleSpinBox__default_history_item_padding.setValue,
+                ),
+                (
+                    keys.pad_category,
+                    window.doubleSpinBox__default_cate_item_padding.setValue,
+                ),
+                (
+                    keys.pad_record,
+                    window.doubleSpinBox__default_record_item_padding.setValue,
+                ),
+                (
+                    keys.pad_inside,
+                    window.doubleSpinBox__default_inside_item_padding.setValue,
+                ),
+            ],
         )
-        try:
-            self.__window.data_dirpath = self.__cfg_dict[
-                public.Name.PreferenceUI.lineedit_data_dirpath
-            ]
-            self.__window.ffmpeg_dirpath = self.__cfg_dict[
-                public.Name.PreferenceUI.lineedit_ffmpeg_dirpath
-            ]
-            #
-            view_font_size = self.__cfg_dict[
-                public.Name.PreferenceUI.spb_view_font_size
-            ]
-            view_font_style = self.__cfg_dict[
-                public.Name.PreferenceUI.cmb_view_font_style
-            ]
-            listview_icon_size = self.__cfg_dict[
-                public.Name.PreferenceUI.spb_listview_icon_size
-            ]
-            tableview_icon_size = self.__cfg_dict[
-                public.Name.PreferenceUI.spb_tableview_icon_size
-            ]
-            treeview_icon_size = self.__cfg_dict[
-                public.Name.PreferenceUI.spb_treeview_icon_size
-            ]
-            listview_thumb_scale = self.__cfg_dict[
-                public.Name.PreferenceUI.dspb_listview_thumb_scale
-            ]
-            tableview_thumb_scale = self.__cfg_dict[
-                public.Name.PreferenceUI.dspb_tableview_thumb_scale
-            ]
-            note_font_size = self.__cfg_dict[
-                public.Name.PreferenceUI.spb_note_font_size
-            ]
-            tags_font_size = self.__cfg_dict[
-                public.Name.PreferenceUI.spb_tags_font_size
-            ]
-            debug_font_size = self.__cfg_dict[
-                public.Name.PreferenceUI.spb_debug_font_size
-            ]
-            note_font_style = self.__cfg_dict[
-                public.Name.PreferenceUI.cmb_note_font_style
-            ]
-            tags_font_style = self.__cfg_dict[
-                public.Name.PreferenceUI.cmb_tags_font_style
-            ]
-            debug_font_style = self.__cfg_dict[
-                public.Name.PreferenceUI.cmb_debug_font_style
-            ]
-            # main
-            main_icon_size = self.__cfg_dict[
-                public.Name.PreferenceUI.spb_main_icon_size
-            ]
-            # padding
-            pad_listview = self.__cfg_dict[public.Name.PreferenceUI.pad_listview]
-            pad_tableview = self.__cfg_dict[public.Name.PreferenceUI.pad_tableview]
-            pad_history = self.__cfg_dict[public.Name.PreferenceUI.pad_history]
-            pad_category = self.__cfg_dict[public.Name.PreferenceUI.pad_category]
-            pad_record = self.__cfg_dict[public.Name.PreferenceUI.pad_record]
-            pad_inside = self.__cfg_dict[public.Name.PreferenceUI.pad_inside]
-            #
-            find_idx = self.__window.fontComboBox__view_font_style.findText(
-                view_font_style
-            )
-            if find_idx != -1:
-                self.__window.fontComboBox__view_font_style.setCurrentIndex(find_idx)
-            note_find_idx = self.__window.fontComboBox__note_font_style.findText(
-                note_font_style
-            )
-            if note_find_idx != -1:
-                self.__window.fontComboBox__note_font_style.setCurrentIndex(
-                    note_find_idx
-                )
-            tags_find_idx = self.__window.fontComboBox__tags_font_style.findText(
-                tags_font_style
-            )
-            if tags_find_idx != -1:
-                self.__window.fontComboBox__tags_font_style.setCurrentIndex(
-                    tags_find_idx
-                )
-            debug_find_idx = self.__window.fontComboBox__debug_font_style.findText(
-                debug_font_style
-            )
-            if debug_find_idx != -1:
-                self.__window.fontComboBox__debug_font_style.setCurrentIndex(
-                    debug_find_idx
-                )
-            #
-            self.__window.spinBox__view_font_size.setValue(view_font_size)
-            self.__window.spinBox__default_listview_icon_size.setValue(
-                listview_icon_size
-            )
-            self.__window.spinBox__default_tableview_icon_size.setValue(
-                tableview_icon_size
-            )
-            self.__window.spinBox__default_treeview_icon_size.setValue(
-                treeview_icon_size
-            )
-            self.__window.doubleSpinBox__default_listview_thumb_scale.setValue(
-                listview_thumb_scale
-            )
-            self.__window.doubleSpinBox__default_tableview_thumb_scale.setValue(
-                tableview_thumb_scale
-            )
-            self.__window.spinBox__note_font_size.setValue(note_font_size)
-            self.__window.spinBox__tags_font_size.setValue(tags_font_size)
-            self.__window.spinBox__debug_font_size.setValue(debug_font_size)
-            # main
-            self.__window.spinBox__default_main_icon_size.setValue(main_icon_size)
-            # padding
-            self.__window.doubleSpinBox__default_list_item_padding.setValue(
-                pad_listview
-            )
-            self.__window.doubleSpinBox__default_table_item_padding.setValue(
-                pad_tableview
-            )
-            self.__window.doubleSpinBox__default_history_item_padding.setValue(
-                pad_history
-            )
-            self.__window.doubleSpinBox__default_cate_item_padding.setValue(
-                pad_category
-            )
-            self.__window.doubleSpinBox__default_record_item_padding.setValue(
-                pad_record
-            )
-            self.__window.doubleSpinBox__default_inside_item_padding.setValue(
-                pad_inside
-            )
-        except KeyError:
-            # Retain older/partial settings; unspecified controls keep their defaults.
-            return
 
     def get_data_dirpath_from_saved(self) -> str | None:
         return self.cfg_dict.get(public.Name.PreferenceUI.lineedit_data_dirpath)

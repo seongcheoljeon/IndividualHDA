@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import json
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
@@ -9,11 +8,12 @@ import json
 # modified date:
 # description:      video UI 관련
 import os
+from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 import public
-from libs.settings_store import save_json
+from libs.settings_store import apply_settings, load_json, save_json
 
 
 class VideoUISettings:
@@ -82,39 +82,33 @@ class VideoUISettings:
             self.__window.splitter__vertical.restoreState(vertical)
 
     def load_cfg_dict_from_file(self) -> None:
-        if not self.__setting_json.exists():
+        self.__cfg_dict = copy.copy(load_json(self.__setting_json))
+        if not self.__cfg_dict:
             return
-        with self.__setting_json.open("r", encoding="utf-8") as fp:
-            try:
-                data = json.load(fp)
-                if not isinstance(data, dict):
-                    raise ValueError("Settings must contain a JSON object")
-                self.__cfg_dict = copy.copy(data)
-            except ValueError:
-                self.__cfg_dict = {}
-                self.__setting_json.replace(self.__setting_json.with_suffix(".corrupt"))
-                return
-        try:
-            self.__window.playback_idx = self.__cfg_dict[
-                public.Name.VideoUI.playback_idx
-            ]
-            self.__window.pushButton__volume.setChecked(
-                self.__cfg_dict[public.Name.VideoUI.btn_volume]
-            )
-            self.__window.horizontalSlider__volume.setValue(
-                self.__cfg_dict[public.Name.VideoUI.slider_volume]
-            )
-            # playlist
-            playlist = self.__cfg_dict.get(public.Name.VideoUI.playlist)
-            if (playlist is not None) and (len(playlist)):
-                self.__window.add_playlist(filepath_lst=list(playlist))
-            # last dirpath
-            last_dirpath = self.__cfg_dict.get(public.Name.VideoUI.last_dirpath)
-            if last_dirpath is not None:
-                self.__window.last_dirpath = last_dirpath
-        except KeyError:
-            # Retain older/partial settings; unspecified controls keep their defaults.
-            return
+        window = self.__window
+        keys = public.Name.VideoUI
+
+        def playlist(value: Any) -> None:
+            if value:
+                window.add_playlist(filepath_lst=list(value))
+
+        def last_dirpath(value: Any) -> None:
+            if value is not None:
+                window.last_dirpath = value
+
+        apply_settings(
+            self.__cfg_dict,
+            [
+                (
+                    keys.playback_idx,
+                    lambda value: setattr(window, "playback_idx", value),
+                ),
+                (keys.btn_volume, window.pushButton__volume.setChecked),
+                (keys.slider_volume, window.horizontalSlider__volume.setValue),
+                (keys.playlist, playlist),
+                (keys.last_dirpath, last_dirpath),
+            ],
+        )
 
     @staticmethod
     def __center_on_screen(inst: QtWidgets.QWidget) -> None:
