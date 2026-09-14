@@ -1,0 +1,16 @@
+* text=auto eol=lf
+*.py text eol=lf
+*.pypanel text eol=lf
+*.ui text eol=lf
+*.qrc text eol=lf
+*.json text eol=lf
+*.toml text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.txt text eol=lf
+*.png binary
+*.jpg binary
+*.gif binary
+*.db binary
+*.ihda binary
+*.zip binary

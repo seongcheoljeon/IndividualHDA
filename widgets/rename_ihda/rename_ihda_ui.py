@@ -41,7 +41,7 @@ class Ui_Dialog__rename_ihda(object):
         self.label__pixmap.setMaximumSize(QSize(50, 50))
         self.label__pixmap.setPixmap(QPixmap(u":/main/icons/ic_translate_white.png"))
         self.label__pixmap.setScaledContents(True)
-        self.label__pixmap.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label__pixmap.setAlignment(Qt.AlignCenter)
 
         self.horizontalLayout_7.addWidget(self.label__pixmap)
 
@@ -72,7 +72,7 @@ class Ui_Dialog__rename_ihda(object):
 
         self.label__bridge = QLabel(Dialog__rename_ihda)
         self.label__bridge.setObjectName(u"label__bridge")
-        self.label__bridge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label__bridge.setAlignment(Qt.AlignCenter)
 
         self.horizontalLayout_5.addWidget(self.label__bridge)
 
@@ -140,7 +140,7 @@ class Ui_Dialog__rename_ihda(object):
         self.label__confirm_ihda_name_pixmap.setMaximumSize(QSize(24, 24))
         self.label__confirm_ihda_name_pixmap.setPixmap(QPixmap(u":/main/icons/ic_clear_white.png"))
         self.label__confirm_ihda_name_pixmap.setScaledContents(True)
-        self.label__confirm_ihda_name_pixmap.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label__confirm_ihda_name_pixmap.setAlignment(Qt.AlignCenter)
 
         self.horizontalLayout_3.addWidget(self.label__confirm_ihda_name_pixmap)
 
@@ -167,9 +167,9 @@ class Ui_Dialog__rename_ihda(object):
 
         self.buttonBox__confirm = QDialogButtonBox(Dialog__rename_ihda)
         self.buttonBox__confirm.setObjectName(u"buttonBox__confirm")
-        self.buttonBox__confirm.setLocale(QLocale(QLocale.Language.English, QLocale.Country.UnitedStates))
-        self.buttonBox__confirm.setOrientation(Qt.Orientation.Horizontal)
-        self.buttonBox__confirm.setStandardButtons(QDialogButtonBox.StandardButton.Cancel|QDialogButtonBox.StandardButton.Ok)
+        self.buttonBox__confirm.setLocale(QLocale(QLocale.English, QLocale.UnitedStates))
+        self.buttonBox__confirm.setOrientation(Qt.Horizontal)
+        self.buttonBox__confirm.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
 
         self.verticalLayout_2.addWidget(self.buttonBox__confirm)
 

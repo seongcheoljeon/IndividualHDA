@@ -52,7 +52,7 @@ class Ui_Dialog__makevideoinfo(object):
         font1 = QFont()
         font1.setPointSize(14)
         self.label__title.setFont(font1)
-        self.label__title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label__title.setAlignment(Qt.AlignCenter)
 
         self.horizontalLayout_4.addWidget(self.label__title)
 
@@ -131,7 +131,7 @@ class Ui_Dialog__makevideoinfo(object):
         self.spinBox__sf = QSpinBox(self.groupBox__video)
         self.spinBox__sf.setObjectName(u"spinBox__sf")
         self.spinBox__sf.setFrame(False)
-        self.spinBox__sf.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+        self.spinBox__sf.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
         self.spinBox__sf.setMaximum(9999999)
         self.spinBox__sf.setValue(1001)
 
@@ -154,7 +154,7 @@ class Ui_Dialog__makevideoinfo(object):
         self.spinBox__ef = QSpinBox(self.groupBox__video)
         self.spinBox__ef.setObjectName(u"spinBox__ef")
         self.spinBox__ef.setFrame(False)
-        self.spinBox__ef.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+        self.spinBox__ef.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
         self.spinBox__ef.setMaximum(9999999)
         self.spinBox__ef.setValue(1240)
 
@@ -182,7 +182,7 @@ class Ui_Dialog__makevideoinfo(object):
         self.spinBox__fps = QSpinBox(self.groupBox__video)
         self.spinBox__fps.setObjectName(u"spinBox__fps")
         self.spinBox__fps.setFrame(False)
-        self.spinBox__fps.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTrailing|Qt.AlignmentFlag.AlignVCenter)
+        self.spinBox__fps.setAlignment(Qt.AlignRight|Qt.AlignTrailing|Qt.AlignVCenter)
         self.spinBox__fps.setMinimum(1)
         self.spinBox__fps.setMaximum(120)
         self.spinBox__fps.setValue(24)
@@ -287,9 +287,9 @@ class Ui_Dialog__makevideoinfo(object):
         self.buttonBox__confirm = QDialogButtonBox(Dialog__makevideoinfo)
         self.buttonBox__confirm.setObjectName(u"buttonBox__confirm")
         self.buttonBox__confirm.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.buttonBox__confirm.setLocale(QLocale(QLocale.Language.English, QLocale.Country.UnitedStates))
-        self.buttonBox__confirm.setOrientation(Qt.Orientation.Horizontal)
-        self.buttonBox__confirm.setStandardButtons(QDialogButtonBox.StandardButton.Cancel|QDialogButtonBox.StandardButton.Ok)
+        self.buttonBox__confirm.setLocale(QLocale(QLocale.English, QLocale.UnitedStates))
+        self.buttonBox__confirm.setOrientation(Qt.Horizontal)
+        self.buttonBox__confirm.setStandardButtons(QDialogButtonBox.Cancel|QDialogButtonBox.Ok)
 
         self.verticalLayout_4.addWidget(self.buttonBox__confirm)
 

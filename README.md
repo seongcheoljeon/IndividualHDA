@@ -108,12 +108,16 @@ Use a separate environment; do not install development dependencies into Houdini
 
 ```sh
 python -m venv .venv
-python -m pip install pytest ruff mypy "PySide6>=6.5.3,<7"
-python -m pytest -q
+python -m pip install -r requirements-dev.txt
+python -m pytest -q --cov=libs --cov=model --cov=widgets --cov-fail-under=60
 python -m ruff check .
 python -m ruff format --check .
 python -m mypy
 ```
+
+Optional: `pip install pre-commit && pre-commit install` runs the same lint and
+format checks before each commit. `tests/test_generated_ui.py` fails when a
+`*_ui.py` module drifts from its `.ui` file; regenerate with `pyside6-uic`.
 
 Run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once so `git blame` skips the mechanical formatting commits listed in that file.
 

@@ -1,5 +1,8 @@
 name: Python and Qt regression tests
 on: [push, pull_request]
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   test:
     strategy:
@@ -16,12 +19,28 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
       - name: Install Linux Qt runtime libraries
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0 libnss3 libxkbcommon0 libasound2t64
       - name: Install test tools
-        run: python -m pip install pytest ruff mypy "PySide6>=6.5.3,<7"
+        run: python -m pip install -r requirements-dev.txt
       - run: python -m ruff check .
       - run: python -m ruff format --check .
       - run: python -m mypy
-      - run: python -m pytest -q
+      - name: Test with coverage
+        run: >
+          python -m pytest -q
+          --cov=libs --cov=model --cov=view --cov=widgets --cov=main --cov=public --cov=ui_settings
+          --cov-report=term --cov-report=xml --cov-fail-under=60
+          --junitxml=pytest-report.xml
+      - name: Upload test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-${{ matrix.os }}-py${{ matrix.python }}
+          path: |
+            pytest-report.xml
+            coverage.xml
+          if-no-files-found: ignore

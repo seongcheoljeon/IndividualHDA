@@ -43,7 +43,7 @@ class Ui_Dialog__detail_view(object):
         self.verticalLayout.setObjectName(u"verticalLayout")
         self.label__pixmap = QLabel(Dialog__detail_view)
         self.label__pixmap.setObjectName(u"label__pixmap")
-        self.label__pixmap.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.label__pixmap.setAlignment(Qt.AlignCenter)
 
         self.verticalLayout.addWidget(self.label__pixmap)
 
