@@ -47,6 +47,8 @@ class AssetSearch(QtCore.QObject):
 
         job = BackgroundJob(run, self)
         job.result.connect(lambda value, error: self._deliver(generation, value, error))
+        # Qt deletes the thread object once it has finished; we only drop our ref.
+        job.finished.connect(job.deleteLater)
         job.finished.connect(lambda: self._forget(job))
         self._jobs.append(job)
         job.start()
@@ -76,4 +78,3 @@ class AssetSearch(QtCore.QObject):
     def _forget(self, job: BackgroundJob) -> None:
         if job in self._jobs:
             self._jobs.remove(job)
-        job.deleteLater()
