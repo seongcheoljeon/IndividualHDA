@@ -943,9 +943,9 @@ FROM hda_key AS hkey
          INNER JOIN houdini_node_info AS ninfo
          INNER JOIN hipfile_info AS hipinfo
             ON hkey.id = hinfo.hda_key_id AND hkey.id = ninfo.hda_key_id AND hkey.id = hipinfo.hda_key_id
-WHERE hkey.user_id = ?
+WHERE (? IS NULL OR hkey.user_id = ?)
         """
-        query_params: tuple[Any, ...] = (user_id,)
+        query_params: tuple[Any, ...] = (user_id, user_id)
         if category is not None:
             query = (
                 "\n            "

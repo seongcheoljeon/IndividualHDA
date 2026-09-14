@@ -182,7 +182,9 @@ class LibraryQueriesMixin:
         user_id: str | None = None,
         db_filepath: pathlib.Path | None = None,
     ) -> list[AssetData]:
-        return self._library_reader.assets(db_filepath, user_id, category)
+        if self._repository is None:
+            return []
+        return self._repository.list_assets(owner=user_id, category=category)
 
     def _get_hda_hist_data(
         self,
@@ -191,22 +193,18 @@ class LibraryQueriesMixin:
         search_date: Any = None,
         db_filepath: pathlib.Path | None = None,
     ) -> list[HistoryData]:
-        return self._library_reader.history(
-            db_filepath, user_id, hda_key_id, search_date
+        if self._repository is None:
+            return []
+        return self._repository.histories(
+            hda_key_id, owner=user_id, search_date=search_date
         )
 
     def _get_hda_category(
         self, user_id: str | None = None, db_filepath: pathlib.Path | None = None
     ) -> dict[str, Any] | None:
-        if user_id is None:
+        if user_id is None or self._repository is None:
             return dict()
-        db_api = self._db_api_wrap(db_filepath)
-        if db_api is None:
-            return
-        with db_api:
-            cate_lst = db_api.get_hda_category(user_id=user_id)
-        if cate_lst is None:
-            return dict()
+        cate_lst = self._repository.categories(owner=user_id)
         return dict(zip(cate_lst, [None] * len(cate_lst)))
 
     def _get_hda_loc_record_data(

@@ -32,10 +32,10 @@ class BootstrapMixin:
             db_api = self._services.open_database(db_filepath)
             # A local library has one owner: adopt the row it already has.
             self._user = identity.resolve_local_user(db_api.list_user_ids())
-            self._library = LibraryContext.from_preference(self._preference, self._user)
-            if not db_api.is_exist_user_id(self._user):
-                db_api.insert_users(user_id=self._user, email=f"{self._user}@local")
             db_api.close()
+            self._library = LibraryContext.from_preference(self._preference, self._user)
+            self._repository = self._services.repository(self._library)
+            self._repository.ensure_user(self._user)
 
     def _init_set(self) -> None:
         # is ready iHDA

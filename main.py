@@ -99,7 +99,6 @@ class IndividualHDA(
         super(IndividualHDA, self).__init__(parent)
         self.setupUi(self)
         self._services = services if services is not None else PanelServices()
-        self._library_reader = self._services.reader()
         self._tasks = self._services.tasks(self)
         self._tasks.result.connect(self._file_result)
         self._tasks.idle.connect(self._file_finished)
@@ -139,6 +138,7 @@ class IndividualHDA(
         self._rename_ihda = rename_ihda.RenameIHDA(parent=self)
         self._preference = preference.Preference(parent=self)
         self._library = LibraryContext.from_preference(self._preference, self._user)
+        self._repository = self._services.repository(self._library)
         self._make_videoinfo = make_video_info.MakeVideoInfo(parent=self)
         self._video_player = make_video_player(self._preference.ffmpeg_dirpath, self)
         _help_site = hou.helpServerUrl if public.IS_HOUDINI else None

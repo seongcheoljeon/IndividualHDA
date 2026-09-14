@@ -182,6 +182,7 @@ class PresentationMixin:
         if self._preference.is_ffmpeg_valid:
             self._video_player.ffmpeg_dirpath = self._preference.ffmpeg_dirpath
         self._library = LibraryContext.from_preference(self._preference, self._user)
+        self._repository = self._services.repository(self._library)
         if self._library is not None:
             self._library.asset_root.mkdir(parents=True, exist_ok=True)
             # DB 파일이 존재하지 않는다면 생성

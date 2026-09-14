@@ -10,7 +10,6 @@ from PySide6 import QtCore
 from libs.asset_store import AssetStore
 from libs.asset_rename import build_rename_plan, rename_asset
 from libs.contracts import SilentRows
-from libs.library_reader import LibraryReader
 from libs.database.rename_repository import SQLiteRenameRepository
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 from libs.task_controller import TaskController
@@ -52,7 +51,7 @@ builtins.__import__ = restricted
 from libs.asset_store import AssetStore
 from libs.asset_rename import build_rename_plan
 from libs.asset_commands import delete_asset
-from libs.library_reader import LibraryReader
+from libs.repository import LibraryRepository, RegistrationPayload
 from libs.ai_provider import AISettings, Prompt, make_provider
 assert make_provider(AISettings(kind='anthropic')).complete(Prompt('x')) == ''
 store = AssetStore()
@@ -82,26 +81,6 @@ def test_store_observer_sees_valid_before_and_after_states() -> None:
     with pytest.raises(IndexError):
         store.update(-1, {"hda_name": "wrong"})
     assert store.rows[0]["hda_name"] == "Water"
-
-
-def test_reader_closes_substitute_repository_after_failure(tmp_path: Path) -> None:
-    path = tmp_path / "db"
-    path.touch()
-
-    class ReadOnlyRepository:
-        closed = False
-
-        def get_hda_data(self, **kwargs: Any) -> list[Any]:
-            raise ValueError("read failed")
-
-        def close(self) -> None:
-            self.closed = True
-
-    repository = ReadOnlyRepository()
-    reader = LibraryReader(lambda path: repository)
-    with pytest.raises(ValueError, match="read failed"):
-        reader.assets(path, "user")
-    assert repository.closed
 
 
 @pytest.mark.parametrize("fail_history", [False, True])

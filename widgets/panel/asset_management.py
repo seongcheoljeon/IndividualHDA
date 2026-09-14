@@ -203,19 +203,19 @@ Type of current node: "{1}"
             return False
         self._video_player.player_stop()
         self._delete_video_playlist(
-            video_filepath_list=db_api.get_history_video_info(hda_key_id=hda_id)
+            video_filepath_list=self._repository.history_videos(hda_id)
         )
         try:
             plan = build_rename_plan(
                 data,
                 new_hda_name,
                 self._services.names,
-                rename_video=db_api.is_video_and_ihda_same_version(
-                    hda_key_id=hda_id, version=hda_version
+                rename_video=self._repository.video_matches_version(
+                    hda_id, hda_version
                 ),
             )
-            is_update_hda_name, is_update_hda_name_hist = rename_asset(
-                self._services.rename_repository(db_api), plan
+            is_update_hda_name, is_update_hda_name_hist = self._repository.rename_asset(
+                plan
             )
         except Exception:
             logging.exception(
@@ -459,7 +459,7 @@ iHDA note history: {1}
         if db_api is None:
             return
         hda_id = self._selection.asset.id
-        is_update = db_api.update_hda_favorite(hda_key_id=hda_id)
+        is_update = self._repository.toggle_favorite(hda_id)
         if bool(is_update):
             row = self._assets.id_rows.get(self._selection.asset.id)
             key = public.Key.is_favorite_hda
@@ -640,10 +640,11 @@ iHDA note history: {1}
         db_api: SQLite3DatabaseAPI | None = None,
     ) -> None:
         assert isinstance(hda_dirpath, pathlib.Path)
-        video_filepath_lst = db_api.get_history_video_info(hda_key_id=hda_id)
-        self._delete_video_playlist(video_filepath_list=video_filepath_lst)
+        self._delete_video_playlist(
+            video_filepath_list=self._repository.history_videos(hda_id)
+        )
         try:
-            delete_asset(db_api, hda_id, hda_dirpath)
+            self._repository.delete_asset(hda_id, hda_dirpath)
         except Exception:
             logging.exception("Asset deletion failed; library views retained")
             return
@@ -651,7 +652,7 @@ iHDA note history: {1}
         self._ihda_record_model.remove_record_item_by_hda_id(hda_id=hda_id)
         self._remove_pixmap_ihda(hkey_id=hda_id)
         self._remove_pixmap_thumbnail(hkey_id=hda_id)
-        cate_lst = db_api.get_hda_category(user_id=self._user)
+        cate_lst = self._repository.categories(owner=self._user)
         self._remove_category_item(category=hda_cate, category_list=cate_lst)
         log_handler.LogHandler.log_msg(
             method=logging.info, msg=f'"{hda_name}" iHDA node has been removed'
@@ -674,7 +675,7 @@ iHDA note history: {1}
         thumb_dirpath = hist_data.get(public.Key.History.thumb_dirpath)
         video_dirpath = hist_data.get(public.Key.History.video_dirpath)
         # 가장 최근의 히스토리라면, 삭제를 진행하지 않는다.
-        if db_api.is_most_recent_ihda_history(hda_key_id=hda_id, hist_id=hist_id):
+        if self._repository.is_latest_history(hda_id, hist_id):
             if verbose:
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
@@ -684,7 +685,7 @@ iHDA note history: {1}
                 )
             return False
         files = []
-        if not db_api.is_ihda_lastest_version(hda_key_id=hda_id, version=hda_ver):
+        if not self._repository.is_latest_version(hda_id, hda_ver):
             files.append(hda_filepath)
             if thumb_dirpath is not None:
                 files.append(
@@ -699,7 +700,7 @@ iHDA note history: {1}
                 )
                 files.append(video_filepath)
         try:
-            delete_history(db_api, hda_id, hist_id, files)
+            self._repository.delete_history(hda_id, hist_id, files)
         except Exception:
             logging.exception("History deletion failed; library views retained")
             return False

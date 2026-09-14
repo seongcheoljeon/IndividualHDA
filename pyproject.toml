@@ -30,7 +30,7 @@ files = [
   "libs/version_compare.py", "libs/debounce.py", "widgets/library_manager/dialog.py",
   "libs/path_updates.py", "libs/database_rebuild.py",
   "libs/contracts.py", "libs/archive_transfer.py", "libs/asset_rename.py",
-  "libs/library_reader.py", "model/asset_notifications.py", "widgets/panel/services.py",
+  "libs/repository.py", "libs/identity.py", "model/asset_notifications.py", "widgets/panel/services.py",
   "libs/asset_commands.py", "libs/domain.py", "libs/asset_store.py", "libs/task_controller.py",
   "libs/operation_journal.py", "libs/thumbnail_cache.py",
   "model/ihda_list_model.py", "model/ihda_table_model.py", "model/ihda_history_model.py",

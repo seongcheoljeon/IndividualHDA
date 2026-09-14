@@ -199,33 +199,15 @@ class NotesMixin:
             if db_api is None:
                 return
             if choice == "note":
-                is_exist_note = db_api.is_exist_note(
-                    hda_key_id=self._selection.asset.id
-                )
-                if not is_exist_note:
-                    db_api.insert_note_info(
-                        hda_key_id=self._selection.asset.id, note=self._hda_note
-                    )
-                else:
-                    db_api.update_note_info(
-                        hda_key_id=self._selection.asset.id, note=self._hda_note
-                    )
+                self._repository.set_note(self._selection.asset.id, self._hda_note)
                 self._change_hda_data(
                     row=self._assets.id_rows.get(self._selection.asset.id),
                     key=public.Key.hda_note,
                     val=self._hda_note,
                 )
             elif choice == "tag":
-                is_exist_tag = db_api.is_exist_tag(hda_key_id=self._selection.asset.id)
                 tag_lst = self._split_tag_string(tag_str=self._hda_tags)
-                if not is_exist_tag:
-                    db_api.insert_tag_info(
-                        hda_key_id=self._selection.asset.id, tag_lst=tag_lst
-                    )
-                else:
-                    db_api.update_tag_info(
-                        hda_key_id=self._selection.asset.id, tag_lst=tag_lst
-                    )
+                self._repository.set_tags(self._selection.asset.id, tag_lst)
                 self._set_label_tags(tag_lst)
                 self._change_hda_data(
                     row=self._assets.id_rows.get(self._selection.asset.id),

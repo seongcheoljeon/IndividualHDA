@@ -20,7 +20,7 @@ from PySide6 import QtWidgets, QtCore
 import public
 import pathlib
 from libs import houdini_api, log_handler
-from libs import sqlite3_db_api, ihda_system
+from libs.repository import LibraryError, RegistrationPayload
 
 try:
     import hou
@@ -327,201 +327,81 @@ But it didn't stop, so please wait a little longer.
     def _get_new_up_version(version: str | None = None) -> str:
         return str(Decimal(version) + Decimal("0.1"))
 
+    def _registration_payload(self, info_data: dict[str, Any]) -> RegistrationPayload:
+        """Gather everything HOM knows on the GUI thread; the repository writes it."""
+        node = info_data.get(public.Key.node)
+        version = info_data.get(public.Key.hda_version)
+        hda_dirpath = info_data.get(public.Key.hda_dirpath)
+        assert isinstance(hda_dirpath, pathlib.Path)
+        thumb_dirpath = houdini_api.HoudiniAPI.make_thumbnail_dirpath(
+            hda_dirpath=hda_dirpath
+        )
+        thumb_filename = houdini_api.HoudiniAPI.make_thumbnail_filename(
+            name=node.name(), version=version
+        )
+        thumb_dirpath.mkdir(parents=True, exist_ok=True)
+        houdini_api.HoudiniAPI.create_thumbnail(
+            output_filepath=thumb_dirpath / thumb_filename
+        )
+        hip_filepath = houdini_api.HoudiniAPI.current_hipfile()
+        sf, ef, fps = houdini_api.HoudiniAPI.frame_info()
+        return RegistrationPayload(
+            user=self._user,
+            node_name=node.name(),
+            node_path=node.path(),
+            version=version,
+            hda_dirpath=hda_dirpath,
+            hda_filename=info_data.get(public.Key.hda_filename),
+            type_name=info_data.get(public.Key.node_type_name),
+            cate_name=info_data.get(public.Key.node_cate_name),
+            def_desc=info_data.get(public.Key.node_def_desc),
+            is_network=info_data.get(public.Key.is_network),
+            is_sub_network=info_data.get(public.Key.is_sub_network),
+            type_path_lst=info_data.get(public.Key.node_type_path_list),
+            cate_path_lst=info_data.get(public.Key.node_cate_path_list),
+            icon_path_lst=info_data.get(public.Key.node_icon_path_list),
+            input_conn=info_data.get(public.Key.node_input_connections),
+            output_conn=info_data.get(public.Key.node_output_connections),
+            hou_version=houdini_api.HoudiniAPI.current_houdini_version(),
+            hou_license=houdini_api.HoudiniAPI.current_houdini_license(),
+            operating_system=public.platform_system(),
+            hip_filename=hip_filepath.name,
+            hip_dirpath=hip_filepath.parent,
+            sf=sf,
+            ef=ef,
+            fps=fps,
+            thumb_dirpath=thumb_dirpath,
+            thumb_filename=thumb_filename,
+            registered_at=datetime.today().strftime(public.Value.datetime_fmt_str),
+        )
+
     def _update_to_hda_db(
         self,
         info_data: dict[str, Any] | None = None,
         hda_key_id: int | None = None,
         db_api: SQLite3DatabaseAPI | None = None,
     ) -> bool:
-        node = info_data.get(public.Key.node)
-        node_name = node.name()
-        node_path = node.path()
-        node_ver = info_data.get(public.Key.hda_version)
-        hda_dirpath = info_data.get(public.Key.hda_dirpath)
-        hda_filename = info_data.get(public.Key.hda_filename)
-        type_path_lst = info_data.get(public.Key.node_type_path_list)
-        cate_path_lst = info_data.get(public.Key.node_cate_path_list)
-        type_name = info_data.get(public.Key.node_type_name)
-        cate_name = info_data.get(public.Key.node_cate_name)
-        def_desc = info_data.get(public.Key.node_def_desc)
-        icon_path_lst = info_data.get(public.Key.node_icon_path_list)
-        is_net = info_data.get(public.Key.is_network)
-        is_sub_net = info_data.get(public.Key.is_sub_network)
-        input_conn = info_data.get(public.Key.node_input_connections)
-        output_conn = info_data.get(public.Key.node_output_connections)
-        hou_version = houdini_api.HoudiniAPI.current_houdini_version()
-        hou_license = houdini_api.HoudiniAPI.current_houdini_license()
-        declare_os = public.platform_system()
-        assert isinstance(hda_dirpath, pathlib.Path)
-        # thumbnail
-        thumb_dirpath = houdini_api.HoudiniAPI.make_thumbnail_dirpath(
-            hda_dirpath=hda_dirpath
-        )
-        thumb_filename = houdini_api.HoudiniAPI.make_thumbnail_filename(
-            name=node_name, version=node_ver
-        )
-        thumb_filepath = thumb_dirpath / thumb_filename
-        if not thumb_dirpath.exists():
-            thumb_dirpath.mkdir(parents=True)
-        houdini_api.HoudiniAPI.create_thumbnail(output_filepath=thumb_filepath)
+        payload = self._registration_payload(info_data)
         try:
-            with db_api.transaction():
-                is_hda_info = db_api.update_hda_info(
-                    hda_key_id=hda_key_id,
-                    version=node_ver,
-                    filename=hda_filename,
-                    dirpath=hda_dirpath,
-                )
-                is_icon_info = db_api.update_icon_info(
-                    hda_key_id=hda_key_id, icon_lst=icon_path_lst
-                )
-                hip_filepath = houdini_api.HoudiniAPI.current_hipfile()
-                hip_dirpath = hip_filepath.parent
-                hip_filename = hip_filepath.name
-                assert isinstance(hip_filepath, pathlib.Path)
-                frinfo = houdini_api.HoudiniAPI.frame_info()
-                is_hipfile_info = db_api.update_hipfile_info(
-                    hda_key_id=hda_key_id,
-                    filename=hip_filepath.name,
-                    dirpath=hip_filepath.parent,
-                    houdini_version=hou_version,
-                    hda_license=hou_license,
-                    operating_system=declare_os,
-                    sf=frinfo[0],
-                    ef=frinfo[1],
-                    fps=frinfo[2],
-                )
-                is_update_thumb = db_api.update_thumbnail_info(
-                    hda_key_id=hda_key_id,
-                    dirpath=thumb_dirpath,
-                    filename=thumb_filename,
-                    version=node_ver,
-                )
-                if is_update_thumb:
-                    log_handler.LogHandler.log_msg(
-                        method=logging.info, msg="thumbnail update complete"
-                    )
-                is_hou_node_info = db_api.update_houdini_node_info(
-                    hda_key_id=hda_key_id, node_path=node_path
-                )
-                # houdini node info 테이블의 id
-                info_id = db_api.get_hou_node_info_id(hda_key_id=hda_key_id)
-                is_hou_node_cate_path_info = (
-                    db_api.update_houdini_node_category_path_info(
-                        info_id=info_id, node_category_lst=cate_path_lst
-                    )
-                )
-                is_hou_node_type_path_info = db_api.update_houdini_node_type_path_info(
-                    info_id=info_id, node_type_lst=type_path_lst
-                )
-                is_hou_node_input_connect_info = (
-                    db_api.update_houdini_node_input_connect_info(
-                        info_id=info_id, node_input_connect_lst=input_conn
-                    )
-                )
-                is_hou_node_output_connect_info = (
-                    db_api.update_houdini_node_output_connect_info(
-                        info_id=info_id, node_output_connect_lst=output_conn
-                    )
-                )
-                if (
-                    (is_hda_info is None)
-                    or (is_hou_node_info is None)
-                    or (is_icon_info is None)
-                    or (is_hou_node_cate_path_info is None)
-                    or (is_hou_node_type_path_info is None)
-                    or (is_hou_node_input_connect_info is None)
-                    or (is_hou_node_output_connect_info is None)
-                    or (is_hipfile_info is None)
-                ):
-                    raise sqlite3.DatabaseError("Incomplete asset update")
-                # ihda_data변수에 db데이터를 한번 읽어들여 그것을 운용하는 방식으로
-                # 변경해야 할 데이터: is_favorite_hda, hda_load_count, hda_ctime, hda_tags
-                key_lst = sqlite3_db_api.SQLite3DatabaseAPI.hda_info_key_lst()
-                before_data = db_api.get_update_before_data(hda_key_id=hda_key_id)
-                is_favorite_hda = before_data.get(public.Key.is_favorite_hda)
-                hda_load_count = before_data.get(public.Key.hda_load_count)
-                hda_ctime = before_data.get(public.Key.hda_ctime)
-                hda_tags = before_data.get(public.Key.hda_tags)
-                video_dirpath = before_data.get(public.Key.video_dirpath)
-                video_filename = before_data.get(public.Key.video_filename)
-                hda_note = before_data.get(public.Key.hda_note)
-                val_datetime = datetime.today().strftime(public.Value.datetime_fmt_str)
-                val_lst = [
-                    hda_key_id,
-                    node_name,
-                    cate_name,
-                    node_ver,
-                    hda_filename,
-                    hda_dirpath,
-                    is_favorite_hda,
-                    hda_load_count,
-                    hda_ctime,
-                    val_datetime,
-                    hou_version,
-                    type_name,
-                    def_desc,
-                    is_net,
-                    is_sub_net,
-                    node_path,
-                    hou_license,
-                    hip_filename,
-                    hip_dirpath,
-                    thumb_filename,
-                    thumb_dirpath,
-                    video_filename,
-                    video_dirpath,
-                    hda_note,
-                    icon_path_lst,
-                    hda_tags,
-                ]
-                assert len(key_lst) == len(val_lst)
-                dat = dict(zip(key_lst, val_lst))
-                # history
-                hist_data = [
-                    hda_key_id,
-                    "NODE (UPDATE)",
-                    node_name,
-                    node_ver,
-                    hda_filename,
-                    hda_dirpath,
-                    val_datetime,
-                    hou_version,
-                    hip_filename,
-                    hip_dirpath,
-                    hou_license,
-                    declare_os,
-                    node_path,
-                    def_desc,
-                    type_name,
-                    cate_name,
-                    self._user,
-                    icon_path_lst,
-                    thumb_filename,
-                    thumb_dirpath,
-                    video_filename,
-                    video_dirpath,
-                ]
-                is_hda_history = db_api.insert_hda_history(data=hist_data)
-                if is_hda_history is None:
-                    raise sqlite3.DatabaseError("Could not write asset history")
-                # 추가 된 hda key의 id 반환
-                last_hda_hist_id = db_api.get_last_insert_id
-        except sqlite3.Error as error:
-            logging.error("Asset update rolled back: %s", error)
+            result = self._repository.add_version(hda_key_id, payload)
+        except LibraryError as error:
+            log_handler.LogHandler.log_msg(method=logging.error, msg=str(error))
             return False
-        self._update_pixmap_thumbnail(hkey_id=hda_key_id, thumb_filepath=thumb_filepath)
-        hda_id_row_map = self._get_hda_id_row_map()
-        self._update_item_row_data(row=hda_id_row_map.get(hda_key_id), row_data=dat)
-        # hist_id & tag 추가
+        self._update_pixmap_thumbnail(
+            hkey_id=hda_key_id, thumb_filepath=result.thumb_filepath
+        )
+        self._update_item_row_data(
+            row=self._get_hda_id_row_map().get(hda_key_id), row_data=result.asset
+        )
         self._add_pixmap_hist_thumbnail(
-            hist_id=last_hda_hist_id, thumb_filepath=thumb_filepath
+            hist_id=result.history_id, thumb_filepath=result.thumb_filepath
         )
         self._insert_ihda_history_data_model(
-            data=hist_data, hist_id=last_hda_hist_id, tags=hda_tags
+            data=result.history,
+            hist_id=result.history_id,
+            tags=result.asset.get(public.Key.hda_tags),
         )
-        # history combobox 아이템 추가
-        self._set_hist_ihda_to_combobox(hkey_id=hda_key_id, hda_name=node_name)
+        self._set_hist_ihda_to_combobox(hkey_id=hda_key_id, hda_name=payload.node_name)
         return True
 
     def _insert_to_hda_db(
@@ -529,219 +409,31 @@ But it didn't stop, so please wait a little longer.
         info_data: dict[str, Any] | None = None,
         db_api: SQLite3DatabaseAPI | None = None,
     ) -> bool:
-        node = info_data.get(public.Key.node)
-        node_name = node.name()
-        node_path = node.path()
-        node_ver = info_data.get(public.Key.hda_version)
-        hda_dirpath = info_data.get(public.Key.hda_dirpath)
-        hda_filename = info_data.get(public.Key.hda_filename)
-        type_path_lst = info_data.get(public.Key.node_type_path_list)
-        cate_path_lst = info_data.get(public.Key.node_cate_path_list)
-        type_name = info_data.get(public.Key.node_type_name)
-        cate_name = info_data.get(public.Key.node_cate_name)
-        def_desc = info_data.get(public.Key.node_def_desc)
-        icon_path_lst = info_data.get(public.Key.node_icon_path_list)
-        is_net = info_data.get(public.Key.is_network)
-        is_sub_net = info_data.get(public.Key.is_sub_network)
-        input_conn = info_data.get(public.Key.node_input_connections)
-        output_conn = info_data.get(public.Key.node_output_connections)
-        hou_version = houdini_api.HoudiniAPI.current_houdini_version()
-        hou_license = houdini_api.HoudiniAPI.current_houdini_license()
-        declare_os = public.platform_system()
-        assert isinstance(hda_dirpath, pathlib.Path)
-        # thumbnail
-        thumb_dirpath = houdini_api.HoudiniAPI.make_thumbnail_dirpath(
-            hda_dirpath=hda_dirpath
-        )
-        thumb_filename = houdini_api.HoudiniAPI.make_thumbnail_filename(
-            name=node_name, version=node_ver
-        )
-        thumb_filepath = thumb_dirpath / thumb_filename
-        if not thumb_dirpath.exists():
-            thumb_dirpath.mkdir(parents=True)
-        houdini_api.HoudiniAPI.create_thumbnail(output_filepath=thumb_filepath)
-        # insert db
+        payload = self._registration_payload(info_data)
         try:
-            with db_api.transaction():
-                is_hda_cate = db_api.insert_hda_category(
-                    category=cate_name, user_id=self._user
-                )
-                if is_hda_cate is None:
-                    raise sqlite3.DatabaseError("Could not create asset category")
-                if not db_api.insert_hda_key(
-                    name=node_name, category=cate_name, user_id=self._user
-                ):
-                    raise sqlite3.DatabaseError("Could not create asset key")
-                # 추가 된 hda key의 id 반환
-                last_hda_key_id = db_api.get_last_insert_id
-                is_hda_info = db_api.insert_hda_info(
-                    hda_key_id=last_hda_key_id,
-                    version=node_ver,
-                    is_favorite=False,
-                    load_count=0,
-                    filename=hda_filename,
-                    dirpath=hda_dirpath,
-                )
-                is_icon_info = db_api.insert_icon_info(
-                    hda_key_id=last_hda_key_id, icon_lst=icon_path_lst
-                )
-                hip_filepath = houdini_api.HoudiniAPI.current_hipfile()
-                hip_filename = hip_filepath.name
-                hip_dirpath = hip_filepath.parent
-                assert isinstance(hip_filepath, pathlib.Path)
-                frinfo = houdini_api.HoudiniAPI.frame_info()
-                is_hipfile_info = db_api.insert_hipfile_info(
-                    hda_key_id=last_hda_key_id,
-                    filename=hip_filename,
-                    dirpath=hip_dirpath,
-                    houdini_version=hou_version,
-                    hda_license=hou_license,
-                    operating_system=declare_os,
-                    sf=frinfo[0],
-                    ef=frinfo[1],
-                    fps=frinfo[2],
-                )
-                is_insert_thumb = db_api.insert_thumbnail_info(
-                    hda_key_id=last_hda_key_id,
-                    dirpath=thumb_dirpath,
-                    filename=thumb_filename,
-                    version=node_ver,
-                )
-                if is_insert_thumb:
-                    log_handler.LogHandler.log_msg(
-                        method=logging.info, msg="finished creating thumbnails"
-                    )
-                else:
-                    ihda_system.IHDASystem.remove_dir(
-                        dirpath=thumb_dirpath, verbose=False
-                    )
-                is_hou_node_info = db_api.insert_houdini_node_info(
-                    hda_key_id=last_hda_key_id,
-                    type_name=type_name,
-                    def_desc=def_desc,
-                    is_net=is_net,
-                    is_sub_net=is_sub_net,
-                    old_path=node_path,
-                )
-                # 추가 된 houdini node info의 id 반환
-                last_hou_node_info_id = db_api.get_last_insert_id
-                is_hou_node_cate_path_info = (
-                    db_api.insert_houdini_node_category_path_info(
-                        info_id=last_hou_node_info_id, node_category_lst=cate_path_lst
-                    )
-                )
-                is_hou_node_type_path_info = db_api.insert_houdini_node_type_path_info(
-                    info_id=last_hou_node_info_id, node_type_lst=type_path_lst
-                )
-                is_hou_node_input_conn_info = (
-                    db_api.insert_houdini_node_input_connect_info(
-                        info_id=last_hou_node_info_id, node_input_connect_lst=input_conn
-                    )
-                )
-                is_hou_node_output_conn_info = (
-                    db_api.insert_houdini_node_output_connect_info(
-                        info_id=last_hou_node_info_id,
-                        node_output_connect_lst=output_conn,
-                    )
-                )
-                val_datetime = datetime.today().strftime(public.Value.datetime_fmt_str)
-                # history
-                hist_data = [
-                    last_hda_key_id,
-                    "NODE (INSERT)",
-                    node_name,
-                    node_ver,
-                    hda_filename,
-                    hda_dirpath,
-                    val_datetime,
-                    hou_version,
-                    hip_filename,
-                    hip_dirpath,
-                    hou_license,
-                    declare_os,
-                    node_path,
-                    def_desc,
-                    type_name,
-                    cate_name,
-                    self._user,
-                    icon_path_lst,
-                    thumb_filename,
-                    thumb_dirpath,
-                    None,
-                    None,
-                ]
-                is_hda_history = db_api.insert_hda_history(data=hist_data)
-                # 추가 된 hda history의 id 반환
-                last_hda_hist_id = db_api.get_last_insert_id
-                if (
-                    (is_hda_info is None)
-                    or (is_icon_info is None)
-                    or (is_hou_node_info is None)
-                    or (is_hou_node_cate_path_info is None)
-                    or (is_hou_node_type_path_info is None)
-                    or (is_hou_node_input_conn_info is None)
-                    or (is_hou_node_output_conn_info is None)
-                    or (is_hipfile_info is None)
-                    or (is_hda_history is None)
-                ):
-                    raise sqlite3.DatabaseError("Incomplete asset registration")
-        except sqlite3.Error as error:
-            logging.error("Asset registration rolled back: %s", error)
+            result = self._repository.register_asset(payload)
+        except LibraryError as error:
+            log_handler.LogHandler.log_msg(method=logging.error, msg=str(error))
             return False
-        self._add_pixmap_ihda(hkey_id=last_hda_key_id, icon_lst=icon_path_lst)
-        self._add_pixmap_thumbnail(
-            hkey_id=last_hda_key_id, thumb_filepath=thumb_filepath
-        )
+        key_id = result.asset[public.Key.hda_id]
+        self._add_pixmap_ihda(hkey_id=key_id, icon_lst=payload.icon_path_lst)
+        self._add_pixmap_thumbnail(hkey_id=key_id, thumb_filepath=result.thumb_filepath)
         self._add_pixmap_hist_thumbnail(
-            hist_id=last_hda_hist_id, thumb_filepath=thumb_filepath
+            hist_id=result.history_id, thumb_filepath=result.thumb_filepath
         )
-        # ihda_data변수에 db데이터를 한번 읽어들여 그것을 운용하는 방식으로
-        # sqlite3_db_api get_hda_data와 맞춰야 한다.
-        val_lst = [
-            last_hda_key_id,
-            node_name,
-            cate_name,
-            node_ver,
-            hda_filename,
-            hda_dirpath,
-            0,
-            0,
-            val_datetime,
-            val_datetime,
-            hou_version,
-            type_name,
-            def_desc,
-            is_net,
-            is_sub_net,
-            node_path,
-            hou_license,
-            hip_filename,
-            hip_dirpath,
-            thumb_filename,
-            thumb_dirpath,
-            None,
-            None,
-            None,
-            icon_path_lst,
-            list(),
-        ]
-        key_lst = sqlite3_db_api.SQLite3DatabaseAPI.hda_info_key_lst()
-        assert len(key_lst) == len(val_lst)
-        dat = dict(zip(key_lst, val_lst))
-        self._insert_ihda_data_model(data=dat)
+        self._insert_ihda_data_model(data=result.asset)
         self._refresh_asset_search()
         self.label__hda_count.setText(str(self._ihda_list_proxy_model.rowCount()))
         self.label__cate_count.setText(str(self._get_category_count()))
-        # history 모델에 아이템 add
-        # hist_id & tag 추가
         self._insert_ihda_history_data_model(
-            data=hist_data, hist_id=last_hda_hist_id, tags=list()
+            data=result.history, hist_id=result.history_id, tags=list()
         )
-        # history combobox 아이템 추가
-        self._set_hist_ihda_to_combobox(hkey_id=last_hda_key_id, hda_name=node_name)
-        # 후디니 노드에 코멘트 추가
+        self._set_hist_ihda_to_combobox(hkey_id=key_id, hda_name=payload.node_name)
         self._hda_info_to_node_comment(
-            node=node, hda_name=node_name, hda_ver=node_ver, hda_id=last_hda_key_id
+            node=info_data.get(public.Key.node),
+            hda_name=payload.node_name,
+            hda_ver=payload.version,
+            hda_id=key_id,
         )
         log_handler.LogHandler.log_msg(
             method=logging.info,
