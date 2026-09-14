@@ -94,14 +94,8 @@ SHARED_PANEL_STATE = {
 }
 # Debt: direct SQLite facade use left in panel mixins, per module. Target: empty.
 LOCAL_DB_SITES = {
-    "widgets.panel.asset_management": 8,
-    "widgets.panel.asset_registration": 1,
-    "widgets.panel.bootstrap": 1,
-    "widgets.panel.context_menus": 7,
+    "widgets.panel.asset_management": 2,
     "widgets.panel.houdini_actions": 1,
-    "widgets.panel.media_actions": 1,
-    "widgets.panel.notes": 1,
-    "widgets.panel.selection": 2,
 }
 
 

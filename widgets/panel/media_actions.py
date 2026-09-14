@@ -7,11 +7,10 @@ They do not own a separate QWidget or change the public panel interface.
 from __future__ import annotations
 
 import pathlib
-from contextlib import closing
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from libs.sqlite3_db_api import SQLite3DatabaseAPI
+    pass
 
 import logging
 import uuid
@@ -20,6 +19,7 @@ from PySide6 import QtCore
 
 import public
 from libs import ffmpeg_api, houdini_api, ihda_system, log_handler
+from libs.repository import LibraryError
 
 
 class MediaActionsMixin:
@@ -34,7 +34,7 @@ class MediaActionsMixin:
                 )
         return is_del
 
-    def _slot_make_thumbnail(self, db_api: SQLite3DatabaseAPI | None = None) -> None:
+    def _slot_make_thumbnail(self) -> None:
         if public.IS_HOUDINI:
             hda_dirpath = self._selection.asset.data.get(public.Key.hda_dirpath)
             hda_name = self._selection.asset.data.get(public.Key.hda_name)
@@ -51,11 +51,8 @@ class MediaActionsMixin:
             if not thumb_dirpath.exists():
                 thumb_dirpath.mkdir(parents=True)
             houdini_api.HoudiniAPI.create_thumbnail(output_filepath=thumb_filepath)
-            is_update_thumb = db_api.update_thumbnail_info(
-                hda_key_id=hda_id,
-                dirpath=thumb_dirpath,
-                filename=thumb_filename,
-                version=hda_version,
+            is_update_thumb = self._repository.set_thumbnail(
+                hda_id, thumb_dirpath, thumb_filename, hda_version
             )
             # model에서 새로운 파일을 새롭게 읽을 수 있도록 thumb_filepath인자에 값을 배정하지 않았다.
             # self._update_pixmap_thumbnail(hkey_id=hda_id, thumb_filepath=pathlib.Path())
@@ -204,53 +201,31 @@ class MediaActionsMixin:
         video_filename: str,
         preview_dirpath: pathlib.Path,
     ) -> None:
-        comment = ""
-        db_api = self._db_api_wrap(self._db_filepath)
-        if db_api is None:
+        if self._repository is None:
             return
-        with closing(db_api):
-            row = self._assets.id_rows.get(hda_id)
-            if row is None:
-                raise RuntimeError("Encoded asset is no longer in the library")
-            get_video_path = db_api.get_video_info(hda_key_id=hda_id)
-            is_video_db_done = False
-            if get_video_path is None:
-                is_insert_video = db_api.insert_video_info(
-                    hda_key_id=hda_id,
-                    dirpath=video_dirpath,
-                    filename=video_filename,
-                    version=hda_version,
-                )
-                if is_insert_video is not None:
-                    is_video_db_done = True
-                    comment = "VIDEO (INSERT)"
-                    log_handler.LogHandler.log_msg(
-                        method=logging.info, msg="video insertion complete"
-                    )
-            else:
-                is_update_video = db_api.update_video_info(
-                    hda_key_id=hda_id,
-                    dirpath=video_dirpath,
-                    filename=video_filename,
-                    version=hda_version,
-                )
-                if is_update_video is not None:
-                    is_video_db_done = True
-                    comment = "VIDEO (UPDATE)"
-                    log_handler.LogHandler.log_msg(
-                        method=logging.info, msg="video update complete"
-                    )
-            if is_video_db_done:
-                self._change_hda_data(
-                    row=row, key=public.Key.video_dirpath, val=video_dirpath
-                )
-                self._change_hda_data(
-                    row=row, key=public.Key.video_filename, val=video_filename
-                )
-                # history
-                self._insert_hist_db_from_curt_hist_data(
-                    db_api=db_api, comment=comment, data=self._assets.rows[row]
-                )
+        row = self._assets.id_rows.get(hda_id)
+        if row is None:
+            raise RuntimeError("Encoded asset is no longer in the library")
+        try:
+            kind = self._repository.set_video(
+                hda_id, video_dirpath, video_filename, hda_version
+            )
+        except LibraryError:
+            logging.exception("Could not store the preview video for asset %s", hda_id)
+        else:
+            log_handler.LogHandler.log_msg(
+                method=logging.info, msg=f"video {kind} complete"
+            )
+            self._change_hda_data(
+                row=row, key=public.Key.video_dirpath, val=video_dirpath
+            )
+            self._change_hda_data(
+                row=row, key=public.Key.video_filename, val=video_filename
+            )
+            # history
+            self._insert_hist_db_from_curt_hist_data(
+                comment=f"VIDEO ({kind.upper()})", data=self._assets.rows[row]
+            )
         self._remove_preview_dir(preview_dirpath=preview_dirpath)
         self._loading_close()
 

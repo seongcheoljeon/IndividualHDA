@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from libs.sqlite3_db_api import SQLite3DatabaseAPI
+    pass
 
 import logging
 import pathlib
@@ -100,9 +100,6 @@ But it didn't stop, so please wait a little longer.
         node_lst: list[hou.Node] | tuple[hou.Node, ...] | None = None,
         total_node_cnt: int | None = None,
     ) -> None:
-        db_api = self._db_api_wrap(self._db_filepath)
-        if db_api is None:
-            return
         is_declare = False
         for node_cnt, node_dat in enumerate(node_lst):
             node_path = (
@@ -159,7 +156,7 @@ But it didn't stop, so please wait a little longer.
                         )
                         continue
             node_cate = houdini_api.HoudiniAPI.node_category_type_name(node)
-            is_done_node = self._node_declare(node=node, db_api=db_api)
+            is_done_node = self._node_declare(node=node)
             if not is_done_node:
                 node.setName(node_name, unique_name=True)
                 log_handler.LogHandler.log_msg(
@@ -177,9 +174,7 @@ But it didn't stop, so please wait a little longer.
             self._select_category(category=self._selection.item_text)
         self._dragdrop_overlay_close()
 
-    def _node_declare(
-        self, node: hou.Node | None = None, db_api: SQLite3DatabaseAPI | None = None
-    ) -> bool:
+    def _node_declare(self, node: hou.Node | None = None) -> bool:
         node_name = node.name()
         is_display_flag = None
         is_render_flag = None
@@ -189,9 +184,7 @@ But it didn't stop, so please wait a little longer.
             is_render_flag = node.isRenderFlagSet()
         node_cate = houdini_api.HoudiniAPI.node_category_type_name(node)
         item_key_lst = [node_cate, node_name]
-        is_exist_hda_name = db_api.is_exist_hda_name(
-            user_id=self._user, category=node_cate, hda_name=node_name
-        )
+        is_exist_hda_name = self._repository.has_asset(self._user, node_cate, node_name)
         self._selection.parents = item_key_lst
         # 만약 등록하려는 Category의 HDA의 이름이 DB에 존재한다면,
         if is_exist_hda_name:
@@ -219,23 +212,18 @@ But it didn't stop, so please wait a little longer.
                     method=logging.info, msg="update has been canceled"
                 )
                 return False
-            hda_key_id = db_api.get_hda_key_id(
-                category=node_cate, name=node_name, user_id=self._user
-            )
-            if hda_key_id is None:
+            identity = self._repository.asset_identity(self._user, node_cate, node_name)
+            if identity is None:
                 return False
-            hda_key_id = hda_key_id[0]
+            hda_key_id, hda_node_type, current_version = identity
             # 업데이트하려는 노드가 저장되어있는 노드 타입과 같은지 확인
-            hda_node_type = db_api.get_hda_node_type(hda_key_id=hda_key_id)
             if hda_node_type != houdini_api.HoudiniAPI.node_type_name(node):
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
                     msg="node you want to update is different from the node type stored in DB",
                 )
                 return False
-            version = self._get_new_up_version(
-                version=db_api.get_hda_version(hda_key_id=hda_key_id)
-            )
+            version = self._get_new_up_version(version=current_version)
             node_info_dict = self._node_info_data(
                 key_lst=item_key_lst, node=node, version=version
             )
@@ -243,7 +231,7 @@ But it didn't stop, so please wait a little longer.
                 return False
             # update 진행
             is_done_db = self._update_to_hda_db(
-                info_data=node_info_dict, hda_key_id=hda_key_id, db_api=db_api
+                info_data=node_info_dict, hda_key_id=hda_key_id
             )
         else:
             node_info_dict = self._node_info_data(
@@ -251,7 +239,7 @@ But it didn't stop, so please wait a little longer.
             )
             if node_info_dict is None:
                 return False
-            is_done_db = self._insert_to_hda_db(info_data=node_info_dict, db_api=db_api)
+            is_done_db = self._insert_to_hda_db(info_data=node_info_dict)
         # DB 입력 실패면
         if not is_done_db:
             return False
@@ -363,7 +351,6 @@ But it didn't stop, so please wait a little longer.
         self,
         info_data: dict[str, Any] | None = None,
         hda_key_id: int | None = None,
-        db_api: SQLite3DatabaseAPI | None = None,
     ) -> bool:
         payload = self._registration_payload(info_data)
         try:
@@ -391,7 +378,6 @@ But it didn't stop, so please wait a little longer.
     def _insert_to_hda_db(
         self,
         info_data: dict[str, Any] | None = None,
-        db_api: SQLite3DatabaseAPI | None = None,
     ) -> bool:
         payload = self._registration_payload(info_data)
         try:

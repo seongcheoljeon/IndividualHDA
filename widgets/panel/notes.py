@@ -182,8 +182,7 @@ class NotesMixin:
         )
         reply = msgbox.exec()
         if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            db_api = self._db_api_wrap(self._db_filepath)
-            if db_api is None:
+            if self._repository is None:
                 return
             if choice == "note":
                 self._repository.set_note(self._selection.asset.id, self._hda_note)

@@ -94,9 +94,57 @@ def test_repository_roundtrip(tmp_path: Path) -> None:
     assert repo.history_videos(1) == []
     assert repo.video_matches_version(1, "1.1") is False
 
+    # lookups the panel used to make on the facade directly
+    assert repo.has_asset("tester", "sop", "Water") and not repo.has_asset(
+        "tester", "sop", "x"
+    )
+    assert repo.asset_identity("tester", "sop", "Water") == (1, "box", "1.1")
+    assert repo.asset_identity("tester", "sop", "x") is None
+    assert repo.asset_ids("tester") == [1] and repo.asset_names("tester") == [
+        (1, "Water")
+    ]
+    assert repo.asset_filepath(1) == tmp_path / "sop" / "Water" / "Water.hda"
+    assert repo.has_history(1) and repo.has_note_history(1)
+    assert len(repo.note_history(1)) == 2
+    assert repo.history_counts() == (2, 2)
+    assert repo.latest_video(1, "1.1") is None
+    assert repo.set_video(1, tmp_path, "v.mp4", "1.1") == "insert"
+    assert repo.set_video(1, tmp_path, "v2.mp4", "1.1") == "update"
+    assert repo.video_matches_version(1, "1.1") is True
+    assert repo.set_thumbnail(1, tmp_path, "t2.jpg", "1.1") is True
+    history_row = [
+        1,
+        "TEST",
+        "Water",
+        "1.1",
+        "Water.hda",
+        tmp_path,
+        "2026-09-14 12:00:00",
+        "21.0",
+        "scene.hip",
+        tmp_path,
+        "commercial",
+        "Linux",
+        "/obj/Water",
+        "Box",
+        "box",
+        "sop",
+        "tester",
+        ["SOP", "box"],
+        "t2.jpg",
+        tmp_path,
+        "v2.mp4",
+        tmp_path,
+    ]
+    assert repo.add_history_row(history_row) == 3
+    assert repo.record_detail(1) == {}
+    repo.delete_note_history(1)
+    assert not repo.has_note_history(1)
+
     with pytest.raises(LibraryConflict):
-        repo.delete_history(1, 2, [])
+        repo.delete_history(1, 3, [])
     repo.delete_history(1, 1, [])
+    repo.delete_history(1, 2, [])
     assert len(repo.histories(1, owner="tester")) == 1
 
     repo.delete_asset(1, tmp_path / "sop" / "Water")

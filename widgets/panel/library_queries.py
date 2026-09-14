@@ -11,10 +11,11 @@ from typing import TYPE_CHECKING, Any
 from PySide6 import QtCore
 
 from libs.domain import AssetData, HistoryData
+from libs.repository import LibraryError
 from model.asset_notifications import QtAssetNotifications
 
 if TYPE_CHECKING:
-    from libs.sqlite3_db_api import SQLite3DatabaseAPI
+    pass
 import logging
 from datetime import datetime
 
@@ -93,14 +94,13 @@ class LibraryQueriesMixin:
 
     def _insert_hist_db_from_curt_hist_data(
         self,
-        db_api: SQLite3DatabaseAPI | None = None,
         comment: str | None = None,
         *,
         data: AssetData | None = None,
     ) -> None:
         # history를 위한 변수
         data = data if data is not None else self._selection.asset.data
-        if data is None:
+        if data is None or self._repository is None:
             return
         hda_dirpath = data.get(public.Key.hda_dirpath)
         hda_name = data.get(public.Key.hda_name)
@@ -149,11 +149,12 @@ class LibraryQueriesMixin:
             video_filename,
             video_dirpath,
         ]
-        is_hda_history = db_api.insert_hda_history(data=hist_data)
-        if is_hda_history is None:
+        try:
+            last_hda_hist_id = self._repository.add_history_row(hist_data)
+        except LibraryError:
+            logging.exception("Could not record history for %s", hda_name)
             self._loading_close()
             return
-        last_hda_hist_id = db_api.get_last_insert_id
         self._add_pixmap_hist_thumbnail(
             hist_id=last_hda_hist_id, thumb_filepath=thumb_filepath
         )

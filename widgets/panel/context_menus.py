@@ -204,12 +204,7 @@ class ContextMenusMixin:
         elif action == action_hda_context_menu_ai:
             self._slot_ai_suggest()
         elif action == action_hda_make_context_menu_thumbnail:
-            db_api = self._db_api_wrap(self._db_filepath)
-            if db_api is None:
-                return
-            self._wrapper_execute_deferred(
-                lambda: self._slot_make_thumbnail(db_api=db_api)
-            )
+            self._wrapper_execute_deferred(self._slot_make_thumbnail)
         elif action == action_hda_make_context_menu_video:
             if public.IS_HOUDINI:
                 frinfo = houdini_api.HoudiniAPI.frame_info()
@@ -255,12 +250,9 @@ class ContextMenusMixin:
                 return
             self._remove_hda_item(indexes=indexes)
         elif action == action_hist_context_menu_ihda_history:
-            db_api = self._db_api_wrap(self._db_filepath)
-            if db_api is None:
-                return
             hda_name = self._selection.asset.name
             hda_id = self._selection.asset.id
-            if not db_api.is_exist_hda_history(hda_key_id=hda_id):
+            if not self._repository.has_history(hda_id):
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
                     msg=f'node history of "{hda_name}" iHDA node does not exist',
@@ -271,12 +263,7 @@ class ContextMenusMixin:
         elif action == action_hist_context_menu_note_history:
             hda_name = self._selection.asset.name
             hda_id = self._selection.asset.id
-            db_api = self._db_api_wrap(self._db_filepath)
-            if db_api is None:
-                return
-            hist_note_data = db_api.get_hda_note_history(
-                hda_key_id=hda_id, with_datetime=True
-            )
+            hist_note_data = self._repository.note_history(hda_id)
             self._slot_hda_note_history(
                 hist_note_data=hist_note_data, hda_name=hda_name
             )
@@ -306,9 +293,6 @@ class ContextMenusMixin:
             reply = msgbox.exec()
             if reply == QtWidgets.QMessageBox.StandardButton.No:
                 return
-            db_api = self._db_api_wrap(self._db_filepath)
-            if db_api is None:
-                return
             # player가 재생중이거나 일시정지 상태면 정지
             self._video_player.player_stop()
             del_hist_data_lst = []
@@ -321,13 +305,13 @@ class ContextMenusMixin:
                 else:
                     hda_id = index.data(ihda_table_model.TableModel.id_role)
                     hda_name = index.data(ihda_table_model.TableModel.name_role)
-                if db_api.is_exist_hda_note_history(hda_key_id=hda_id):
-                    db_api.delete_hda_note_history(hda_key_id=hda_id)
+                if self._repository.has_note_history(hda_id):
+                    self._repository.delete_note_history(hda_id)
                     log_handler.LogHandler.log_msg(
                         method=logging.info,
                         msg=f'all the note history of "{hda_name}" iHDA node has been deleted',
                     )
-                if not db_api.is_exist_hda_history(hda_key_id=hda_id):
+                if not self._repository.has_history(hda_id):
                     log_handler.LogHandler.log_msg(
                         method=logging.warning,
                         msg=f'node history of "{hda_name}" iHDA node does not exist',
@@ -342,17 +326,16 @@ class ContextMenusMixin:
                 del_hist_data_lst.extend(hist_data_lst)
                 # video playlist 삭제
                 # 현재 iHDA 노드의 모든 video file 정보
-                video_filepath_lst = db_api.get_history_video_info(hda_key_id=hda_id)
-                self._delete_video_playlist(video_filepath_list=video_filepath_lst)
+                self._delete_video_playlist(
+                    video_filepath_list=self._repository.history_videos(hda_id)
+                )
             # 히스토리 데이터 삭제
             for hist_data in sorted(
                 del_hist_data_lst,
                 key=lambda x: x.get(public.Key.History.item_row),
                 reverse=True,
             ):
-                self._delete_each_hist_ihda_item(
-                    hist_data=hist_data, db_api=db_api, verbose=True
-                )
+                self._delete_each_hist_ihda_item(hist_data=hist_data, verbose=True)
             self._initialize_hist_current_attribs()
             self._clear_hist_parms()
         else:
@@ -437,10 +420,7 @@ class ContextMenusMixin:
             record_id = index.data(ihda_record_model.RecordModel.record_id_role)
             if record_id is None:
                 return
-            db_api = self._db_api_wrap(self._db_filepath)
-            if db_api is None:
-                return
-            record_data = db_api.get_only_detailview_record_data(record_id=record_id)
+            record_data = self._repository.record_detail(record_id)
             self._detail_view_record_data(record_data=record_data)
         elif action == action_context_menu_remove:
             self._remove_selected_record_item(index=index)
@@ -488,22 +468,14 @@ class ContextMenusMixin:
         if action == action_open_context_ihda_folder:
             if hda_id is None:
                 return
-            db_api = self._db_api_wrap(self._db_filepath)
-            if db_api is None:
-                return
-            hda_fpath = db_api.get_hda_filepath(hda_key_id=hda_id)
+            hda_fpath = self._repository.asset_filepath(hda_id)
             ihda_system.IHDASystem.open_folder(dirpath=hda_fpath)
         elif action == action_open_context_ihda_video:
             if hda_id is None:
                 return
-            db_api = self._db_api_wrap(self._db_filepath)
-            if db_api is None:
-                return
             hda_ver = index.data(ihda_inside_model.InsideModel.version_role)
             hda_name = index.data(ihda_inside_model.InsideModel.hda_org_name_role)
-            video_info = db_api.get_hda_history_video_most_recent_by_ver(
-                hda_key_id=hda_id, version=hda_ver
-            )
+            video_info = self._repository.latest_video(hda_id, hda_ver)
             if video_info is None:
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,

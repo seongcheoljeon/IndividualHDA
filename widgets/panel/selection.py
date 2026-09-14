@@ -41,13 +41,11 @@ class SelectionMixin:
         self._slot_selected_category(idx)
 
     def _init_set_hist_ihda_combobox(self) -> None:
-        db_api = self._db_api_wrap(self._db_filepath)
-        if db_api is None:
+        if self._repository is None:
             return
         self._default_set_hist_ihda_combobox()
-        for val_lst in db_api.get_hda_name(user_id=self._user, with_id=True):
-            hkey_id, hda_name = val_lst
-            if not db_api.is_exist_hda_history(hda_key_id=hkey_id):
+        for hkey_id, hda_name in self._repository.asset_names(self._user):
+            if not self._repository.has_history(hkey_id):
                 continue
             self._set_hist_ihda_to_combobox(hkey_id=hkey_id, hda_name=hda_name)
 
@@ -500,15 +498,10 @@ class SelectionMixin:
         record_data = index.data(ihda_record_model.RecordModel.record_data_role)
         if record_data is None:
             return
-        db_api = self._db_api_wrap(self._db_filepath)
-        if db_api is None:
-            return
         hda_id = index.data(ihda_record_model.RecordModel.hda_id_role)
         hda_name = index.data(ihda_record_model.RecordModel.name_role)
         hda_ver = record_data.get(public.Key.Record.node_ver)
-        video_info = db_api.get_hda_history_video_most_recent_by_ver(
-            hda_key_id=hda_id, version=hda_ver
-        )
+        video_info = self._repository.latest_video(hda_id, hda_ver)
         if video_info is None:
             log_handler.LogHandler.log_msg(
                 method=logging.warning,

@@ -131,6 +131,129 @@ class SqliteLibraryRepository:
                 db.is_ihda_lastest_version(hda_key_id=asset_id, version=version)
             )
 
+    # --- lookups the panel used to make on the facade directly -----------
+    def has_asset(self, owner: str, category: str, name: str) -> bool:
+        with closing(self._open()) as db:
+            return bool(
+                db.is_exist_hda_name(user_id=owner, category=category, hda_name=name)
+            )
+
+    def asset_identity(
+        self, owner: str, category: str, name: str
+    ) -> tuple[int, str | None, str | None] | None:
+        """(asset id, stored node type, current version) for an existing asset."""
+        with closing(self._open()) as db:
+            ids = db.get_hda_key_id(category=category, name=name, user_id=owner)
+            if not ids:
+                return None
+            asset_id = int(ids[0])
+            return (
+                asset_id,
+                db.get_hda_node_type(hda_key_id=asset_id),
+                db.get_hda_version(hda_key_id=asset_id),
+            )
+
+    def asset_ids(self, owner: str | None = None) -> list[int]:
+        with closing(self._open()) as db:
+            return [int(i) for i in (db.get_hda_key_id(user_id=owner) or [])]
+
+    def asset_names(self, owner: str | None = None) -> list[tuple[int, str]]:
+        with closing(self._open()) as db:
+            rows = db.get_hda_name(user_id=owner, with_id=True) or []
+            return [(int(row[0]), str(row[1])) for row in rows]
+
+    def asset_filepath(self, asset_id: int) -> Path | None:
+        with closing(self._open()) as db:
+            path = db.get_hda_filepath(hda_key_id=asset_id)
+            return Path(path) if path is not None else None
+
+    def has_history(self, asset_id: int) -> bool:
+        with closing(self._open()) as db:
+            return bool(db.is_exist_hda_history(hda_key_id=asset_id))
+
+    def has_note_history(self, asset_id: int) -> bool:
+        with closing(self._open()) as db:
+            return bool(db.is_exist_hda_note_history(hda_key_id=asset_id))
+
+    def note_history(self, asset_id: int) -> list[Any]:
+        with closing(self._open()) as db:
+            return list(
+                db.get_hda_note_history(hda_key_id=asset_id, with_datetime=True) or []
+            )
+
+    def history_counts(self) -> tuple[int, int]:
+        with closing(self._open()) as db:
+            return int(db.count_hda_history() or 0), int(
+                db.count_hda_note_history() or 0
+            )
+
+    def latest_video(self, asset_id: int, version: str) -> Any:
+        with closing(self._open()) as db:
+            return db.get_hda_history_video_most_recent_by_ver(
+                hda_key_id=asset_id, version=version
+            )
+
+    def record_detail(self, record_id: int) -> Any:
+        with closing(self._open()) as db:
+            return db.get_only_detailview_record_data(record_id=record_id)
+
+    def set_thumbnail(
+        self, asset_id: int, directory: Path, filename: str, version: str
+    ) -> bool:
+        with closing(self._open()) as db:
+            done = db.update_thumbnail_info(
+                hda_key_id=asset_id,
+                dirpath=directory,
+                filename=filename,
+                version=version,
+            )
+        if done is None:
+            raise LibraryError("thumbnail was not updated")
+        return bool(done)
+
+    def set_video(
+        self, asset_id: int, directory: Path, filename: str, version: str
+    ) -> str:
+        """Insert or update the preview video row; returns "insert" or "update"."""
+        with closing(self._open()) as db:
+            kind = (
+                "update"
+                if db.get_video_info(hda_key_id=asset_id) is not None
+                else "insert"
+            )
+            write = db.update_video_info if kind == "update" else db.insert_video_info
+            done = write(
+                hda_key_id=asset_id,
+                dirpath=directory,
+                filename=filename,
+                version=version,
+            )
+        if done is None:
+            raise LibraryError("video was not stored")
+        return kind
+
+    def add_history_row(self, row: Sequence[Any]) -> int:
+        """Append one hda_history row (column order of the facade) and return its id."""
+        with closing(self._open()) as db:
+            if db.insert_hda_history(data=list(row)) is None:
+                raise LibraryError("history row was not inserted")
+            history_id = db.get_last_insert_id
+        if history_id is None:
+            raise LibraryError("history row has no id")
+        return int(history_id)
+
+    def delete_note_history(self, asset_id: int | None = None) -> None:
+        with closing(self._open()) as db:
+            if db.delete_hda_note_history(hda_key_id=asset_id) is None:
+                raise LibraryError("note history was not deleted")
+
+    def delete_scene_record(self, record_id: int) -> bool:
+        with closing(self._open()) as db:
+            done = db.delete_hda_record(record_id=record_id)
+        if done is None:
+            raise LibraryError("scene record was not deleted")
+        return bool(done)
+
     def search_asset_ids(
         self,
         query: str,

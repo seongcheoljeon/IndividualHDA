@@ -201,17 +201,14 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
     selection = SelectionState()
     selection.asset.id, selection.asset.row = 2, 1
     selection.asset.data = store.rows[1]
-    rows, history, closed = [], [], []
-    database = SimpleNamespace(
-        get_video_info=lambda **kwargs: None,
-        insert_video_info=lambda **kwargs: 1,
-        close=lambda: closed.append(True),
+    rows, history, stored = [], [], []
+    repository = SimpleNamespace(
+        set_video=lambda *args: stored.append(args) or "insert",
     )
     owner = SimpleNamespace(
         _assets=store,
         _selection=selection,
-        _db_filepath=tmp_path / "ihda.db",
-        _db_api_wrap=lambda path: database,
+        _repository=repository,
         _change_hda_data=lambda **kwargs: rows.append(kwargs["row"]),
         _insert_hist_db_from_curt_hist_data=lambda **kwargs: history.append(
             kwargs["data"]["hda_id"]
@@ -224,7 +221,7 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
     )
     assert rows == [0, 0]
     assert history == [1]
-    assert closed == [True]
+    assert stored == [(1, tmp_path, "encoded.mp4", "1.0")]
 
 
 def test_asset_row_lookup_uses_current_index_after_insertion() -> None:

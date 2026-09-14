@@ -146,11 +146,8 @@ Type of current node: "{hda_type_name}"
                 """
                 )
             else:
-                db_api = self._db_api_wrap(self._db_filepath)
-                if db_api is None:
-                    return
-                is_exist_hda_name = db_api.is_exist_hda_name(
-                    user_id=self._user, category=category, hda_name=new_hda_name
+                is_exist_hda_name = self._repository.has_asset(
+                    self._user, category, new_hda_name
                 )
                 if is_exist_hda_name:
                     self._alert_invalid_rename(msg="iHDA with the same name exists.")
@@ -179,9 +176,7 @@ Type of current node: "{hda_type_name}"
                     else:
                         self._rename_ihda.close()
                         self._dragdrop_overlay_show(text="Change iHDA Node Name")
-                        is_done = self._change_ihda_name(
-                            new_hda_name=new_hda_name, db_api=db_api
-                        )
+                        is_done = self._change_ihda_name(new_hda_name=new_hda_name)
                         self._dragdrop_overlay_close()
                         if is_done:
                             log_handler.LogHandler.log_msg(
@@ -189,11 +184,9 @@ Type of current node: "{hda_type_name}"
                                 msg=f'renamed "{old_hda_name}" >>>>> "{new_hda_name}"',
                             )
 
-    def _change_ihda_name(
-        self, new_hda_name: str | None = None, db_api: SQLite3DatabaseAPI | None = None
-    ) -> bool:
+    def _change_ihda_name(self, new_hda_name: str | None = None) -> bool:
         data = self._selection.asset.data
-        if data is None or new_hda_name is None or db_api is None:
+        if data is None or new_hda_name is None or self._repository is None:
             return False
         hda_id = data[public.Key.hda_id]
         hda_version = data[public.Key.hda_version]
@@ -289,9 +282,7 @@ Type of current node: "{hda_type_name}"
                 )
                 self._ihda_icons.make_pixmap_hist_thumbnail_data(changed_history)
                 # history trigger 주석처리로 인해 DB 삽입을 직접해줘야 한다.
-                self._insert_hist_db_from_curt_hist_data(
-                    db_api=db_api, comment="NAME (CHANGE)"
-                )
+                self._insert_hist_db_from_curt_hist_data(comment="NAME (CHANGE)")
             return True
         else:
             return False
@@ -387,11 +378,7 @@ Type of current node: "{hda_type_name}"
             _ = msgbox.exec()
 
     def _slot_delete_all_history(self) -> None:
-        db_api = self._db_api_wrap(self._db_filepath)
-        if db_api is None:
-            return
-        cnt_hda_hist = db_api.count_hda_history()
-        cnt_hda_note_hist = db_api.count_hda_note_history()
+        cnt_hda_hist, cnt_hda_note_hist = self._repository.history_counts()
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font())
         msgbox.setWindowTitle("Delete all iHDA history")
@@ -420,17 +407,16 @@ iHDA note history: {cnt_hda_note_hist}
         if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             # 만약 파일들까지 삭제한다면
             # if chkbox.isChecked():
-            all_hkey_id = db_api.get_hda_key_id(user_id=self._user)
-            if all_hkey_id is None:
-                return
+            all_hkey_id = self._repository.asset_ids(self._user)
             # player가 재생중이거나 일시정지 상태면 정지
             self._video_player.player_stop()
             del_hist_data_lst = []
             for hkey_id in sorted(all_hkey_id, reverse=True):
                 # video playlist 삭제
                 # 현재 iHDA 노드의 모든 video file 정보
-                video_filepath_lst = db_api.get_history_video_info(hda_key_id=hkey_id)
-                self._delete_video_playlist(video_filepath_list=video_filepath_lst)
+                self._delete_video_playlist(
+                    video_filepath_list=self._repository.history_videos(hkey_id)
+                )
                 hist_data_lst = (
                     self._ihda_history_model.get_hist_data_by_hkey_id_from_model(
                         hkey_id=hkey_id
@@ -442,11 +428,9 @@ iHDA note history: {cnt_hda_note_hist}
                 key=lambda x: x.get(public.Key.History.item_row),
                 reverse=True,
             ):
-                self._delete_each_hist_ihda_item(
-                    hist_data=hist_data, db_api=db_api, verbose=True
-                )
+                self._delete_each_hist_ihda_item(hist_data=hist_data, verbose=True)
             # note history 정보 삭제
-            db_api.delete_hda_note_history()
+            self._repository.delete_note_history()
             self._initialize_hist_current_attribs()
             self._clear_hist_parms()
 
@@ -455,9 +439,6 @@ iHDA note history: {cnt_hda_note_hist}
             log_handler.LogHandler.log_msg(
                 method=logging.error, msg="no node selected "
             )
-            return
-        db_api = self._db_api_wrap(self._db_filepath)
-        if db_api is None:
             return
         hda_id = self._selection.asset.id
         is_update = self._repository.toggle_favorite(hda_id)
@@ -500,11 +481,8 @@ iHDA note history: {cnt_hda_note_hist}
             index=index
         )
         # DB 삭제
-        db_api = self._db_api_wrap(self._db_filepath)
-        if db_api is None:
-            return
         for record_id in sorted(record_id_list):
-            is_removed = db_api.delete_hda_record(record_id=record_id)
+            is_removed = self._repository.delete_scene_record(record_id)
             if is_removed:
                 log_handler.LogHandler.log_msg(
                     method=logging.info,
@@ -537,9 +515,6 @@ iHDA note history: {cnt_hda_note_hist}
         )
         reply = msgbox.exec()
         if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            db_api = self._db_api_wrap(self._db_filepath)
-            if db_api is None:
-                return
             # player가 재생중이거나 일시 정지상태면 정지
             self._video_player.player_stop()
             selected = [
@@ -552,16 +527,11 @@ iHDA note history: {cnt_hda_note_hist}
                 key=lambda item: item[public.Key.History.item_row],
                 reverse=True,
             ):
-                self._delete_each_hist_ihda_item(
-                    hist_data=hist_data, db_api=db_api, verbose=True
-                )
+                self._delete_each_hist_ihda_item(hist_data=hist_data, verbose=True)
         self._initialize_hist_current_attribs()
         self._clear_hist_parms()
 
     def _remove_hda_item(self, indexes: Any = None) -> None:
-        db_api = self._db_api_wrap(self._db_filepath)
-        if db_api is None:
-            return
         # player가 재생중이거나 일시 정지상태면 정지
         self._video_player.player_stop()
         # 삭제할 히스토리 데이터 수거
@@ -590,7 +560,6 @@ iHDA note history: {cnt_hda_note_hist}
                 hda_name=hda_name,
                 hda_dirpath=hda_dirpath,
                 item_row=item_row,
-                db_api=db_api,
             )
             # 삭제할 히스토리 데이터 수거
             hist_data_lst = (
@@ -636,7 +605,6 @@ iHDA note history: {cnt_hda_note_hist}
         hda_name: str | None = None,
         hda_dirpath: pathlib.Path | None = None,
         item_row: int | None = None,
-        db_api: SQLite3DatabaseAPI | None = None,
     ) -> None:
         assert isinstance(hda_dirpath, pathlib.Path)
         self._delete_video_playlist(
@@ -660,7 +628,6 @@ iHDA note history: {cnt_hda_note_hist}
     def _delete_each_hist_ihda_item(
         self,
         hist_data: Any = None,
-        db_api: SQLite3DatabaseAPI | None = None,
         verbose: bool = True,
     ) -> bool:
         hda_id = hist_data.get(public.Key.History.hda_id)

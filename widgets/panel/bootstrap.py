@@ -114,17 +114,16 @@ class BootstrapMixin:
         else:
             # theme
             self._ui_settings.set_theme(theme=public.Name.default_theme)
-        db_api = self._db_api_wrap(self._db_filepath)
-        if db_api is not None:
+        if self._repository is not None:
             self._ihda_icons.make_pixmap_ihda_data(
-                icon_info=db_api.get_icon_info_by_user(user_id=self._user)
+                icon_info=self._repository.asset_icons(self._user)
             )
             self._ihda_icons.make_pixmap_cate_data(
-                cate_lst=db_api.get_hda_category(user_id=self._user)
+                cate_lst=self._repository.categories(self._user)
             )
             self._ihda_icons.make_pixmap_thumbnail_data(all_data=self._assets.rows)
             self._ihda_icons.make_pixmap_hist_thumbnail_data(
-                all_data=db_api.get_thumbnail_by_hda_history(user_id=self._user)
+                all_data=self._repository.history_thumbnails(self._user)
             )
         self._ihda_category_view = ihda_category_view.CategoryView(self)
         self.verticalLayout__category.addWidget(self._ihda_category_view)
