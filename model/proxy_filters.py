@@ -18,13 +18,16 @@ class AssetProxyModel(QtCore.QSortFilterProxyModel):
     type_role: int
     cate_role: int | None = None
     favorite_role: int | None = None
+    id_role: int | None = None
     name_column = 0
+    _FIELD_INDEX = {"Tags": 1, "Type": 2}
 
     def __init__(
         self, search_target_idx: int | None = None, parent: QtCore.QObject | None = None
     ) -> None:
         super().__init__(parent)
         self._search_target_idx = search_target_idx or 0
+        self._id_filter: frozenset[int] | None = None
         self._favorite_only = False
         self._node_category: str | None = None
         self.setFilterKeyColumn(self.name_column)
@@ -45,6 +48,8 @@ class AssetProxyModel(QtCore.QSortFilterProxyModel):
         if self.favorite_role is not None and self._favorite_only:
             if not index.data(self.favorite_role):
                 return False
+        if self._id_filter is not None and self.id_role is not None:
+            return index.data(self.id_role) in self._id_filter
         role = {1: self.tag_role, 2: self.type_role}.get(
             self._search_target_idx, self.filterRole()
         )
@@ -59,6 +64,15 @@ class AssetProxyModel(QtCore.QSortFilterProxyModel):
 
     def set_search_target_idx(self, idx: int) -> None:
         self._search_target_idx = idx
+        self.invalidate()
+
+    def set_search_field(self, name: str) -> None:
+        """Field for the local regex path; repository searches pass the name themselves."""
+        self.set_search_target_idx(self._FIELD_INDEX.get(name, 0))
+
+    def set_id_filter(self, ids: frozenset[int] | None) -> None:
+        """Show only these asset ids (repository search result); None restores regex."""
+        self._id_filter = ids
         self.invalidate()
 
     @property

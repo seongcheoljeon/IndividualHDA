@@ -44,7 +44,7 @@ class BootstrapMixin:
             self._get_hda_data(user_id=self._user, db_filepath=self._db_filepath) or []
         )
         # combobox - search type
-        self.comboBox__search_type.addItems(["Name", "Tags", "Type"])
+        self.comboBox__search_type.addItems(["Name", "Tags", "Type", "Note", "All"])
         self.comboBox__search_field_hist.addItems(["Name", "Tags", "Type"])
         # default font
         self.comboBox__search_type.setFont(self._get_default_font())

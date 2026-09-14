@@ -76,8 +76,20 @@ def test_panel_constructs(app: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     from main import IndividualHDA
 
     panel = IndividualHDA()
-    assert panel.comboBox__search_type.count() == 3
+    assert panel.comboBox__search_type.count() == 5
     panel.close()
+
+
+def wait_search(app: Any, panel: Any) -> None:
+    """Repository searches run off the GUI thread; wait for the current one."""
+    from PySide6 import QtTest
+
+    for _ in range(200):
+        app.processEvents()
+        if not panel._asset_search.busy:
+            break
+        QtTest.QTest.qWait(10)
+    app.processEvents()
 
 
 def test_panel_with_saved_library(
@@ -127,9 +139,19 @@ def test_panel_with_saved_library(
     model = panel._ihda_list_proxy_model
     assert model.rowCount() == 1
     panel.lineEdit__search_hda.setText("missing")
-    app.processEvents()
+    wait_search(app, panel)
     assert model.rowCount() == 0
     panel.lineEdit__search_hda.setText("Water")
+    wait_search(app, panel)
+    assert model.rowCount() == 1
+    panel.comboBox__search_type.setCurrentText("Note")
+    wait_search(app, panel)
+    assert model.rowCount() == 0
+    panel.comboBox__search_type.setCurrentText("All")
+    panel.lineEdit__search_hda.setText("tag:water")
+    wait_search(app, panel)
+    assert model.rowCount() == 1
+    panel.lineEdit__search_hda.setText("")
     app.processEvents()
     assert model.rowCount() == 1
     panel._open_library_tools(4)

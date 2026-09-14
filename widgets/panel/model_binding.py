@@ -8,6 +8,7 @@ from model.asset_notifications import QtAssetNotifications
 
 from typing import Any
 from libs.domain import AssetData
+import logging
 import pathlib
 
 from libs.qt_helpers import wildcard_expression
@@ -19,7 +20,8 @@ from model import ihda_table_model, ihda_table_proxy_model
 from model import ihda_history_model, ihda_history_proxy_model
 from model import ihda_record_model, ihda_record_proxy_model
 from model import ihda_inside_model, ihda_inside_proxy_model
-from libs import sqlite3_db_api
+from libs import sqlite3_db_api, log_handler
+from libs.library_explorer import search_asset_ids
 
 
 class ModelBindingMixin:
@@ -299,14 +301,52 @@ class ModelBindingMixin:
 
     @QtCore.Slot(str)
     def _search_filter_regexp_hda_item(self, text: str) -> None:
-        if self.checkBox__casesensitive_hda.isChecked():
-            casesensitivity = QtCore.Qt.CaseSensitive
-        else:
-            casesensitivity = QtCore.Qt.CaseInsensitive
-        regexp = wildcard_expression(text.strip(), casesensitivity)
-        self._ihda_list_proxy_model.setFilterRegularExpression(regexp)
-        self._ihda_table_proxy_model.setFilterRegularExpression(regexp)
+        text = text.strip()
+        case_sensitive = self.checkBox__casesensitive_hda.isChecked()
+        database = self._db_filepath
+        proxies = (self._ihda_list_proxy_model, self._ihda_table_proxy_model)
+        if not text or database is None or not database.is_file():
+            # Empty query: purely local, no job. Regex "" accepts every row.
+            self._asset_search.cancel()
+            casesensitivity = (
+                QtCore.Qt.CaseSensitive if case_sensitive else QtCore.Qt.CaseInsensitive
+            )
+            regexp = wildcard_expression(text, casesensitivity)
+            for proxy in proxies:
+                proxy.set_id_filter(None)
+                proxy.setFilterRegularExpression(regexp)
+            self.label__hda_count.setText(str(self._ihda_list_proxy_model.rowCount()))
+            return
+        field = self.comboBox__search_type.currentText() or "All"
+
+        def search(query: str, cancel: Any) -> list[int]:
+            return search_asset_ids(
+                database,
+                query,
+                field=field,
+                case_sensitive=case_sensitive,
+                cancel=cancel,
+            )
+
+        self._asset_search.submit(text, search)
+
+    @QtCore.Slot(object)
+    def _apply_search_ids(self, ids: object) -> None:
+        for proxy in (self._ihda_list_proxy_model, self._ihda_table_proxy_model):
+            proxy.setFilterRegularExpression("")
+            proxy.set_id_filter(frozenset(ids) if ids is not None else None)
         self.label__hda_count.setText(str(self._ihda_list_proxy_model.rowCount()))
+
+    @QtCore.Slot(object)
+    def _asset_search_failed(self, error: object) -> None:
+        log_handler.LogHandler.log_msg(
+            method=logging.error, msg=f"search failed: {error}"
+        )
+
+    def _refresh_asset_search(self) -> None:
+        """Re-run the current query after local edits so the id filter is not stale."""
+        if self.lineEdit__search_hda.text().strip():
+            self._search_filter_regexp_hda_item(self.lineEdit__search_hda.text())
 
     @QtCore.Slot(str)
     def _search_filter_regexp_hda_cate(self, text: str) -> None:

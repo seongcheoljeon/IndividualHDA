@@ -30,6 +30,7 @@ import main_ui
 import ui_settings
 from libs import houdini_api, loading_indicator, log_handler, ihda_icons
 from libs import dragdrop_overlay, ihda_system, identity
+from libs.asset_search import AssetSearch
 from widgets.make_video_info import make_video_info
 from widgets.video_player import make_video_player
 from widgets.web_view import make_web_view
@@ -105,6 +106,9 @@ class IndividualHDA(
         # AI calls get their own controller so network latency never shares the
         # archive/encoder busy gate or the whole-window lock of _start_file_job.
         self._ai_tasks = self._services.tasks(self)
+        self._asset_search = AssetSearch(self)
+        self._asset_search.results.connect(self._apply_search_ids)
+        self._asset_search.failed.connect(self._asset_search_failed)
         self._import_stream: ArchiveTransfer | None = None
         self._close_requested = False
         self._closing = False
@@ -206,6 +210,7 @@ class IndividualHDA(
         self._closing = True
         self._tasks.shutdown_process()
         self._ai_tasks.drain()
+        self._asset_search.drain()
         if public.IS_HOUDINI:
             # clean event
             self._loading_close()

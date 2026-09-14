@@ -42,6 +42,95 @@ def search_assets(
         return [dict(row) for row in rows]
 
 
+# Search syntax shared by the panel, the manager and the AI rewrite hook:
+# whitespace-separated tokens are ANDed; ``*``/``?`` are wildcards; an optional
+# ``name:``/``tag:``/``type:``/``note:`` prefix restricts one token to a field.
+_FIELD_ALIASES = {
+    "name": "Name",
+    "tag": "Tags",
+    "tags": "Tags",
+    "type": "Type",
+    "note": "Note",
+}
+_TAG_MATCH = (
+    "EXISTS (SELECT 1 FROM asset_tags t WHERE t.hda_key_id=k.id AND t.tag {op} ?{esc})"
+)
+_FIELD_COLUMNS: dict[str, tuple[str, ...]] = {
+    "Name": ("k.name",),
+    "Tags": (_TAG_MATCH,),
+    "Type": ("COALESCE(n.node_type_name,'')",),
+    "Note": ("COALESCE(o.note,'')",),
+}
+_FIELD_COLUMNS["All"] = (
+    *_FIELD_COLUMNS["Name"],
+    *_FIELD_COLUMNS["Tags"],
+    *_FIELD_COLUMNS["Type"],
+    "COALESCE(n.node_def_desc,'')",
+    *_FIELD_COLUMNS["Note"],
+)
+
+
+def _pattern(text: str, case_sensitive: bool) -> tuple[str, str, str]:
+    """Return (operator, escape clause, pattern) for one token."""
+    if case_sensitive:
+        # GLOB keeps * and ? as wildcards; only character classes need escaping.
+        return "GLOB", "", "*" + text.replace("[", "[[]") + "*"
+    escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    escaped = escaped.replace("*", "%").replace("?", "_")
+    return "LIKE", " ESCAPE '\\'", "%" + escaped + "%"
+
+
+def _token_clause(
+    token: str, field: str, case_sensitive: bool
+) -> tuple[str, list[str]]:
+    prefix, sep, rest = token.partition(":")
+    if sep and rest and prefix.lower() in _FIELD_ALIASES:
+        field, token = _FIELD_ALIASES[prefix.lower()], rest
+    op, esc, pattern = _pattern(token, case_sensitive)
+    columns = _FIELD_COLUMNS.get(field, _FIELD_COLUMNS["All"])
+    parts = []
+    for column in columns:
+        if column is _TAG_MATCH:
+            parts.append(column.format(op=op, esc=esc))
+        else:
+            parts.append(f"{column} {op} ?{esc}")
+    return "(" + " OR ".join(parts) + ")", [pattern] * len(parts)
+
+
+def search_asset_ids(
+    database: Path,
+    query: str,
+    *,
+    user: str | None = None,
+    field: str = "All",
+    case_sensitive: bool = False,
+    limit: int = 5000,
+    cancel: threading.Event | None = None,
+) -> list[int]:
+    """Asset ids whose fields match every token of ``query`` (see syntax above).
+
+    An empty query matches every asset; callers keep that case local instead.
+    """
+    # ponytail: LIKE/GLOB full scan; swap the body for FTS5 (trigram) if the
+    # library grows past ~50k rows or ranking is needed. Callers stay unchanged.
+    tokens = query.split()
+    clauses: list[str] = ["(? IS NULL OR k.user_id = ?)"]
+    params: list[object] = [user, user]
+    for token in tokens:
+        clause, token_params = _token_clause(token, field, case_sensitive)
+        clauses.append(clause)
+        params.extend(token_params)
+    sql = f"""SELECT k.id FROM hda_key k
+        LEFT JOIN houdini_node_info n ON n.hda_key_id=k.id
+        LEFT JOIN note_info o ON o.hda_key_id=k.id
+        WHERE {" AND ".join(clauses)} ORDER BY k.id LIMIT ?"""
+    params.append(limit)
+    with read_database(database, cancel) as connection:
+        rows = connection.execute(sql, params).fetchall()
+        check_cancel(cancel)
+        return [row[0] for row in rows]
+
+
 def history_versions(
     database: Path, asset_id: int, cancel: threading.Event | None = None
 ) -> list[dict[str, Any]]:

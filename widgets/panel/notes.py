@@ -237,6 +237,7 @@ class NotesMixin:
                     key=public.Key.History.tags,
                     val=tag_lst,
                 )
+                self._refresh_asset_search()
             else:
                 log_handler.LogHandler.log_msg(
                     method=logging.error, msg="invalid value (note/tag)"

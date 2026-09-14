@@ -729,6 +729,7 @@ But it didn't stop, so please wait a little longer.
         assert len(key_lst) == len(val_lst)
         dat = dict(zip(key_lst, val_lst))
         self._insert_ihda_data_model(data=dat)
+        self._refresh_asset_search()
         self.label__hda_count.setText(str(self._ihda_list_proxy_model.rowCount()))
         self.label__cate_count.setText(str(self._get_category_count()))
         # history 모델에 아이템 add

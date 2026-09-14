@@ -268,6 +268,7 @@ Type of current node: "{1}"
                 )
             self._selection.asset.name = new_hda_name
             self._selection.asset.filepath = new_hda_filepath
+            self._refresh_asset_search()
             # record 데이터 갱신 함수 호출. 이 함수만 하면 data는 바뀌지만 뷰에서는 바뀌지 않늗 문제가 있다.
             self._ihda_record_model.rename_record_item(
                 hda_id=hda_id,

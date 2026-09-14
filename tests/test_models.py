@@ -96,3 +96,11 @@ def test_tag_filter(app: Any, tmp_path: pathlib.Path) -> None:
     assert proxy.rowCount() == 1
     proxy.setFilterRegularExpression("absent")
     assert proxy.rowCount() == 0
+    proxy.set_id_filter(frozenset({1}))
+    assert proxy.rowCount() == 1  # id filter wins over the regex
+    proxy.set_id_filter(frozenset())
+    assert proxy.rowCount() == 0
+    proxy.set_id_filter(None)
+    proxy.set_search_field("Name")
+    proxy.setFilterRegularExpression("Water")
+    assert proxy.rowCount() == 1

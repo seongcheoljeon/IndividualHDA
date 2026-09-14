@@ -176,12 +176,16 @@ class SelectionMixin:
 
     @QtCore.Slot(int)
     def _slot_set_search_target(self, idx: int) -> None:
-        self._ihda_list_proxy_model.set_search_target_idx(idx)
-        self._ihda_table_proxy_model.set_search_target_idx(idx)
+        name = self.comboBox__search_type.itemText(idx)
+        self._ihda_list_proxy_model.set_search_field(name)
+        self._ihda_table_proxy_model.set_search_field(name)
+        self._refresh_asset_search()
 
     @QtCore.Slot(int)
     def _slot_set_search_hist_field_target(self, idx: int) -> None:
-        self._ihda_history_proxy_model.set_search_target_idx(idx)
+        self._ihda_history_proxy_model.set_search_field(
+            self.comboBox__search_field_hist.itemText(idx)
+        )
 
     @QtCore.Slot(bool)
     def _slot_chk_hist_search_data(self, state: bool) -> None:

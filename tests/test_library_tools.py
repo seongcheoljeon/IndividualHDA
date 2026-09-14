@@ -21,7 +21,7 @@ from libs.library_backups import (
     recovery_files,
     cleanup_recovery,
 )
-from libs.library_explorer import search_assets, history_versions
+from libs.library_explorer import search_assets, search_asset_ids, history_versions
 from libs.version_compare import compare_expanded
 from test_integrity_followup import seed
 
@@ -190,6 +190,32 @@ def test_paged_search_literal_matching_and_cancellation(
     with pytest.raises(Cancelled):
         search_assets(database, "user", "", cancel=cancel)
     assert len(history_versions(database, 1)) == 3
+
+
+def test_search_asset_ids_fields_tokens_and_wildcards(
+    library: tuple[Path, Path],
+) -> None:
+    database, _ = library
+    with SQLite3DatabaseAPI(database) as db:
+        db.insert_hda_key("Smoke_Rig", "sop", "user")
+        db.insert_hda_info(2, "1", filename="s.hda", dirpath=Path("/assets"))
+        db.insert_houdini_node_info(2, "popnet", "Particles", False, False, "/obj/S")
+        db.insert_tag_info(2, ["물", "fire"])
+        db.insert_note_info(2, "연기 시뮬레이션 note")
+    ids = lambda q, **kw: search_asset_ids(database, q, **kw)  # noqa: E731
+    assert ids("물") == [2]  # one-character Korean tag, All fields
+    assert ids("smoke") == [2] and ids("smoke", case_sensitive=True) == []
+    assert ids("Smoke*", case_sensitive=True) == [2]
+    assert ids("tag:fire type:pop*") == [2] and ids("tag:fire type:box") == []
+    assert ids("note:연기") == [2] and ids("연기", field="Name") == []
+    assert ids("시뮬레이션", field="Note") == [2]
+    assert ids("%") == [] and ids("' OR 1=1 --") == []
+    assert ids("Old", field="Name") == [1] and ids("Old", user="nobody") == []
+    assert ids("") == [1, 2]
+    cancel = threading.Event()
+    cancel.set()
+    with pytest.raises(Cancelled):
+        ids("x", cancel=cancel)
 
 
 def test_diff_reports_metadata_parameters_and_node_sections(tmp_path: Path) -> None:

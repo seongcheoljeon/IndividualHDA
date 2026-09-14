@@ -9,3 +9,4 @@ class TableProxyModel(AssetProxyModel):
     type_role = TableModel.type_role
     cate_role = TableModel.cate_role
     favorite_role = TableModel.favorite_role
+    id_role = TableModel.id_role

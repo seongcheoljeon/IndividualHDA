@@ -9,3 +9,4 @@ class ListProxyModel(AssetProxyModel):
     type_role = ListModel.type_role
     cate_role = ListModel.cate_role
     favorite_role = ListModel.favorite_role
+    id_role = ListModel.id_role
