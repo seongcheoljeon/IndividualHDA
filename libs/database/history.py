@@ -482,26 +482,6 @@ class HistoryOperations(DatabaseSession):
             dat.append(cast(HistoryData, tmp_dict))
         return dat
 
-    def get_hda_history_columns(self) -> list[Any]:
-        query = """ SELECT * FROM hda_history"""
-        query_params: tuple[Any, ...] = ()
-        cursor = self._cursor.execute(query, query_params)
-        columns = [x[0] for x in cursor.description]
-        return columns
-
-    def get_hda_history_id(self, hda_key_id: int | None = None) -> list[Any]:
-        if hda_key_id is None:
-            query = """SELECT id FROM hda_history"""
-            query_params: tuple[Any, ...] = ()
-        else:
-            query = "SELECT id FROM hda_history WHERE hda_key_id = ?"
-            query_params = (hda_key_id,)
-        cursor = self._cursor.execute(query, query_params)
-        dat = cursor.fetchall()
-        if (dat is None) or (not len(dat)):
-            return []
-        return [x[0] for x in dat]
-
     def get_hda_note_history(
         self, hda_key_id: int | None = None, with_datetime: bool = False
     ) -> list[tuple[Any, ...]] | None:

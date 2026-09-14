@@ -51,20 +51,6 @@ class LibraryQueriesMixin:
             return item_row
         return self._assets.rows[item_row].get(key)
 
-    @staticmethod
-    def _binary_search(data: Any = None, find: Any = None) -> int | None:
-        start = 0
-        end = len(data) - 1
-        while start <= end:
-            mid = (start + end) // 2
-            if data[mid] == find:
-                return mid
-            elif data[mid] < find:
-                start = mid + 1
-            else:
-                end = mid - 1
-        return None
-
     def _find_tree_element_model(
         self, index: QtCore.QModelIndex = None, find_name: str = ""
     ) -> QtCore.QModelIndex | None:

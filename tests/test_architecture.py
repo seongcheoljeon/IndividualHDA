@@ -21,19 +21,7 @@ GENERATED = ("_ui.py", "_rc.py")
 # Modules allowed to import hou/hdefereval at runtime (the host boundary).
 HOST_BOUNDARY = {"libs.host", "libs.houdini_api"}
 # Debt: modules that still import hou directly. Target: empty.
-HOU_IMPORTERS = {
-    "libs.version_compare",
-    "main",
-    "public",
-    "ui_settings",
-    "widgets.panel.asset_registration",
-    "widgets.panel.host_callbacks",
-    "widgets.panel.houdini_actions",
-    "widgets.panel.library_tools",
-    "widgets.panel.presentation",
-    "widgets.panel.selection",
-    "widgets.web_view.web_view",
-}
+HOU_IMPORTERS: set[str] = set()
 # Debt: modules that reach the god module `public` instead of its real homes.
 PUBLIC_IMPORTERS = {
     "libs.database.assets",

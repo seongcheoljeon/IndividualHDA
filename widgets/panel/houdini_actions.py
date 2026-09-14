@@ -5,11 +5,10 @@ Uses the shared panel protected state; no independent QObject ownership.
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import pathlib
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore, QtWidgets
 
@@ -17,7 +16,7 @@ import public
 from libs import houdini_api, log_handler, sqlite3_db_api
 from libs.drag_payload import decode_payload
 
-with contextlib.suppress(ImportError):
+if TYPE_CHECKING:
     import hou
 
 
@@ -100,7 +99,7 @@ class HoudiniActionsMixin:
         if old_selected_nodes is not None:
             houdini_api.HoudiniAPI.all_clear_selected(node=old_selected_nodes[0])
         # node 위치 옵셋 값
-        offset_pos = hou.Vector2((1, -1))
+        offset_pos = houdini_api.HoudiniAPI.vector2(1, -1)
         network_editor.setIsCurrentTab()
         cursor_pos = houdini_api.HoudiniAPI.get_cursor_pos(
             network_editor=network_editor
@@ -250,7 +249,7 @@ class HoudiniActionsMixin:
                 )
                 continue
             node = self._import_hda_into_houdini(
-                parent_node=hou.node(network_editor.pwd().path()),
+                parent_node=network_editor.pwd(),
                 position=cursor_pos + (offset_pos * num_count),
                 data=model_data,
             )

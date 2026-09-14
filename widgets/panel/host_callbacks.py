@@ -7,60 +7,41 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore
 
 import public
 from libs import houdini_api, log_handler
 
-try:
-    import hdefereval
+if TYPE_CHECKING:
     import hou
-except ImportError:
-    pass
 
 
 class HostCallbacksMixin:
     @staticmethod
     def _add_event_loop_callback(event_func: Callable[..., Any]) -> None:
-        if not public.IS_HOUDINI:
-            return
-        if not HostCallbacksMixin._is_exist_event_callbacks(event_func):
-            hou.ui.addEventLoopCallback(event_func)
+        houdini_api.HoudiniAPI.add_event_loop_callback(event_func)
 
     @staticmethod
     def _add_selection_callback(event_func: Callable[..., Any]) -> None:
-        if not public.IS_HOUDINI:
-            return
-        if not HostCallbacksMixin._is_exist_selection_callbacks(event_func):
-            hou.ui.addSelectionCallback(event_func)
+        houdini_api.HoudiniAPI.add_selection_callback(event_func)
 
     @staticmethod
     def _remove_event_loop_callback(event_func: Callable[..., Any]) -> None:
-        if not public.IS_HOUDINI:
-            return
-        if HostCallbacksMixin._is_exist_event_callbacks(event_func):
-            hou.ui.removeEventLoopCallback(event_func)
+        houdini_api.HoudiniAPI.remove_event_loop_callback(event_func)
 
     @staticmethod
     def _remove_selection_callback(event_func: Callable[..., Any]) -> None:
-        if not public.IS_HOUDINI:
-            return
-        if HostCallbacksMixin._is_exist_selection_callbacks(event_func):
-            hou.ui.removeSelectionCallback(event_func)
+        houdini_api.HoudiniAPI.remove_selection_callback(event_func)
 
     @staticmethod
-    def _is_exist_event_callbacks(event_func: Callable[..., Any]) -> None | bool:
-        if not public.IS_HOUDINI:
-            return
-        return event_func in hou.ui.eventLoopCallbacks()
+    def _is_exist_event_callbacks(event_func: Callable[..., Any]) -> bool:
+        return houdini_api.HoudiniAPI.has_event_loop_callback(event_func)
 
     @staticmethod
-    def _is_exist_selection_callbacks(event_func: Callable[..., Any]) -> None | bool:
-        if not public.IS_HOUDINI:
-            return
-        return event_func in hou.ui.selectionCallbacks()
+    def _is_exist_selection_callbacks(event_func: Callable[..., Any]) -> bool:
+        return houdini_api.HoudiniAPI.has_selection_callback(event_func)
 
     def _slot_stackedwidget_whole_curt_changed(self, index: QtCore.QModelIndex) -> None:
         # 만약 iHDA 뷰가 아닌데 category synchronize가 활성화 상태면, 이벤트 콜백 삭제
@@ -107,8 +88,7 @@ class HostCallbacksMixin:
         self._wrapper_execute_deferred(self._set_current_panetab)
 
     def _set_current_panetab(self) -> None:
-        desk = hou.ui.curDesktop()
-        panetab = desk.paneTabUnderCursor()
+        panetab = houdini_api.HoudiniAPI.pane_tab_under_cursor()
         self._current_panetab = panetab
         if self._current_panetab is None:
             return
@@ -162,4 +142,4 @@ class HostCallbacksMixin:
             if not self._closing and not self._host_destroying:
                 func()
 
-        hdefereval.executeDeferred(invoke)
+        houdini_api.HoudiniAPI.execute_deferred(invoke)

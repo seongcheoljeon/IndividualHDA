@@ -335,11 +335,3 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
     @is_ffmpeg_valid.setter
     def is_ffmpeg_valid(self, val: Any) -> None:
         self.__is_ffmpeg_valid = val
-
-    @property
-    def data_final_dirpath(self) -> pathlib.Path | None:
-        return self.__data_final_dirpath
-
-    @property
-    def ffmpeg_final_dirpath(self) -> pathlib.Path | None:
-        return self.__ffmpeg_final_dirpath

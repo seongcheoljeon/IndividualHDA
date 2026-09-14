@@ -71,50 +71,6 @@ class CatalogOperations(DatabaseSession):
             log_handler.LogHandler.log_msg(method=logging.error, msg=err)
             return None
 
-    def delete_hda_category(
-        self, category: str | None = None, user_id: str | None = None
-    ) -> int | None:
-        cnt_hda_key_by_cate = self.get_count_hda_key(category=category, user_id=user_id)
-        if cnt_hda_key_by_cate != 0:
-            return 0
-        query = """
-        DELETE FROM hda_category WHERE category = ? AND user_id = ?
-        """
-        query_params: tuple[Any, ...] = (category, user_id)
-        try:
-            cursor = self._cursor.execute(query, query_params)
-            self._commit()
-            return cursor.rowcount
-        except Exception as err:
-            self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="*** hda_category (delete) ***"
-            )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
-            return None
-
-    def delete_hda_key(
-        self,
-        name: str | None = None,
-        category: str | None = None,
-        user_id: str | None = None,
-    ) -> int | None:
-        query = """
-        DELETE FROM hda_key WHERE name = ? AND category = ? AND user_id = ?
-        """
-        query_params: tuple[Any, ...] = (name, category, user_id)
-        try:
-            cursor = self._cursor.execute(query, query_params)
-            self._commit()
-            return cursor.rowcount
-        except Exception as err:
-            self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="*** hda_key (delete) ***"
-            )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
-            return None
-
     def delete_hda_key_with_id(self, hda_key_id: int | None = None) -> int | None:
         query = "DELETE FROM hda_key WHERE id = ?"
         query_params: tuple[Any, ...] = (hda_key_id,)
@@ -130,14 +86,6 @@ class CatalogOperations(DatabaseSession):
             log_handler.LogHandler.log_msg(method=logging.error, msg=err)
             return None
 
-    def is_exist_users_table(self) -> bool:
-        query = """
-        SELECT name FROM sqlite_master WHERE type='table' AND name='users'
-        """
-        query_params: tuple[Any, ...] = ()
-        cursor = self._cursor.execute(query, query_params)
-        return cursor.fetchone() is not None
-
     def list_user_ids(self) -> list[str]:
         cursor = self._cursor.execute("SELECT user_id FROM users ORDER BY user_id")
         return [row[0] for row in cursor.fetchall()]
@@ -149,28 +97,9 @@ class CatalogOperations(DatabaseSession):
         cursor = self._cursor.execute(query, query_params)
         return bool(cursor.fetchone()[0])
 
-    def is_exist_email(self, email: str) -> bool:
-        query = """SELECT COUNT(email) FROM users WHERE email = ?
-        """
-        query_params: tuple[Any, ...] = (email,)
-        cursor = self._cursor.execute(query, query_params)
-        return bool(cursor.fetchone()[0])
-
     def get_user_id(self) -> list[str]:
         query = "SELECT user_id FROM users"
         query_params: tuple[Any, ...] = ()
-        cursor = self._cursor.execute(query, query_params)
-        dat = [x[0] for x in cursor.fetchall()]
-        return dat
-
-    def get_email(self, user_id: str | None = None) -> list[str]:
-        if user_id is None:
-            query = "SELECT email FROM users"
-            query_params: tuple[Any, ...] = ()
-        else:
-            query = """SELECT email FROM users WHERE user_id = ?
-            """
-            query_params = (user_id,)
         cursor = self._cursor.execute(query, query_params)
         dat = [x[0] for x in cursor.fetchall()]
         return dat

@@ -108,21 +108,6 @@ class FFmpegAPI:
             temporary.unlink(missing_ok=True)
 
     @staticmethod
-    def play_video(
-        ffmpeg_dirpath: pathlib.Path | None = None,
-        video_filepath: pathlib.Path | None = None,
-    ) -> subprocess.Popen[bytes]:
-        return subprocess.Popen(
-            [
-                FFmpegAPI.executable("ffplay", ffmpeg_dirpath),
-                "-autoexit",
-                str(video_filepath),
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-
-    @staticmethod
     def video_info(
         ffmpeg_dirpath: pathlib.Path | None = None,
         video_filepath: pathlib.Path | None = None,

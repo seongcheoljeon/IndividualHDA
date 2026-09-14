@@ -5,7 +5,6 @@ Shares protected panel state; Qt and HOM calls stay on the GUI thread.
 
 from __future__ import annotations
 
-import contextlib
 import logging
 import pathlib
 from typing import Any
@@ -13,11 +12,8 @@ from typing import Any
 from PySide6 import QtCore, QtGui, QtWidgets
 
 import public
-from libs import ihda_system, log_handler
+from libs import houdini_api, ihda_system, log_handler
 from libs.domain import LibraryContext
-
-with contextlib.suppress(ImportError):
-    import hou
 
 
 class PresentationMixin:
@@ -42,7 +38,7 @@ class PresentationMixin:
     def _get_font_properties(self, size_key: Any, style_key: Any) -> list[Any]:
         font_size = public.UISetting.view_font_size
         if public.IS_HOUDINI:
-            font_size = hou.ui.scaledSize(int(font_size))
+            font_size = houdini_api.HoudiniAPI.scaled_size(int(font_size))
         font_style = public.UISetting.view_font_style
         properties_data = self._preference.get_properties_data()
         if properties_data is not None and size_key in properties_data:
@@ -66,7 +62,7 @@ class PresentationMixin:
                     public.Name.PreferenceUI.spb_treeview_icon_size
                 )
                 if public.IS_HOUDINI:
-                    icon_size = hou.ui.scaledSize(int(icon_size))
+                    icon_size = houdini_api.HoudiniAPI.scaled_size(int(icon_size))
         return icon_size
 
     def _get_listview_properties(self, zoom_val: float) -> list[Any]:
@@ -81,7 +77,7 @@ class PresentationMixin:
                     * size_ratio
                 )
                 if public.IS_HOUDINI:
-                    icon_size = hou.ui.scaledSize(int(icon_size))
+                    icon_size = houdini_api.HoudiniAPI.scaled_size(int(icon_size))
                 thumb_scale = properties_data.get(
                     public.Name.PreferenceUI.dspb_listview_thumb_scale
                 )
@@ -102,7 +98,7 @@ class PresentationMixin:
                     * size_ratio
                 )
                 if public.IS_HOUDINI:
-                    icon_size = hou.ui.scaledSize(int(icon_size))
+                    icon_size = houdini_api.HoudiniAPI.scaled_size(int(icon_size))
                 thumb_scale = properties_data.get(
                     public.Name.PreferenceUI.dspb_tableview_thumb_scale
                 )
@@ -259,7 +255,7 @@ class PresentationMixin:
                     public.Name.PreferenceUI.spb_main_icon_size
                 )
         if public.IS_HOUDINI:
-            icon_size = hou.ui.scaledSize(int(icon_size))
+            icon_size = houdini_api.HoudiniAPI.scaled_size(int(icon_size))
         self.toolBar.setIconSize(QtCore.QSize(icon_size, icon_size))
         for inst in self._icon_variables():
             qsize = QtCore.QSize(icon_size, icon_size)
@@ -506,31 +502,6 @@ QTextEdit {
         msgbox.setDetailedText("Click the link to send an email.")
         msgbox.resize(msgbox.sizeHint())
         _ = msgbox.exec()
-
-    def _set_icon_size_from_widget(
-        self, widget: QtWidgets.QWidget | None = None
-    ) -> None:
-        icon_lst = widget.findChildren(QtWidgets.QPushButton)
-        icon_lst.extend(widget.findChildren(QtWidgets.QToolButton))
-        icon_lst.extend(widget.findChildren(QtWidgets.QCheckBox))
-        icon_size = public.UISetting.dft_icon_size
-        properties_data = self._preference.get_properties_data()
-        if properties_data is not None:
-            if public.Name.PreferenceUI.spb_main_icon_size in properties_data:
-                icon_size = properties_data.get(
-                    public.Name.PreferenceUI.spb_main_icon_size
-                )
-        if public.IS_HOUDINI:
-            icon_size = hou.ui.scaledSize(int(icon_size))
-        for inst in icon_lst:
-            qsize = QtCore.QSize(icon_size, icon_size)
-            inst.setIconSize(qsize)
-
-    @staticmethod
-    def _copy_to_clipboard(text: str = "") -> None:
-        clip = QtWidgets.QApplication.clipboard()
-        clip.clear()
-        clip.setText(text)
 
     @staticmethod
     def _slot_donate() -> None:

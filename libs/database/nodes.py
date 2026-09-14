@@ -213,45 +213,6 @@ class NodesOperations(DatabaseSession):
         )
         return is_hou_node_output_connect_info
 
-    def delete_houdini_node_category_path_info(
-        self, info_id: int | None = None
-    ) -> int | None:
-        query = """
-        DELETE FROM houdini_node_category_path_info WHERE info_id = ?
-        """
-        query_params: tuple[Any, ...] = (info_id,)
-        try:
-            cursor = self._cursor.execute(query, query_params)
-            self._commit()
-            return cursor.rowcount
-        except Exception as err:
-            self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error,
-                msg="*** houdini_node_category_path_info (delete) ***",
-            )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
-            return None
-
-    def delete_houdini_node_type_path_info(
-        self, info_id: int | None = None
-    ) -> int | None:
-        query = """
-        DELETE FROM houdini_node_type_path_info WHERE info_id = ?
-        """
-        query_params: tuple[Any, ...] = (info_id,)
-        try:
-            cursor = self._cursor.execute(query, query_params)
-            self._commit()
-            return cursor.rowcount
-        except Exception as err:
-            self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="*** houdini_node_type_path_info (delete) ***"
-            )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
-            return None
-
     def delete_houdini_node_input_connect_info(
         self, info_id: int | None = None
     ) -> int | None:
@@ -333,29 +294,3 @@ class NodesOperations(DatabaseSession):
         if (dat is None) or (not len(dat)):
             return None
         return [list(x) for x in dat]
-
-    def get_houdini_node_category_path_info(
-        self, info_id: int | None = None
-    ) -> None | list[Any]:
-        query = """
-        SELECT node_category FROM houdini_node_category_path_info WHERE info_id = ?
-        """
-        query_params: tuple[Any, ...] = (info_id,)
-        cursor = self._cursor.execute(query, query_params)
-        fetch_dat = cursor.fetchone()
-        if (fetch_dat is None) or (not len(fetch_dat)):
-            return None
-        return [x.strip() for x in fetch_dat[0].split(",")]
-
-    def get_houdini_node_type_path_info(
-        self, info_id: int | None = None
-    ) -> None | list[Any]:
-        query = """
-        SELECT node_type FROM houdini_node_type_path_info WHERE info_id = ?
-        """
-        query_params: tuple[Any, ...] = (info_id,)
-        cursor = self._cursor.execute(query, query_params)
-        fetch_dat = cursor.fetchone()
-        if (fetch_dat is None) or (not len(fetch_dat)):
-            return None
-        return [x.strip() for x in fetch_dat[0].split(",")]

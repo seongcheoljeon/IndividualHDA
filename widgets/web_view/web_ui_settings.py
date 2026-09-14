@@ -9,9 +9,10 @@ import copy
 # description:
 import os
 
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 import public
+from libs.qt_helpers import center_on_screen
 from libs.settings_store import apply_settings, load_json, save_json
 
 
@@ -52,7 +53,7 @@ class WebUISettings:
         if main_window_geo:
             self.__window.restoreGeometry(main_window_geo)
         else:
-            WebUISettings.__center_on_screen(self.__window)
+            center_on_screen(self.__window)
 
     def load_splitter_status(self) -> None:
         vertical = self.__setting_ini.value(public.Name.WebUI.splitter_whole_vertical)
@@ -66,14 +67,6 @@ class WebUISettings:
         apply_settings(
             self.__cfg_dict,
             [(public.Name.WebUI.url_addr, self.__window.lineEdit__address.setText)],
-        )
-
-    @staticmethod
-    def __center_on_screen(inst: QtWidgets.QWidget) -> None:
-        res = QtGui.QGuiApplication.primaryScreen().availableGeometry()
-        inst.move(
-            (res.width() // 2) - (inst.frameSize().width() // 2),
-            (res.height() // 2) - (inst.frameSize().height() // 2),
         )
 
 

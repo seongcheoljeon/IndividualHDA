@@ -153,9 +153,12 @@ def test_dark_resources_and_host_theme_roundtrip(
     window.actionDark_blue = QtGui.QAction(window)
     window.actionDark_blue.setCheckable(True)
     settings = ui_settings.UISettings(window)
+    from libs import houdini_api
+
     monkeypatch.setattr(public, "IS_HOUDINI", True)
+    monkeypatch.setattr(houdini_api, "IS_HOUDINI", True)
     monkeypatch.setattr(
-        ui_settings,
+        houdini_api,
         "hou",
         SimpleNamespace(
             qt=SimpleNamespace(styleSheet=lambda: "QWidget { color: #abcdef; }")

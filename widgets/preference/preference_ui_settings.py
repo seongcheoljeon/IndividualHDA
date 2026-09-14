@@ -12,10 +12,11 @@ import os
 from collections.abc import Callable
 from typing import Any
 
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtWidgets
 
 import public
 from libs.ai_provider import AISettings
+from libs.qt_helpers import center_on_screen
 from libs.settings_store import apply_settings, load_json, save_json
 
 
@@ -127,7 +128,7 @@ class PreferenceUISettings:
         if main_window_geo:
             self.__window.restoreGeometry(main_window_geo)
         else:
-            PreferenceUISettings.center_on_screen(self.__window)
+            center_on_screen(self.__window)
 
     def load_splitter_status(self) -> None:
         pass
@@ -225,14 +226,6 @@ class PreferenceUISettings:
 
     def get_ffmpeg_dirpath_from_saved(self) -> str | None:
         return self.cfg_dict.get(public.Name.PreferenceUI.lineedit_ffmpeg_dirpath)
-
-    @staticmethod
-    def center_on_screen(inst: QtWidgets.QWidget) -> None:
-        res = QtGui.QGuiApplication.primaryScreen().availableGeometry()
-        inst.move(
-            (res.width() // 2) - (inst.frameSize().width() // 2),
-            (res.height() // 2) - (inst.frameSize().height() // 2),
-        )
 
 
 if __name__ == "__main__":

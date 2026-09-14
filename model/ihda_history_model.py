@@ -393,21 +393,6 @@ class HistoryModel(QtCore.QAbstractTableModel):
                 self.update_item_data(row=row, key=key, val=val)
 
     # hkey_id & version 단위의 업데이트
-    def update_item_data_by_hkey_id_version_from_model(
-        self,
-        hkey_id: int | None = None,
-        version: str | None = None,
-        key: Any = None,
-        val: Any = None,
-    ) -> None:
-        for row in range(0, self.rowCount()):
-            index = self.index(row, 0, QtCore.QModelIndex())
-            if not index.isValid():
-                continue
-            if index.data(HistoryModel.id_role) == hkey_id:
-                if index.data(HistoryModel.version_role) == version:
-                    self.update_item_data(row=row, key=key, val=val)
-
     # 히스토리 아이템이 존재하는지
     def is_exist_ihda_item_from_model(self, hkey_id: int | None = None) -> bool:
         for row in range(0, self.rowCount()):

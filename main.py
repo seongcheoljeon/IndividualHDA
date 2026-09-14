@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
-import contextlib
 import logging
 import sqlite3
 from re import compile as re_compile
@@ -47,9 +46,6 @@ from widgets.preference import preference
 from widgets.rename_ihda import rename_ihda
 from widgets.video_player import make_video_player
 from widgets.web_view import make_web_view
-
-with contextlib.suppress(ImportError):
-    import hou
 
 __author__ = "Seongcheol Jeon"
 __version__ = public.Value.current_ver
@@ -118,7 +114,9 @@ class IndividualHDA(
         self._host_destroying = False
         self._embedded = embedded
         if public.IS_HOUDINI and not embedded:
-            self.setParent(hou.qt.mainWindow(), QtCore.Qt.WindowType.Window)
+            self.setParent(
+                houdini_api.HoudiniAPI.main_window(), QtCore.Qt.WindowType.Window
+            )
         self.setAcceptDrops(True)
         self.centralwidget.setEnabled(False)
         self.toolBar.setEnabled(False)
@@ -147,7 +145,7 @@ class IndividualHDA(
         self._repository = self._services.repository(self._library)
         self._make_videoinfo = make_video_info.MakeVideoInfo(parent=self)
         self._video_player = make_video_player(self._preference.ffmpeg_dirpath, self)
-        _help_site = hou.helpServerUrl if public.IS_HOUDINI else None
+        _help_site = houdini_api.HoudiniAPI.help_server_url()
         self._web_view = make_web_view(_help_site, self)
         # iHDA icons
         self._ihda_icons = ihda_icons.IHDAIcons()

@@ -51,8 +51,10 @@ def test_houdini_deferred_callback_ignores_destroyed_panel(
 
     queued: list = []
     calls: list[str] = []
+    from libs import houdini_api
+
     monkeypatch.setattr(
-        host_callbacks,
+        houdini_api,
         "hdefereval",
         SimpleNamespace(executeDeferred=queued.append),
         raising=False,

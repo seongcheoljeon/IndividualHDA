@@ -9,6 +9,7 @@ import logging
 import logging.handlers
 import os
 import re
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -64,6 +65,28 @@ class _LogRelay(QtCore.QObject):
     def append(self, message: str) -> None:
         self.widget.append(message)
         self.widget.moveCursor(QtGui.QTextCursor.MoveOperation.End)
+
+
+def log_elapsed(label: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    """Log how long the wrapped call took, at info level, in the panel log."""
+
+    def decorate(func: Callable[..., Any]) -> Callable[..., Any]:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            start = time.time()
+            try:
+                return func(*args, **kwargs)
+            finally:
+                elapsed = time.time() - start
+                LogHandler.log_msg(
+                    method=logging.info,
+                    msg=f"( {label} ) elapsed time: {int(elapsed // 60)}m {int(elapsed % 60)}s",
+                )
+
+        wrapper.__name__ = func.__name__
+        wrapper.__doc__ = func.__doc__
+        return wrapper
+
+    return decorate
 
 
 class LogHandler(logging.Handler):

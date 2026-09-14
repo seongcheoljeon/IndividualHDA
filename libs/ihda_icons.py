@@ -22,6 +22,7 @@ import public
 # third-party modules
 from libs import log_handler
 from libs.domain import AssetData, HistoryData
+from libs.houdini_api import HoudiniAPI
 from libs.thumbnail_cache import ThumbnailCache
 
 
@@ -195,8 +196,10 @@ class IHDAIcons:
             return QtGui.QPixmap(":/main/icons/blank.png")
         if public.IS_HOUDINI:
             try:
-                return public.hou.qt.Icon("_".join(icon_lst)).pixmap(128, 128)
-            except (RuntimeError, public.hou.Error):
+                pixmap = HoudiniAPI.host_icon("_".join(icon_lst))
+                if pixmap is not None:
+                    return pixmap
+            except RuntimeError:
                 pass
         if zip_fp is None:
             return QtGui.QPixmap(":/main/icons/blank.png")

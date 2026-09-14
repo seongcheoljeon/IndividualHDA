@@ -134,20 +134,6 @@ class NotesMixin:
             return self.textEdit__note.toPlainText()
 
     @staticmethod
-    def _set_curt_datetime_to_note(inst: Any, flag: bool) -> None:
-        if flag:
-            datetime_text = NotesMixin._reshape_datetime(
-                QtCore.QDateTime.currentDateTime()
-            )
-            text = f"{datetime_text}\n"
-            # inst.setPlainText('%s\n\n%s' % (text, inst.toPlainText()))
-            cursor = inst.textCursor()
-            cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
-            cursor.insertText(text)
-            scroll_bar = inst.verticalScrollBar()
-            scroll_bar.setValue(scroll_bar.maximum())
-
-    @staticmethod
     def _set_move_cursor_textedit(inst: Any) -> None:
         cursor = inst.textCursor()
         cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)

@@ -136,48 +136,6 @@ class AssetsOperations(DatabaseSession):
             log_handler.LogHandler.log_msg(method=logging.error, msg=err)
             return None
 
-    def insert_location_info(
-        self,
-        hda_key_id: int | None = None,
-        country: str | None = None,
-        timezone: str | None = None,
-        region: str | None = None,
-        city: str | None = None,
-        ip: str | None = None,
-        localx: float | None = None,
-        localy: float | None = None,
-        org: str | None = None,
-        postal: str | None = None,
-    ) -> int | None:
-        query = """
-        INSERT INTO location_info
-        (hda_key_id, country, timezone, region, city, ip, localx, localy, org, postal)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """
-        try:
-            dat: tuple[Any, ...] = (
-                hda_key_id,
-                country,
-                timezone,
-                region,
-                city,
-                DatabaseValues.inet_aton(ip_str=ip),
-                localx,
-                localy,
-                org,
-                postal,
-            )
-            cursor = self._cursor.execute(query, dat)
-            self._commit()
-            return cursor.rowcount
-        except Exception as err:
-            self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="*** location_info (insert) ***"
-            )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
-            return None
-
     def insert_video_info(
         self,
         hda_key_id: int | None = None,
@@ -504,48 +462,6 @@ class AssetsOperations(DatabaseSession):
             log_handler.LogHandler.log_msg(method=logging.error, msg=err)
             return None
 
-    def update_location_info(
-        self,
-        hda_key_id: int | None = None,
-        country: str | None = None,
-        timezone: str | None = None,
-        region: str | None = None,
-        city: str | None = None,
-        ip: str | None = None,
-        localx: float | None = None,
-        localy: float | None = None,
-        org: str | None = None,
-        postal: str | None = None,
-    ) -> int | None:
-        query = """
-        UPDATE location_info SET country = ?, timezone = ?, region = ?,
-            city = ?, ip = ?, localx = ?, localy = ?, org = ?,
-            postal = ? WHERE hda_key_id = ?
-        """
-        query_params: tuple[Any, ...] = (
-            country,
-            timezone,
-            region,
-            city,
-            DatabaseValues.inet_aton(ip),
-            localx,
-            localy,
-            org,
-            postal,
-            hda_key_id,
-        )
-        try:
-            cursor = self._cursor.execute(query, query_params)
-            self._commit()
-            return cursor.rowcount
-        except Exception as err:
-            self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="*** location_info (update) ***"
-            )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
-            return None
-
     def update_icon_info(
         self, hda_key_id: int | None = None, icon_lst: Sequence[str] = ()
     ) -> int | None:
@@ -584,36 +500,6 @@ class AssetsOperations(DatabaseSession):
             self._rollback()
             log_handler.LogHandler.log_msg(
                 method=logging.error, msg="*** tag_info (update) ***"
-            )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
-            return None
-
-    def delete_tag_info(self, hda_key_id: int | None = None) -> int | None:
-        query = "DELETE FROM tag_info WHERE hda_key_id = ?"
-        query_params: tuple[Any, ...] = (hda_key_id,)
-        try:
-            cursor = self._cursor.execute(query, query_params)
-            self._commit()
-            return cursor.rowcount
-        except Exception as err:
-            self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="*** tag_info (delete) ***"
-            )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
-            return None
-
-    def delete_icon_info(self, hda_key_id: int | None = None) -> int | None:
-        query = "DELETE FROM icon_info WHERE hda_key_id = ?"
-        query_params: tuple[Any, ...] = (hda_key_id,)
-        try:
-            cursor = self._cursor.execute(query, query_params)
-            self._commit()
-            return cursor.rowcount
-        except Exception as err:
-            self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="*** icon_info (delete) ***"
             )
             log_handler.LogHandler.log_msg(method=logging.error, msg=err)
             return None
@@ -805,23 +691,6 @@ class AssetsOperations(DatabaseSession):
             dat.append(tmp_dat)
         return dat
 
-    def get_icon_info(
-        self, hda_key_id: int | None = None, is_only_icon: bool = False
-    ) -> list[Any]:
-        if is_only_icon:
-            query = "SELECT icon FROM icon_info WHERE hda_key_id = ?"
-            query_params: tuple[Any, ...] = (hda_key_id,)
-            cursor = self._cursor.execute(query, query_params)
-            fetch_dat = cursor.fetchone()[0]
-            dat = [x.strip() for x in fetch_dat.split(",")]
-        else:
-            query = "SELECT id, hda_key_id, icon FROM icon_info WHERE hda_key_id = ?"
-            query_params = (hda_key_id,)
-            cursor = self._cursor.execute(query, query_params)
-            dat = list(cursor.fetchone())
-            dat[2] = [x.strip() for x in dat[2].split(",")]
-        return dat
-
     def get_note_info(self, hda_key_id: int | None = None) -> str | None:
         query = "SELECT note FROM note_info WHERE hda_key_id = ?"
         query_params: tuple[Any, ...] = (hda_key_id,)
@@ -831,42 +700,8 @@ class AssetsOperations(DatabaseSession):
             return None
         return dat[0]
 
-    def get_hipfile_info(self, hda_key_id: int | None = None) -> list[Any]:
-        query = """
-        SELECT filename, dirpath, houdini_version, hda_license, operating_system, sf, ef, fps
-        FROM hipfile_info WHERE hda_key_id = ?
-        """
-        query_params: tuple[Any, ...] = (hda_key_id,)
-        cursor = self._cursor.execute(query, query_params)
-        dat = list(cursor.fetchone())
-        dat[1] = pathlib.Path(dat[1])
-        return dat
-
-    def get_location_info(self, hda_key_id: int | None = None) -> None | list[Any]:
-        query = """
-        SELECT country, timezone, region, city, INET_NTOA(ip), localx, localy, org, postal
-        FROM location_info WHERE hda_key_id = ?
-        """
-        query_params: tuple[Any, ...] = (hda_key_id,)
-        cursor = self._cursor.execute(query, query_params)
-        dat = cursor.fetchone()
-        if dat is None:
-            return None
-        return list(dat)
-
     def get_video_info(self, hda_key_id: int | None = None) -> pathlib.Path | None:
         query = "SELECT dirpath, filename FROM video_info WHERE hda_key_id = ?"
-        query_params: tuple[Any, ...] = (hda_key_id,)
-        cursor = self._cursor.execute(query, query_params)
-        dat = cursor.fetchone()
-        if dat is None:
-            return None
-        dat = list(dat)
-        dat[0] = pathlib.Path(dat[0])
-        return dat[0] / dat[1]
-
-    def get_thumbnail_info(self, hda_key_id: int | None = None) -> pathlib.Path | None:
-        query = "SELECT dirpath, filename FROM thumbnail_info WHERE hda_key_id = ?"
         query_params: tuple[Any, ...] = (hda_key_id,)
         cursor = self._cursor.execute(query, query_params)
         dat = cursor.fetchone()

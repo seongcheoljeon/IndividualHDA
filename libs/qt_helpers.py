@@ -5,7 +5,7 @@ from __future__ import annotations
 from importlib import import_module
 from pathlib import Path
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 
 def wildcard_expression(
@@ -22,6 +22,18 @@ def wildcard_expression(
             QtCore.QRegularExpression.PatternOption.CaseInsensitiveOption
         )
     return expression
+
+
+def center_on_screen(widget: QtWidgets.QWidget) -> None:
+    """Move a top-level widget to the middle of the primary screen."""
+    screen = QtGui.QGuiApplication.primaryScreen()
+    if screen is None:
+        return
+    area = screen.availableGeometry()
+    widget.move(
+        (area.width() // 2) - (widget.frameSize().width() // 2),
+        (area.height() // 2) - (widget.frameSize().height() // 2),
+    )
 
 
 def startup_fallback(error: BaseException, log_dir: Path) -> QtWidgets.QWidget:

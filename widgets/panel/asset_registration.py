@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from libs.sqlite3_db_api import SQLite3DatabaseAPI
 
-import contextlib
 import logging
 import pathlib
 from datetime import datetime
@@ -23,7 +22,7 @@ import public
 from libs import houdini_api, log_handler
 from libs.repository import LibraryError, RegistrationPayload
 
-with contextlib.suppress(ImportError):
+if TYPE_CHECKING:
     import hou
 
 
@@ -111,7 +110,7 @@ But it didn't stop, so please wait a little longer.
                 if isinstance(node_dat, str)
                 else bytes(node_dat).decode("utf-8")
             )
-            node = hou.node(node_path)
+            node = houdini_api.HoudiniAPI.find_node(node_path)
             if node is None:
                 continue
             node_name = node.name()

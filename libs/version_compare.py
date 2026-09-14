@@ -9,15 +9,16 @@ from typing import Any
 
 
 def expand_asset(path: Path, destination: Path) -> dict[str, str]:
-    import hou
     from PySide6.QtCore import QCoreApplication, QThread
+
+    from libs.houdini_api import HoudiniAPI
 
     app = QCoreApplication.instance()
     if app is not None and QThread.currentThread() != app.thread():
         raise RuntimeError("HOM inspection must run on the GUI thread")
     if not path.is_file():
         raise FileNotFoundError(path)
-    definitions = hou.hda.definitionsInFile(str(path))
+    definitions = HoudiniAPI.hda_definitions_in_file(path)
     if not definitions:
         raise ValueError("File contains no asset definitions")
     # parmTemplateGroup() requires an installed type in Houdini 21. Read the
@@ -28,7 +29,7 @@ def expand_asset(path: Path, destination: Path) -> dict[str, str]:
         parameters[definition.nodeTypeName()] = (
             section.contents() if section is not None else "[No DialogScript section]"
         )
-    hou.hda.expandToDirectory(str(path), str(destination))
+    HoudiniAPI.hda_expand_to_directory(path, destination)
     return parameters
 
 

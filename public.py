@@ -1,10 +1,7 @@
 from __future__ import annotations
 
 import pathlib
-from collections.abc import Callable
 from contextlib import suppress
-from functools import wraps
-from logging import info
 from os import W_OK
 from os import access as os_access
 
@@ -16,16 +13,14 @@ from os import access as os_access
 from os import getenv as os_getenv
 from platform import system as platform_system
 from tempfile import gettempdir
-from time import gmtime, time
-from typing import Any, ParamSpec, TypeVar
+from typing import Any
 
-from libs import log_handler
 from libs.host import (
     IS_HOUDINI,  # noqa: F401  (re-export; tests patch public.IS_HOUDINI)
 )
 
 with suppress(ImportError):
-    import hou
+    pass
 
 
 class Key:
@@ -358,23 +353,6 @@ def is_mac() -> bool:
     return platform_system().lower() == Name.mac
 
 
-def current_system() -> str:
-    if is_windows():
-        return Name.win
-    elif is_mac():
-        return Name.mac
-    elif is_linux():
-        return Name.lnx
-    else:
-        return "unknown"
-
-
-def current_houdini_version() -> str:
-    if IS_HOUDINI:
-        return str(hou.applicationVersion()[0])
-    return "unknown"
-
-
 class Extensions:
     houdini_icons = ".svg"
     ihda_file = ".ihda"
@@ -528,99 +506,3 @@ SOFTWARE.
 def hda_base_dirpath(base_dirpath: pathlib.Path | None = None) -> pathlib.Path:
     assert isinstance(base_dirpath, pathlib.Path)
     return base_dirpath / Name.houdini_name / Name.current_app
-
-
-P = ParamSpec("P")
-R = TypeVar("R")
-
-
-def runtime_check(func: Callable[P, R]) -> Callable[P, R]:
-    @wraps(func)
-    def __wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        start_time = time()
-        s_time = gmtime(start_time)
-        log_handler.LogHandler.log_msg(
-            method=info,
-            msg=f"( {func.__name__} ) Start Time: {s_time.tm_mon}/{s_time.tm_mday} - {s_time.tm_hour + 9}:{s_time.tm_min}:{s_time.tm_sec}",
-        )
-        func_result = func(*args, **kwargs)
-        end_time = time()
-        e_time = gmtime(end_time)
-        log_handler.LogHandler.log_msg(
-            method=info,
-            msg=f"( {func.__name__} ) End Time: {e_time.tm_mon}/{e_time.tm_mday} - {e_time.tm_hour + 9}:{e_time.tm_min}:{e_time.tm_sec}",
-        )
-        run_time = end_time - start_time
-        log_handler.LogHandler.log_msg(
-            method=info,
-            msg=f"( {func.__name__} ) Running Time: {int(run_time // 60)}m {int(run_time % 60)}s",
-        )
-        return func_result
-
-    return __wrapper
-
-
-def runtime_check_with_param(param: str) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    def wrapper(func: Callable[P, R]) -> Callable[P, R]:
-        @wraps(func)
-        def __wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            start_time = time()
-            s_time = gmtime(start_time)
-            log_handler.LogHandler.log_msg(
-                method=info,
-                msg=f"( {param} ) Start Time: {s_time.tm_mon}/{s_time.tm_mday} - {s_time.tm_hour + 9}:{s_time.tm_min}:{s_time.tm_sec}",
-            )
-            func_result = func(*args, **kwargs)
-            end_time = time()
-            e_time = gmtime(end_time)
-            log_handler.LogHandler.log_msg(
-                method=info,
-                msg=f"( {param} ) End Time: {e_time.tm_mon}/{e_time.tm_mday} - {e_time.tm_hour + 9}:{e_time.tm_min}:{e_time.tm_sec}",
-            )
-            run_time = end_time - start_time
-            log_handler.LogHandler.log_msg(
-                method=info,
-                msg=f"( {param} ) Running Time: {int(run_time // 60)}m {int(run_time % 60)}s",
-            )
-            return func_result
-
-        return __wrapper
-
-    return wrapper
-
-
-def runtime_check_simple(func: Callable[P, R]) -> Callable[P, R]:
-    @wraps(func)
-    def __wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        start_time = time()
-        func_result = func(*args, **kwargs)
-        end_time = time()
-        run_time = end_time - start_time
-        log_handler.LogHandler.log_msg(
-            method=info,
-            msg=f"elapsed time: {int(run_time // 60)}m {int(run_time % 60)}s",
-        )
-        return func_result
-
-    return __wrapper
-
-
-def runtime_check_simple_with_param(
-    param: str,
-) -> Callable[[Callable[P, R]], Callable[P, R]]:
-    def wrapper(func: Callable[P, R]) -> Callable[P, R]:
-        @wraps(func)
-        def __wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            start_time = time()
-            func_result = func(*args, **kwargs)
-            end_time = time()
-            run_time = end_time - start_time
-            log_handler.LogHandler.log_msg(
-                method=info,
-                msg=f"( {param} ) elapsed time: {int(run_time // 60)}m {int(run_time % 60)}s",
-            )
-            return func_result
-
-        return __wrapper
-
-    return wrapper

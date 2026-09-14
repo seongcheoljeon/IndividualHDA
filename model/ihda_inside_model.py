@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import contextlib
-import pathlib
 from bisect import bisect_right
 
 # author            : SeongCheol Jeon
@@ -320,11 +319,6 @@ class InsideModel(QtCore.QAbstractItemModel):
         else:
             pass
 
-    def reload_inside_model(self) -> None:
-        self.beginResetModel()
-        self.__init_set_data()
-        self.endResetModel()
-
     @property
     def inside_data(self) -> Any:
         return self.__data
@@ -344,9 +338,6 @@ class InsideModel(QtCore.QAbstractItemModel):
         if (data is None) or (not len(data)):
             return
         self.__data.get(public.Type.root).update(data)
-
-    def insert_inside_data(self, data: Any = None) -> None:
-        self.__insert_item_to_inside_data(data=self.__data, insert_data=data)
 
     def __insert_item_to_inside_data(
         self, data: Any = None, insert_data: dict[str, Any] | None = None
@@ -418,46 +409,7 @@ class InsideModel(QtCore.QAbstractItemModel):
     # build context 에서 선택한 아이템을 삭제할 때 호출하는 함수.
     # bhild context에서 제공하는 index로 삭제하려는 무한루프에 빠지면서 오류난다.
     # 그래서 선택한 노드를 재귀적으로 돌려 찾은 index로 삭제하는 방식으로 돌아간다.
-    def remove_selected_inside_data(self, index: QtCore.QModelIndex = None) -> Any:
-        plst = self.__get_all_inside_parent_by_index(index)
-        remove_key_data = self.__one_dimension_keys_array_to_data(key_lst=plst)
-        get_data = self.__get_inside_data_from_key_data(
-            data=self.__data, key_data=remove_key_data
-        )
-        inside_id_list = self.__find_inside_id_from_selected_inside_data(data=get_data)
-        # 데이터 삭제
-        self.__remove_item_from_inside_data(
-            data=self.__data, remove_key_data=remove_key_data
-        )
-        remove_find_item = self.__find_selected_inside_data(
-            index=self.index(0, 0, QtCore.QModelIndex()),
-            key_data=remove_key_data.get(public.Type.root),
-            find_item=(index.data(QtCore.Qt.ItemDataRole.DisplayRole),),
-        )
-        for rm_item in sorted(remove_find_item, key=itemgetter(0), reverse=True):
-            item_row, pindex = rm_item
-            self.removeRow(item_row, pindex)
-        return inside_id_list
-
     # 유효한 데이터가 남아 있지 않은 껍데기 뿐인 inside 데이터/모델 삭제하는 함수
-    def remove_invalid_hull_inside_item_model(self) -> None:
-        # 데이터를 삭제하고 빈 껍데기만 남은 데이터가 있다면 삭제하는 함수
-        invalid_data_list = self.__find_invalid_hull_inside_item_model(
-            index=self.index(0, 0, QtCore.QModelIndex())
-        )
-        if len(invalid_data_list):
-            for invalid_data in sorted(
-                invalid_data_list, key=itemgetter(0), reverse=True
-            ):
-                item_row, pindex, key_data = invalid_data
-                self.removeRow(item_row, pindex)
-                remove_key_data = self.__one_dimension_keys_array_to_data(
-                    key_lst=key_data
-                )
-                self.__remove_item_from_inside_data(
-                    data=self.__data, remove_key_data=remove_key_data
-                )
-
     # 인자로 들어 온 key_data로 inside data가져오는 함수
     def __get_inside_data_from_key_data(
         self, data: Any = None, key_data: Any = None
@@ -598,25 +550,6 @@ class InsideModel(QtCore.QAbstractItemModel):
         return self.__get_all_inside_parent_by_index(index.parent()) + plist
 
     # 모델 데이터와 inside 데이터를 제거하는 함수
-    def remove_invalid_inside_data(self) -> None:
-        invalid_data = self.__find_invalid_inside_data()
-        if invalid_data is None:
-            return
-        model_lst, pkey_lst = invalid_data
-        # remove model data
-        # 같은 부모 밑에 존재하는 데이터는 row가 가장 큰 것부터 삭제해야 한다. 그래야 indexError가 발생하지 않는다.
-        # 작은 row부터 삭제를 진행하면 row가 바뀌어 버려서 잘못된 연산이 될 수 있다.
-        for child_row, parent_index in sorted(
-            model_lst, key=itemgetter(0), reverse=True
-        ):
-            self.removeRow(child_row, parent_index)
-        # remove inside data
-        for pkey in pkey_lst:
-            remove_key_data = self.__one_dimension_keys_array_to_data(key_lst=pkey)
-            self.__remove_item_from_inside_data(
-                data=self.__data, remove_key_data=remove_key_data
-            )
-
     # 유효하지 않는 레코드 데이터, 모델 데이터 취합하는 함수의 랩퍼 함수
     def __find_invalid_inside_data(self) -> None | list[Any]:
         find_model_lst = []
@@ -672,63 +605,9 @@ class InsideModel(QtCore.QAbstractItemModel):
     # hda_id와 같은 inside data 삭제 함수
     # iHDA 삭제 시, inside 데이터 삭제되도록 DB에서 Constraint 걸어 놓아서 여기서만 삭제하면 된다.
     # 해당 hda_id를 가진 자식의 부모가 자식이 하나라면 가장 끝 부모를 삭제해야하기 때문에 is_find_parent를 True로 주었다.
-    def remove_inside_item_by_hda_id(self, hda_id: int | None = None) -> None:
-        find_model_lst = []
-        parent_key_lst = []
-        self.__find_item_from_inside_data(
-            index=self.index(0, 0, QtCore.QModelIndex()),
-            collect_model_lst=find_model_lst,
-            collect_pkey_lst=parent_key_lst,
-            hda_id=hda_id,
-            is_find_parent=True,
-        )
-        if not len(find_model_lst):
-            return None
-        for child_row, parent_index in sorted(
-            find_model_lst, key=itemgetter(0), reverse=True
-        ):
-            self.removeRow(child_row, parent_index)
-        for pkey in parent_key_lst:
-            remove_key_data = self.__one_dimension_keys_array_to_data(key_lst=pkey)
-            self.__remove_item_from_inside_data(
-                data=self.__data, remove_key_data=remove_key_data
-            )
-
     # inside data 이름 변경 함수 (iHDA 파일 경로도 변경해야 함)
     # iHDA 이름 변경 시, inside 데이터도 함께 변경되어야 한다. DB는 트리거로 자동화 시켜 놓았다.
     # 정확하게 해당 데이터를 찾아가야해서 is_find_parent를 False로 주었다.
-    def rename_inside_item(
-        self,
-        hda_id: int | None = None,
-        new_name: str | None = None,
-        hda_dirpath: pathlib.Path | None = None,
-        hda_version: str | None = None,
-    ) -> None:
-        find_model_lst = []
-        parent_key_lst = []
-        self.__find_item_from_inside_data(
-            index=self.index(0, 0, QtCore.QModelIndex()),
-            collect_model_lst=find_model_lst,
-            collect_pkey_lst=parent_key_lst,
-            hda_id=hda_id,
-            is_find_parent=False,
-        )
-        if not len(find_model_lst):
-            return None
-        collect_update_key_data = {}
-        for pkey in parent_key_lst:
-            # 찾은 정확한 데이터의 바로 위의 부모에서 list 데이터를 for문으로 돌리려고 아래의 명령을 추가했다.
-            del pkey[-1]
-            update_data = self.__one_dimension_keys_array_to_data(key_lst=pkey)
-            self.__collect_inside_data(
-                data=collect_update_key_data, insert_data=update_data
-            )
-        self.__rename_inside_data(
-            data=self.__data,
-            update_key_data=collect_update_key_data,
-            update_data=[hda_id, new_name, hda_dirpath, hda_version],
-        )
-
     # 여러 개의 inside data (중첩 된 딕셔너리&리스트 데이터)를 하나의 데이터로 만드는 함수
     def __collect_inside_data(
         self, data: Any = None, insert_data: dict[str, Any] | None = None

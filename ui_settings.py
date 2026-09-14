@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import copy
 
 # author:           seongcheol jeon
@@ -11,15 +10,12 @@ import copy
 import os
 from typing import Any
 
-from PySide6 import QtCore, QtGui, QtWidgets
-
-from libs.settings_store import apply_settings, load_json, save_json
-
-with contextlib.suppress(ImportError):
-    import hou
+from PySide6 import QtCore, QtWidgets
 
 import public
-from libs.qt_helpers import dark_stylesheet
+from libs.houdini_api import HoudiniAPI
+from libs.qt_helpers import center_on_screen, dark_stylesheet
+from libs.settings_store import apply_settings, load_json, save_json
 
 
 class UISettings:
@@ -84,7 +80,9 @@ QMenuBar {
     border-style: none;
 }
                 """
-                self.__window.setStyleSheet(hou.qt.styleSheet() + "\n" + add_style)
+                self.__window.setStyleSheet(
+                    HoudiniAPI.host_stylesheet() + "\n" + add_style
+                )
             else:
                 self.__window.setStyleSheet("")
         else:
@@ -240,7 +238,7 @@ QMenuBar {
         if main_window_geo:
             self.__window.restoreGeometry(main_window_geo)
         else:
-            UISettings.__center_on_screen(self.__window)
+            center_on_screen(self.__window)
         if main_window_ste:
             self.__window.restoreState(main_window_ste)
 
@@ -341,14 +339,6 @@ QMenuBar {
                 (names.spinbox_zoom, w.doubleSpinBox__zoom.setValue),
                 (names.stacked_widget_whole, w.stackedWidget__whole.setCurrentIndex),
             ],
-        )
-
-    @staticmethod
-    def __center_on_screen(inst: QtWidgets.QWidget) -> None:
-        res = QtGui.QGuiApplication.primaryScreen().availableGeometry()
-        inst.move(
-            (res.width() // 2) - (inst.frameSize().width() // 2),
-            (res.height() // 2) - (inst.frameSize().height() // 2),
         )
 
 

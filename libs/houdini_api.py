@@ -15,11 +15,8 @@ import re
 import shutil
 import tempfile
 from collections.abc import Callable
-from contextlib import suppress
-from copy import copy
-from functools import wraps
-from inspect import signature
-from typing import Any, ParamSpec, TypeVar
+from contextlib import nullcontext, suppress
+from typing import Any
 
 import public
 from libs import log_handler
@@ -28,32 +25,115 @@ from libs.host import IS_HOUDINI
 with suppress(ImportError):
     import hou
 
-
-P = ParamSpec("P")
-R = TypeVar("R")
-D = TypeVar("D")
-
-
-def _return_value_by_none(val: D) -> Callable[[Callable[P, R]], Callable[P, R | D]]:
-    def decorate(func: Callable[P, R]) -> Callable[P, R | D]:
-        parameters = signature(func)
-
-        @wraps(func)
-        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R | D:
-            bound = parameters.bind(*args, **kwargs)
-            bound.apply_defaults()
-            first = next(iter(bound.arguments.values()), None)
-            if first is None:
-                return copy(val)
-            return func(*args, **kwargs)
-
-        return wrapper
-
-    return decorate
+try:
+    import hdefereval
+except ImportError:  # not hosted by Houdini
+    hdefereval = None
 
 
 # (2020.03.14): hda_dirpath 파라미터의 들어오는 값은 pathlib.Path 객체이다.
 class HoudiniAPI:
+    # ---- host access used by the panel; neutral values outside Houdini --------
+    @staticmethod
+    def main_window() -> Any | None:
+        return hou.qt.mainWindow() if IS_HOUDINI else None
+
+    @staticmethod
+    def help_server_url() -> Callable[[], str] | None:
+        return hou.helpServerUrl if IS_HOUDINI else None
+
+    @staticmethod
+    def host_stylesheet() -> str:
+        return str(hou.qt.styleSheet()) if IS_HOUDINI else ""
+
+    @staticmethod
+    def host_icon(name: str, size: int = 128) -> Any | None:
+        """QPixmap of a Houdini icon, or None when unavailable."""
+        if not IS_HOUDINI:
+            return None
+        try:
+            return hou.qt.Icon(name).pixmap(size, size)
+        except (RuntimeError, hou.Error):
+            return None
+
+    @staticmethod
+    def scaled_size(value: int) -> int:
+        return int(hou.ui.scaledSize(int(value))) if IS_HOUDINI else int(value)
+
+    @staticmethod
+    def global_scale_factor() -> float:
+        return float(hou.ui.globalScaleFactor()) if IS_HOUDINI else 1.0
+
+    @staticmethod
+    def find_node(path: str | None) -> hou.Node | None:
+        if not IS_HOUDINI or path is None:
+            return None
+        return hou.node(path)
+
+    @staticmethod
+    def vector2(x: float, y: float) -> Any:
+        return hou.Vector2((x, y))
+
+    @staticmethod
+    def undo_group(name: str) -> Any:
+        return hou.undos.group(name) if IS_HOUDINI else nullcontext()
+
+    @staticmethod
+    def execute_deferred(func: Callable[[], object]) -> None:
+        """Run on the Houdini main loop later; immediately when not hosted."""
+        if hdefereval is not None:
+            hdefereval.executeDeferred(func)
+        else:
+            func()
+
+    @staticmethod
+    def pane_tab_under_cursor() -> Any | None:
+        if not IS_HOUDINI:
+            return None
+        return hou.ui.curDesktop().paneTabUnderCursor()
+
+    @staticmethod
+    def network_editor() -> Any | None:
+        if not IS_HOUDINI:
+            return None
+        return hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+
+    @staticmethod
+    def add_event_loop_callback(func: Callable[..., Any]) -> None:
+        if IS_HOUDINI and func not in hou.ui.eventLoopCallbacks():
+            hou.ui.addEventLoopCallback(func)
+
+    @staticmethod
+    def remove_event_loop_callback(func: Callable[..., Any]) -> None:
+        if IS_HOUDINI and func in hou.ui.eventLoopCallbacks():
+            hou.ui.removeEventLoopCallback(func)
+
+    @staticmethod
+    def has_event_loop_callback(func: Callable[..., Any]) -> bool:
+        return bool(IS_HOUDINI and func in hou.ui.eventLoopCallbacks())
+
+    @staticmethod
+    def add_selection_callback(func: Callable[..., Any]) -> None:
+        if IS_HOUDINI and func not in hou.ui.selectionCallbacks():
+            hou.ui.addSelectionCallback(func)
+
+    @staticmethod
+    def remove_selection_callback(func: Callable[..., Any]) -> None:
+        if IS_HOUDINI and func in hou.ui.selectionCallbacks():
+            hou.ui.removeSelectionCallback(func)
+
+    @staticmethod
+    def has_selection_callback(func: Callable[..., Any]) -> bool:
+        return bool(IS_HOUDINI and func in hou.ui.selectionCallbacks())
+
+    @staticmethod
+    def hda_definitions_in_file(path: pathlib.Path) -> Any:
+        return hou.hda.definitionsInFile(str(path))
+
+    @staticmethod
+    def hda_expand_to_directory(path: pathlib.Path, destination: pathlib.Path) -> None:
+        hou.hda.expandToDirectory(str(path), str(destination))
+
     # undo import group name
     __undo_name_import_ihda = "import_individual_hda"
 
@@ -105,22 +185,25 @@ class HoudiniAPI:
         self.__hda_filepath = val
 
     @staticmethod
-    @_return_value_by_none([])
-    def __node_type_path_list(node: hou.Node) -> list[str] | None:
+    def __node_type_path_list(node: hou.Node | None) -> list[str] | None:
+        if node is None:
+            return []
         node_type_lst = []
         node_type_lst.append(HoudiniAPI.node_type_name(node))
         return HoudiniAPI.__node_type_path_list(node.parent()) + node_type_lst
 
     @staticmethod
-    @_return_value_by_none([])
-    def __node_category_path_list(node: hou.Node) -> list[str] | None:
+    def __node_category_path_list(node: hou.Node | None) -> list[str] | None:
+        if node is None:
+            return []
         node_category_lst = []
         node_category_lst.append(HoudiniAPI.node_category_type_name(node))
         return HoudiniAPI.__node_category_path_list(node.parent()) + node_category_lst
 
     @staticmethod
-    @_return_value_by_none(None)
-    def node_type_name(node: hou.Node) -> str | None:
+    def node_type_name(node: hou.Node | None) -> str | None:
+        if node is None:
+            return None
         return node.type().name()
 
     @staticmethod
@@ -146,19 +229,22 @@ class HoudiniAPI:
         return {"children": children, "parameters": labels}
 
     @staticmethod
-    @_return_value_by_none(None)
-    def __node_type_description(node: hou.Node) -> str | None:
+    def __node_type_description(node: hou.Node | None) -> str | None:
+        if node is None:
+            return None
         return node.type().description()
 
     @staticmethod
-    @_return_value_by_none(None)
-    def node_category_type_name(node: hou.Node) -> str | None:
+    def node_category_type_name(node: hou.Node | None) -> str | None:
+        if node is None:
+            return None
         # 원래 대문자로 나오지만, 소문자로 바꿈.
         return node.type().category().typeName().lower()
 
     @staticmethod
-    @_return_value_by_none(None)
-    def node_icon_path_lst(node: hou.Node) -> list[str] | None:
+    def node_icon_path_lst(node: hou.Node | None) -> list[str] | None:
+        if node is None:
+            return None
         try:
             if (
                 public.Name.company_initial
@@ -180,8 +266,9 @@ class HoudiniAPI:
         return icon_lst
 
     @staticmethod
-    @_return_value_by_none(None)
-    def node_definition_description(node: hou.Node) -> str | None:
+    def node_definition_description(node: hou.Node | None) -> str | None:
+        if node is None:
+            return None
         node_type = node.type()
         try:
             return node_type.definition().description()
@@ -189,13 +276,15 @@ class HoudiniAPI:
             return node_type.description()
 
     @staticmethod
-    @_return_value_by_none(None)
-    def __is_network_node(node: hou.Node) -> bool | None:
+    def __is_network_node(node: hou.Node | None) -> bool | None:
+        if node is None:
+            return None
         return node.isNetwork()
 
     @staticmethod
-    @_return_value_by_none(None)
-    def __is_sub_network_node(node: hou.Node) -> bool | None:
+    def __is_sub_network_node(node: hou.Node | None) -> bool | None:
+        if node is None:
+            return None
         return node.isSubNetwork()
 
     @staticmethod
@@ -657,12 +746,6 @@ class HoudiniAPI:
     @staticmethod
     def current_hipfile() -> pathlib.Path:
         return pathlib.Path(hou.hipFile.path())
-
-    @staticmethod
-    def delete_hda_file(hda_path: pathlib.Path | None = None) -> None:
-        assert isinstance(hda_path, pathlib.Path)
-        if hda_path.exists() and hda_path.is_file():
-            hda_path.unlink()
 
     @staticmethod
     def __delete_dir(dirpath: pathlib.Path | None = None) -> None:

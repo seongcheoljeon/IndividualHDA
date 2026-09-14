@@ -83,11 +83,9 @@ class LibraryToolsMixin:
 
     def _tools_import_version(self, snapshot: dict[str, Any]) -> None:
         try:
-            import hou
-
             from libs.houdini_api import HoudiniAPI
 
-            editor = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
+            editor = HoudiniAPI.network_editor()
             if editor is None:
                 raise RuntimeError("Open a Network Editor first")
             parent = editor.pwd()
@@ -97,7 +95,7 @@ class LibraryToolsMixin:
             ):
                 raise ValueError("Open a network matching the asset category first")
             path = Path(snapshot["hda_dirpath"]) / snapshot["hda_filename"]
-            with hou.undos.group("Import iHDA history version"):
+            with HoudiniAPI.undo_group("Import iHDA history version"):
                 node = HoudiniAPI.import_individual_hda_into_houdini(
                     path,
                     parent,

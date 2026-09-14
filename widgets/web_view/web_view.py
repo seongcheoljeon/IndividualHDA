@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import contextlib
-
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.03.23 02:03:49
@@ -10,18 +8,14 @@ import contextlib
 import logging
 from collections.abc import Callable
 from typing import Any
-from urllib.error import URLError
-from urllib.request import urlopen
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWebEngineCore import QWebEngineFullScreenRequest, QWebEngineProfile
 
 import public
 from libs import log_handler
+from libs.houdini_api import HoudiniAPI
 from widgets.web_view import web_ui_settings, web_view_ui
-
-with contextlib.suppress(ImportError):
-    import hou
 
 
 class WebView(QtWidgets.QWidget, web_view_ui.Ui_Form__web):
@@ -114,14 +108,6 @@ class WebView(QtWidgets.QWidget, web_view_ui.Ui_Form__web):
             self.__ui_settings.load_splitter_status()
             self.__ui_settings.load_cfg_dict_from_file()
 
-    @staticmethod
-    def is_network_connected() -> bool:
-        try:
-            urlopen("http://216.58.192.142", timeout=1)
-            return True
-        except URLError:
-            return False
-
     def __set_init_load(self) -> None:
         self.lineEdit__address.setText(
             self.__help_url()
@@ -181,7 +167,7 @@ class WebView(QtWidgets.QWidget, web_view_ui.Ui_Form__web):
     def __set_view_by_zoom_factor(self, zoom_factor: Any) -> None:
         if public.IS_HOUDINI:
             self.webEngineView__webview.setZoomFactor(
-                zoom_factor * hou.ui.globalScaleFactor()
+                zoom_factor * HoudiniAPI.global_scale_factor()
             )
         else:
             self.webEngineView__webview.setZoomFactor(zoom_factor)
@@ -211,14 +197,14 @@ class WebView(QtWidgets.QWidget, web_view_ui.Ui_Form__web):
     @staticmethod
     def __maximum_zoom_factor() -> float:
         if public.IS_HOUDINI:
-            return 5 * hou.ui.globalScaleFactor()
+            return 5 * HoudiniAPI.global_scale_factor()
         else:
             return 5
 
     @staticmethod
     def __minimum_zoom_factor() -> float:
         if public.IS_HOUDINI:
-            return 0.25 * hou.ui.globalScaleFactor()
+            return 0.25 * HoudiniAPI.global_scale_factor()
         else:
             return 0.25
 

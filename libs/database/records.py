@@ -147,20 +147,6 @@ class RecordsOperations(DatabaseSession):
             log_handler.LogHandler.log_msg(method=logging.error, msg=err)
             return None
 
-    def is_exist_hda_node_loc_file(
-        self,
-        hda_key_id: int | None = None,
-        version: str | None = None,
-        user_id: str | None = None,
-    ) -> bool:
-        query = """
-        SELECT COUNT(*) FROM hda_history WHERE hda_key_id = ? AND version = ? AND userid = ?
-        """
-        query_params: tuple[Any, ...] = (hda_key_id, version, user_id)
-        cursor = self._cursor.execute(query, query_params)
-        dat = cursor.fetchone()[0]
-        return bool(dat)
-
     def is_exist_hda_node_loc_record(
         self,
         hda_key_id: int | None = None,

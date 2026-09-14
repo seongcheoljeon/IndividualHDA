@@ -5,7 +5,6 @@ Shares protected panel state; Qt and HOM calls stay on the GUI thread.
 
 from __future__ import annotations
 
-import contextlib
 import logging
 from operator import itemgetter
 from typing import Any
@@ -21,9 +20,6 @@ from model import (
     ihda_record_model,
     ihda_table_model,
 )
-
-with contextlib.suppress(ImportError):
-    import hou
 
 
 class SelectionMixin:
@@ -100,7 +96,7 @@ class SelectionMixin:
         pixmap = self._ihda_icons.pixmap_ihda_data.get(hkey_id)
         # 만약 iHDA 노드를 삭제해서 pixmap 데이터가 존재하지 않는다면 직접 후디니 icon을 가공하여 가져온다.
         if pixmap is None:
-            node = hou.node(node_path)
+            node = houdini_api.HoudiniAPI.find_node(node_path)
             if node is None:
                 icon_lst = None
             else:
@@ -400,11 +396,11 @@ class SelectionMixin:
                 self.comboBox__hda_inside_node.currentIndex()
             )
 
-    @public.runtime_check_simple_with_param("iHDA node search")
+    @log_handler.log_elapsed("iHDA node search")
     def _slot_refresh_inside_nodes(self) -> None:
         if not public.IS_HOUDINI:
             return
-        root_node = hou.node("/")
+        root_node = houdini_api.HoudiniAPI.find_node("/")
         node_data = houdini_api.HoudiniAPI.get_ihda_node_instance_data(
             parent_node=root_node
         )
@@ -451,7 +447,7 @@ class SelectionMixin:
             return
         if node_path is None:
             return
-        node = hou.node(node_path)
+        node = houdini_api.HoudiniAPI.find_node(node_path)
         if node is None:
             log_handler.LogHandler.log_msg(
                 method=logging.warning,

@@ -444,9 +444,6 @@ class ModelBindingMixin:
     def _remove_pixmap_hist_thumbnail(self, hist_id: int | None = None) -> None:
         self._ihda_icons.remove_pixmap_hist_thumbnail_data(hist_id=hist_id)
 
-    def _clear_pixmap_histotry(self) -> None:
-        self._ihda_icons.clear_pixmap_hist_thumbnail_data()
-
     def _add_record_item(self, data: Any = None) -> None:
         self._ihda_record_model.insert_record_data(data=data)
         self._ihda_record_model.reload()

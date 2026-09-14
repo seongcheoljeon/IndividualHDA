@@ -157,11 +157,3 @@ class MakeVideoInfo(QtWidgets.QDialog, make_video_info_ui.Ui_Dialog__makevideoin
     @property
     def is_crop_mask(self) -> bool:
         return self.checkBox__crop_out_mask_overlay.isChecked()
-
-    @property
-    def is_share_youtube(self) -> bool:
-        return self.checkBox__youtube.isChecked()
-
-    @property
-    def is_share_vimeo(self) -> bool:
-        return self.checkBox__vimeo.isChecked()
