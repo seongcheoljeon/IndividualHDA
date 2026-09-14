@@ -4,7 +4,6 @@ from typing import ParamSpec, TypeVar
 
 from typing import Any, Callable
 import pathlib
-# encoding=utf-8
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
@@ -651,16 +650,6 @@ class HoudiniAPI(object):
     @staticmethod
     def current_houdini_version() -> str:
         return hou.applicationVersionString()
-
-    @staticmethod
-    def __current_houdini_version_major() -> int:
-        return hou.applicationVersion()[0]
-
-    @staticmethod
-    def is_valid_houdini_major_version(major_version: int) -> bool:
-        if HoudiniAPI.__current_houdini_version_major() == major_version:
-            return True
-        return False
 
     @staticmethod
     def current_hipfile() -> pathlib.Path:

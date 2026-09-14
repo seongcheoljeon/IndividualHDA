@@ -15,8 +15,7 @@ def test_maintained_function_signatures_are_annotated() -> None:
         str(path.relative_to(ROOT)): path.read_text(encoding="utf-8")
         for path in ROOT.rglob("*.py")
         if not any(
-            part in ("site-packages", ".venv", ".git", "tests")
-            for part in path.relative_to(ROOT).parts
+            part in (".venv", ".git", "tests") for part in path.relative_to(ROOT).parts
         )
         and not path.name.endswith(("_ui.py", "_rc.py"))
     }

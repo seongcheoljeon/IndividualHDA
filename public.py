@@ -3,7 +3,6 @@ from typing import ParamSpec, TypeVar
 
 from typing import Any, Callable
 import pathlib
-# -*- coding: utf-8 -*-
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
@@ -354,11 +353,6 @@ class Name:
         main_window_geometry = "main_window_geometry"
         main_window_state = "main_window_state"
 
-    class Python:
-        lib = "libs"
-        packages = "site-packages"
-        dll_library = "library"
-
     class IHDAData:
         filename = "iHDA"
         backup_dirname = "backup"
@@ -487,10 +481,6 @@ class Paths:
         Name.company_log_icon_filename + Extensions.company_log_icon_file_ext
     )
     icons_hda_default_filepath = icons_hda_default_dirpath / __company_log_icon
-    # python site-packages dir path
-    python_packages_dirpath = (
-        curt_script_dirpath / Name.Python.lib / Name.Python.packages
-    )
     # houdini fx cmd file path
     houdinifx_cmd = hb_dirpath.joinpath(Name.houdinifx_name).with_suffix(
         Extensions.executable

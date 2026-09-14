@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 
-# -*- coding: utf-8 -*-
-
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.04.14 18:18:59

@@ -128,7 +128,6 @@ class NotesMixin:
     @property
     def _hda_note(self) -> str:
         try:
-            # return unicode(self.textEdit__note.toPlainText(), 'utf-8')
             return self.textEdit__note.toPlainText()
         except TypeError:
             return self.textEdit__note.toPlainText()

@@ -4,7 +4,6 @@ from typing import Any, Iterator
 from libs.thumbnail_cache import ThumbnailCache
 from libs.domain import AssetData, HistoryData
 import pathlib
-# -*- coding: utf-8 -*-
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com

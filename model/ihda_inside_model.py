@@ -4,7 +4,6 @@ from __future__ import annotations
 from typing import Any
 import pathlib
 from PySide6 import QtCore
-# encoding=utf-8
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
@@ -1063,16 +1062,6 @@ class InsideModel(QtCore.QAbstractItemModel):
             return node.node_type()
         elif role == InsideModel.version_role:
             return node.version()
-
-    # def setData(self, index, value, role=QtCore.Qt.ItemDataRole.DisplayRole):
-    #     if not index.isValid():
-    #         return False
-    #     node = self.node_from_index(index)
-    #     if role == QtCore.Qt.ItemDataRole.DisplayRole:
-    #         node.name = value
-    #         self.emit(QtCore.SIGNAL('dataChanged(QModelIndex, QModelIndex)', index, index))
-    #         return True
-    #     return False
 
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
         if parent.isValid() and parent.column() != 0:

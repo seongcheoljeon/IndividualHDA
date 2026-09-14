@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any
 import pathlib
-# -*- coding: utf-8 -*-
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com

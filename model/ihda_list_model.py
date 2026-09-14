@@ -4,7 +4,6 @@ from __future__ import annotations
 from libs.domain import AssetData
 from typing import Any
 from PySide6 import QtCore
-# encoding=utf-8
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com

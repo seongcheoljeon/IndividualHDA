@@ -6,7 +6,6 @@ from libs.path_updates import PathMoves, relocated_path
 from pathlib import Path
 from typing import Any
 from PySide6 import QtCore
-# encoding=utf-8
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com

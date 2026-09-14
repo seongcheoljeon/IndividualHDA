@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from typing import Any
 from PySide6 import QtGui, QtWidgets
-# encoding=utf-8
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com

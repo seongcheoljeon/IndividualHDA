@@ -3,7 +3,6 @@ from typing import Any, Sequence
 
 import pathlib
 from PySide6 import QtCore, QtGui, QtWidgets
-# -*- coding: utf-8 -*-
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
