@@ -69,8 +69,17 @@ queries between files does not require or change the database schema version.
 The regression suite (`python -m pytest -q`) covers populated-panel search, model
 notifications, archive roundtrips and rollback, schema migration, process
 lifecycle, cross-module transaction rollback, panel background completion and
-deferred close, host destruction and annotation coverage. Host-side checks and
-their limits are recorded in [VALIDATION.md](VALIDATION.md).
+deferred close, host destruction, startup fallbacks, settings tolerance, data
+safety (WAL, orphan cleanup, auto backup), generated-UI drift, version
+consistency, the architecture ratchets and annotation coverage. CI runs
+`ruff check`, `ruff format --check`, `mypy` and `pytest --cov` with a coverage
+floor (`pyproject.toml`); `requirements-dev.txt` pins the tools. Host-side checks
+and their limits are recorded in [VALIDATION.md](VALIDATION.md).
+
+The session-scoped `app` fixture deletes every top-level widget a test left
+behind before the interpreter exits (explicit `DeferredDelete` delivery, then a
+garbage-collection pass): widgets freed after Qt's static destructors, including a
+`QWebEnginePage`, crash the process at exit.
 
 ## Houdini host contract
 
@@ -106,10 +115,38 @@ annotations on future changes.
 
 `Any` remains at dynamic boundaries such as Qt item roles, signal payloads and
 heterogeneous legacy asset dictionaries. It does not establish a fully static
-schema for those values. `python -m mypy` checks the database, filesystem,
-serialization, process and service modules configured in `pyproject.toml`. It does not
-claim that the complete Qt mixin graph or generated widgets pass strict type
-checking; imported host/widget implementations are outside that configured check.
+schema for those values. `python -m mypy` runs over the whole tree with
+`follow_imports = "normal"` (`pyproject.toml`). Two override groups keep it green:
+generated Designer/resource modules are never checked, and the panel mixins plus
+the item models carry `ignore_errors` because a mixin's `self._x` attributes are
+declared on the composed `IndividualHDA`, which mypy cannot see from the mixin.
+Remove a module from that second list once it passes; do not add to it.
+
+## Layers and ratchets
+
+`tests/test_architecture.py` encodes the module rules as AST checks (function-level
+imports included, `TYPE_CHECKING` blocks excluded):
+
+| Layer | Modules | Rule |
+|---|---|---|
+| host boundary | `libs/host.py`, `libs/houdini_api.py`, the pypanel | only place `hou` is imported |
+| domain | `libs/database/*`, `libs/domain.py`, `libs/repository.py`, `libs/settings_store.py`, … | no Qt, no `hou`, no `public` |
+| Qt libs | the rest of `libs/` | no `hou` |
+| model / view / widgets / app | everything else | no `hou`; nothing imports `main` |
+
+Ratchets are exact sets or counts that may only shrink: `PUBLIC_IMPORTERS`
+(modules still importing the `public` facade; new code imports `libs.keys`,
+`libs.paths`, `libs.platform_info`, `libs.host` directly), `SHARED_PANEL_STATE`
+(panel attributes written by more than one mixin), `LOCAL_DB_SITES` (direct SQLite
+facade uses, see above) and `HOU_IMPORTERS` (empty). Adding a violation fails the
+suite; removing one requires updating the constant, which is the intended review
+point.
+
+Module homes after the split: constants in `libs/keys.py`, paths and the SQLite
+file layout in `libs/paths.py`, OS predicates in `libs/platform_info.py`,
+`IS_HOUDINI` in `libs/host.py`, the About/License HTML in
+`widgets/panel/presentation.py`, tree nodes in `model/tree_nodes.py` and the shared
+font/padding setters in `model/model_style.py`. `public.py` only re-exports.
 
 ## Proxy models and themes
 
@@ -155,9 +192,15 @@ and the journaled file commands; registration bodies live there. Rules:
 - Local mode calls the repository synchronously (milliseconds). The HTTP adapter
   for server mode (Phase 2) plugs into `PanelServices.repository`; the panel then
   wraps writes in `_start_file_job` without changing the call sites.
-- Remaining direct facade uses (`_db_api_wrap`) are local-only paths: DB cleanup,
-  path repair, backups, scene records and context-menu lookups. They are the Phase 2
-  worklist and are disabled in server mode.
+- Lookups the panel needs (`has_asset`, `asset_identity`, `asset_names`,
+  `has_history`, `note_history`, `latest_video`, `record_detail`, …) and small
+  writes (`set_thumbnail`, `set_video`, `add_history_row`, `delete_note_history`,
+  `delete_scene_record`) are repository methods too; the adapter turns the facade's
+  `None` results into `LibraryError`.
+- Three direct facade uses (`_db_api_wrap`) remain and are pinned by the
+  `LOCAL_DB_SITES` ratchet: the two database-cleanup passes in `asset_management`
+  (unused records, missing files) and the scene-record placement in
+  `houdini_actions`. They are local-only maintenance and are disabled in server mode.
 - Errors surface as `LibraryError` subclasses; `LibraryConflict` means reload and retry.
 
 ## Identity and LibraryContext

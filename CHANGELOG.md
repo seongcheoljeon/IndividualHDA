@@ -23,6 +23,32 @@ unchanged apart from the items below.
   recommends a vision-capable model for the GPU, downloads it with progress and
   applies it; an AI button suggests a note and tags for the selected asset.
 
+### Hardening
+
+- **Startup and shutdown.** A failing panel constructor shows a fallback widget
+  with an "Open log folder" button instead of a traceback; several panel tabs
+  no longer share one global instance; unreadable or locked databases report
+  `LibraryUnavailable`; settings load key by key and a corrupt file is set
+  aside as `.corrupt`; `closeEvent` refuses first and only then tears down
+  dialogs, workers, pollers and debounce timers.
+- **Data safety.** SQLite runs in WAL mode (readers no longer block writers);
+  `-wal`/`-shm` sidecars move with the database on import; a failed
+  registration removes the HDA and thumbnail it wrote; a daily automatic
+  database backup keeps the last seven copies; adapter writes raise
+  `LibraryError` instead of returning `None`.
+- **Observability.** Rotating file log in `<config>/logs/ihda.log`, Help > Open
+  log folder, and previously swallowed exceptions are logged.
+- **Quality gates.** Ruff `F,E,W,I,B,UP,SIM,C4,ANN` with all automatic fixes
+  applied (see `.git-blame-ignore-revs`), mypy over the whole tree with scoped
+  Qt enums, coverage floor in CI, pinned dev tools, pre-commit, `.editorconfig`,
+  `.gitattributes`, a generated-UI drift test and a version consistency test.
+- **Structure.** `public.py` split into `libs.keys`, `libs.paths`,
+  `libs.platform_info` and `libs.host` (re-exports kept); all HOM access goes
+  through `HoudiniAPI`; one tree `Node` and a shared model style mixin; the
+  panel reaches the SQLite facade at three maintenance sites only, everything
+  else goes through `LibraryRepository`; `tests/test_architecture.py` pins the
+  layer rules and ratchets.
+
 ## 2.0.0 — Houdini 21+ (Qt 6 / PySide6 / Python 3.11)
 
 Decisions that shaped this release. Verification details live in
