@@ -3,9 +3,9 @@ with the existing Save buttons, so nothing reaches the library without a click."
 
 from __future__ import annotations
 
-from typing import Any
 import logging
 import pathlib
+from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 

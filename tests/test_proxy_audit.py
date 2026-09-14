@@ -1,21 +1,24 @@
 """Regression cases from the model/proxy/theme audit."""
 
 from __future__ import annotations
+
+import re
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
-import re
+
 import pytest
-from PySide6 import QtCore, QtGui, QtWidgets, QtTest
-from model.ihda_list_proxy_model import ListProxyModel
-from model.ihda_table_proxy_model import TableProxyModel
-from model.ihda_history_proxy_model import HistoryProxyModel
+from PySide6 import QtCore, QtGui, QtTest, QtWidgets
+
 from model.ihda_category_proxy_model import CategoryProxyModel
-from model.ihda_record_proxy_model import RecordProxyModel
-from model.ihda_inside_proxy_model import InsideProxyModel
 from model.ihda_history_model import HistoryModel
-from model.ihda_record_model import RecordModel
+from model.ihda_history_proxy_model import HistoryProxyModel
 from model.ihda_inside_model import InsideModel
+from model.ihda_inside_proxy_model import InsideProxyModel
+from model.ihda_list_proxy_model import ListProxyModel
+from model.ihda_record_model import RecordModel
+from model.ihda_record_proxy_model import RecordProxyModel
+from model.ihda_table_proxy_model import TableProxyModel
 
 
 @pytest.mark.parametrize(
@@ -239,8 +242,8 @@ def test_every_source_model_and_proxy_obeys_qt_contract(app: Any, kind: str) -> 
 
 
 def test_sorted_filtered_selection_maps_source_id(app: Any, tmp_path: Path) -> None:
-    from main import IndividualHDA
     import public
+    from main import IndividualHDA
     from model.ihda_list_model import ListModel
 
     items = [
@@ -260,9 +263,9 @@ def test_sorted_filtered_selection_maps_source_id(app: Any, tmp_path: Path) -> N
 
 def test_source_change_rechecks_active_filter(app: Any) -> None:
     import public
-    from widgets.panel.model_binding import ModelBindingMixin
     from model.ihda_list_model import ListModel
     from model.ihda_table_model import TableModel
+    from widgets.panel.model_binding import ModelBindingMixin
 
     rows = [{public.Key.hda_id: 1, public.Key.hda_name: "Old", public.Key.hda_tags: []}]
     first, second = ListModel(items=rows), TableModel(items=rows)

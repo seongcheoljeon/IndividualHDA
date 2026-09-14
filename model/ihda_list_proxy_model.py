@@ -1,7 +1,7 @@
 """Asset list filtering with the shared null-safe predicate."""
 
-from model.proxy_filters import AssetProxyModel
 from model.ihda_list_model import ListModel
+from model.proxy_filters import AssetProxyModel
 
 
 class ListProxyModel(AssetProxyModel):

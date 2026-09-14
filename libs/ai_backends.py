@@ -6,11 +6,11 @@ keys are read from the environment at call time and never logged.
 
 from __future__ import annotations
 
-from typing import Any
 import base64
 import json
 import urllib.error
 import urllib.request
+from typing import Any
 
 from libs.ai_provider import AIProvider, AISettings, Prompt
 

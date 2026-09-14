@@ -6,17 +6,18 @@ They do not own a separate QWidget or change the public panel interface.
 
 from __future__ import annotations
 
-from PySide6 import QtCore
-
 import logging
-from PySide6 import QtWidgets, QtGui
+
+from PySide6 import QtCore, QtGui, QtWidgets
+
 import public
-from model import ihda_list_model
-from model import ihda_table_model
-from model import ihda_record_model
-from model import ihda_inside_model
-from libs import houdini_api, log_handler
-from libs import ihda_system
+from libs import houdini_api, ihda_system, log_handler
+from model import (
+    ihda_inside_model,
+    ihda_list_model,
+    ihda_record_model,
+    ihda_table_model,
+)
 
 
 class ContextMenusMixin:
@@ -122,7 +123,7 @@ class ContextMenusMixin:
         if self._selection.asset.data.get(public.Key.is_favorite_hda):
             favorite_icon = "ic_favorite_white.png"
         action_hda_context_menu_favorite.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/{0}".format(favorite_icon)))
+            QtGui.QIcon(QtGui.QPixmap(f":/main/icons/{favorite_icon}"))
         )
 
         action_hda_context_menu_detail = hda_context_menu.addAction("Detail")
@@ -240,9 +241,7 @@ class ContextMenusMixin:
             msgbox.setIcon(QtWidgets.QMessageBox.Question)
             msgbox.setWindowTitle("Remove iHDA Node")
             msgbox.setText(
-                'Delete the <font color=red>"{0}"</font> selected iHDA nodes?'.format(
-                    len(indexes)
-                )
+                f'Delete the <font color=red>"{len(indexes)}"</font> selected iHDA nodes?'
             )
             msgbox.setInformativeText(
                 "All information about that node, including previews, video, thumbnails\n"
@@ -266,9 +265,7 @@ class ContextMenusMixin:
             if not db_api.is_exist_hda_history(hda_key_id=hda_id):
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
-                    msg='node history of "{0}" iHDA node does not exist'.format(
-                        hda_name
-                    ),
+                    msg=f'node history of "{hda_name}" iHDA node does not exist',
                 )
                 return
             self._slot_select_view(index=self._hist_view_idx)
@@ -302,9 +299,7 @@ class ContextMenusMixin:
             msgbox.setWindowTitle("Delete iHDA node history")
             msgbox.setIcon(QtWidgets.QMessageBox.Question)
             msgbox.setText(
-                'Delete the selected <font color=red>"{0}"</font> iHDA node history?'.format(
-                    len(indexes)
-                )
+                f'Delete the selected <font color=red>"{len(indexes)}"</font> iHDA node history?'
             )
             msgbox.setStandardButtons(
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
@@ -331,16 +326,12 @@ class ContextMenusMixin:
                     db_api.delete_hda_note_history(hda_key_id=hda_id)
                     log_handler.LogHandler.log_msg(
                         method=logging.info,
-                        msg='all the note history of "{0}" iHDA node has been deleted'.format(
-                            hda_name
-                        ),
+                        msg=f'all the note history of "{hda_name}" iHDA node has been deleted',
                     )
                 if not db_api.is_exist_hda_history(hda_key_id=hda_id):
                     log_handler.LogHandler.log_msg(
                         method=logging.warning,
-                        msg='node history of "{0}" iHDA node does not exist'.format(
-                            hda_name
-                        ),
+                        msg=f'node history of "{hda_name}" iHDA node does not exist',
                     )
                     continue
                 # 삭제할 히스토리 데이터 수거
@@ -518,7 +509,7 @@ class ContextMenusMixin:
             if video_info is None:
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
-                    msg='"{0} (v{1})" iHDA node has no video'.format(hda_name, hda_ver),
+                    msg=f'"{hda_name} (v{hda_ver})" iHDA node has no video',
                 )
                 return
             self._play_video_most_recent_by_version(video_info=video_info)

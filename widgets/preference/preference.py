@@ -1,31 +1,25 @@
 from __future__ import annotations
 
-from typing import Any
 import pathlib
-from PySide6 import QtWidgets
+from dataclasses import replace
+from typing import Any
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.03.28 15:04:12
 # modified date:
 # description:
-
-
-from PySide6 import QtGui
+from PySide6 import QtGui, QtWidgets
 
 import public
-from dataclasses import replace
-
 from libs.ai_provider import FIELDS, KINDS, PLACEHOLDERS, AISettings
 from libs.ffmpeg_api import FFmpegAPI
-
-
 from widgets.preference import preference_ui, preference_ui_settings
 
 
 class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super(Preference, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
         self.__build_ai_group()
         self.__pref_settings = preference_ui_settings.PreferenceUISettings(window=self)

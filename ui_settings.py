@@ -1,32 +1,30 @@
 from __future__ import annotations
 
-from typing import Any
+import copy
+import json
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.02.17 02:17:32
 # modified date:
 # description:
-
 import os
-import json
-from libs.settings_store import save_json
-import copy
+from typing import Any
 
-from PySide6 import QtWidgets, QtCore, QtGui
+from PySide6 import QtCore, QtGui, QtWidgets
+
+from libs.settings_store import save_json
 
 try:
     import hou
-except ImportError as err:
+except ImportError:
     pass
 
 import public
-
-
 from libs.qt_helpers import dark_stylesheet
 
 
-class UISettings(object):
+class UISettings:
     def __init__(self, window: QtWidgets.QWidget | None = None) -> None:
         self.__window = window
         self.__setting_ini = QtCore.QSettings(
@@ -295,7 +293,7 @@ QMenuBar {
                 if not isinstance(data, dict):
                     raise ValueError("Settings must contain a JSON object")
                 self.__cfg_dict = copy.copy(data)
-            except ValueError as err:
+            except ValueError:
                 self.__cfg_dict = {}
                 self.__setting_json.replace(self.__setting_json.with_suffix(".corrupt"))
                 return

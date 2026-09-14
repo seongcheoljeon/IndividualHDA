@@ -1,9 +1,12 @@
 """Optional library tools attached to the existing panel menu."""
 
 from __future__ import annotations
-from typing import Any
+
 from pathlib import Path
+from typing import Any
+
 from PySide6 import QtCore, QtWidgets
+
 from widgets.library_manager.dialog import LibraryManager
 
 
@@ -81,6 +84,7 @@ class LibraryToolsMixin:
     def _tools_import_version(self, snapshot: dict[str, Any]) -> None:
         try:
             import hou
+
             from libs.houdini_api import HoudiniAPI
 
             editor = hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)

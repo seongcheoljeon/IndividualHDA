@@ -5,14 +5,14 @@ Shares protected panel state; Qt and HOM calls stay on the GUI thread.
 
 from __future__ import annotations
 
-from typing import Any
-import pathlib
-from PySide6 import QtGui
 import logging
-from PySide6 import QtWidgets, QtCore
+import pathlib
+from typing import Any
+
+from PySide6 import QtCore, QtGui, QtWidgets
+
 import public
-from libs import log_handler
-from libs import ihda_system
+from libs import ihda_system, log_handler
 from libs.domain import LibraryContext
 
 try:
@@ -308,7 +308,7 @@ class PresentationMixin:
     def _slot_zoom_value(self, zoom_val: float) -> None:
         self._set_view_item_icon_size(zoom_val)
         log_handler.LogHandler.log_msg(
-            method=logging.info, msg="zoom value: {0} %".format(zoom_val)
+            method=logging.info, msg=f"zoom value: {zoom_val} %"
         )
 
     def _set_tree_view_item_icon_size(self, val: Any) -> None:

@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 import logging
-from pathlib import Path
 import shutil
 import tempfile
 import uuid
+from datetime import datetime
+from pathlib import Path
 
-from libs.operation_journal import durable_operation, sync_tree
-from libs.contracts import OperationFactory
 from libs.archive_service import create_archive, extract_archive, prepare_database
+from libs.contracts import OperationFactory
+from libs.operation_journal import durable_operation, sync_tree
 
 
 class ArchiveTransfer:

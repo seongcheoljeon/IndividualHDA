@@ -2,21 +2,18 @@
 from __future__ import annotations
 
 from typing import Any
-from PySide6 import QtWidgets
 
 # author            : Seongcheol Jeon
 # email             : saelly55@gmail.com
 # create date       : 2020.01.28 23:03
 # modify date       :
 # decription        :
-
-
-from PySide6 import QtGui, QtCore
+from PySide6 import QtCore, QtGui, QtWidgets
 
 
 class NoteHighLighter(QtGui.QSyntaxHighlighter):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super(NoteHighLighter, self).__init__(parent)
+        super().__init__(parent)
         self.parent = parent
         keyword = QtGui.QTextCharFormat()
         importantkeyword = QtGui.QTextCharFormat()
@@ -217,7 +214,7 @@ class NoteHighLighter(QtGui.QSyntaxHighlighter):
         self.setCurrentBlockState(0)
 
 
-class HighlightingRule(object):
+class HighlightingRule:
     def __init__(self, pattern: Any, fmt: QtGui.QTextCharFormat) -> None:
         self.pattern = pattern
         self.format = fmt

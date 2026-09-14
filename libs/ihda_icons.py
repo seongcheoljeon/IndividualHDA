@@ -1,33 +1,31 @@
 from __future__ import annotations
 
-from typing import Any, Iterator
-from libs.thumbnail_cache import ThumbnailCache
-from libs.domain import AssetData, HistoryData
+import logging
 import pathlib
+from collections.abc import Iterator
+from contextlib import contextmanager
+from logging import warning
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.04.21 02:29:45
 # modified date:
 # description:      iHDA icons
-
 from re import compile
-from contextlib import contextmanager
-from logging import warning
+from typing import Any
 from zipfile import ZipFile, is_zipfile
-import logging
 
 from PySide6 import QtGui
 
 import public
 
-
 # third-party modules
-
 from libs import log_handler
+from libs.domain import AssetData, HistoryData
+from libs.thumbnail_cache import ThumbnailCache
 
 
-class IHDAIcons(object):
+class IHDAIcons:
     def __init__(self) -> None:
         self.__zip_filepath = public.Paths.hh_dirpath / "help" / "icons.zip"
         if not self.__zip_filepath.exists():
@@ -209,7 +207,7 @@ class IHDAIcons(object):
             img = QtGui.QImage.fromData(contents)
             pixmap = QtGui.QPixmap.fromImage(img)
             return pixmap
-        except (KeyError, RuntimeError) as err:
+        except (KeyError, RuntimeError):
             icon_map = self.__icons_map.get("_".join(icon_lst))
             if icon_map is None:
                 icon_filepath = "/".join(
@@ -228,7 +226,7 @@ class IHDAIcons(object):
                 img = QtGui.QImage.fromData(contents)
                 pixmap = QtGui.QPixmap.fromImage(img)
                 return pixmap
-            except (KeyError, RuntimeError) as err:
+            except (KeyError, RuntimeError):
                 if icon_lst[0].lower() == public.Type.chop:
                     return QtGui.QPixmap(":/main/icons/chan.png")
                 return QtGui.QPixmap(":/main/icons/blank.png")
@@ -249,7 +247,7 @@ class IHDAIcons(object):
                 )
             return None
         split_str = ":="
-        pattern_split = compile(r"{0}".format(split_str))
+        pattern_split = compile(rf"{split_str}")
         pattern_del = compile(r"[\s;]")
         icons_dict = dict()
         with self._icon_archive() as zip_fp:
@@ -258,8 +256,7 @@ class IHDAIcons(object):
                     line = line.decode("utf-8")
                     if pattern_split.search(line) is not None:
                         lst = [
-                            pattern_del.sub("", x)
-                            for x in line.split("{0}".format(split_str))
+                            pattern_del.sub("", x) for x in line.split(f"{split_str}")
                         ]
                         icons_dict[lst[0]] = lst[1]
         if len(icons_dict):

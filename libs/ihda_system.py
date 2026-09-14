@@ -1,39 +1,35 @@
 from __future__ import annotations
 
-from typing import Any
-import pathlib
+import errno
+import logging
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.04.27 22:57:06
 # modified date:
 # description:
-
 import os
-import errno
+import pathlib
 import tempfile
-from shutil import copy2
-import logging
-from shutil import rmtree
-from urllib.request import urlopen
-from urllib.error import URLError
+from shutil import copy2, rmtree
+from subprocess import DEVNULL, Popen
 from threading import Thread
+from typing import Any
+from urllib.error import URLError
+from urllib.request import urlopen
 from webbrowser import open_new
-from subprocess import Popen, DEVNULL
 
 import public
 from libs import log_handler
 
 
-class IHDASystem(object):
+class IHDASystem:
     def __init__(self) -> None:
         pass
 
     @staticmethod
     def open_with_terminal(cmd: str = "") -> Any:
-        return "gnome-terminal -e 'bash -c \"{command}; cd $OLDPATH; exec bash\"' &".format(
-            command=cmd
-        )
+        return f"gnome-terminal -e 'bash -c \"{cmd}; cd $OLDPATH; exec bash\"' &"
 
     @staticmethod
     def open_folder(dirpath: pathlib.Path | None = None) -> None:
@@ -45,7 +41,7 @@ class IHDASystem(object):
         if not dirpath.is_dir():
             log_handler.LogHandler.log_msg(
                 method=logging.error,
-                msg="iHDA directory does not exists ({0})".format(dirpath),
+                msg=f"iHDA directory does not exists ({dirpath})",
             )
             return
         if public.is_windows():
@@ -70,23 +66,19 @@ class IHDASystem(object):
                 if verbose:
                     log_handler.LogHandler.log_msg(
                         method=logging.info,
-                        msg="{0} directory was deleted".format(dirpath.as_posix()),
+                        msg=f"{dirpath.as_posix()} directory was deleted",
                     )
                 return True
-            except OSError as err:
+            except OSError:
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
-                    msg='thumbnail or video files in "{0}" folder are open and cannot be performed'.format(
-                        dirpath.as_posix()
-                    ),
+                    msg=f'thumbnail or video files in "{dirpath.as_posix()}" folder are open and cannot be performed',
                 )
                 return False
         if verbose:
             log_handler.LogHandler.log_msg(
                 method=logging.error,
-                msg="{0} directory has already been deleted or does not exist".format(
-                    dirpath.as_posix()
-                ),
+                msg=f"{dirpath.as_posix()} directory has already been deleted or does not exist",
             )
         return False
 
@@ -99,23 +91,19 @@ class IHDASystem(object):
                 if verbose:
                     log_handler.LogHandler.log_msg(
                         method=logging.info,
-                        msg="{0} file was deleted".format(filepath.as_posix()),
+                        msg=f"{filepath.as_posix()} file was deleted",
                     )
                 return True
-            except Exception as err:
+            except Exception:
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
-                    msg='"{0}" file is open and cannot be deleted'.format(
-                        filepath.as_posix()
-                    ),
+                    msg=f'"{filepath.as_posix()}" file is open and cannot be deleted',
                 )
                 return False
         if verbose:
             log_handler.LogHandler.log_msg(
                 method=logging.error,
-                msg="{0} file has already been deleted or does not exist".format(
-                    filepath.as_posix()
-                ),
+                msg=f"{filepath.as_posix()} file has already been deleted or does not exist",
             )
         return False
 
@@ -131,9 +119,7 @@ class IHDASystem(object):
             if verbose:
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
-                    msg='"{0}" file does not exist or is not in file format'.format(
-                        src_filepath.as_posix()
-                    ),
+                    msg=f'"{src_filepath.as_posix()}" file does not exist or is not in file format',
                 )
             return False
         if src_filepath.resolve() == dst_filepath.resolve():
@@ -167,7 +153,7 @@ class IHDASystem(object):
         try:
             urlopen("http://216.58.192.142", timeout=1)
             return True
-        except URLError as err:
+        except URLError:
             return False
 
     @staticmethod
@@ -187,7 +173,7 @@ class IHDASystem(object):
         if not hip_filepath.exists():
             log_handler.LogHandler.log_msg(
                 method=logging.error,
-                msg='"{0}" file not found'.format(hip_filepath.as_posix()),
+                msg=f'"{hip_filepath.as_posix()}" file not found',
             )
             return
         if not houfx_cmd.exists():
@@ -196,7 +182,7 @@ class IHDASystem(object):
             )
             return
         log_handler.LogHandler.log_msg(
-            method=logging.info, msg='"{0}" file open'.format(hip_filepath.as_posix())
+            method=logging.info, msg=f'"{hip_filepath.as_posix()}" file open'
         )
         t = Thread(
             target=IHDASystem.open_file_with_houdini, args=(hip_filepath, houfx_cmd)

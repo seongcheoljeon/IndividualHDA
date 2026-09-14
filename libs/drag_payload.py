@@ -1,11 +1,12 @@
 """Data-only serialization for internal asset drag/drop."""
 
 from __future__ import annotations
-from PySide6 import QtCore
 
-from typing import Any
 import json
 from pathlib import Path
+from typing import Any
+
+from PySide6 import QtCore
 
 
 def encode_payload(data: dict[str, Any]) -> bytes:

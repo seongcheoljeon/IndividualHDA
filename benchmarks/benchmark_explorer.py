@@ -1,14 +1,14 @@
 """Measure bounded Explorer reads against full snapshots on synthetic libraries."""
 
 from __future__ import annotations
+
 import json
-from pathlib import Path
 import sys
 import tempfile
-import time
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from benchmarks.benchmark_library import seed, milliseconds
+from benchmarks.benchmark_library import milliseconds, seed
 from libs.library_explorer import search_assets
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 

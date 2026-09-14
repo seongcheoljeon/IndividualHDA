@@ -1,20 +1,22 @@
 """Reproducible synthetic workload. Run from repository root with --counts 10000 50000."""
 
 from __future__ import annotations
+
 import argparse
-from collections.abc import Callable
 import json
 import os
-from pathlib import Path
 import statistics
 import sys
 import tempfile
 import time
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 from PySide6 import QtCore, QtGui, QtWidgets
+
 from libs.asset_store import AssetStore
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 from libs.thumbnail_cache import ThumbnailCache

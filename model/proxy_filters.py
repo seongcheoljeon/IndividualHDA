@@ -1,7 +1,9 @@
 """Shared Qt 6 filters: one predicate per row, with native tree propagation."""
 
 from __future__ import annotations
+
 from typing import Any
+
 from PySide6 import QtCore
 
 

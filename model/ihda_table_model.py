@@ -1,22 +1,20 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
-from libs.domain import AssetData
 from typing import Any
-from PySide6 import QtCore
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # create date       : 2020.01.28 11:45
 # modify date       :
 # description       :
+from PySide6 import QtCore, QtGui
 
-
-from PySide6 import QtGui
+from libs.domain import AssetData
 
 try:
     import hou
-except ImportError as err:
+except ImportError:
     pass
 
 import public
@@ -47,7 +45,7 @@ class TableModel(QtCore.QAbstractTableModel):
         thumb_size: int | None = None,
         parent: QtCore.QObject | None = None,
     ) -> None:
-        super(TableModel, self).__init__(parent)
+        super().__init__(parent)
         self.__items = items if items is not None else []
         self.__pixmap_ihda_data = (
             pixmap_ihda_data if pixmap_ihda_data is not None else {}
@@ -121,9 +119,9 @@ class TableModel(QtCore.QAbstractTableModel):
     ) -> Any:
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
             if orientation == QtCore.Qt.Orientation.Horizontal:
-                return "{0}".format(self.__headers[section])
+                return f"{self.__headers[section]}"
             else:
-                return "iHDA {0}".format(section + 1)
+                return f"iHDA {section + 1}"
         elif role == QtCore.Qt.ItemDataRole.FontRole:
             font = QtGui.QFont()
             font.setPointSize(public.UISetting.view_font_size)
@@ -206,13 +204,13 @@ class TableModel(QtCore.QAbstractTableModel):
                 favorite_icon = "ic_favorite_border_white.png"
                 if data.get(public.Key.is_favorite_hda):
                     favorite_icon = "ic_favorite_white.png"
-                return QtGui.QPixmap(":/main/icons/{0}".format(favorite_icon)).scaled(
+                return QtGui.QPixmap(f":/main/icons/{favorite_icon}").scaled(
                     QtCore.QSize(int(other_icon_size), int(other_icon_size)),
                     QtCore.Qt.AspectRatioMode.KeepAspectRatio,
                 )
             elif column in self.__hda_datetime_column:
                 datetime_icon = "ic_query_builder_white.png"
-                return QtGui.QPixmap(":/main/icons/{0}".format(datetime_icon)).scaled(
+                return QtGui.QPixmap(f":/main/icons/{datetime_icon}").scaled(
                     QtCore.QSize(
                         int(other_icon_size * 0.7), int(other_icon_size * 0.7)
                     ),
@@ -220,7 +218,7 @@ class TableModel(QtCore.QAbstractTableModel):
                 )
             elif column == self.__hda_hou_ver_column:
                 hou_icon = "houdini_logo.png"
-                return QtGui.QPixmap(":/main/icons/{0}".format(hou_icon)).scaled(
+                return QtGui.QPixmap(f":/main/icons/{hou_icon}").scaled(
                     QtCore.QSize(
                         int(other_icon_size * 0.7), int(other_icon_size * 0.7)
                     ),
@@ -294,7 +292,7 @@ class TableModel(QtCore.QAbstractTableModel):
     def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
         if not index.isValid():
             return QtCore.Qt.ItemFlag.ItemIsDropEnabled
-        flags = super(TableModel, self).flags(index)
+        flags = super().flags(index)
         if index.isValid():
             hda_filepath = index.data(TableModel.filepath_role)
             if not hda_filepath.exists():
@@ -403,7 +401,7 @@ class TableModel(QtCore.QAbstractTableModel):
     def mimeData(self, indexes: list[QtCore.QModelIndex]) -> QtCore.QMimeData | None:
         if not len(indexes):
             return None
-        mime_data = super(TableModel, self).mimeData(indexes)
+        mime_data = super().mimeData(indexes)
         # 원래 0번째 컬럼만 선택되어지는데 간혹가다가 모든 컬럼이 indexes로 들어올 때가 있어서 명시해주었다.
         if len(indexes) > 1:
             indexes = [indexes[public.Value.drag_column_table_view]]

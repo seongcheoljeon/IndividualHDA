@@ -6,8 +6,8 @@ the in-memory rows when it moves; the toolbar Reload action runs the same path.
 
 from __future__ import annotations
 
-from typing import Any
 import logging
+from typing import Any
 
 from PySide6 import QtCore
 

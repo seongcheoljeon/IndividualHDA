@@ -1,8 +1,10 @@
 """Translate the rename use case into the existing SQLite domain operations."""
 
 from __future__ import annotations
+
 from contextlib import AbstractContextManager
 from pathlib import Path
+
 from libs.asset_rename import RenamePlan
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 

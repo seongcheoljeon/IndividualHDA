@@ -5,12 +5,14 @@ Shares protected panel state; Qt and HOM calls stay on the GUI thread.
 
 from __future__ import annotations
 
-from typing import Any
 import logging
-from PySide6 import QtWidgets, QtGui, QtCore
+from typing import Any
+
+from PySide6 import QtCore, QtGui, QtWidgets
+
 import public
+from libs import log_handler, note_syntax
 from libs.database.values import normalize_tags
-from libs import note_syntax, log_handler
 from widgets.detail_view import detail_view
 
 
@@ -50,12 +52,12 @@ class NotesMixin:
 
     def _set_label_tags(self, tags: list[str]) -> None:
         self.label__tags.setText(
-            "<font color=#bfff00>{0}</font>".format(self._set_tag_string(tags))
+            f"<font color=#bfff00>{self._set_tag_string(tags)}</font>"
         )
 
     def _set_label_hist_tags(self, tags: list[str]) -> None:
         self.label__hist_tags.setText(
-            "<font color=#bfff00>{0}</font>".format(self._set_tag_string(tags))
+            f"<font color=#bfff00>{self._set_tag_string(tags)}</font>"
         )
 
     def _slot_hda_note_history(
@@ -88,18 +90,16 @@ class NotesMixin:
         if hist_note_data is None:
             log_handler.LogHandler.log_msg(
                 method=logging.warning,
-                msg='note history information of "{0}" iHDA node does not exist'.format(
-                    hda_name
-                ),
+                msg=f'note history information of "{hda_name}" iHDA node does not exist',
             )
             return
-        plain_textedit.appendPlainText("iHDA: {0}".format(hda_name))
+        plain_textedit.appendPlainText(f"iHDA: {hda_name}")
         for data in hist_note_data:
             ctime, ver, note = data
-            res_contents = """
-                    ***** Save Time: {0}, iHDA Version: {1} *****
-{2}
-            """.format(ctime, ver, note)
+            res_contents = f"""
+                    ***** Save Time: {ctime}, iHDA Version: {ver} *****
+{note}
+            """
             plain_textedit.appendPlainText(res_contents)
             plain_textedit.appendPlainText("-" * 88)
         dialog.show()
@@ -139,7 +139,7 @@ class NotesMixin:
             datetime_text = NotesMixin._reshape_datetime(
                 QtCore.QDateTime.currentDateTime()
             )
-            text = "{0}\n".format(datetime_text)
+            text = f"{datetime_text}\n"
             # inst.setPlainText('%s\n\n%s' % (text, inst.toPlainText()))
             cursor = inst.textCursor()
             cursor.movePosition(QtGui.QTextCursor.End)
@@ -166,7 +166,7 @@ class NotesMixin:
         inst_week = inst_date.dayOfWeek()
         created_week = QtCore.QLocale().dayName(inst_week)
         created_time = inst_time.toString("hh:mm:ss AP")
-        return "{0} {1} {2}".format(created_date, created_week, created_time)
+        return f"{created_date} {created_week} {created_time}"
 
     @staticmethod
     def _split_tag_string(tag_str: str = "") -> list[str]:
@@ -186,11 +186,9 @@ class NotesMixin:
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setFont(self._get_default_font())
         msgbox.setIcon(QtWidgets.QMessageBox.Question)
-        msgbox.setWindowTitle("Save iHDA {0}s".format(choice))
+        msgbox.setWindowTitle(f"Save iHDA {choice}s")
         msgbox.setText(
-            'Save {0}s to "{1} ({2})" path iHDA node?'.format(
-                choice, self._selection.asset.name, self._selection.asset.cate
-            )
+            f'Save {choice}s to "{self._selection.asset.name} ({self._selection.asset.cate})" path iHDA node?'
         )
         msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         reply = msgbox.exec()
@@ -227,9 +225,7 @@ class NotesMixin:
                 return
             log_handler.LogHandler.log_msg(
                 method=logging.info,
-                msg='{0}s from the "{1} ({2})" iHDA node have been saved'.format(
-                    choice, self._selection.asset.name, self._selection.asset.cate
-                ),
+                msg=f'{choice}s from the "{self._selection.asset.name} ({self._selection.asset.cate})" iHDA node have been saved',
             )
 
     @property

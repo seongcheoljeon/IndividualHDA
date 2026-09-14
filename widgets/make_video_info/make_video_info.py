@@ -1,22 +1,22 @@
 from __future__ import annotations
 
 from typing import Any
+
 from PySide6 import QtWidgets
+
+import public
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.03.17 21:09:45
 # modified date:
 # description:
-
-
 from widgets.make_video_info import make_video_info_ui
-import public
 
 
 class MakeVideoInfo(QtWidgets.QDialog, make_video_info_ui.Ui_Dialog__makevideoinfo):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super(MakeVideoInfo, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
         self.__sf = 1001
         self.__ef = 1240

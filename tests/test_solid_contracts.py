@@ -1,20 +1,21 @@
 from __future__ import annotations
-from contextlib import contextmanager
-from dataclasses import replace
-from pathlib import Path
+
 import subprocess
 import sys
-from typing import Any, Iterator
+from pathlib import Path
+from typing import Any
+
 import pytest
 from PySide6 import QtCore
-from libs.asset_store import AssetStore
+
 from libs.asset_rename import build_rename_plan, rename_asset
+from libs.asset_store import AssetStore
+from libs.background_job import BackgroundJob
 from libs.contracts import SilentRows
 from libs.database.rename_repository import SQLiteRenameRepository
+from libs.process_job import ProcessJob
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 from libs.task_controller import TaskController
-from libs.process_job import ProcessJob
-from libs.background_job import BackgroundJob
 
 
 class Names:

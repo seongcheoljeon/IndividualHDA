@@ -1,10 +1,13 @@
 from __future__ import annotations
-import pathlib
 
-from typing import Any, Iterator
+import pathlib
 import sqlite3
+from collections.abc import Iterator
+from typing import Any
+
 import pytest
-from libs.database_migrations import migrate, SCHEMA_VERSION
+
+from libs.database_migrations import SCHEMA_VERSION, migrate
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 from model.sqlite3_db_schema import db_schema
 
@@ -58,10 +61,9 @@ def test_normalize_tags_and_vocabulary(db: Any, tmp_path: pathlib.Path) -> None:
 
 
 def test_transaction_rolls_back(db: Any) -> None:
-    with pytest.raises(sqlite3.DatabaseError):
-        with db.transaction():
-            seed(db)
-            db.insert_hda_key("Asset's 한글", "sop", "O'한글")
+    with pytest.raises(sqlite3.DatabaseError), db.transaction():
+        seed(db)
+        db.insert_hda_key("Asset's 한글", "sop", "O'한글")
     assert db.get_user_id() == []
 
 
@@ -122,15 +124,14 @@ def test_transaction_spans_catalog_assets_nodes_and_history(
 ) -> None:
     """Split query modules must still use one atomic connection."""
     key = seed(db)
-    with pytest.raises(RuntimeError, match="abort"):
-        with db.transaction():
-            db.insert_hda_info(key, "1.0", filename="box.hda", dirpath=tmp_path)
-            db.insert_houdini_node_info(key, "box", "Box", False, False, "/obj/geo/box")
-            db.insert_note_info(key, "original")
-            db.update_note_info(key, "updated")
-            assert db.get_hda_node_type(key) == "box"
-            assert db.get_hda_note_history_most_recent_by_ver(key, "1.0") == "updated"
-            raise RuntimeError("abort")
+    with pytest.raises(RuntimeError, match="abort"), db.transaction():
+        db.insert_hda_info(key, "1.0", filename="box.hda", dirpath=tmp_path)
+        db.insert_houdini_node_info(key, "box", "Box", False, False, "/obj/geo/box")
+        db.insert_note_info(key, "original")
+        db.update_note_info(key, "updated")
+        assert db.get_hda_node_type(key) == "box"
+        assert db.get_hda_note_history_most_recent_by_ver(key, "1.0") == "updated"
+        raise RuntimeError("abort")
     assert db.get_hda_key_id(name="Asset's 한글") == [key]
     with sqlite3.connect(db.db_filepath) as connection:
         for table in ("hda_info", "houdini_node_info", "note_info", "hda_note_history"):

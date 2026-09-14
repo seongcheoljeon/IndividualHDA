@@ -16,8 +16,9 @@ exclude = ["*_rc.py", "*_ui.py", "*.md"]
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["F821", "F823", "ANN"]
-ignore = ["ANN401"]
+select = ["F", "E", "W", "I", "B", "UP", "SIM", "C4", "ANN"]
+# E501: the formatter owns line length. B008: Qt idiom `index: QModelIndex = QModelIndex()`.
+ignore = ["ANN401", "E501", "B008"]
 
 
 [tool.mypy]

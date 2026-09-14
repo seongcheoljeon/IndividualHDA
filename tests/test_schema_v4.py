@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from libs.database_migrations import migrate, SCHEMA_VERSION
+from libs.database_migrations import SCHEMA_VERSION, migrate
 
 
 @pytest.fixture

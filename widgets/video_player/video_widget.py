@@ -1,22 +1,20 @@
 from __future__ import annotations
 
 from typing import Any
-from PySide6 import QtGui, QtWidgets
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.03.20 00:49:52
 # modified date:
 # description:
-
-from PySide6 import QtCore, QtMultimediaWidgets
+from PySide6 import QtCore, QtGui, QtMultimediaWidgets, QtWidgets
 
 from widgets.video_player import video_widget_overlay
 
 
 class VideoWidget(QtMultimediaWidgets.QVideoWidget):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super(VideoWidget, self).__init__(parent)
+        super().__init__(parent)
         self.__parent = parent
         self.setSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         palette = self.palette()
@@ -42,7 +40,7 @@ class VideoWidget(QtMultimediaWidgets.QVideoWidget):
             self.__parent.slot_play_toggle()
             event.accept()
         else:
-            super(VideoWidget, self).keyPressEvent(event)
+            super().keyPressEvent(event)
 
     def mouseDoubleClickEvent(self, event: QtGui.QMouseEvent) -> None:
         self.setFullScreen(not self.isFullScreen())
@@ -50,7 +48,7 @@ class VideoWidget(QtMultimediaWidgets.QVideoWidget):
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         self.__overlay.resize(event.size())
-        super(VideoWidget, self).resizeEvent(event)
+        super().resizeEvent(event)
 
 
 if __name__ == "__main__":

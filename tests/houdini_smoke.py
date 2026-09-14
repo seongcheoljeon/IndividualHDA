@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-
 import os
-from pathlib import Path
+import sqlite3
 import sys
 import tempfile
-import sqlite3
 from contextlib import closing
+from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import hou
@@ -22,10 +21,10 @@ def main() -> None:
         from PySide6 import QtCore, QtWidgets
 
         app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
+        from libs.drag_payload import decode_payload, encode_payload
         from libs.houdini_api import HoudiniAPI
-        from libs.sqlite3_db_api import SQLite3DatabaseAPI
-        from libs.drag_payload import encode_payload, decode_payload
         from libs.qt_helpers import wildcard_expression
+        from libs.sqlite3_db_api import SQLite3DatabaseAPI
 
         assert (
             wildcard_expression("asset*", QtCore.Qt.CaseInsensitive)
@@ -58,7 +57,7 @@ def main() -> None:
         assert box.path() == original_path and len(geo.children()) == 2
         assert HoudiniAPI.node_type_name(node=box) == "box"
         print("HDA export/import and original node preservation: PASS", flush=True)
-        from libs.version_compare import expand_asset, compare_expanded
+        from libs.version_compare import compare_expanded, expand_asset
 
         box.parm("sizex").set(2.0)
         assert HoudiniAPI.create_hda_file(box, assets, "smoke-v2.ihda", "2.0")
@@ -89,7 +88,7 @@ def main() -> None:
             assert db.insert_hda_key("asset's 한글", "sop", "anonymous") == 1
             assert db.get_hda_key_id(name="asset's 한글") == [1]
         print("SQLite and Unicode paths: PASS", flush=True)
-        from libs.database_migrations import migrate, SCHEMA_VERSION
+        from libs.database_migrations import SCHEMA_VERSION, migrate
 
         legacy_path = directory / "legacy.db"
         with closing(sqlite3.connect(legacy_path)) as connection:

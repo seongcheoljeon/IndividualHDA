@@ -1,6 +1,7 @@
 """Small structural contracts for domain/application code; no Qt or HOM imports."""
 
 from __future__ import annotations
+
 from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import Protocol

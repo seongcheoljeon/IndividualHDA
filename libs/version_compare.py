@@ -1,6 +1,7 @@
 """SideFX asset expansion on the GUI thread, followed by pure file comparison."""
 
 from __future__ import annotations
+
 import difflib
 import hashlib
 from pathlib import Path

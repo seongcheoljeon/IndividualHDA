@@ -1,10 +1,12 @@
 """Bounded, cancellable read-only library pages and history snapshots."""
 
 from __future__ import annotations
-from pathlib import Path
+
 import threading
+from pathlib import Path
 from typing import Any
-from libs.library_maintenance import read_database, check_cancel
+
+from libs.library_maintenance import check_cancel, read_database
 
 
 def search_assets(

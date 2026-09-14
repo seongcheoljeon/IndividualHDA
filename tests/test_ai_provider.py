@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
 import pathlib
 import threading
+from typing import Any
 
 import pytest
 

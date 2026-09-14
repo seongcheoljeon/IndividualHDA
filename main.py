@@ -1,50 +1,51 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
-from widgets.panel.library_tools import LibraryToolsMixin
-from widgets.panel.services import PanelServices
-from libs.domain import LibraryContext, SelectionState
-from libs.asset_store import AssetStore
-from libs.archive_transfer import ArchiveTransfer
+import logging
+import sqlite3
+from re import compile as re_compile
 
-from PySide6 import QtGui, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
+
+# third-party modules
+import main_ui
+import public
+import ui_settings
+from libs import (
+    dragdrop_overlay,
+    houdini_api,
+    identity,
+    ihda_icons,
+    ihda_system,
+    loading_indicator,
+    log_handler,
+)
+from libs.archive_transfer import ArchiveTransfer
+from libs.asset_search import AssetSearch
+from libs.asset_store import AssetStore
+from libs.domain import LibraryContext, SelectionState
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # project name      : individualHDA/main
 # create date       : 2020.01.27 11:15
 # modify date       : 2020.10.24 19:40
-
 from libs.settings_store import initialize_config
-import logging
-import sqlite3
-from re import compile as re_compile
-
-
-from PySide6 import QtCore
-
-import public
-
-# third-party modules
-import main_ui
-import ui_settings
-from libs import houdini_api, loading_indicator, log_handler, ihda_icons
-from libs import dragdrop_overlay, ihda_system, identity
-from libs.asset_search import AssetSearch
 from widgets.make_video_info import make_video_info
-from widgets.video_player import make_video_player
-from widgets.web_view import make_web_view
-from widgets.preference import preference
-from widgets.rename_ihda import rename_ihda
-from widgets.panel.context_menus import ContextMenusMixin
-from widgets.panel.media_actions import MediaActionsMixin
+from widgets.panel.ai_actions import AIActionsMixin
 from widgets.panel.archive_actions import ArchiveActionsMixin
 from widgets.panel.asset_registration import AssetRegistrationMixin
-
+from widgets.panel.context_menus import ContextMenusMixin
 from widgets.panel.houdini_actions import HoudiniActionsMixin
-from widgets.panel.model_binding import ModelBindingMixin
 from widgets.panel.library_sync import LibrarySyncMixin
-from widgets.panel.ai_actions import AIActionsMixin
+from widgets.panel.library_tools import LibraryToolsMixin
+from widgets.panel.media_actions import MediaActionsMixin
+from widgets.panel.model_binding import ModelBindingMixin
+from widgets.panel.services import PanelServices
+from widgets.preference import preference
+from widgets.rename_ihda import rename_ihda
+from widgets.video_player import make_video_player
+from widgets.web_view import make_web_view
 
 try:
     import hou
@@ -55,13 +56,13 @@ __author__ = "Seongcheol Jeon"
 __version__ = public.Value.current_ver
 __date__ = "2026.09.11"
 
-from widgets.panel.bootstrap import BootstrapMixin
-from widgets.panel.presentation import PresentationMixin
-from widgets.panel.selection import SelectionMixin
-from widgets.panel.host_callbacks import HostCallbacksMixin
 from widgets.panel.asset_management import AssetManagementMixin
+from widgets.panel.bootstrap import BootstrapMixin
+from widgets.panel.host_callbacks import HostCallbacksMixin
 from widgets.panel.library_queries import LibraryQueriesMixin
 from widgets.panel.notes import NotesMixin
+from widgets.panel.presentation import PresentationMixin
+from widgets.panel.selection import SelectionMixin
 
 
 class IndividualHDA(
@@ -100,7 +101,7 @@ class IndividualHDA(
         if app is None or QtCore.QThread.currentThread() != app.thread():
             raise RuntimeError("Create Individual HDA on the Houdini GUI thread")
         initialize_config()
-        super(IndividualHDA, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
         self._services = services if services is not None else PanelServices()
         self._tasks = self._services.tasks(self)
@@ -234,7 +235,7 @@ class IndividualHDA(
                         houdini_api.HoudiniAPI.clean_hda_library(data_dirpath)
                 else:
                     houdini_api.HoudiniAPI.clean_hda_library(self._hda_base_dirpath)
-            except TypeError as err:
+            except TypeError:
                 pass
             if not self._embedded:
                 self.setParent(None)
@@ -267,7 +268,7 @@ class IndividualHDA(
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         self._loading.resize(event.size())
         self._dragdrop_overlay.resize(event.size())
-        super(IndividualHDA, self).resizeEvent(event)
+        super().resizeEvent(event)
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         if event.mimeData().hasText():
@@ -279,4 +280,4 @@ class IndividualHDA(
             event.setDropAction(QtCore.Qt.CopyAction)
             event.acceptProposedAction()
         else:
-            super(IndividualHDA, self).dragEnterEvent(event)
+            super().dragEnterEvent(event)

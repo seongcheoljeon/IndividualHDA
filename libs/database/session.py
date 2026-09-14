@@ -1,13 +1,14 @@
 """Connection lifecycle, backup and transaction boundaries."""
 
 from __future__ import annotations
-from typing import Self
 
-from typing import Any, Iterator
 import pathlib
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
-from libs.database_migrations import migrate, backup_database
+from typing import Any, Self
+
+from libs.database_migrations import backup_database, migrate
 
 
 class DatabaseSession:

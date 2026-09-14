@@ -1,6 +1,7 @@
 """Qt adapter for the asset store's row-change contract."""
 
 from __future__ import annotations
+
 from PySide6.QtCore import QAbstractItemModel, QModelIndex
 
 

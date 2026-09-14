@@ -5,11 +5,11 @@ from typing import Any
 
 import pytest
 from PySide6 import QtTest
+from test_sqlite_repository import payload
 
 import public
 from libs.database.sqlite_repository import SqliteLibraryRepository
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
-from test_sqlite_repository import payload
 
 
 def wait_sync(app: Any, panel: Any) -> None:
@@ -24,9 +24,9 @@ def wait_sync(app: Any, panel: Any) -> None:
 def test_reload_and_revision_poll_follow_external_changes(
     app: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
+    from main import IndividualHDA
     from widgets.preference.preference import Preference
     from widgets.web_view.web_view import WebView
-    from main import IndividualHDA
 
     monkeypatch.setattr(
         WebView,
@@ -80,10 +80,10 @@ def test_ai_suggest_fills_editors_without_saving(
     app: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     from libs.ai_provider import AISettings, Prompt
+    from main import IndividualHDA
     from widgets.panel.services import PanelServices
     from widgets.preference.preference import Preference
     from widgets.web_view.web_view import WebView
-    from main import IndividualHDA
 
     monkeypatch.setattr(
         WebView,

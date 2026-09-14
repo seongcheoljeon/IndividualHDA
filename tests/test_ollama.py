@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any
 import io
 import json
 import threading
 import urllib.error
+from typing import Any
 
 import pytest
 

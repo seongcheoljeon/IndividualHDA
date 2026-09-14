@@ -1,10 +1,13 @@
 """Composition root: select concrete adapters here, inject them into the panel."""
 
 from __future__ import annotations
+
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+
 from PySide6.QtCore import QObject
+
 from libs.ai_provider import AIProvider, AISettings, make_provider
 from libs.archive_transfer import ArchiveTransfer
 from libs.asset_rename import AssetNames

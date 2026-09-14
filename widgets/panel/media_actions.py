@@ -6,20 +6,20 @@ They do not own a separate QWidget or change the public panel interface.
 
 from __future__ import annotations
 
-from contextlib import closing
-from typing import Any
 import pathlib
-from typing import TYPE_CHECKING
+from contextlib import closing
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from libs.sqlite3_db_api import SQLite3DatabaseAPI
 
-import uuid
 import logging
+import uuid
+
 from PySide6 import QtCore
+
 import public
-from libs import houdini_api, log_handler
-from libs import ffmpeg_api, ihda_system
+from libs import ffmpeg_api, houdini_api, ihda_system, log_handler
 
 
 class MediaActionsMixin:
@@ -132,9 +132,7 @@ class MediaActionsMixin:
         )
         log_handler.LogHandler.log_msg(
             method=logging.info,
-            msg="[{0}-{1}, fps: {2}]".format(
-                new_frinfo[0], new_frinfo[1], new_frinfo[2]
-            ),
+            msg=f"[{new_frinfo[0]}-{new_frinfo[1]}, fps: {new_frinfo[2]}]",
         )
         meta_data = {
             public.Name.FFmpeg.Metadata.author: self._user,
@@ -142,9 +140,7 @@ class MediaActionsMixin:
                 QtCore.QDate.currentDate().toString("yyyy")
             ),
             public.Name.FFmpeg.Metadata.title: hda_name,
-            public.Name.FFmpeg.Metadata.desc: "{0} Video".format(
-                public.Name.hda_prefix_str
-            ),
+            public.Name.FFmpeg.Metadata.desc: f"{public.Name.hda_prefix_str} Video",
         }
         video_dirpath = houdini_api.HoudiniAPI.make_video_dirpath(
             hda_dirpath=hda_dirpath

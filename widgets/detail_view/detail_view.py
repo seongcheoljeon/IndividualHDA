@@ -1,26 +1,21 @@
 from __future__ import annotations
 
 from typing import Any
-from PySide6 import QtWidgets
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.05.15 03:43:41
 # modified date:
 # description:
-
-
-from PySide6 import QtGui, QtCore
+from PySide6 import QtCore, QtGui, QtWidgets
 
 import public
-
-
 from widgets.detail_view import detail_view_ui
 
 
 class DetailView(QtWidgets.QDialog, detail_view_ui.Ui_Dialog__detail_view):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super(DetailView, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
         self.resize(1200, 620)
@@ -65,10 +60,8 @@ class DetailView(QtWidgets.QDialog, detail_view_ui.Ui_Dialog__detail_view):
         self.show()
 
     def show_detail_record_data(self, data: Any = None) -> None:
-        frinfo = data["FRAME INFO"] = "[{0} - {1}], fps: {2}".format(
-            data.get(public.Key.Record.sf),
-            data.get(public.Key.Record.ef),
-            data.get(public.Key.Record.fps),
+        frinfo = data["FRAME INFO"] = (
+            f"[{data.get(public.Key.Record.sf)} - {data.get(public.Key.Record.ef)}], fps: {data.get(public.Key.Record.fps)}"
         )
         for key, val in sorted(data.items()):
             if key in [public.Key.Record.record_id, public.Key.Record.hda_id]:

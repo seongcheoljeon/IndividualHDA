@@ -1,20 +1,17 @@
 from __future__ import annotations
 
-from PySide6 import QtGui, QtWidgets
-
 # author            : SeongCheol Jeon
 # email addr        : seongcheolzeon@gmail.com
 # project name      : libs/loading_indicator
 # create date       : 2020.03.05 16:24
 # modify date       :
 # description       :
-
-from PySide6 import QtCore
+from PySide6 import QtCore, QtGui, QtWidgets
 
 
 class Overlay(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super(Overlay, self).__init__(parent)
+        super().__init__(parent)
         self.__parent = parent
         palette = QtGui.QPalette(self.palette())
         palette.setColor(QtGui.QPalette.ColorRole.Window, QtCore.Qt.transparent)

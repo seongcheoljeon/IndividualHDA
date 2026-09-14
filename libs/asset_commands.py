@@ -1,14 +1,16 @@
 """File/DB asset commands. Qt views update only after these transactions commit."""
 
 from __future__ import annotations
-from pathlib import Path
+
 import uuid
-from libs.operation_journal import durable_operation
+from pathlib import Path
+
 from libs.contracts import (
     AssetDeletionRepository,
     HistoryDeletionRepository,
     OperationFactory,
 )
+from libs.operation_journal import durable_operation
 
 
 def delete_asset(

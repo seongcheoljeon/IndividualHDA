@@ -6,8 +6,6 @@ pull a model with progress, and pick a sensible default for the machine.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
 import json
 import platform
 import shutil
@@ -15,6 +13,8 @@ import subprocess
 import threading
 import urllib.error
 import urllib.request
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from libs.ai_backends import AIError, _open, normalize_endpoint
 

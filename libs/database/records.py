@@ -1,15 +1,16 @@
 """Records queries; transactions are owned by the shared session."""
 
 from __future__ import annotations
-from libs.database.session import DatabaseSession
 
-from libs.domain import SceneRecord
-from typing import Any, cast
-import pathlib
 import logging
+import pathlib
+from typing import Any, cast
+
 import public
 from libs import log_handler
+from libs.database.session import DatabaseSession
 from libs.database.values import DatabaseValues
+from libs.domain import SceneRecord
 
 
 class RecordsOperations(DatabaseSession):
@@ -293,7 +294,7 @@ class RecordsOperations(DatabaseSession):
             ef = tmp_dict[public.Key.Record.ef]
             fps = tmp_dict[public.Key.Record.fps]
             # 노드와 버전이 함께 보여지도록. 그리고 이래야 key data로 record데이터를 지울 때 명확하다.
-            node_name_with_ver = "{0} (v{1})".format(node_name, node_ver)
+            node_name_with_ver = f"{node_name} (v{node_ver})"
             if hip_dpath not in dat:
                 dat[hip_dpath] = dict()
             if hip_fname not in dat[hip_dpath]:

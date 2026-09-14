@@ -5,25 +5,25 @@ Shares protected panel state; Qt and HOM calls stay on the GUI thread.
 
 from __future__ import annotations
 
-from libs.asset_rename import build_rename_plan, rename_asset
-from libs.asset_commands import delete_asset, delete_history
-from collections.abc import Mapping
-from typing import Any
 import pathlib
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any
+
 from PySide6 import QtCore
-from typing import TYPE_CHECKING
+
+from libs.asset_rename import build_rename_plan
 
 if TYPE_CHECKING:
     from libs.sqlite3_db_api import SQLite3DatabaseAPI
 import logging
-from datetime import datetime
 from bisect import insort_right
-from PySide6 import QtWidgets, QtGui
+from datetime import datetime
+
+from PySide6 import QtGui, QtWidgets
+
 import public
-from model import ihda_list_model
-from model import ihda_table_model
-from model import ihda_history_model
 from libs import houdini_api, log_handler
+from model import ihda_history_model, ihda_list_model, ihda_table_model
 
 
 class AssetManagementMixin:
@@ -67,13 +67,13 @@ class AssetManagementMixin:
                 db_api.delete_hda_record(record_id=record_id)
                 log_handler.LogHandler.log_msg(
                     method=logging.info,
-                    msg="ID {0} record information has been deleted".format(record_id),
+                    msg=f"ID {record_id} record information has been deleted",
                 )
             if not hda_filepath.exists():
                 db_api.delete_hda_record(record_id=record_id)
                 log_handler.LogHandler.log_msg(
                     method=logging.info,
-                    msg="ID {0} record information has been deleted".format(record_id),
+                    msg=f"ID {record_id} record information has been deleted",
                 )
         self._ihda_record_model.remove_invalid_record_data()
         self.label__loc_record_count.setText(
@@ -100,7 +100,7 @@ class AssetManagementMixin:
                 method=logging.info, msg="turn off favorite filtering"
             )
         self.pushButton__favorite_node.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/{0}".format(favorite_icon)))
+            QtGui.QIcon(QtGui.QPixmap(f":/main/icons/{favorite_icon}"))
         )
 
     @staticmethod
@@ -131,16 +131,16 @@ class AssetManagementMixin:
             hda_type_name = self._selection.asset.data.get(public.Key.node_type_name)
             if hda_type_name.find(":") >= 0:
                 hda_type_name = hda_type_name.split(":")[0].strip()
-            wrong_name = "{0}1".format(hda_type_name)
+            wrong_name = f"{hda_type_name}1"
             # 등록해서는 안되는 노드 이름들
             if new_hda_name in [hda_type_name, wrong_name]:
                 self._alert_invalid_rename(
-                    msg="""
-The "{0}" name is not allowed because it is the same or
+                    msg=f"""
+The "{new_hda_name}" name is not allowed because it is the same or
 similar to the current node type.
 
-Type of current node: "{1}"
-                """.format(new_hda_name, hda_type_name)
+Type of current node: "{hda_type_name}"
+                """
                 )
             else:
                 db_api = self._db_api_wrap(self._db_filepath)
@@ -171,9 +171,7 @@ Type of current node: "{1}"
                         )
                         log_handler.LogHandler.log_msg(
                             method=logging.error,
-                            msg='a folder with the same name exists in the "{0}" space'.format(
-                                hda_dirpath.parent.as_posix()
-                            ),
+                            msg=f'a folder with the same name exists in the "{hda_dirpath.parent.as_posix()}" space',
                         )
                     else:
                         self._rename_ihda.close()
@@ -185,9 +183,7 @@ Type of current node: "{1}"
                         if is_done:
                             log_handler.LogHandler.log_msg(
                                 method=logging.debug,
-                                msg='renamed "{0}" >>>>> "{1}"'.format(
-                                    old_hda_name, new_hda_name
-                                ),
+                                msg=f'renamed "{old_hda_name}" >>>>> "{new_hda_name}"',
                             )
 
     def _change_ihda_name(
@@ -335,9 +331,7 @@ Type of current node: "{1}"
                         item_row_dat[item_row] = [hda_id, hda_cate]
                     log_handler.LogHandler.log_msg(
                         method=logging.info,
-                        msg="ID {0} iHDA information has been cleaned up".format(
-                            hda_id
-                        ),
+                        msg=f"ID {hda_id} iHDA information has been cleaned up",
                     )
             if len(item_row_dat):
                 cate_lst = db_api.get_hda_category(user_id=self._user)
@@ -365,9 +359,7 @@ Type of current node: "{1}"
                             insort_right(item_row_lst, item_row)
                         log_handler.LogHandler.log_msg(
                             method=logging.info,
-                            msg="ID {0} history information has been cleaned up".format(
-                                hist_id
-                            ),
+                            msg=f"ID {hist_id} history information has been cleaned up",
                         )
                 hist_id_row_map = (
                     self._ihda_history_model.get_hist_id_row_map_from_model()
@@ -406,11 +398,11 @@ Type of current node: "{1}"
         # chkbox.setToolTip('Delete all iHDA history files')
         # msgbox.setCheckBox(chkbox)
         msgbox.setDetailedText(
-            """
+            f"""
 All of them are deleted, leaving minimal data for data tracking.
-iHDA node history: {0}
-iHDA note history: {1}
-        """.format(cnt_hda_hist, cnt_hda_note_hist)
+iHDA node history: {cnt_hda_hist}
+iHDA note history: {cnt_hda_note_hist}
+        """
         )
         msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         msgbox.setStyleSheet("QLabel {min-width: 500px;}")
@@ -469,16 +461,12 @@ iHDA note history: {1}
             if val:
                 log_handler.LogHandler.log_msg(
                     method=logging.info,
-                    msg='the "{0}" node has been set as a favorite node'.format(
-                        hda_name
-                    ),
+                    msg=f'the "{hda_name}" node has been set as a favorite node',
                 )
             else:
                 log_handler.LogHandler.log_msg(
                     method=logging.info,
-                    msg='the "{0}" node has been released from the favorites node'.format(
-                        hda_name
-                    ),
+                    msg=f'the "{hda_name}" node has been released from the favorites node',
                 )
 
     def _remove_selected_record_item(self, index: QtCore.QModelIndex = None) -> None:
@@ -490,9 +478,7 @@ iHDA note history: {1}
         msgbox.setIcon(QtWidgets.QMessageBox.Question)
         msgbox.setWindowTitle("Remove iHDA Record Information")
         msgbox.setText(
-            'Are you sure you want to delete the selected "{0}" record information?'.format(
-                record_data_name
-            )
+            f'Are you sure you want to delete the selected "{record_data_name}" record information?'
         )
         msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         reply = msgbox.exec()
@@ -510,9 +496,7 @@ iHDA note history: {1}
             if is_removed:
                 log_handler.LogHandler.log_msg(
                     method=logging.info,
-                    msg='"{0}" data on record ID {1} has been deleted'.format(
-                        record_data_name, record_id
-                    ),
+                    msg=f'"{record_data_name}" data on record ID {record_id} has been deleted',
                 )
         # 유효한 데이터가 남아 있지 않은 껍데기 데이터 삭제하는 함수 호출
         self._ihda_record_model.remove_invalid_hull_record_item_model()
@@ -532,8 +516,8 @@ iHDA note history: {1}
         msgbox.setIcon(QtWidgets.QMessageBox.Information)
         msgbox.setWindowTitle("Remove iHDA History Node")
         msgbox.setText(
-            'Delete the <font color=red>"{0}"</font> selected iHDA nodes?\n'
-            "File/DB is also deleted".format(len(indexes))
+            f'Delete the <font color=red>"{len(indexes)}"</font> selected iHDA nodes?\n'
+            "File/DB is also deleted"
         )
         msgbox.setStandardButtons(QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No)
         reply = msgbox.exec()
@@ -679,9 +663,7 @@ iHDA note history: {1}
             if verbose:
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
-                    msg="[{0}/{1}] node is the most recent iHDA history. it cannot be deleted".format(
-                        hda_name, hda_ver
-                    ),
+                    msg=f"[{hda_name}/{hda_ver}] node is the most recent iHDA history. it cannot be deleted",
                 )
             return False
         files = []
@@ -712,7 +694,7 @@ iHDA note history: {1}
             if verbose:
                 log_handler.LogHandler.log_msg(
                     method=logging.info,
-                    msg="[{0}/{1}] iHDA history removed".format(hda_name, hda_ver),
+                    msg=f"[{hda_name}/{hda_ver}] iHDA history removed",
                 )
             return True
         return False

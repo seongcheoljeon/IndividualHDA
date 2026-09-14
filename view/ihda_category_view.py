@@ -2,15 +2,13 @@
 from __future__ import annotations
 
 from typing import Any
-from PySide6 import QtWidgets
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # create date       : 2020.01.28 01:45
 # modify date       :
 # description       :
-
-from PySide6 import QtCore
+from PySide6 import QtCore, QtWidgets
 
 
 class Object(QtCore.QObject):
@@ -20,7 +18,7 @@ class Object(QtCore.QObject):
 # tree view overwirte class
 class CategoryView(QtWidgets.QTreeView):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super(CategoryView, self).__init__(parent)
+        super().__init__(parent)
         self.__signal = Object()
         self.setHeaderHidden(False)
         self.setFrameShape(QtWidgets.QFrame.NoFrame)

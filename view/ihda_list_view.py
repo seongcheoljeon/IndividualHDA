@@ -1,17 +1,15 @@
 from __future__ import annotations
 
-from typing import Any
-from PySide6 import QtCore, QtGui, QtWidgets
-
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # create date       : 2020.01.28 01:40
 # modify date       :
 # description       :
-
 from re import compile as re_compile
 from sys import stdout
+from typing import Any
 
+from PySide6 import QtCore, QtGui, QtWidgets
 
 import public
 
@@ -24,7 +22,7 @@ class Object(QtCore.QObject):
 # list view overwrite class
 class ListView(QtWidgets.QListView):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super(ListView, self).__init__(parent)
+        super().__init__(parent)
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
         self.setDropIndicatorShown(True)
@@ -61,7 +59,7 @@ class ListView(QtWidgets.QListView):
             event.setDropAction(QtCore.Qt.CopyAction)
             event.acceptProposedAction()
         else:
-            super(ListView, self).dragEnterEvent(event)
+            super().dragEnterEvent(event)
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
         if event.mimeData().hasText():
@@ -78,7 +76,7 @@ class ListView(QtWidgets.QListView):
                 [event.mimeData().data(public.Type.mime_type)]
             )
         else:
-            super(ListView, self).dropEvent(event)
+            super().dropEvent(event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         if not (event.buttons() & QtCore.Qt.MiddleButton):
@@ -102,4 +100,4 @@ class ListView(QtWidgets.QListView):
         drop_action = drag.exec(QtCore.Qt.CopyAction)
         self.signal.mouse_signal_object.emit([drop_action, model_data_lst])
         stdout.flush()
-        super(ListView, self).mouseMoveEvent(event)
+        super().mouseMoveEvent(event)

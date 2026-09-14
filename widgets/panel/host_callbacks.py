@@ -5,15 +5,18 @@ Shares protected panel state; Qt and HOM calls stay on the GUI thread.
 
 from __future__ import annotations
 
-from typing import Any, Callable
-from PySide6 import QtCore
 import logging
+from collections.abc import Callable
+from typing import Any
+
+from PySide6 import QtCore
+
 import public
 from libs import houdini_api, log_handler
 
 try:
-    import hou
     import hdefereval
+    import hou
 except ImportError:
     pass
 
@@ -146,11 +149,11 @@ class HostCallbacksMixin:
             return True
         log_handler.LogHandler.log_msg(
             method=logging.warning,
-            msg="current network category: {0}".format(net_category),
+            msg=f"current network category: {net_category}",
         )
         log_handler.LogHandler.log_msg(
             method=logging.warning,
-            msg='"{0}" iHDA node category: {1}'.format(hda_name, category),
+            msg=f'"{hda_name}" iHDA node category: {category}',
         )
         return False
 

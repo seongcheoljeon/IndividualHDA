@@ -1,8 +1,11 @@
 """Scene record filters applied together to each concrete record."""
 
 from __future__ import annotations
+
 from pathlib import Path
+
 from PySide6 import QtCore
+
 from model.ihda_record_model import RecordModel
 from model.proxy_filters import TreeProxyModel
 

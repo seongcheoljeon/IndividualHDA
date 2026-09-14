@@ -1,17 +1,17 @@
 """Versioned, atomic upgrades of existing iHDA libraries (no ID rewriting)."""
 
 from __future__ import annotations
+
+import pathlib
+import sqlite3
+import uuid
+from collections.abc import Iterator
+from contextlib import closing
+from datetime import UTC, datetime
 from pathlib import Path
 
-from typing import Iterator
-import pathlib
-from datetime import datetime, timezone
-import sqlite3
-from contextlib import closing
-import uuid
-
 from libs.database_rebuild import rebuild_base_tables
-from model.sqlite3_db_schema import db_schema, category_cleanup_trigger
+from model.sqlite3_db_schema import category_cleanup_trigger, db_schema
 
 SCHEMA_VERSION = 4
 
@@ -54,7 +54,7 @@ def migrate(connection: sqlite3.Connection, filepath: pathlib.Path) -> None:
             raise sqlite3.DatabaseError(
                 "Library integrity check failed; original database retained"
             )
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
         backup_database(
             connection,
             Path(filepath).with_name(

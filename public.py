@@ -1,25 +1,24 @@
 from __future__ import annotations
-from typing import ParamSpec, TypeVar
 
-from typing import Any, Callable
 import pathlib
+from collections.abc import Callable
+from functools import wraps
+from logging import info
+from os import W_OK
+from os import access as os_access
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.01.27
 # modified date:    2020.10.24
 # description:      public file
-
 from os import getenv as os_getenv
-from os import access as os_access, W_OK
-from tempfile import gettempdir
 from platform import system as platform_system
-from time import time, gmtime
-from logging import info
-from functools import wraps
+from tempfile import gettempdir
+from time import gmtime, time
+from typing import Any, ParamSpec, TypeVar
 
 from libs import log_handler
-
 
 try:
     import hou
@@ -476,21 +475,21 @@ class Paths:
 
 
 class SQLite:
-    db_filename = "ihda{0}".format(Extensions.database_file)
+    db_filename = f"ihda{Extensions.database_file}"
     # 임시 ihda database name
-    tmp_db_filename = "tmp_ihda{0}".format(Extensions.database_file)
+    tmp_db_filename = f"tmp_ihda{Extensions.database_file}"
     tmp_db_filepath = Paths.tmp_dirpath / tmp_db_filename
 
 
 class Info:
     @staticmethod
     def app_info(houdini_ver: Any = None) -> str:
-        info = """
+        info = f"""
 <p>Individual HDA (Houdini built-in app)<br><br>
 Release Date: 2026.09.11<br>
-Release Version: {0}<br>
-OS Available: {1}<br>
-Recommended Houdini Version: {2}<br>
+Release Version: {Value.current_ver}<br>
+OS Available: {platform_system().title()}<br>
+Recommended Houdini Version: {houdini_ver}<br>
 <br>
 <b><i>Please donate if you like this app.<i><b><br>
 <br>
@@ -498,7 +497,7 @@ Recommended Houdini Version: {2}<br>
 <br>
 <a href="https://vimeo.com/seongcheolzeon" style="color:red"
 target="_blank">Vimeo</a><br>
-        """.format(Value.current_ver, platform_system().title(), houdini_ver)
+        """
         return info
 
     @staticmethod
@@ -548,35 +547,19 @@ def runtime_check(func: Callable[P, R]) -> Callable[P, R]:
         s_time = gmtime(start_time)
         log_handler.LogHandler.log_msg(
             method=info,
-            msg="( {0} ) Start Time: {1}/{2} - {3}:{4}:{5}".format(
-                func.__name__,
-                s_time.tm_mon,
-                s_time.tm_mday,
-                s_time.tm_hour + 9,
-                s_time.tm_min,
-                s_time.tm_sec,
-            ),
+            msg=f"( {func.__name__} ) Start Time: {s_time.tm_mon}/{s_time.tm_mday} - {s_time.tm_hour + 9}:{s_time.tm_min}:{s_time.tm_sec}",
         )
         func_result = func(*args, **kwargs)
         end_time = time()
         e_time = gmtime(end_time)
         log_handler.LogHandler.log_msg(
             method=info,
-            msg="( {0} ) End Time: {1}/{2} - {3}:{4}:{5}".format(
-                func.__name__,
-                e_time.tm_mon,
-                e_time.tm_mday,
-                e_time.tm_hour + 9,
-                e_time.tm_min,
-                e_time.tm_sec,
-            ),
+            msg=f"( {func.__name__} ) End Time: {e_time.tm_mon}/{e_time.tm_mday} - {e_time.tm_hour + 9}:{e_time.tm_min}:{e_time.tm_sec}",
         )
         run_time = end_time - start_time
         log_handler.LogHandler.log_msg(
             method=info,
-            msg="( {0} ) Running Time: {1}m {2}s".format(
-                func.__name__, int(run_time // 60), int(run_time % 60)
-            ),
+            msg=f"( {func.__name__} ) Running Time: {int(run_time // 60)}m {int(run_time % 60)}s",
         )
         return func_result
 
@@ -591,35 +574,19 @@ def runtime_check_with_param(param: str) -> Callable[[Callable[P, R]], Callable[
             s_time = gmtime(start_time)
             log_handler.LogHandler.log_msg(
                 method=info,
-                msg="( {0} ) Start Time: {1}/{2} - {3}:{4}:{5}".format(
-                    param,
-                    s_time.tm_mon,
-                    s_time.tm_mday,
-                    s_time.tm_hour + 9,
-                    s_time.tm_min,
-                    s_time.tm_sec,
-                ),
+                msg=f"( {param} ) Start Time: {s_time.tm_mon}/{s_time.tm_mday} - {s_time.tm_hour + 9}:{s_time.tm_min}:{s_time.tm_sec}",
             )
             func_result = func(*args, **kwargs)
             end_time = time()
             e_time = gmtime(end_time)
             log_handler.LogHandler.log_msg(
                 method=info,
-                msg="( {0} ) End Time: {1}/{2} - {3}:{4}:{5}".format(
-                    param,
-                    e_time.tm_mon,
-                    e_time.tm_mday,
-                    e_time.tm_hour + 9,
-                    e_time.tm_min,
-                    e_time.tm_sec,
-                ),
+                msg=f"( {param} ) End Time: {e_time.tm_mon}/{e_time.tm_mday} - {e_time.tm_hour + 9}:{e_time.tm_min}:{e_time.tm_sec}",
             )
             run_time = end_time - start_time
             log_handler.LogHandler.log_msg(
                 method=info,
-                msg="( {0} ) Running Time: {1}m {2}s".format(
-                    param, int(run_time // 60), int(run_time % 60)
-                ),
+                msg=f"( {param} ) Running Time: {int(run_time // 60)}m {int(run_time % 60)}s",
             )
             return func_result
 
@@ -637,9 +604,7 @@ def runtime_check_simple(func: Callable[P, R]) -> Callable[P, R]:
         run_time = end_time - start_time
         log_handler.LogHandler.log_msg(
             method=info,
-            msg="elapsed time: {0}m {1}s".format(
-                int(run_time // 60), int(run_time % 60)
-            ),
+            msg=f"elapsed time: {int(run_time // 60)}m {int(run_time % 60)}s",
         )
         return func_result
 
@@ -658,9 +623,7 @@ def runtime_check_simple_with_param(
             run_time = end_time - start_time
             log_handler.LogHandler.log_msg(
                 method=info,
-                msg="( {0} ) elapsed time: {1}m {2}s".format(
-                    param, int(run_time // 60), int(run_time % 60)
-                ),
+                msg=f"( {param} ) elapsed time: {int(run_time // 60)}m {int(run_time % 60)}s",
             )
             return func_result
 

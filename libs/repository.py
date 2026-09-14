@@ -6,10 +6,10 @@ live in libs/database/sqlite_repository.py (and libs/http_repository.py later).
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
-import threading
 from typing import Any, Protocol
 
 from libs.asset_rename import RenamePlan

@@ -7,13 +7,13 @@ unchanged in logic; HOM work (HDA/thumbnail files) happens before they run.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
-from contextlib import closing
-from pathlib import Path
 import logging
 import shutil
 import sqlite3
 import threading
+from collections.abc import Callable, Sequence
+from contextlib import closing
+from pathlib import Path
 from typing import Any
 
 from libs import asset_commands

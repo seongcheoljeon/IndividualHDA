@@ -1,9 +1,12 @@
 from __future__ import annotations
-from pathlib import Path
+
 import time
+from pathlib import Path
 from typing import Any
+
 import pytest
 from PySide6 import QtCore, QtGui
+
 from libs.asset_store import AssetStore
 from libs.domain import SelectionState
 from libs.thumbnail_cache import ThumbnailCache

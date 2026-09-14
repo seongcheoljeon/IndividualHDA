@@ -1,8 +1,11 @@
 """History search with inclusive calendar-day bounds."""
 
 from __future__ import annotations
+
 from collections.abc import Sequence
+
 from PySide6 import QtCore
+
 from model.ihda_history_model import HistoryModel
 from model.proxy_filters import AssetProxyModel
 

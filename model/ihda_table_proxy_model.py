@@ -1,7 +1,7 @@
 """Asset table filtering with the shared null-safe predicate."""
 
-from model.proxy_filters import AssetProxyModel
 from model.ihda_table_model import TableModel
+from model.proxy_filters import AssetProxyModel
 
 
 class TableProxyModel(AssetProxyModel):

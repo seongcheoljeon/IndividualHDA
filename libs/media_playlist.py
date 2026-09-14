@@ -1,12 +1,12 @@
 """Qt 6 playlist controller preserving the five existing playback modes."""
 
 from __future__ import annotations
-from PySide6 import QtMultimedia
 
-from typing import Any
-from PySide6 import QtCore
-from enum import IntEnum
 import random
+from enum import IntEnum
+from typing import Any
+
+from PySide6 import QtCore, QtMultimedia
 
 
 class MediaPlaylist(QtCore.QObject):

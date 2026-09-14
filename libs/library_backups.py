@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import hashlib
 import json
-from pathlib import Path
 import re
 import shutil
 import tempfile
 import threading
 import zipfile
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
 
 from libs.archive_service import create_archive, extract_archive, prepare_database
 from libs.library_maintenance import check_cancel, read_database, references
@@ -65,7 +65,7 @@ def list_backups(directory: Path) -> list[BackupEntry]:
 
 def create_backup(database: Path, assets: Path, reason: str) -> Path:
     with operation_lock(database.parent):
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
         return create_archive(
             database,
             assets,
@@ -176,7 +176,7 @@ def cleanup_recovery(
                 raise RuntimeError(
                     f"Recovery file changed or is referenced: {entry.path}"
                 )
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
         backup = database.parent / "backup" / f"recovery-{stamp}.zip"
         backup.parent.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(backup, "x", compression=zipfile.ZIP_DEFLATED) as archive:

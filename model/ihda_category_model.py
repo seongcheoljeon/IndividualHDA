@@ -2,20 +2,17 @@
 from __future__ import annotations
 
 from typing import Any
-from PySide6 import QtCore
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # create date       : 2020.01.28 01:55
 # modify date       :
 # description       :
-
-
-from PySide6 import QtGui
+from PySide6 import QtCore, QtGui
 
 try:
     import hou
-except ImportError as err:
+except ImportError:
     pass
 
 import public
@@ -28,7 +25,7 @@ class Node(QtCore.QObject):
         node_depth: int | None = None,
         parent: Node | None = None,
     ) -> None:
-        super(Node, self).__init__()
+        super().__init__()
         self.__name = node_name
         self.__depth = node_depth
         self.__parent = parent
@@ -84,9 +81,7 @@ class NodeData(Node):
         node_depth: int | None = None,
         parent: Node | None = None,
     ) -> None:
-        super(NodeData, self).__init__(
-            node_name=node_name, node_depth=node_depth, parent=parent
-        )
+        super().__init__(node_name=node_name, node_depth=node_depth, parent=parent)
         self.__node_type = node_type
         self.__icon = icon
 
@@ -114,7 +109,7 @@ class CategoryModel(QtCore.QAbstractItemModel):
         padding: int | None = None,
         parent: QtCore.QObject | None = None,
     ) -> None:
-        super(CategoryModel, self).__init__(parent)
+        super().__init__(parent)
         self.__data = self.__default_data
         self.__pixmap_cate_data = (
             pixmap_cate_data if pixmap_cate_data is not None else {}
@@ -251,7 +246,7 @@ class CategoryModel(QtCore.QAbstractItemModel):
     def flags(
         self, index: QtCore.QModelIndex = QtCore.QModelIndex()
     ) -> QtCore.Qt.ItemFlag:
-        flags = super(CategoryModel, self).flags(index)
+        flags = super().flags(index)
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
         return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable

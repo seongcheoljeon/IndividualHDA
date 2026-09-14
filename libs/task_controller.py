@@ -1,10 +1,13 @@
 """GUI-thread ownership and exactly-once completion of background file work."""
 
 from __future__ import annotations
+
+import logging
 from collections.abc import Callable
 from typing import Any
-import logging
-from PySide6.QtCore import QObject, QCoreApplication, Signal, Slot
+
+from PySide6.QtCore import QCoreApplication, QObject, Signal, Slot
+
 from libs.background_job import BackgroundJob
 from libs.process_job import ProcessJob
 

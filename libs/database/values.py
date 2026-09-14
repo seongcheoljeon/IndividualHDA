@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 import re
 import socket
 import struct
+from collections.abc import Iterable
+
 import public
 
 _TAG_SEPARATORS = re.compile(r"[#,\r\n]+")

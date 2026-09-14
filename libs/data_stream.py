@@ -4,8 +4,10 @@ Panel code uses ArchiveTransfer directly; Qt is imported only for legacy dialogs
 """
 
 from __future__ import annotations
+
 from pathlib import Path
 from typing import TYPE_CHECKING
+
 from libs.archive_transfer import ArchiveTransfer
 
 if TYPE_CHECKING:

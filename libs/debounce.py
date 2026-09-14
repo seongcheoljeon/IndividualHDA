@@ -1,7 +1,9 @@
 """GUI-owned debounce; pending callbacks disappear with their owner."""
 
 from __future__ import annotations
+
 from collections.abc import Callable
+
 from PySide6 import QtCore
 
 

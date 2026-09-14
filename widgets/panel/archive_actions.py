@@ -6,11 +6,13 @@ They do not own a separate QWidget or change the public panel interface.
 
 from __future__ import annotations
 
-from typing import Any, Callable
-
 import logging
-from PySide6 import QtWidgets, QtCore
 import pathlib
+from collections.abc import Callable
+from typing import Any
+
+from PySide6 import QtCore, QtWidgets
+
 from libs import ihda_system
 
 

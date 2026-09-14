@@ -1,22 +1,20 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
-from libs.domain import AssetData
 from typing import Any
-from PySide6 import QtCore
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # create date       : 2020.01.28 01:34
 # modify date       :
 # description       :
+from PySide6 import QtCore, QtGui
 
-
-from PySide6 import QtGui
+from libs.domain import AssetData
 
 try:
     import hou
-except ImportError as err:
+except ImportError:
     pass
 
 import public
@@ -47,7 +45,7 @@ class ListModel(QtCore.QAbstractListModel):
         padding: int | None = None,
         parent: QtCore.QObject | None = None,
     ) -> None:
-        super(ListModel, self).__init__(parent)
+        super().__init__(parent)
         self.__items = items if items is not None else []
         self.__pixmap_ihda_data = (
             pixmap_ihda_data if pixmap_ihda_data is not None else {}
@@ -91,7 +89,7 @@ class ListModel(QtCore.QAbstractListModel):
     def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
         if not index.isValid():
             return QtCore.Qt.ItemFlag.ItemIsDropEnabled
-        flags = super(ListModel, self).flags(index)
+        flags = super().flags(index)
         if index.isValid():
             hda_filepath = index.data(ListModel.filepath_role)
             if not hda_filepath.exists():
@@ -122,7 +120,7 @@ class ListModel(QtCore.QAbstractListModel):
     def mimeData(self, indexes: list[QtCore.QModelIndex]) -> QtCore.QMimeData | None:
         if not len(indexes):
             return None
-        mime_data = super(ListModel, self).mimeData(indexes)
+        mime_data = super().mimeData(indexes)
         for index in indexes:
             if index.isValid():
                 data = encode_payload(self.data(index, role=ListModel.data_role))
@@ -194,7 +192,7 @@ class ListModel(QtCore.QAbstractListModel):
         elif role == QtCore.Qt.ItemDataRole.ToolTipRole:
             hda_ver = index_dat.get(public.Key.hda_version)
             if hda_ver is not None:
-                return "{0} (v{1})".format(hda_name, hda_ver)
+                return f"{hda_name} (v{hda_ver})"
             return hda_name
         elif role == QtCore.Qt.ItemDataRole.StatusTipRole:
             return None

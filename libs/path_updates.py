@@ -1,6 +1,7 @@
 """Replay the same ordered file moves against stored paths without filesystem IO."""
 
 from __future__ import annotations
+
 from pathlib import Path
 
 PathMoves = tuple[tuple[Path, Path], ...]

@@ -1,13 +1,15 @@
 """Kill a separate process between persistent writes; recover in a fresh owner."""
 
 from __future__ import annotations
-from pathlib import Path
-import os
+
 import sqlite3
 import subprocess
 import sys
+from pathlib import Path
+
 import pytest
-from libs.operation_journal import recover_operations, durable_operation
+
+from libs.operation_journal import durable_operation, recover_operations
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 
 
@@ -99,10 +101,9 @@ def test_nested_database_transaction_savepoint(tmp_path: Path) -> None:
     with SQLite3DatabaseAPI(tmp_path / "ihda.db") as db:
         with db.transaction():
             db.insert_users("outer", "keep")
-            with pytest.raises(ValueError):
-                with db.transaction():
-                    db.insert_users("inner", "discard")
-                    raise ValueError("fail inner")
+            with pytest.raises(ValueError), db.transaction():
+                db.insert_users("inner", "discard")
+                raise ValueError("fail inner")
             db.insert_users("after", "keep-after")
         assert set(db.get_user_id()) == {"outer", "after"}
 
@@ -149,9 +150,8 @@ def test_version_one_migration_adds_operation_markers(tmp_path: Path) -> None:
 def test_durable_operation_requires_outermost_database_transaction(
     tmp_path: Path,
 ) -> None:
-    with SQLite3DatabaseAPI(tmp_path / "ihda.db") as db:
-        with db.transaction():
-            with pytest.raises(RuntimeError, match="outer database transaction"):
-                with durable_operation(tmp_path, db):
-                    pytest.fail("must reject before any file work")
+    with SQLite3DatabaseAPI(tmp_path / "ihda.db") as db, db.transaction():
+        with pytest.raises(RuntimeError, match="outer database transaction"):
+            with durable_operation(tmp_path, db):
+                pytest.fail("must reject before any file work")
     assert not list(tmp_path.glob(".ihda-operation-*.json"))

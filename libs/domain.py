@@ -1,9 +1,10 @@
 """Typed library payloads. Paths are decoded at the database boundary."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, TypedDict, Generic, TypeVar
+from typing import Any, Generic, TypedDict, TypeVar
 
 
 class AssetData(TypedDict, total=False):

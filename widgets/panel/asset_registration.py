@@ -6,19 +6,19 @@ They do not own a separate QWidget or change the public panel interface.
 
 from __future__ import annotations
 
-from typing import Any
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from libs.sqlite3_db_api import SQLite3DatabaseAPI
 
-from decimal import Decimal
 import logging
-import sqlite3
-from datetime import datetime
-from PySide6 import QtWidgets, QtCore
-import public
 import pathlib
+from datetime import datetime
+from decimal import Decimal
+
+from PySide6 import QtCore, QtWidgets
+
+import public
 from libs import houdini_api, log_handler
 from libs.repository import LibraryError, RegistrationPayload
 
@@ -54,10 +54,10 @@ class AssetRegistrationMixin:
             msgbox.setIcon(QtWidgets.QMessageBox.Warning)
             msgbox.setText("Too many nodes to register")
             msgbox.setDetailedText(
-                """
-Please register less than {0} items.
-Total Nodes: {1}
-            """.format(self._MAX_NUM_OF_NODE_REGIST, total_node_cnt)
+                f"""
+Please register less than {self._MAX_NUM_OF_NODE_REGIST} items.
+Total Nodes: {total_node_cnt}
+            """
             )
             # msgbox.resize(msgbox.sizeHint())
             msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
@@ -70,15 +70,15 @@ Total Nodes: {1}
             msgbox.setWindowTitle("iHDA Node Registration")
             msgbox.setIcon(QtWidgets.QMessageBox.Warning)
             msgbox.setText(
-                """
-The number of nodes you are trying to register exceeds {0}.
+                f"""
+The number of nodes you are trying to register exceeds {public.Value.warning_num_of_node_regist}.
 Should I proceed with registration?
 
 NOTE: Registering a large number of nodes at a time may make the Houdini appear to be stationary.
 But it didn't stop, so please wait a little longer.
-            """.format(public.Value.warning_num_of_node_regist)
+            """
             )
-            msgbox.setDetailedText("Total Nodes: {0}".format(total_node_cnt))
+            msgbox.setDetailedText(f"Total Nodes: {total_node_cnt}")
             # msgbox.resize(msgbox.sizeHint())
             msgbox.setStandardButtons(
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
@@ -119,9 +119,7 @@ But it didn't stop, so please wait a little longer.
             if not houdini_api.HoudiniAPI.is_valid_node(node=node):
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
-                    msg='[{0}/{1}] "{2}" node cannot be registered. check the error message'.format(
-                        node_cnt + 1, total_node_cnt, node_name
-                    ),
+                    msg=f'[{node_cnt + 1}/{total_node_cnt}] "{node_name}" node cannot be registered. check the error message',
                 )
                 continue
             # 유효한 후디니 노드 이름인지
@@ -136,17 +134,13 @@ But it didn't stop, so please wait a little longer.
             ):
                 # 자동 이름 변경이 활성화되어있다면
                 if self.actionAutomatic_Name_Change.isChecked():
-                    new_node_name = "{0}_{1}".format(
-                        public.Name.hda_prefix_str.lower(), node_name
-                    )
+                    new_node_name = f"{public.Name.hda_prefix_str.lower()}_{node_name}"
                     # 노드 이름 변경
                     node.setName(new_node_name, unique_name=True)
                     node_path = node.path()
                     log_handler.LogHandler.log_msg(
                         method=logging.info,
-                        msg='[{0}/{1}] (automatically rename) "{2}" >>>>> "{3}"'.format(
-                            node_cnt + 1, total_node_cnt, node_name, new_node_name
-                        ),
+                        msg=f'[{node_cnt + 1}/{total_node_cnt}] (automatically rename) "{node_name}" >>>>> "{new_node_name}"',
                     )
                 else:
                     if not houdini_api.HoudiniAPI.is_valid_node_name(
@@ -154,19 +148,15 @@ But it didn't stop, so please wait a little longer.
                     ):
                         log_handler.LogHandler.log_msg(
                             method=logging.error,
-                            msg='[{0}/{1}] "{2}" node cannot be registered. check the error message'.format(
-                                node_cnt + 1, total_node_cnt, node_name
-                            ),
+                            msg=f'[{node_cnt + 1}/{total_node_cnt}] "{node_name}" node cannot be registered. check the error message',
                         )
                         continue
                     # 현재 후디니버전 18.0.429 에서 노드이름이 _(언더바)/숫자로 처음 시작하게 되면 에러 발생한다. 그래서 아래 코드 추가함.
                     if (node_name.startswith("_")) or (node_name[0].isdigit()):
                         log_handler.LogHandler.log_msg(
                             method=logging.error,
-                            msg='[{0}/{1}] "{2}" _(underline) or numbers should not be in the first \
-                            word of the node name. change the node name'.format(
-                                node_cnt + 1, total_node_cnt, node_name
-                            ),
+                            msg=f'[{node_cnt + 1}/{total_node_cnt}] "{node_name}" _(underline) or numbers should not be in the first \
+                            word of the node name. change the node name',
                         )
                         continue
             node_cate = houdini_api.HoudiniAPI.node_category_type_name(node)
@@ -175,18 +165,14 @@ But it didn't stop, so please wait a little longer.
                 node.setName(node_name, unique_name=True)
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
-                    msg='[{0}/{1}] "{2}" node DB input failed'.format(
-                        node_cnt + 1, total_node_cnt, node_name
-                    ),
+                    msg=f'[{node_cnt + 1}/{total_node_cnt}] "{node_name}" node DB input failed',
                 )
                 continue
             self._add_category_item(category=node_cate)
             is_declare = True
             log_handler.LogHandler.log_msg(
                 method=logging.debug,
-                msg='[{0}/{1}] node dropped "{2}" ({3})'.format(
-                    node_cnt + 1, total_node_cnt, node_path, node_cate
-                ),
+                msg=f'[{node_cnt + 1}/{total_node_cnt}] node dropped "{node_path}" ({node_cate})',
             )
         if is_declare:
             self._select_category(category=self._selection.item_text)
@@ -212,7 +198,7 @@ But it didn't stop, so please wait a little longer.
         if is_exist_hda_name:
             log_handler.LogHandler.log_msg(
                 method=logging.warning,
-                msg="{0} in the {1} category exists...".format(node_name, node_cate),
+                msg=f"{node_name} in the {node_cate} category exists...",
             )
             # 업데이트 할 것인지 물어 본 다음 업데이트 진행
             msgbox = QtWidgets.QMessageBox(self)
@@ -220,11 +206,9 @@ But it didn't stop, so please wait a little longer.
             msgbox.setIcon(QtWidgets.QMessageBox.Warning)
             msgbox.setWindowTitle("Update iHDA Node")
             msgbox.setText(
-                """
-<font color=red size=5>{0}</font> the same name exists in the category<br>
-<font color=red size=5>{1}</font> do you want to update iHDA node?""".format(
-                    node_cate, node_name
-                )
+                f"""
+<font color=red size=5>{node_cate}</font> the same name exists in the category<br>
+<font color=red size=5>{node_name}</font> do you want to update iHDA node?"""
             )
             msgbox.setStandardButtons(
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No

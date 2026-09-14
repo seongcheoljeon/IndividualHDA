@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any
-from pathlib import Path, PurePosixPath, PureWindowsPath
 import json
 import os
 import shutil
 import sqlite3
-from contextlib import closing
 import stat
 import tempfile
 import zipfile
+from contextlib import closing
+from pathlib import Path, PurePosixPath, PureWindowsPath
+from typing import Any
 
 from libs.database_migrations import backup_database, migrate
 

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 import getpass
 import os
+from collections.abc import Sequence
 
 
 def current_user() -> str:

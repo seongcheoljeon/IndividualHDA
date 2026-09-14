@@ -1,11 +1,13 @@
 from __future__ import annotations
-import pathlib
 
-from typing import Any
-from pathlib import Path
+import pathlib
 import sqlite3
 import zipfile
+from pathlib import Path
+from typing import Any
+
 import pytest
+
 from libs.archive_service import create_archive, extract_archive, prepare_database
 from libs.data_stream import DataStream
 from libs.sqlite3_db_api import SQLite3DatabaseAPI

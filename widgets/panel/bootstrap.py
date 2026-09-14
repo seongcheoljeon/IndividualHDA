@@ -5,17 +5,23 @@ Shares protected panel state; Qt and HOM calls stay on the GUI thread.
 
 from __future__ import annotations
 
-
 import logging
-import public
 import pathlib
-from view import ihda_category_view, ihda_list_view, ihda_table_view, ihda_history_view
-from view import ihda_record_view, ihda_inside_view
-from libs.operation_journal import recover_operations
-from libs import note_syntax, log_handler
-from libs import ihda_system, identity
-from libs.domain import LibraryContext
+
 from PySide6 import QtGui
+
+import public
+from libs import identity, ihda_system, log_handler, note_syntax
+from libs.domain import LibraryContext
+from libs.operation_journal import recover_operations
+from view import (
+    ihda_category_view,
+    ihda_history_view,
+    ihda_inside_view,
+    ihda_list_view,
+    ihda_record_view,
+    ihda_table_view,
+)
 
 
 class BootstrapMixin:

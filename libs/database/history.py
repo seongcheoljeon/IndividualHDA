@@ -1,17 +1,18 @@
 """History queries; transactions are owned by the shared session."""
 
 from __future__ import annotations
-from libs.database.session import DatabaseSession
 
-from typing import Any, cast
-from libs.domain import HistoryData
-from libs.path_updates import PathMoves, relocated_path
-import pathlib
-import logging
 import collections
+import logging
+import pathlib
+from typing import Any, cast
+
 import public
 from libs import log_handler
+from libs.database.session import DatabaseSession
 from libs.database.values import DatabaseValues
+from libs.domain import HistoryData
+from libs.path_updates import PathMoves, relocated_path
 
 
 class HistoryOperations(DatabaseSession):

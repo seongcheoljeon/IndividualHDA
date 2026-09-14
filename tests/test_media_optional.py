@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
 import os
 import subprocess
 import sys
+from pathlib import Path
 
 
 def test_panel_imports_without_multimedia_and_webengine() -> None:

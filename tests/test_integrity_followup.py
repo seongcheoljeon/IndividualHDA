@@ -1,15 +1,18 @@
 from __future__ import annotations
+
 from pathlib import Path
 from typing import Any
+
 import pytest
 from PySide6 import QtGui
+from test_solid_contracts import Names
+
 from libs.asset_commands import delete_history
 from libs.asset_rename import build_rename_plan, rename_asset
 from libs.database.rename_repository import SQLiteRenameRepository
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 from libs.thumbnail_cache import ThumbnailCache
 from model.ihda_history_model import HistoryModel
-from test_solid_contracts import Names
 
 
 def seed(db: SQLite3DatabaseAPI, directory: Path) -> dict[str, Any]:
@@ -164,8 +167,8 @@ def test_thumbnail_cache_rejects_invalid_limits(
 def test_failed_staging_cleanup_keeps_recovery_location(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from libs.archive_transfer import ArchiveTransfer
     import libs.archive_transfer as module
+    from libs.archive_transfer import ArchiveTransfer
 
     service = ArchiveTransfer(tmp_path / "assets", tmp_path)
     stage = tmp_path / "stage"
@@ -186,6 +189,7 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
     tmp_path: Path,
 ) -> None:
     from types import SimpleNamespace
+
     from libs.asset_store import AssetStore
     from libs.domain import SelectionState
     from widgets.panel.media_actions import MediaActionsMixin
@@ -225,6 +229,7 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
 
 def test_asset_row_lookup_uses_current_index_after_insertion() -> None:
     from types import SimpleNamespace
+
     from libs.asset_store import AssetStore
     from widgets.panel.library_queries import LibraryQueriesMixin
 

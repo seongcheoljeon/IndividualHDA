@@ -1,17 +1,15 @@
 from __future__ import annotations
-from PySide6 import QtWidgets
-
-from typing import Any, Callable
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.02.17 03:11:54
 # modified date:
 # description:
-
 import logging
+from collections.abc import Callable
+from typing import Any
 
-from PySide6 import QtGui, QtCore
+from PySide6 import QtCore, QtGui, QtWidgets
 
 
 class _LogRelay(QtCore.QObject):
@@ -30,7 +28,7 @@ class _LogRelay(QtCore.QObject):
 
 class LogHandler(logging.Handler):
     def __init__(self, out_stream: Any = None) -> None:
-        super(LogHandler, self).__init__()
+        super().__init__()
         # log text msg format
         self.setFormatter(
             logging.Formatter("[%(asctime)s] [%(levelname)s] : %(message)s")
@@ -58,15 +56,15 @@ class LogHandler(logging.Handler):
         if method is None:
             return
         if method.__name__ == "info":
-            new_msg = "<font color=#dddddd>{msg}</font>".format(msg=msg)
+            new_msg = f"<font color=#dddddd>{msg}</font>"
         elif method.__name__ == "debug":
-            new_msg = "<font color=#23bcde>{msg}</font>".format(msg=msg)
+            new_msg = f"<font color=#23bcde>{msg}</font>"
         elif method.__name__ == "warning":
-            new_msg = "<font color=#cc9900>{msg}</font>".format(msg=msg)
+            new_msg = f"<font color=#cc9900>{msg}</font>"
         elif method.__name__ == "error":
-            new_msg = "<font color=#e32474>{msg}</font>".format(msg=msg)
+            new_msg = f"<font color=#e32474>{msg}</font>"
         elif method.__name__ == "critical":
-            new_msg = "<font color=#ff0000>{msg}</font>".format(msg=msg)
+            new_msg = f"<font color=#ff0000>{msg}</font>"
         else:
             raise TypeError("[log method] unknown type")
         method(new_msg)

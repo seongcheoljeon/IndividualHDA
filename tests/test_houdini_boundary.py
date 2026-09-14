@@ -1,9 +1,11 @@
 from __future__ import annotations
-import pathlib
 
-from typing import Any
+import pathlib
 from types import SimpleNamespace
+from typing import Any
+
 import pytest
+
 from libs import houdini_api
 
 

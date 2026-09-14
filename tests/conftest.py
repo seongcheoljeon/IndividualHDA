@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Any
 import os
 import tempfile
+from typing import Any
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 _test_config = tempfile.TemporaryDirectory(prefix="ihda-tests-")

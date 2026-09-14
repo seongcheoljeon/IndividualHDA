@@ -6,9 +6,9 @@ Qt signal emitted from the worker thread (queued delivery to this dialog).
 
 from __future__ import annotations
 
+import threading
 from collections.abc import Callable
 from typing import Any
-import threading
 
 from PySide6 import QtCore, QtGui, QtWidgets
 

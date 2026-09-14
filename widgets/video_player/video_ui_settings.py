@@ -1,23 +1,22 @@
 from __future__ import annotations
 
+import copy
+import json
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.03.19 18:45:32
 # modified date:
 # description:      video UI 관련
-
 import os
-import json
-from libs.settings_store import save_json
-import copy
 
-from PySide6 import QtWidgets, QtCore, QtGui
+from PySide6 import QtCore, QtGui, QtWidgets
 
 import public
+from libs.settings_store import save_json
 
 
-class VideoUISettings(object):
+class VideoUISettings:
     def __init__(self, window: QtWidgets.QWidget | None = None) -> None:
         self.__window = window
         self.__setting_ini = QtCore.QSettings(
@@ -90,7 +89,7 @@ class VideoUISettings(object):
                 if not isinstance(data, dict):
                     raise ValueError("Settings must contain a JSON object")
                 self.__cfg_dict = copy.copy(data)
-            except ValueError as err:
+            except ValueError:
                 self.__cfg_dict = {}
                 self.__setting_json.replace(self.__setting_json.with_suffix(".corrupt"))
                 return

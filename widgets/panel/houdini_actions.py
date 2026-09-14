@@ -5,16 +5,16 @@ Uses the shared panel protected state; no independent QObject ownership.
 
 from __future__ import annotations
 
+import logging
+import pathlib
+from datetime import datetime
 from typing import Any
 
-from libs.drag_payload import decode_payload
-import logging
-from datetime import datetime
-from PySide6 import QtWidgets, QtCore
+from PySide6 import QtCore, QtWidgets
+
 import public
-import pathlib
-from libs import houdini_api, log_handler
-from libs import sqlite3_db_api
+from libs import houdini_api, log_handler, sqlite3_db_api
+from libs.drag_payload import decode_payload
 
 try:
     import hou
@@ -59,10 +59,10 @@ class HoudiniActionsMixin:
             msgbox.setIcon(QtWidgets.QMessageBox.Warning)
             msgbox.setText("Too many nodes to import")
             msgbox.setDetailedText(
-                """
-            Please bring no more than {0} items.
-            Total Nodes: {1}
-            """.format(self._MAX_NUM_OF_NODE_REGIST, total_node_cnt)
+                f"""
+            Please bring no more than {self._MAX_NUM_OF_NODE_REGIST} items.
+            Total Nodes: {total_node_cnt}
+            """
             )
             # msgbox.resize(msgbox.sizeHint())
             msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
@@ -75,15 +75,15 @@ class HoudiniActionsMixin:
             msgbox.setWindowTitle("Import iHDA Node")
             msgbox.setIcon(QtWidgets.QMessageBox.Warning)
             msgbox.setText(
-                """
-            The number of iHDA nodes you are trying to import exceeds {0}.
+                f"""
+            The number of iHDA nodes you are trying to import exceeds {public.Value.warning_num_of_node_regist}.
             Should I bring it though?
 
             NOTE: Registering a large number of nodes at a time may make the Houdini appear to be stationary.
             But it didn't stop, so please wait a little longer.
-            """.format(public.Value.warning_num_of_node_regist)
+            """
             )
-            msgbox.setDetailedText("Total Nodes: {0}".format(total_node_cnt))
+            msgbox.setDetailedText(f"Total Nodes: {total_node_cnt}")
             # msgbox.resize(msgbox.sizeHint())
             msgbox.setStandardButtons(
                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
@@ -182,9 +182,7 @@ class HoudiniActionsMixin:
             if not hda_filepath.exists():
                 log_handler.LogHandler.log_msg(
                     method=logging.critical,
-                    msg='[{0}/{1}] "{2} (v{3})" iHDA file does not exist'.format(
-                        node_cnt + 1, total_node_cnt, hda_name, hda_ver
-                    ),
+                    msg=f'[{node_cnt + 1}/{total_node_cnt}] "{hda_name} (v{hda_ver})" iHDA file does not exist',
                 )
                 continue
             # item의 row (model에서 셋팅해 놓았음)
@@ -213,27 +211,23 @@ class HoudiniActionsMixin:
             if not self._ihda_license_check(hda_license=hda_license):
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
-                    msg='[{0}/{1}] houdini license and "{2} (v{3})" iHDA license are different'.format(
-                        node_cnt + 1, total_node_cnt, hda_name, hda_ver
-                    ),
+                    msg=f'[{node_cnt + 1}/{total_node_cnt}] houdini license and "{hda_name} (v{hda_ver})" iHDA license are different',
                 )
                 msgbox = QtWidgets.QMessageBox(self)
                 msgbox.setFont(self._get_default_font())
                 msgbox.setWindowTitle("Import iHDA Node")
                 msgbox.setIcon(QtWidgets.QMessageBox.Warning)
                 msgbox.setText(
-                    """
-                [{0}/{1}] Imported "{2} (v{3})" iHDA are not commercial.
+                    f"""
+                [{node_cnt + 1}/{total_node_cnt}] Imported "{hda_name} (v{hda_ver})" iHDA are not commercial.
                 When I import it into the current HIP file, the HIP file also becomes non-commercial.
-                Should I bring it though?""".format(
-                        node_cnt + 1, total_node_cnt, hda_name, hda_ver
-                    )
+                Should I bring it though?"""
                 )
                 msgbox.setDetailedText(
-                    """
-                Current HIP File License: {0}
-                Current iHDA Node License: {1}
-                """.format(curt_houdini_license, hda_license)
+                    f"""
+                Current HIP File License: {curt_houdini_license}
+                Current iHDA Node License: {hda_license}
+                """
                 )
                 # msgbox.resize(msgbox.sizeHint())
                 msgbox.setStandardButtons(
@@ -243,9 +237,7 @@ class HoudiniActionsMixin:
                 if reply == QtWidgets.QMessageBox.No:
                     log_handler.LogHandler.log_msg(
                         method=logging.info,
-                        msg='[{0}/{1}] importing "{2} (v{3})" iHDA nodes was canceled'.format(
-                            node_cnt + 1, total_node_cnt, hda_name, hda_ver
-                        ),
+                        msg=f'[{node_cnt + 1}/{total_node_cnt}] importing "{hda_name} (v{hda_ver})" iHDA nodes was canceled',
                     )
                     continue
             if not self._is_valid_network_category(
@@ -253,9 +245,7 @@ class HoudiniActionsMixin:
             ):
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
-                    msg='[{0}/{1}] "{2} (v{3})" iHDA node\'s category and current network category are different'.format(
-                        node_cnt + 1, total_node_cnt, hda_name, hda_ver
-                    ),
+                    msg=f'[{node_cnt + 1}/{total_node_cnt}] "{hda_name} (v{hda_ver})" iHDA node\'s category and current network category are different',
                 )
                 continue
             node = self._import_hda_into_houdini(
@@ -266,9 +256,7 @@ class HoudiniActionsMixin:
             if node is None:
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
-                    msg='[{0}/{1}] failed to get "{2} (v{3})" iHDA node'.format(
-                        node_cnt + 1, total_node_cnt, hda_name, hda_ver
-                    ),
+                    msg=f'[{node_cnt + 1}/{total_node_cnt}] failed to get "{hda_name} (v{hda_ver})" iHDA node',
                 )
                 continue
             db_api.update_load_count(hda_key_id=hda_id)
@@ -342,9 +330,7 @@ class HoudiniActionsMixin:
             if is_hda_node_loc_record is None:
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
-                    msg='[{0}/{1}] cannot enter "{2} (v{3})" iHDA node information'.format(
-                        node_cnt + 1, total_node_cnt, hda_name, hda_ver
-                    ),
+                    msg=f'[{node_cnt + 1}/{total_node_cnt}] cannot enter "{hda_name} (v{hda_ver})" iHDA node information',
                 )
                 self._dragdrop_overlay_close()
                 return
@@ -374,9 +360,7 @@ class HoudiniActionsMixin:
             self._insert_hda_node_loc_record(record_data=record_data)
             log_handler.LogHandler.log_msg(
                 method=logging.debug,
-                msg='[{0}/{1}] imported "{2} (v{3})" iHDA node'.format(
-                    node_cnt + 1, total_node_cnt, hda_name, hda_ver
-                ),
+                msg=f'[{node_cnt + 1}/{total_node_cnt}] imported "{hda_name} (v{hda_ver})" iHDA node',
             )
             num_count += 1
         self._dragdrop_overlay_close()
@@ -405,7 +389,7 @@ class HoudiniActionsMixin:
         ctime = rdata.get(public.Key.Record.ctime)
         mtime = rdata.get(public.Key.Record.mtime)
         # db_api 함수와 동일해야 한다. 그래서 노드 이름 변경함.
-        node_name_with_ver = "{0} (v{1})".format(node_name, node_ver)
+        node_name_with_ver = f"{node_name} (v{node_ver})"
         new_data = {
             public.Type.root: {
                 hip_dpath: {
@@ -466,9 +450,7 @@ class HoudiniActionsMixin:
         ihda_name_key = public.Key.Comment.ihda_name
         ihda_ver_key = public.Key.Comment.ihda_version
         ihda_id_key = public.Key.Comment.ihda_id
-        contents = "{0}: {1}\n{2}: {3}\n{4}: {5}".format(
-            ihda_name_key, hda_name, ihda_ver_key, hda_ver, ihda_id_key, hda_id
-        )
+        contents = f"{ihda_name_key}: {hda_name}\n{ihda_ver_key}: {hda_ver}\n{ihda_id_key}: {hda_id}"
         houdini_api.HoudiniAPI.set_node_comment(
             node=node,
             contents=contents,

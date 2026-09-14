@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import threading
 from types import SimpleNamespace
 from typing import Any
-import threading
 
 import pytest
 from PySide6 import QtTest

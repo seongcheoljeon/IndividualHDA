@@ -1,22 +1,18 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
-from typing import Any
-from PySide6 import QtCore, QtGui, QtWidgets
-
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # create date       : 2020.01.28 01:45
 # modify date       :
 # description       :
-
 from re import compile as re_compile
 from sys import stdout
+from typing import Any
 
+from PySide6 import QtCore, QtGui, QtWidgets
 
 import public
-
-
 from model import ihda_record_model
 
 
@@ -28,7 +24,7 @@ class Object(QtCore.QObject):
 # tree view overwirte class
 class RecordView(QtWidgets.QTreeView):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super(RecordView, self).__init__(parent)
+        super().__init__(parent)
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
         self.setDropIndicatorShown(True)
@@ -64,7 +60,7 @@ class RecordView(QtWidgets.QTreeView):
             event.setDropAction(QtCore.Qt.CopyAction)
             event.acceptProposedAction()
         else:
-            super(RecordView, self).dragEnterEvent(event)
+            super().dragEnterEvent(event)
 
     def dropEvent(self, event: QtGui.QDropEvent) -> None:
         if event.mimeData().hasText():
@@ -81,7 +77,7 @@ class RecordView(QtWidgets.QTreeView):
                 [event.mimeData().data(public.Type.mime_type)]
             )
         else:
-            super(RecordView, self).dropEvent(event)
+            super().dropEvent(event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         if not (event.buttons() & QtCore.Qt.MiddleButton):
@@ -119,4 +115,4 @@ class RecordView(QtWidgets.QTreeView):
         drop_action = drag.exec(QtCore.Qt.CopyAction)
         self.signal.mouse_signal_object.emit([drop_action, model_data_lst])
         stdout.flush()
-        super(RecordView, self).mouseMoveEvent(event)
+        super().mouseMoveEvent(event)

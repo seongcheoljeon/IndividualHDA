@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 from __future__ import annotations
-from typing import ParamSpec, TypeVar
 
-from typing import Any, Callable
+import logging
+import math
 import pathlib
 
 # author            : SeongCheol Jeon
@@ -10,16 +10,14 @@ import pathlib
 # create date       : 2020.01.28 02:34
 # modify date       :
 # description       :
-
 import re
+import shutil
 import tempfile
+from collections.abc import Callable
+from copy import copy
 from functools import wraps
 from inspect import signature
-from copy import copy
-import math
-import shutil
-import logging
-
+from typing import Any, ParamSpec, TypeVar
 
 import public
 from libs import log_handler
@@ -57,7 +55,7 @@ def _return_value_by_none(val: D) -> Callable[[Callable[P, R]], Callable[P, R | 
 
 
 # (2020.03.14): hda_dirpath 파라미터의 들어오는 값은 pathlib.Path 객체이다.
-class HoudiniAPI(object):
+class HoudiniAPI:
     # undo import group name
     __undo_name_import_ihda = "import_individual_hda"
 
@@ -175,7 +173,7 @@ class HoudiniAPI(object):
             icon = node.type().definition().icon().strip()
             if icon == "":
                 icon = node.type().icon().strip()
-        except AttributeError as err:
+        except AttributeError:
             icon = node.type().icon().strip()
         icon_lst = icon.split("_", 1)
         find_idx = icon_lst[1].find("-")
@@ -189,7 +187,7 @@ class HoudiniAPI(object):
         node_type = node.type()
         try:
             return node_type.definition().description()
-        except AttributeError as err:
+        except AttributeError:
             return node_type.description()
 
     @staticmethod
@@ -315,18 +313,14 @@ class HoudiniAPI(object):
     ) -> str:
         if with_suffix:
             _ext = public.Extensions.ihda_file
-            return "{0}_{1}_v{2}{3}".format(
-                public.Name.hda_prefix_str, name, version, _ext
-            )
-        return "{0}_{1}_v{2}".format(public.Name.hda_prefix_str, name, version)
+            return f"{public.Name.hda_prefix_str}_{name}_v{version}{_ext}"
+        return f"{public.Name.hda_prefix_str}_{name}_v{version}"
 
     @staticmethod
     def make_thumbnail_filename(
         name: str | None = None, version: str | None = None
     ) -> str:
-        return "{0}_{1}_thumb_v{2}{3}".format(
-            public.Name.hda_prefix_str, name, version, public.Extensions.image
-        )
+        return f"{public.Name.hda_prefix_str}_{name}_thumb_v{version}{public.Extensions.image}"
 
     @staticmethod
     def make_thumbnail_dirpath(hda_dirpath: pathlib.Path | None = None) -> pathlib.Path:
@@ -337,9 +331,7 @@ class HoudiniAPI(object):
     def make_preview_filename(
         name: str | None = None, version: str | None = None
     ) -> str:
-        return "{0}_{1}_v{2}.$F4{3}".format(
-            public.Name.hda_prefix_str, name, version, public.Extensions.image
-        )
+        return f"{public.Name.hda_prefix_str}_{name}_v{version}.$F4{public.Extensions.image}"
 
     @staticmethod
     def make_preview_dirpath(
@@ -350,8 +342,8 @@ class HoudiniAPI(object):
 
     @staticmethod
     def make_video_filename(name: str | None = None, version: str | None = None) -> str:
-        return "{0}_{1}_v{2}{3}".format(
-            public.Name.hda_prefix_str, name, version, public.Extensions.video
+        return (
+            f"{public.Name.hda_prefix_str}_{name}_v{version}{public.Extensions.video}"
         )
 
     @staticmethod
@@ -392,16 +384,14 @@ class HoudiniAPI(object):
             if is_descript or is_type:
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
-                    msg='node "{0}" cannot be registered because it is of type "{1}"'.format(
-                        node.name(), node_descript
-                    ),
+                    msg=f'node "{node.name()}" cannot be registered because it is of type "{node_descript}"',
                 )
                 return False
         if hasattr(node, "inputs"):
             if len(node.inputs()) >= 5:
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
-                    msg='"{0}" nodes have more than five inputs'.format(node.name()),
+                    msg=f'"{node.name()}" nodes have more than five inputs',
                 )
                 return False
         return True
@@ -422,19 +412,15 @@ class HoudiniAPI(object):
             if verbose:
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
-                    msg='the name "{0}" is the same as the current node type'.format(
-                        node_name
-                    ),
+                    msg=f'the name "{node_name}" is the same as the current node type',
                 )
             return False
-        wrong_name = "{0}1".format(node_type)
+        wrong_name = f"{node_type}1"
         if node_name == wrong_name:
             if verbose:
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
-                    msg='"{0}" is a name that can cause errors in Houdini'.format(
-                        node_name
-                    ),
+                    msg=f'"{node_name}" is a name that can cause errors in Houdini',
                 )
             return False
         return True
@@ -598,7 +584,7 @@ class HoudiniAPI(object):
             viewport = viewports_persp[-1]
         log_handler.LogHandler.log_msg(
             method=logging.info,
-            msg="currently active viewport is {0}".format(viewport.name()),
+            msg=f"currently active viewport is {viewport.name()}",
         )
         # viewport의 카메라들
         # print viewport.camera()
@@ -1050,7 +1036,7 @@ class HoudiniAPI(object):
         comment = HoudiniAPI.get_node_comment(node=node)
         if comment is None:
             return None
-        regex_is_valid = re.compile(r"{0}".format(public.Key.Comment.ihda_id))
+        regex_is_valid = re.compile(rf"{public.Key.Comment.ihda_id}")
         search_comment = regex_is_valid.search(comment)
         if search_comment is None:
             return None

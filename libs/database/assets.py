@@ -1,16 +1,17 @@
 """Assets queries; transactions are owned by the shared session."""
 
 from __future__ import annotations
-from typing import Sequence
-from libs.database.session import DatabaseSession
 
-from typing import Any, cast
-from libs.domain import AssetData
-import pathlib
 import logging
+import pathlib
+from collections.abc import Sequence
+from typing import Any, cast
+
 import public
 from libs import log_handler
+from libs.database.session import DatabaseSession
 from libs.database.values import DatabaseValues, normalize_tags
+from libs.domain import AssetData
 
 
 class AssetsOperations(DatabaseSession):

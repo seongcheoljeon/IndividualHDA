@@ -1,32 +1,27 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
-from typing import Any
 import pathlib
-from PySide6 import QtCore
+from bisect import bisect_right
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # create date       : 2020.05.14 01:55
 # modify date       :
 # description       :
-
 from operator import itemgetter
-from bisect import bisect_right
+from typing import Any
 
-
-from PySide6 import QtGui
+from PySide6 import QtCore, QtGui
 
 try:
     import hou
-except ImportError as err:
+except ImportError:
     pass
 
 import public
-from libs.drag_payload import encode_payload
-
-
 from libs import houdini_api
+from libs.drag_payload import encode_payload
 
 
 class Node(QtCore.QObject):
@@ -36,7 +31,7 @@ class Node(QtCore.QObject):
         node_depth: int | None = None,
         parent: Node | None = None,
     ) -> None:
-        super(Node, self).__init__()
+        super().__init__()
         self.__name = node_name
         self.__depth = node_depth
         self._parent = parent
@@ -108,9 +103,7 @@ class NodeData(Node):
         node_path: str | None = None,
         parent: Node | None = None,
     ) -> None:
-        super(NodeData, self).__init__(
-            node_name=node_name, node_depth=node_depth, parent=parent
-        )
+        super().__init__(node_name=node_name, node_depth=node_depth, parent=parent)
         self.__node_type = node_type
         self.__node_descript = node_descript
         self.__node_path = node_path
@@ -178,7 +171,7 @@ class InsideModel(QtCore.QAbstractItemModel):
         padding: int | None = None,
         parent: QtCore.QObject | None = None,
     ) -> None:
-        super(InsideModel, self).__init__(parent)
+        super().__init__(parent)
         self.__data = self.__default_data
         self.__update_data(data=data)
         self.__pixmap_cate_data = (
@@ -262,7 +255,7 @@ class InsideModel(QtCore.QAbstractItemModel):
                     hda_id = hda_info.get(public.Key.Comment.ihda_id)
                     hda_ver = hda_info.get(public.Key.Comment.ihda_version)
                     hda_org_name = hda_info.get(public.Key.Comment.ihda_name)
-                    node_name = "{0} (v{1})".format(node_name, hda_ver)
+                    node_name = f"{node_name} (v{hda_ver})"
                     node_type = public.Type.ihda
                     icon = self.__pixmap_ihda_data.get(hda_id)
                     if icon is None:
@@ -414,7 +407,7 @@ class InsideModel(QtCore.QAbstractItemModel):
                     else:
                         val = [None]
                 return dict(zip([key], val))
-            except IndexError as err:
+            except IndexError:
                 pass
 
     def make_node_tree(self, node_data: Any = None) -> None:
@@ -587,7 +580,7 @@ class InsideModel(QtCore.QAbstractItemModel):
             else:
                 try:
                     del data[remove_data_key]
-                except KeyError as err:
+                except KeyError:
                     pass
         else:
             if isinstance(data, list):
@@ -778,7 +771,7 @@ class InsideModel(QtCore.QAbstractItemModel):
                         # hda_id가 같은 지
                         if get_data[row][1] == hda_id:
                             hda_ver = get_data[row][5]
-                            new_name_with_ver = "{0} (v{1})".format(new_name, hda_ver)
+                            new_name_with_ver = f"{new_name} (v{hda_ver})"
                             # 새로운 이름으로 변경
                             get_data[row][2] = new_name_with_ver
                             # 오리지날 이름도 새로운 이름으로 변경
@@ -888,7 +881,7 @@ class InsideModel(QtCore.QAbstractItemModel):
     ) -> QtCore.Qt.ItemFlag:
         if not index.isValid():
             return QtCore.Qt.ItemFlag.ItemIsDropEnabled
-        flags = super(InsideModel, self).flags(index)
+        flags = super().flags(index)
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
         return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
@@ -1098,7 +1091,7 @@ class InsideModel(QtCore.QAbstractItemModel):
     def mimeData(self, indexes: list[QtCore.QModelIndex]) -> QtCore.QMimeData | None:
         if not len(indexes):
             return None
-        mime_data = super(InsideModel, self).mimeData(indexes)
+        mime_data = super().mimeData(indexes)
         # 원래 2번째 컬럼만 선택되어지는데 간혹가다가 모든 컬럼이 indexes로 들어올 때가 있어서 명시해주었다.
         if len(indexes) > 1:
             indexes = [indexes[public.Value.drag_column_inside_view]]

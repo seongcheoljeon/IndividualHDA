@@ -1,11 +1,12 @@
 """Catalog queries; transactions are owned by the shared session."""
 
 from __future__ import annotations
-from libs.database.session import DatabaseSession
 
-from typing import Any
 import logging
+from typing import Any
+
 from libs import log_handler
+from libs.database.session import DatabaseSession
 
 
 class CatalogOperations(DatabaseSession):

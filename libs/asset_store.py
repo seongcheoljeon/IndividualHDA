@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from types import MappingProxyType
+
 from libs.contracts import RowNotifications, SilentRows
 from libs.domain import AssetData
 

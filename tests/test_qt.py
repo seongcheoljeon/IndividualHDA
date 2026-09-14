@@ -1,14 +1,16 @@
 from __future__ import annotations
-import pathlib
 
-from typing import Any
-from pathlib import Path
+import pathlib
 import sys
+from pathlib import Path
+from typing import Any
+
 import pytest
 from PySide6 import QtCore, QtWidgets
-from libs.drag_payload import encode_payload, decode_payload
-from libs.qt_helpers import wildcard_expression
+
+from libs.drag_payload import decode_payload, encode_payload
 from libs.process_job import ProcessJob
+from libs.qt_helpers import wildcard_expression
 
 
 def test_drag_unicode_path() -> None:
@@ -96,10 +98,10 @@ def test_panel_with_saved_library(
     app: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
 ) -> None:
     import public
-    from widgets.preference.preference import Preference
-    from widgets.web_view.web_view import WebView
     from libs.sqlite3_db_api import SQLite3DatabaseAPI
     from main import IndividualHDA
+    from widgets.preference.preference import Preference
+    from widgets.web_view.web_view import WebView
 
     monkeypatch.setattr(
         WebView,
@@ -172,9 +174,11 @@ def test_panel_background_job_lifecycle(
 ) -> None:
     """Inherited Qt slots must return to the GUI thread and defer close safely."""
     from threading import Event
+
     from PySide6 import QtTest
-    from widgets.web_view.web_view import WebView
+
     from main import IndividualHDA
+    from widgets.web_view.web_view import WebView
 
     monkeypatch.setattr(
         WebView,
@@ -233,8 +237,8 @@ def test_panel_background_job_lifecycle(
 def test_help_server_is_resolved_only_when_web_view_is_shown(
     app: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
 ) -> None:
-    from widgets.web_view.web_view import WebView
     import public
+    from widgets.web_view.web_view import WebView
 
     monkeypatch.setattr(public.Paths, "json_web_filepath", tmp_path / "web.json")
 

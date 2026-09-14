@@ -1,25 +1,24 @@
 from __future__ import annotations
-from typing import Any, Sequence
 
-import pathlib
-from PySide6 import QtCore, QtGui, QtWidgets
+import json
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.03.19 01:43:35
 # modified date:
 # description:
-
 import logging
-import json
-from libs.media_playlist import MediaPlaylist
-from libs.process_job import ProcessJob
+import pathlib
+from collections.abc import Sequence
+from typing import Any
 
-from PySide6 import QtMultimedia
+from PySide6 import QtCore, QtGui, QtMultimedia, QtWidgets
 
 import public
-from widgets.video_player import video_player_ui, video_widget, video_ui_settings
-from libs import ffmpeg_api, dragdrop_overlay, log_handler
+from libs import dragdrop_overlay, ffmpeg_api, log_handler
+from libs.media_playlist import MediaPlaylist
+from libs.process_job import ProcessJob
+from widgets.video_player import video_player_ui, video_ui_settings, video_widget
 
 
 class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
@@ -28,7 +27,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
         ffmpeg_dirpath: pathlib.Path | None = None,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
-        super(VideoPlayer, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
         self.setAcceptDrops(True)
         # media settgins
@@ -103,12 +102,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
     def __connections(self) -> None:
         self.pushButton__add_playlist.clicked.connect(
             lambda: self.__slot_select_video_file(
-                filter_str="{0};; {1};; {2};; {3}".format(
-                    self.__video_filter_str,
-                    self.__audio_filter_str,
-                    self.__playlist_filter_str,
-                    self.__all_filter_str,
-                )
+                filter_str=f"{self.__video_filter_str};; {self.__audio_filter_str};; {self.__playlist_filter_str};; {self.__all_filter_str}"
             )
         )
         self.pushButton__del_playlist.clicked.connect(self.__slot_delete_playlist)
@@ -180,27 +174,27 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
             self.__set_status_info("")
 
     def __slot_buffering_progress(self, progress: int) -> None:
-        self.__set_status_info("Buffering {0}%".format(progress))
+        self.__set_status_info(f"Buffering {progress}%")
 
     def __set_status_info(self, info: Any) -> None:
         self.__status_info = info
         if self.__status_info != "":
-            ste_info = "{0} | {1} - {2}".format(
-                self.__org_title, self.__track_info, self.__status_info
+            ste_info = (
+                f"{self.__org_title} | {self.__track_info} - {self.__status_info}"
             )
         else:
-            ste_info = "{0} | {1}".format(self.__org_title, self.__track_info)
+            ste_info = f"{self.__org_title} | {self.__track_info}"
         self.setWindowTitle(ste_info)
         log_handler.LogHandler.log_msg(method=logging.info, msg=ste_info)
 
     def __set_track_info(self, info: Any) -> None:
         self.__track_info = info
         if self.__status_info != "":
-            track_info = "{0} | {1} - {2}".format(
-                self.__org_title, self.__track_info, self.__status_info
+            track_info = (
+                f"{self.__org_title} | {self.__track_info} - {self.__status_info}"
             )
         else:
-            track_info = "{0} | {1}".format(self.__org_title, self.__track_info)
+            track_info = f"{self.__org_title} | {self.__track_info}"
         self.setWindowTitle(track_info)
         log_handler.LogHandler.log_msg(method=logging.info, msg=track_info)
 
@@ -220,7 +214,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
 
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         self.__dragdrop_overlay.resize(event.size())
-        super(VideoPlayer, self).resizeEvent(event)
+        super().resizeEvent(event)
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         if event.mimeData().hasUrls():
@@ -241,9 +235,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
             if video_fileinfo.suffix().lower() not in exts:
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
-                    msg='"{0}" extension is not supported'.format(
-                        video_fileinfo.suffix().lower()
-                    ),
+                    msg=f'"{video_fileinfo.suffix().lower()}" extension is not supported',
                 )
                 continue
             if (
@@ -252,9 +244,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
             ):
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
-                    msg='"{0}" already exists in the playlist'.format(
-                        video_fileinfo.absoluteFilePath()
-                    ),
+                    msg=f'"{video_fileinfo.absoluteFilePath()}" already exists in the playlist',
                 )
                 continue
             filepath_lst.append(video_filepath)
@@ -361,7 +351,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
         mode, icon = VideoPlayer.__get_playback_mode(self.playback_idx)
         self.__playlist.setPlaybackMode(mode)
         self.pushButton__playback_mode.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/video_player_main/icons/{0}".format(icon)))
+            QtGui.QIcon(QtGui.QPixmap(f":/video_player_main/icons/{icon}"))
         )
 
     def __build_context_playlist(self, point: Any) -> None:
@@ -416,9 +406,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
                 play_icon = "ic_pause_white.png"
             action_play = context_menu.addAction(play_menu_name)
             action_play.setIcon(
-                QtGui.QIcon(
-                    QtGui.QPixmap(":/video_player_main/icons/{0}".format(play_icon))
-                )
+                QtGui.QIcon(QtGui.QPixmap(f":/video_player_main/icons/{play_icon}"))
             )
             action_stop = context_menu.addAction("Stop")
             action_stop.setIcon(
@@ -559,7 +547,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
             return
         msgbox = QtWidgets.QMessageBox(self)
         msgbox.setWindowTitle("Delete Video From Playlist")
-        msgbox.setText("delete {0} selected video from playlist?".format(len(item_lst)))
+        msgbox.setText(f"delete {len(item_lst)} selected video from playlist?")
         msgbox.setIcon(QtWidgets.QMessageBox.Warning)
         msgbox.setStandardButtons(
             QtWidgets.QMessageBox.Ok | QtWidgets.QMessageBox.Cancel
@@ -665,7 +653,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
         )
         self.pushButton__next_video.setEnabled(self.__playlist.playbackMode() in pbmode)
         self.pushButton__play.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/video_player_main/icons/{0}".format(icon)))
+            QtGui.QIcon(QtGui.QPixmap(f":/video_player_main/icons/{icon}"))
         )
 
     def __slot_volume_btn(self, *args: Any, **kwargs: Any) -> None:
@@ -685,7 +673,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
             icon = "ic_volume_up_white.png"
             self.pushButton__volume.setChecked(False)
         self.pushButton__volume.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/video_player_main/icons/{0}".format(icon)))
+            QtGui.QIcon(QtGui.QPixmap(f":/video_player_main/icons/{icon}"))
         )
         self.horizontalSlider__volume.setValue(val)
         self.__audio.setVolume(val / 100.0)
@@ -725,7 +713,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
             "vob",
         ]
         ext_lst += [x.upper() for x in ext_lst]
-        return ["*.{0}".format(x) for x in ext_lst]
+        return [f"*.{x}" for x in ext_lst]
 
     @property
     def __audio_extensions(self) -> list[Any]:
@@ -744,7 +732,7 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
             "mid",
         ]
         ext_lst += [x.upper() for x in ext_lst]
-        return ["*.{0}".format(x) for x in ext_lst]
+        return [f"*.{x}" for x in ext_lst]
 
     @property
     def last_dirpath(self) -> pathlib.Path | None:

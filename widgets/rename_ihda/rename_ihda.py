@@ -1,23 +1,20 @@
 from __future__ import annotations
 
-from PySide6 import QtWidgets
-
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.04.25 01:20:06
 # modified date:
 # description:
+from re import DOTALL, compile
 
-from re import compile, DOTALL
-
-from PySide6 import QtGui
+from PySide6 import QtGui, QtWidgets
 
 from widgets.rename_ihda import rename_ihda_ui
 
 
 class RenameIHDA(QtWidgets.QDialog, rename_ihda_ui.Ui_Dialog__rename_ihda):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
-        super(RenameIHDA, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
         self.label__bridge.setText(">>>>>")
         self.__final_ihda_name = None
@@ -74,18 +71,14 @@ class RenameIHDA(QtWidgets.QDialog, rename_ihda_ui.Ui_Dialog__rename_ihda):
             find_str = self.__regex_spec_first_char.match(text).group()
             self.set_confirm_pixmap(False)
             self.set_confirm_text(
-                "The first character cannot contain special characters. ({0})".format(
-                    find_str
-                )
+                f"The first character cannot contain special characters. ({find_str})"
             )
             self.is_valid_ihda_name = False
         elif self.__regex_find_sepc_char.search(text) is not None:
             find_str = self.__regex_find_sepc_char.search(text).group()
             self.set_confirm_pixmap(False)
             self.set_confirm_text(
-                "There should be no special characters between the names. ({0})".format(
-                    find_str
-                )
+                f"There should be no special characters between the names. ({find_str})"
             )
             self.is_valid_ihda_name = False
         else:
@@ -100,7 +93,7 @@ class RenameIHDA(QtWidgets.QDialog, rename_ihda_ui.Ui_Dialog__rename_ihda):
             msgbox.setWindowTitle("iHDA Rename")
             msgbox.setIcon(QtWidgets.QMessageBox.Warning)
             msgbox.setText("It's not a valid iHDA name.")
-            msgbox.setDetailedText("{0}".format(self.label__confirm_ihda_name.text()))
+            msgbox.setDetailedText(f"{self.label__confirm_ihda_name.text()}")
             msgbox.setStandardButtons(QtWidgets.QMessageBox.Ok)
             _ = msgbox.exec()
 

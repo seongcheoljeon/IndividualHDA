@@ -1,29 +1,26 @@
 from __future__ import annotations
 
-from typing import Any
-from collections.abc import Callable
-from PySide6 import QtGui, QtWidgets
-
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.03.23 02:03:49
 # modified date:
 # description:
-
 import logging
-from urllib.request import urlopen
+from collections.abc import Callable
+from typing import Any
 from urllib.error import URLError
+from urllib.request import urlopen
 
-from PySide6 import QtCore
+from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWebEngineCore import QWebEngineFullScreenRequest, QWebEngineProfile
 
 import public
-from widgets.web_view import web_view_ui, web_ui_settings
 from libs import log_handler
+from widgets.web_view import web_ui_settings, web_view_ui
 
 try:
     import hou
-except ImportError as err:
+except ImportError:
     pass
 
 
@@ -33,7 +30,7 @@ class WebView(QtWidgets.QWidget, web_view_ui.Ui_Form__web):
         help_site: str | Callable[[], str] | None = None,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
-        super(WebView, self).__init__(parent)
+        super().__init__(parent)
         self.setupUi(self)
         self.__ui_settings = web_ui_settings.WebUISettings(window=self)
         self.__blank_site = "about:blank"
@@ -122,7 +119,7 @@ class WebView(QtWidgets.QWidget, web_view_ui.Ui_Form__web):
         try:
             urlopen("http://216.58.192.142", timeout=1)
             return True
-        except URLError as err:
+        except URLError:
             return False
 
     def __set_init_load(self) -> None:
@@ -152,7 +149,7 @@ class WebView(QtWidgets.QWidget, web_view_ui.Ui_Form__web):
     @QtCore.Slot(int)
     def __load_progress(self, prog: int) -> None:
         log_handler.LogHandler.log_msg(
-            method=logging.info, msg="loading progress: {0}".format(prog)
+            method=logging.info, msg=f"loading progress: {prog}"
         )
 
     @QtCore.Slot(bool)
@@ -190,7 +187,7 @@ class WebView(QtWidgets.QWidget, web_view_ui.Ui_Form__web):
             self.webEngineView__webview.setZoomFactor(zoom_factor)
         log_handler.LogHandler.log_msg(
             method=logging.info,
-            msg="current zoom factor of the webview: {0}".format(self.curt_zoom_value),
+            msg=f"current zoom factor of the webview: {self.curt_zoom_value}",
         )
 
     def __zoom_in(self) -> None:

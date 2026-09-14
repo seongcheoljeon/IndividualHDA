@@ -1,18 +1,20 @@
 from __future__ import annotations
-import pathlib
 
-from typing import Any
 import json
+import pathlib
 import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
+
 import pytest
 from PySide6 import QtCore, QtMultimedia
-from libs.ffmpeg_api import FFmpegAPI
-from libs.process_job import ProcessJob
+
 from libs.background_job import BackgroundJob
+from libs.ffmpeg_api import FFmpegAPI
 from libs.media_playlist import MediaPlaylist
+from libs.process_job import ProcessJob
 from libs.settings_store import save_json
 
 

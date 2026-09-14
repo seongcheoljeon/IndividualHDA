@@ -1,7 +1,9 @@
 """Inside-node filters retain ancestors of matching HDA nodes."""
 
 from __future__ import annotations
+
 from PySide6 import QtCore
+
 from model.ihda_inside_model import InsideModel
 from model.proxy_filters import TreeProxyModel
 

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from PySide6 import QtCore
 from importlib import import_module
+
+from PySide6 import QtCore
 
 
 def wildcard_expression(

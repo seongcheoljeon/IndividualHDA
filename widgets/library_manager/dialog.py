@@ -2,26 +2,27 @@
 
 from __future__ import annotations
 
+import tempfile
+import threading
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
-import tempfile
-import threading
 from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
-from libs.task_controller import TaskController
-from libs.library_maintenance import Cancelled, inspect_library, plan_paths, apply_paths
-from libs.library_backups import (
-    list_backups,
-    create_backup,
-    validate_backup,
-    recovery_files,
-    cleanup_recovery,
-)
-from libs.library_explorer import search_assets, history_versions
+
 from libs.archive_transfer import ArchiveTransfer
-from libs.version_compare import expand_asset, compare_expanded
+from libs.library_backups import (
+    cleanup_recovery,
+    create_backup,
+    list_backups,
+    recovery_files,
+    validate_backup,
+)
+from libs.library_explorer import history_versions, search_assets
+from libs.library_maintenance import Cancelled, apply_paths, inspect_library, plan_paths
+from libs.task_controller import TaskController
+from libs.version_compare import compare_expanded, expand_asset
 
 
 class LibraryManager(QtWidgets.QDialog):

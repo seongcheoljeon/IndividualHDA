@@ -5,18 +5,21 @@ Shares protected panel state; Qt and HOM calls stay on the GUI thread.
 
 from __future__ import annotations
 
-from typing import Any
-from PySide6 import QtCore
 import logging
 from operator import itemgetter
-from PySide6 import QtGui
+from typing import Any
+
+from PySide6 import QtCore, QtGui
+
 import public
-from model import ihda_list_model
-from model import ihda_table_model
-from model import ihda_history_model
-from model import ihda_record_model
-from model import ihda_inside_model
 from libs import houdini_api, log_handler
+from model import (
+    ihda_history_model,
+    ihda_inside_model,
+    ihda_list_model,
+    ihda_record_model,
+    ihda_table_model,
+)
 
 try:
     import hou
@@ -440,7 +443,7 @@ class SelectionMixin:
                 method=logging.info, msg="turn off thumbnail image"
             )
         self.pushButton__thumbnail.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/{0}".format(thumb_icon)))
+            QtGui.QIcon(QtGui.QPixmap(f":/main/icons/{thumb_icon}"))
         )
         self._set_view_item_icon_size(self.doubleSpinBox__zoom.value())
 
@@ -454,14 +457,14 @@ class SelectionMixin:
         if node is None:
             log_handler.LogHandler.log_msg(
                 method=logging.warning,
-                msg='path "{0}" does not exist'.format(node_path),
+                msg=f'path "{node_path}" does not exist',
             )
             return
         if houdini_api.HoudiniAPI.is_root_network(node):
             return
         houdini_api.HoudiniAPI.go_to_node(node=node)
         log_handler.LogHandler.log_msg(
-            method=logging.info, msg="{0} moved to path".format(node_path)
+            method=logging.info, msg=f"{node_path} moved to path"
         )
 
     @QtCore.Slot(QtCore.QModelIndex)
@@ -515,7 +518,7 @@ class SelectionMixin:
         if video_info is None:
             log_handler.LogHandler.log_msg(
                 method=logging.warning,
-                msg='"{0} (v{1})" iHDA node has no video'.format(hda_name, hda_ver),
+                msg=f'"{hda_name} (v{hda_ver})" iHDA node has no video',
             )
             return
         self._play_video_most_recent_by_version(video_info=video_info)
@@ -551,9 +554,7 @@ class SelectionMixin:
             if video_dirpath is None:
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
-                    msg='id: {0} "{1} [{2}]" iHDA node has no video'.format(
-                        hist_id, self._selection.history.name, ihda_ver
-                    ),
+                    msg=f'id: {hist_id} "{self._selection.history.name} [{ihda_ver}]" iHDA node has no video',
                 )
                 return
             video_filename = self._selection.history.data.get(
@@ -565,9 +566,7 @@ class SelectionMixin:
             if video_dirpath is None:
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
-                    msg='"{0}" iHDA node has no video'.format(
-                        self._selection.asset.name
-                    ),
+                    msg=f'"{self._selection.asset.name}" iHDA node has no video',
                 )
                 return
             video_filename = self._selection.asset.data.get(public.Key.video_filename)
@@ -623,7 +622,7 @@ class SelectionMixin:
             self._ihda_table_proxy_model.node_category = node_cate
             self.label__hda_count.setText(str(self._ihda_list_proxy_model.rowCount()))
             self.label__cate_count.setText(str(self._get_category_count()))
-        except AttributeError as err:
+        except AttributeError:
             # log_handler.LogHandler.log_msg(method=logging.warning, msg='search results do not exist')
             pass
 

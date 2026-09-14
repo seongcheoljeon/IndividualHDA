@@ -1,26 +1,25 @@
 from __future__ import annotations
 
-from typing import Any
+import copy
+import dataclasses
+import json
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
 # create date:      2020.03.28 18:45:32
 # modified date:
 # description:      preference UI 관련
-
 import os
-import json
-import dataclasses
-from libs.ai_provider import AISettings
-from libs.settings_store import save_json
-import copy
+from typing import Any
 
-from PySide6 import QtWidgets, QtCore, QtGui
+from PySide6 import QtCore, QtGui, QtWidgets
 
 import public
+from libs.ai_provider import AISettings
+from libs.settings_store import save_json
 
 
-class PreferenceUISettings(object):
+class PreferenceUISettings:
     def __init__(self, window: QtWidgets.QWidget | None = None) -> None:
         self.__window = window
         self.__setting_ini = QtCore.QSettings(
@@ -142,7 +141,7 @@ class PreferenceUISettings(object):
                 if not isinstance(data, dict):
                     raise ValueError("Settings must contain a JSON object")
                 self.__cfg_dict = copy.copy(data)
-            except ValueError as err:
+            except ValueError:
                 self.__cfg_dict = {}
                 self.__setting_json.replace(self.__setting_json.with_suffix(".corrupt"))
                 return

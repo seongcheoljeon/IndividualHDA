@@ -4,24 +4,33 @@ Uses the shared panel protected state; no independent QObject ownership.
 """
 
 from __future__ import annotations
-from model.asset_notifications import QtAssetNotifications
 
-from typing import Any
-from libs.domain import AssetData
 import logging
 import pathlib
+from typing import Any
 
-from libs.qt_helpers import wildcard_expression
 from PySide6 import QtCore
+
 import public
-from model import ihda_category_model, ihda_category_proxy_model
-from model import ihda_list_model, ihda_list_proxy_model
-from model import ihda_table_model, ihda_table_proxy_model
-from model import ihda_history_model, ihda_history_proxy_model
-from model import ihda_record_model, ihda_record_proxy_model
-from model import ihda_inside_model, ihda_inside_proxy_model
-from libs import sqlite3_db_api, log_handler
+from libs import log_handler, sqlite3_db_api
+from libs.domain import AssetData
 from libs.library_explorer import search_asset_ids
+from libs.qt_helpers import wildcard_expression
+from model import (
+    ihda_category_model,
+    ihda_category_proxy_model,
+    ihda_history_model,
+    ihda_history_proxy_model,
+    ihda_inside_model,
+    ihda_inside_proxy_model,
+    ihda_list_model,
+    ihda_list_proxy_model,
+    ihda_record_model,
+    ihda_record_proxy_model,
+    ihda_table_model,
+    ihda_table_proxy_model,
+)
+from model.asset_notifications import QtAssetNotifications
 
 
 class ModelBindingMixin:

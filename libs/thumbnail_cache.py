@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from pathlib import Path
+
 from PySide6 import QtCore, QtGui
 
 

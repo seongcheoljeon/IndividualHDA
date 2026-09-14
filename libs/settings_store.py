@@ -1,12 +1,12 @@
 """Atomic UTF-8 settings writes retain the last complete configuration on failure."""
 
 from __future__ import annotations
-from typing import Any
 
 import json
 import os
-from pathlib import Path
 import tempfile
+from pathlib import Path
+from typing import Any
 
 
 def save_json(path: str | Path, values: dict[str, Any]) -> None:
@@ -28,6 +28,7 @@ def save_json(path: str | Path, values: dict[str, Any]) -> None:
 def initialize_config() -> None:
     """Carry existing settings into the writable per-user location on first use."""
     from shutil import copy2
+
     import public
 
     target = public.Paths.config_dirpath

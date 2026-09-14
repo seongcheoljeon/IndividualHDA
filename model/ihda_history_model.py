@@ -1,24 +1,22 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
-from libs.domain import HistoryData
-from libs.path_updates import PathMoves, relocated_path
 from pathlib import Path
 from typing import Any
-from PySide6 import QtCore
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # create date       : 2020.01.28 11:45
 # modify date       :
 # description       :
+from PySide6 import QtCore, QtGui
 
-
-from PySide6 import QtGui
+from libs.domain import HistoryData
+from libs.path_updates import PathMoves, relocated_path
 
 try:
     import hou
-except ImportError as err:
+except ImportError:
     pass
 
 import public
@@ -51,7 +49,7 @@ class HistoryModel(QtCore.QAbstractTableModel):
         thumb_size: int | None = None,
         parent: QtCore.QObject | None = None,
     ) -> None:
-        super(HistoryModel, self).__init__(parent)
+        super().__init__(parent)
         self.__items = items if items is not None else []
         self.__pixmap_ihda_data = (
             pixmap_ihda_data if pixmap_ihda_data is not None else {}
@@ -130,9 +128,9 @@ class HistoryModel(QtCore.QAbstractTableModel):
     ) -> Any:
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
             if orientation == QtCore.Qt.Orientation.Horizontal:
-                return "{0}".format(self.__headers[section])
+                return f"{self.__headers[section]}"
             else:
-                return "Hist {0}".format(section + 1)
+                return f"Hist {section + 1}"
         if role == QtCore.Qt.ItemDataRole.FontRole:
             font = QtGui.QFont()
             font.setPointSize(public.UISetting.view_font_size)
@@ -219,7 +217,7 @@ class HistoryModel(QtCore.QAbstractTableModel):
                 )
             elif column == self.__hda_datetime_column:
                 datetime_icon = "ic_query_builder_white.png"
-                return QtGui.QPixmap(":/main/icons/{0}".format(datetime_icon)).scaled(
+                return QtGui.QPixmap(f":/main/icons/{datetime_icon}").scaled(
                     QtCore.QSize(
                         int(other_icon_size * 0.7), int(other_icon_size * 0.7)
                     ),
@@ -227,7 +225,7 @@ class HistoryModel(QtCore.QAbstractTableModel):
                 )
             elif column == self.__hda_hou_ver_column:
                 hou_icon = "houdini_logo.png"
-                return QtGui.QPixmap(":/main/icons/{0}".format(hou_icon)).scaled(
+                return QtGui.QPixmap(f":/main/icons/{hou_icon}").scaled(
                     QtCore.QSize(
                         int(other_icon_size * 0.7), int(other_icon_size * 0.7)
                     ),
@@ -305,7 +303,7 @@ class HistoryModel(QtCore.QAbstractTableModel):
     def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
         if not index.isValid():
             return QtCore.Qt.ItemFlag.ItemIsDropEnabled
-        flags = super(HistoryModel, self).flags(index)
+        flags = super().flags(index)
         if index.isValid():
             hda_filepath = index.data(HistoryModel.filepath_role)
             if not hda_filepath.exists():
@@ -387,7 +385,7 @@ class HistoryModel(QtCore.QAbstractTableModel):
             row = index.data(HistoryModel.row_role)
             try:
                 hist_data = self.__items[row]
-            except IndexError as err:
+            except IndexError:
                 continue
             data_row = hist_data.get(public.Key.History.item_row)
             if data_row is None:
@@ -540,7 +538,7 @@ class HistoryModel(QtCore.QAbstractTableModel):
     def mimeData(self, indexes: list[QtCore.QModelIndex]) -> QtCore.QMimeData | None:
         if not len(indexes):
             return None
-        mime_data = super(HistoryModel, self).mimeData(indexes)
+        mime_data = super().mimeData(indexes)
         # 원래 2번째 컬럼만 선택되어지는데 간혹가다가 모든 컬럼이 indexes로 들어올 때가 있어서 명시해주었다.
         if len(indexes) > 1:
             indexes = [indexes[public.Value.drag_column_history_view]]

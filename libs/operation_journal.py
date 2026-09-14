@@ -6,15 +6,16 @@ The operation lock prevents recovery from racing another active operation.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
-from contextlib import contextmanager, closing
 import json
 import os
-from pathlib import Path
 import sqlite3
-from typing import Any
-from libs.contracts import TransactionalRepository
 import uuid
+from collections.abc import Iterator
+from contextlib import closing, contextmanager
+from pathlib import Path
+from typing import Any
+
+from libs.contracts import TransactionalRepository
 from libs.settings_store import save_json
 
 

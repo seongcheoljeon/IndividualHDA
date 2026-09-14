@@ -1,29 +1,28 @@
 from __future__ import annotations
 
-from contextlib import closing
-from dataclasses import replace
-from pathlib import Path
 import shutil
 import sqlite3
 import threading
-from typing import Any
 import zipfile
+from dataclasses import replace
+from pathlib import Path
+from typing import Any
 
 import pytest
-from PySide6 import QtCore, QtTest, QtWidgets
+from PySide6 import QtCore, QtTest
+from test_integrity_followup import seed
 
-from libs.sqlite3_db_api import SQLite3DatabaseAPI
-from libs.library_maintenance import inspect_library, plan_paths, apply_paths, Cancelled
 from libs.library_backups import (
+    cleanup_recovery,
     create_backup,
     list_backups,
-    validate_backup,
     recovery_files,
-    cleanup_recovery,
+    validate_backup,
 )
-from libs.library_explorer import search_assets, search_asset_ids, history_versions
+from libs.library_explorer import history_versions, search_asset_ids, search_assets
+from libs.library_maintenance import Cancelled, apply_paths, inspect_library, plan_paths
+from libs.sqlite3_db_api import SQLite3DatabaseAPI
 from libs.version_compare import compare_expanded
-from test_integrity_followup import seed
 
 
 @pytest.fixture
@@ -295,8 +294,8 @@ def test_manager_close_waits_for_worker_and_emits_finished_once(
 def test_manager_superseded_search_cannot_publish_stale_rows(
     app: Any, library: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from widgets.library_manager.dialog import LibraryManager
     import widgets.library_manager.dialog as module
+    from widgets.library_manager.dialog import LibraryManager
 
     database, assets = library
     dialog = LibraryManager(database, assets, "user")

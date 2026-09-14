@@ -4,21 +4,22 @@ Shares protected panel state; Qt and HOM calls stay on the GUI thread.
 """
 
 from __future__ import annotations
-from model.asset_notifications import QtAssetNotifications
+
+import pathlib
+from typing import TYPE_CHECKING, Any
+
+from PySide6 import QtCore
 
 from libs.domain import AssetData, HistoryData
-from typing import Any
-import pathlib
-from PySide6 import QtCore
-from typing import TYPE_CHECKING
+from model.asset_notifications import QtAssetNotifications
 
 if TYPE_CHECKING:
     from libs.sqlite3_db_api import SQLite3DatabaseAPI
 import logging
 from datetime import datetime
+
 import public
-from libs import houdini_api, log_handler
-from libs import sqlite3_db_api
+from libs import houdini_api, log_handler, sqlite3_db_api
 
 
 class LibraryQueriesMixin:
@@ -37,9 +38,7 @@ class LibraryQueriesMixin:
         if not db_filepath.exists():
             log_handler.LogHandler.log_msg(
                 method=logging.critical,
-                msg='the database file does not exist in the path "{0}"'.format(
-                    db_filepath.as_posix()
-                ),
+                msg=f'the database file does not exist in the path "{db_filepath.as_posix()}"',
             )
             return None
         return self._services.open_database(db_filepath)

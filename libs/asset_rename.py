@@ -1,13 +1,15 @@
 """Asset rename planning and execution, independent of widgets and SQL layout."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
-from libs.contracts import TransactionalRepository, OperationFactory
+
+from libs.contracts import OperationFactory, TransactionalRepository
 from libs.domain import AssetData
-from libs.path_updates import relocated_path
 from libs.operation_journal import durable_operation
+from libs.path_updates import relocated_path
 
 
 class AssetNames(Protocol):

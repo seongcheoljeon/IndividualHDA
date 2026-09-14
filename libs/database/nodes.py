@@ -1,12 +1,13 @@
 """Nodes queries; transactions are owned by the shared session."""
 
 from __future__ import annotations
-from typing import Sequence
-from typing import Any
-from libs.database.session import DatabaseSession
 
 import logging
+from collections.abc import Sequence
+from typing import Any
+
 from libs import log_handler
+from libs.database.session import DatabaseSession
 
 
 class NodesOperations(DatabaseSession):
