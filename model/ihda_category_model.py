@@ -4,71 +4,21 @@ from __future__ import annotations
 import contextlib
 from typing import Any
 
+from PySide6 import QtCore, QtGui
+
+from model.model_style import ModelStyleMixin
+
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # create date       : 2020.01.28 01:55
 # modify date       :
 # description       :
-from PySide6 import QtCore, QtGui
+from model.tree_nodes import Node
 
 with contextlib.suppress(ImportError):
     pass
 
 import public
-
-
-class Node(QtCore.QObject):
-    def __init__(
-        self,
-        node_name: str | None = None,
-        node_depth: int | None = None,
-        parent: Node | None = None,
-    ) -> None:
-        super().__init__()
-        self.__name = node_name
-        self.__depth = node_depth
-        self.__parent = parent
-        self.__children = []
-        self.setParent(parent)
-
-    @property
-    def name(self) -> str | None:
-        return self.__name
-
-    @property
-    def depth(self) -> int | None:
-        return self.__depth
-
-    @property
-    def parent(self) -> Node | None:
-        return self.__parent
-
-    def setParent(self, parent: Node | None) -> None:
-        if parent is not None:
-            self.__parent = parent
-            self.__parent.append_child(self)
-        else:
-            self.__parent = None
-
-    def append_child(self, child: Node) -> None:
-        self.__children.append(child)
-
-    def child_at_row(self, row: int) -> Node:
-        return self.__children[row]
-
-    def row_of_child(self, child: Node) -> int:
-        for idx, item in enumerate(self.__children):
-            if child == item:
-                return idx
-        return -1
-
-    def remove_child(self, row: int) -> bool:
-        value = self.__children[row]
-        self.__children.remove(value)
-        return True
-
-    def __len__(self) -> int:
-        return len(self.__children)
 
 
 class NodeData(Node):
@@ -93,7 +43,7 @@ class NodeData(Node):
         return self.__icon if self.__icon is not None else None
 
 
-class CategoryModel(QtCore.QAbstractItemModel):
+class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
     category_role = QtCore.Qt.ItemDataRole.UserRole
     type_role = QtCore.Qt.ItemDataRole.UserRole + 1
     depth_role = QtCore.Qt.ItemDataRole.UserRole + 2
@@ -113,10 +63,10 @@ class CategoryModel(QtCore.QAbstractItemModel):
         self.__pixmap_cate_data = (
             pixmap_cate_data if pixmap_cate_data is not None else {}
         )
-        self.__font_size = (
+        self._font_size = (
             font_size if font_size is not None else public.UISetting.view_font_size
         )
-        self.__font_style = (
+        self._font_style = (
             font_style if font_style is not None else public.UISetting.view_font_style
         )
         self.__icon_size = (
@@ -124,7 +74,7 @@ class CategoryModel(QtCore.QAbstractItemModel):
             if icon_size is not None
             else public.UISetting.treeview_node_icon_size
         )
-        self.__padding = padding if padding is not None else 0
+        self._padding = padding if padding is not None else 0
         self.__update_data(data=data)
         self.__headers = ("Network",)
         self.__root = None
@@ -223,17 +173,6 @@ class CategoryModel(QtCore.QAbstractItemModel):
     def set_icon_size(self, val: Any) -> None:
         self.beginResetModel()
         self.__icon_size = val
-        self.endResetModel()
-
-    def set_font(self, style: str | None = None, size: int | None = None) -> None:
-        self.beginResetModel()
-        self.__font_style = style
-        self.__font_size = size
-        self.endResetModel()
-
-    def set_padding(self, val: Any) -> None:
-        self.beginResetModel()
-        self.__padding = val
         self.endResetModel()
 
     def clear_item(self) -> None:
@@ -339,23 +278,23 @@ class CategoryModel(QtCore.QAbstractItemModel):
                 )
         elif role == QtCore.Qt.ItemDataRole.DisplayRole:
             if column == 0:
-                return node.name
+                return node.name()
             elif column == 1:
                 return node.node_type
         elif role == QtCore.Qt.ItemDataRole.FontRole:
             font = QtGui.QFont()
-            font.setFamily(self.__font_style)
-            font.setPointSize(self.__font_size)
+            font.setFamily(self._font_style)
+            font.setPointSize(self._font_size)
             return font
         elif role == QtCore.Qt.ItemDataRole.SizeHintRole:
-            return QtCore.QSize(self.__icon_size, self.__icon_size + self.__padding)
+            return QtCore.QSize(self.__icon_size, self.__icon_size + self._padding)
         # UserRole
         elif role == CategoryModel.category_role:
-            return node.name
+            return node.name()
         elif role == CategoryModel.type_role:
             return node.node_type
         elif role == CategoryModel.depth_role:
-            return node.depth
+            return node.depth()
 
     def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
         if parent.isValid() and parent.column() != 0:
@@ -373,10 +312,10 @@ class CategoryModel(QtCore.QAbstractItemModel):
         node = self.node_from_index(index)
         if node is None:
             return QtCore.QModelIndex()
-        parent = node.parent
+        parent = node.parent()
         if parent is None:
             return QtCore.QModelIndex()
-        grand_parent = parent.parent
+        grand_parent = parent.parent()
         if grand_parent is None:
             return QtCore.QModelIndex()
         row = grand_parent.row_of_child(parent)

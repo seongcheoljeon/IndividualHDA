@@ -4,14 +4,16 @@ from __future__ import annotations
 import contextlib
 from typing import Any
 
+from PySide6 import QtCore, QtGui
+
+from libs.domain import AssetData
+
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # create date       : 2020.01.28 01:34
 # modify date       :
 # description       :
-from PySide6 import QtCore, QtGui
-
-from libs.domain import AssetData
+from model.model_style import ModelStyleMixin
 
 with contextlib.suppress(ImportError):
     pass
@@ -20,7 +22,7 @@ import public
 from libs.drag_payload import encode_payload
 
 
-class ListModel(QtCore.QAbstractListModel):
+class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
     data_role = QtCore.Qt.ItemDataRole.UserRole
     row_role = QtCore.Qt.ItemDataRole.UserRole + 1
     id_role = QtCore.Qt.ItemDataRole.UserRole + 2
@@ -52,10 +54,10 @@ class ListModel(QtCore.QAbstractListModel):
         self.__pixmap_thumb_data = (
             pixmap_thumb_data if pixmap_thumb_data is not None else {}
         )
-        self.__font_size = (
+        self._font_size = (
             font_size if font_size is not None else public.UISetting.view_font_size
         )
-        self.__font_style = (
+        self._font_style = (
             font_style if font_style is not None else public.UISetting.view_font_style
         )
         self.__icon_size = (
@@ -66,7 +68,7 @@ class ListModel(QtCore.QAbstractListModel):
         self.__thumb_size = (
             thumb_size if thumb_size is not None else 2 * self.__icon_size
         )
-        self.__padding = padding if padding is not None else 0
+        self._padding = padding if padding is not None else 0
         self.__show_thumbnail = False
 
     @property
@@ -197,8 +199,8 @@ class ListModel(QtCore.QAbstractListModel):
             return None
         elif role == QtCore.Qt.ItemDataRole.FontRole:
             font = QtGui.QFont()
-            font.setFamily(self.__font_style)
-            font.setPointSize(self.__font_size)
+            font.setFamily(self._font_style)
+            font.setPointSize(self._font_size)
             hda_filepath = index_dat.get(public.Key.hda_dirpath) / index_dat.get(
                 public.Key.hda_filename
             )
@@ -209,12 +211,12 @@ class ListModel(QtCore.QAbstractListModel):
         elif role == QtCore.Qt.ItemDataRole.SizeHintRole:
             if self.show_thumbnail:
                 return QtCore.QSize(
-                    self.__thumb_size + self.__font_size + self.__padding,
-                    self.__thumb_size + self.__font_size + self.__padding,
+                    self.__thumb_size + self._font_size + self._padding,
+                    self.__thumb_size + self._font_size + self._padding,
                 )
             return QtCore.QSize(
-                self.__icon_size + self.__font_size + self.__padding,
-                self.__icon_size + self.__font_size + self.__padding,
+                self.__icon_size + self._font_size + self._padding,
+                self.__icon_size + self._font_size + self._padding,
             )
         elif role == ListModel.data_role:
             return index_dat
@@ -266,17 +268,6 @@ class ListModel(QtCore.QAbstractListModel):
         self.__thumb_size = (
             thumb_size if thumb_size is not None else 2 * self.__icon_size
         )
-        self.endResetModel()
-
-    def set_font(self, style: str | None = None, size: int | None = None) -> None:
-        self.beginResetModel()
-        self.__font_style = style
-        self.__font_size = size
-        self.endResetModel()
-
-    def set_padding(self, val: Any) -> None:
-        self.beginResetModel()
-        self.__padding = val
         self.endResetModel()
 
     def add_items(self, data: Any = ()) -> None:

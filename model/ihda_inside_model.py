@@ -14,6 +14,9 @@ from typing import Any
 
 from PySide6 import QtCore, QtGui
 
+from model.model_style import ModelStyleMixin
+from model.tree_nodes import Node
+
 with contextlib.suppress(ImportError):
     pass
 
@@ -22,67 +25,6 @@ import contextlib
 import public
 from libs import houdini_api
 from libs.drag_payload import encode_payload
-
-
-class Node(QtCore.QObject):
-    def __init__(
-        self,
-        node_name: str | None = None,
-        node_depth: int | None = None,
-        parent: Node | None = None,
-    ) -> None:
-        super().__init__()
-        self.__name = node_name
-        self.__depth = node_depth
-        self._parent = parent
-        self._children = []
-        self.setParent(parent)
-
-    def name(self) -> str | None:
-        return self.__name
-
-    def depth(self) -> int | None:
-        return self.__depth
-
-    def parent(self) -> Node | None:
-        return self._parent
-
-    def child(self, row: int) -> Any:
-        return self._children[row]
-
-    def insert_child(self, position: Any, child: Node) -> bool:
-        if position < 0 or position > len(self._children):
-            return False
-        self._children.insert(position, child)
-        child._parent = self
-        return True
-
-    def setParent(self, parent: Node | None) -> None:
-        if parent is not None:
-            self._parent = parent
-            self._parent.append_child(self)
-        else:
-            self._parent = None
-
-    def append_child(self, child: Node) -> None:
-        self._children.append(child)
-
-    def child_at_row(self, row: int) -> Node:
-        return self._children[row]
-
-    def row_of_child(self, child: Node) -> int:
-        for idx, item in enumerate(self._children):
-            if child == item:
-                return idx
-        return -1
-
-    def remove_child(self, row: int) -> bool:
-        value = self._children[row]
-        self._children.remove(value)
-        return True
-
-    def __len__(self) -> int:
-        return len(self._children)
 
 
 class NodeData(Node):
@@ -150,7 +92,7 @@ class NodeData(Node):
         return self.__hda_org_name
 
 
-class InsideModel(QtCore.QAbstractItemModel):
+class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
     hda_id_role = QtCore.Qt.ItemDataRole.UserRole
     hda_org_name_role = QtCore.Qt.ItemDataRole.UserRole + 1
     node_path_role = QtCore.Qt.ItemDataRole.UserRole + 2
@@ -181,10 +123,10 @@ class InsideModel(QtCore.QAbstractItemModel):
             pixmap_ihda_data if pixmap_ihda_data is not None else {}
         )
         self.__inst_ihda_icon = inst_ihda_icon
-        self.__font_size = (
+        self._font_size = (
             font_size if font_size is not None else public.UISetting.view_font_size
         )
-        self.__font_style = (
+        self._font_style = (
             font_style if font_style is not None else public.UISetting.view_font_style
         )
         self.__icon_size = (
@@ -192,7 +134,7 @@ class InsideModel(QtCore.QAbstractItemModel):
             if icon_size is not None
             else public.UISetting.treeview_node_icon_size
         )
-        self.__padding = padding if padding is not None else 0
+        self._padding = padding if padding is not None else 0
         self.__root = None
         self.__generic_pixmap = QtGui.QPixmap(":/main/icons/generic.png")
         self.__headers = (
@@ -729,17 +671,6 @@ class InsideModel(QtCore.QAbstractItemModel):
         self.__icon_size = val
         self.endResetModel()
 
-    def set_font(self, style: str | None = None, size: int | None = None) -> None:
-        self.beginResetModel()
-        self.__font_style = style
-        self.__font_size = size
-        self.endResetModel()
-
-    def set_padding(self, val: Any) -> None:
-        self.beginResetModel()
-        self.__padding = val
-        self.endResetModel()
-
     def clear_item(self) -> None:
         self.beginResetModel()
         self.__data = self.__default_data
@@ -783,7 +714,7 @@ class InsideModel(QtCore.QAbstractItemModel):
             return None
         elif role == QtCore.Qt.ItemDataRole.FontRole:
             font = QtGui.QFont()
-            # font.setFamily(self.__font_style)
+            # font.setFamily(self._font_style)
             font.setPointSize(public.UISetting.view_font_size)
             return font
         elif role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
@@ -902,11 +833,11 @@ class InsideModel(QtCore.QAbstractItemModel):
             return None
         elif role == QtCore.Qt.ItemDataRole.FontRole:
             font = QtGui.QFont()
-            font.setFamily(self.__font_style)
-            font.setPointSize(self.__font_size)
+            font.setFamily(self._font_style)
+            font.setPointSize(self._font_size)
             return font
         elif role == QtCore.Qt.ItemDataRole.SizeHintRole:
-            return QtCore.QSize(self.__icon_size, self.__icon_size + self.__padding)
+            return QtCore.QSize(self.__icon_size, self.__icon_size + self._padding)
         elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
             return None
         # UserRole

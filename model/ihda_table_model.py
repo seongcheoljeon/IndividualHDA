@@ -4,14 +4,16 @@ from __future__ import annotations
 import contextlib
 from typing import Any
 
+from PySide6 import QtCore, QtGui
+
+from libs.domain import AssetData
+
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # create date       : 2020.01.28 11:45
 # modify date       :
 # description       :
-from PySide6 import QtCore, QtGui
-
-from libs.domain import AssetData
+from model.model_style import ModelStyleMixin
 
 with contextlib.suppress(ImportError):
     pass
@@ -20,7 +22,7 @@ import public
 from libs.drag_payload import encode_payload
 
 
-class TableModel(QtCore.QAbstractTableModel):
+class TableModel(QtCore.QAbstractTableModel, ModelStyleMixin):
     data_role = QtCore.Qt.ItemDataRole.UserRole
     row_role = QtCore.Qt.ItemDataRole.UserRole + 1
     col_role = QtCore.Qt.ItemDataRole.UserRole + 2
@@ -87,10 +89,10 @@ class TableModel(QtCore.QAbstractTableModel):
         # hda houdini version 컬럼 인덱스
         self.__hda_hou_ver_column = 7
         #
-        self.__font_size = (
+        self._font_size = (
             font_size if font_size is not None else public.UISetting.view_font_size
         )
-        self.__font_style = (
+        self._font_style = (
             font_style if font_style is not None else public.UISetting.view_font_style
         )
         self.__icon_size = (
@@ -238,8 +240,8 @@ class TableModel(QtCore.QAbstractTableModel):
             return data.get(self.__keys[column])
         elif role == QtCore.Qt.ItemDataRole.FontRole:
             font = QtGui.QFont()
-            font.setFamily(self.__font_style)
-            font.setPointSize(self.__font_size)
+            font.setFamily(self._font_style)
+            font.setPointSize(self._font_size)
             hda_filepath = data.get(public.Key.hda_dirpath) / data.get(
                 public.Key.hda_filename
             )
@@ -352,12 +354,6 @@ class TableModel(QtCore.QAbstractTableModel):
         self.__thumb_size = (
             thumb_size if thumb_size is not None else 2 * self.__icon_size
         )
-        self.endResetModel()
-
-    def set_font(self, style: str | None = None, size: int | None = None) -> None:
-        self.beginResetModel()
-        self.__font_style = style
-        self.__font_size = size
         self.endResetModel()
 
     def insertRow(

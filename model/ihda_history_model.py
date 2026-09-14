@@ -5,15 +5,17 @@ import contextlib
 from pathlib import Path
 from typing import Any
 
+from PySide6 import QtCore, QtGui
+
+from libs.domain import HistoryData
+from libs.path_updates import PathMoves, relocated_path
+
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # create date       : 2020.01.28 11:45
 # modify date       :
 # description       :
-from PySide6 import QtCore, QtGui
-
-from libs.domain import HistoryData
-from libs.path_updates import PathMoves, relocated_path
+from model.model_style import ModelStyleMixin
 
 with contextlib.suppress(ImportError):
     pass
@@ -22,7 +24,7 @@ import public
 from libs.drag_payload import encode_payload
 
 
-class HistoryModel(QtCore.QAbstractTableModel):
+class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
     data_role = QtCore.Qt.ItemDataRole.UserRole
     row_role = QtCore.Qt.ItemDataRole.UserRole + 1
     col_role = QtCore.Qt.ItemDataRole.UserRole + 2
@@ -59,10 +61,10 @@ class HistoryModel(QtCore.QAbstractTableModel):
         self.__pixmap_hist_thumb_data = (
             pixmap_hist_thumb_data if pixmap_hist_thumb_data is not None else {}
         )
-        self.__font_size = (
+        self._font_size = (
             font_size if font_size is not None else public.UISetting.view_font_size
         )
-        self.__font_style = (
+        self._font_style = (
             font_style if font_style is not None else public.UISetting.view_font_style
         )
         self.__icon_size = (
@@ -244,8 +246,8 @@ class HistoryModel(QtCore.QAbstractTableModel):
             )
         elif role == QtCore.Qt.ItemDataRole.FontRole:
             font = QtGui.QFont()
-            font.setFamily(self.__font_style)
-            font.setPointSize(self.__font_size)
+            font.setFamily(self._font_style)
+            font.setPointSize(self._font_size)
             hda_dirpath = data.get(public.Key.History.ihda_dirpath)
             if hda_dirpath is None:
                 font.setItalic(True)
@@ -475,12 +477,6 @@ class HistoryModel(QtCore.QAbstractTableModel):
         self.__thumb_size = (
             thumb_size if thumb_size is not None else 2 * self.__icon_size
         )
-        self.endResetModel()
-
-    def set_font(self, style: str | None = None, size: int | None = None) -> None:
-        self.beginResetModel()
-        self.__font_style = style
-        self.__font_size = size
         self.endResetModel()
 
     def insertRow(
