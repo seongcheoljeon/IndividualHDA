@@ -212,8 +212,14 @@ def test_panel_background_job_lifecycle(
         panel._start_file_job(lambda: "duplicate", results.append)
         assert panel._tasks.file_job is job
         if outcome == "close":
+            shutdowns: list[int] = []
+            monkeypatch.setattr(
+                panel._preference, "shutdown", lambda: shutdowns.append(1)
+            )
             assert not panel.close()
             assert panel._close_requested and not panel._closing
+            # A refused close tears nothing down yet.
+            assert not shutdowns and panel._sync_timer.isActive()
         release.set()
         if outcome == "host_destroy":
             panel.shutdown_for_host()
@@ -229,6 +235,9 @@ def test_panel_background_job_lifecycle(
         assert panel.centralwidget.isEnabled()
         if outcome == "close":
             assert panel._closing
+            assert shutdowns == [1]
+            assert not panel._sync_timer.isActive()
+            assert not panel._asset_search_debounce.timer.isActive()
     finally:
         release.set()
         if panel._tasks.file_job is not None:

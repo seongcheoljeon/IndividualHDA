@@ -131,6 +131,8 @@ class IndividualHDA(
         # ui_settings
         self._ui_settings = ui_settings.UISettings(window=self)
         # logging
+        self._log_dirpath = public.Paths.config_dirpath / "logs"
+        log_handler.install_file_logging(self._log_dirpath)
         self._log_handler = log_handler.LogHandler(out_stream=self.textBrowser__debug)
         # loading indicator class
         self._loading = loading_indicator.Overlay(parent=self)
@@ -201,22 +203,26 @@ class IndividualHDA(
         self._init_ai_actions()
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        # Archive work must finish first; until then nothing else is torn down,
+        # so a refused close leaves dialogs, timers and workers untouched.
+        if self._tasks.file_job is not None:
+            self._close_requested = True
+            event.ignore()
+            return
         manager = getattr(self, "_library_manager", None)
         if manager is not None:
             self._library_manager = None
             manager.shutdown()
             manager.deleteLater()
         self._preference.shutdown()
-        if self._tasks.file_job is not None:
-            self._close_requested = True
-            event.ignore()
-            return
         self._ihda_icons.shutdown()
         self._closing = True
         self._tasks.shutdown_process()
         self._ai_tasks.drain()
         self._asset_search.drain()
         self._stop_library_sync()
+        self._history_search_debounce.timer.stop()
+        self._asset_search_debounce.timer.stop()
         if public.IS_HOUDINI:
             # clean event
             self._loading_close()

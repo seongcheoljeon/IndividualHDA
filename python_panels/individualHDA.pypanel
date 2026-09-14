@@ -31,24 +31,51 @@ if not (root / 'main.py').is_file():
 if str(root) not in sys.path:
     sys.path.insert(0, str(root))
 
-iHDA: Any = None
+import logging
+
+# One panel object per pane tab; Houdini may open the interface several times.
+_panels: dict[str, Any] = {}
+
+
+def _pane_name() -> str:
+    try:
+        return str(kwargs['paneTab'].name())  # noqa: F821  (Houdini injects kwargs)
+    except Exception:
+        return ''
+
 
 def onCreateInterface() -> Any:
-    global iHDA
-    if not hou.isUIAvailable():
-        raise RuntimeError('Individual HDA requires the Houdini graphical interface')
-    if hou.applicationVersion()[0] < 21:
-        raise RuntimeError('Individual HDA requires Houdini 21 or later (Qt 6 / PySide6)')
-    # Imported here so the version message above is shown before PySide6 is loaded.
-    from main import IndividualHDA
-    iHDA = IndividualHDA(embedded=True)
-    return iHDA
+    import public
+    from libs.log_handler import install_file_logging
+    from libs.qt_helpers import startup_fallback
+
+    log_dir = public.Paths.config_dirpath / 'logs'
+    try:
+        install_file_logging(log_dir)
+        if not hou.isUIAvailable():
+            raise RuntimeError('Individual HDA requires the Houdini graphical interface')
+        if hou.applicationVersion()[0] < 21:
+            raise RuntimeError('Individual HDA requires Houdini 21 or later (Qt 6 / PySide6)')
+        # Imported here so the version message above is shown before PySide6 is loaded.
+        from main import IndividualHDA
+        panel = IndividualHDA(embedded=True)
+    except Exception as error:
+        logging.getLogger('ihda.panel').exception('Individual HDA failed to start')
+        return startup_fallback(error, log_dir)
+    _panels[_pane_name() or str(id(panel))] = panel
+    return panel
+
 
 def onDestroyInterface() -> None:
-    global iHDA
-    if iHDA is not None:
-        iHDA.shutdown_for_host()
-    iHDA = None
+    panel = _panels.pop(_pane_name(), None)
+    if panel is None:
+        # Unknown tab: release the panel Houdini already hid.
+        for key, candidate in list(_panels.items()):
+            if not candidate.isVisible():
+                panel = _panels.pop(key)
+                break
+    if panel is not None:
+        panel.shutdown_for_host()
 ]]></script>
     <includeInToolbarMenu menu_position="104" create_separator="false"/>
     <help><![CDATA[]]></help>

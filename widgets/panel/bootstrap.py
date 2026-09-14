@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
+import sqlite3
 
 from PySide6 import QtGui
 
@@ -14,6 +15,7 @@ import public
 from libs import identity, ihda_system, log_handler, note_syntax
 from libs.domain import LibraryContext
 from libs.operation_journal import recover_operations
+from libs.repository import LibraryUnavailable
 from view import (
     ihda_category_view,
     ihda_history_view,
@@ -35,14 +37,22 @@ class BootstrapMixin:
         else:
             db_filepath = self._db_filepath
             assert isinstance(db_filepath, pathlib.Path)
-            recover_operations(db_filepath.parent)
-            db_api = self._services.open_database(db_filepath)
-            # A local library has one owner: adopt the row it already has.
-            self._user = identity.resolve_local_user(db_api.list_user_ids())
-            db_api.close()
-            self._library = LibraryContext.from_preference(self._preference, self._user)
-            self._repository = self._services.repository(self._library)
-            self._repository.ensure_user(self._user)
+            try:
+                recover_operations(db_filepath.parent)
+                db_api = self._services.open_database(db_filepath)
+                # A local library has one owner: adopt the row it already has.
+                self._user = identity.resolve_local_user(db_api.list_user_ids())
+                db_api.close()
+                self._library = LibraryContext.from_preference(
+                    self._preference, self._user
+                )
+                self._repository = self._services.repository(self._library)
+                self._repository.ensure_user(self._user)
+            except sqlite3.Error as error:
+                # A locked or unreadable library must not surface as a raw traceback.
+                raise LibraryUnavailable(
+                    f"library database unavailable: {error}"
+                ) from error
 
     def _init_set(self) -> None:
         # is ready iHDA
@@ -324,6 +334,11 @@ class BootstrapMixin:
             lambda: self._set_theme(theme=public.Name.darkblue_theme)
         )
         self.actionHelp.triggered.connect(self._slot_help)
+        self.actionOpen_Log_Folder = QtGui.QAction("Open log folder", self)
+        self.menuHelp.addAction(self.actionOpen_Log_Folder)
+        self.actionOpen_Log_Folder.triggered.connect(
+            lambda: ihda_system.IHDASystem.open_folder(dirpath=self._log_dirpath)
+        )
         self.actionAbout.triggered.connect(self._slot_about)
         self.actionReset.triggered.connect(self._slot_cfg_reset)
         self.actionOpen_the_hda_directory.triggered.connect(

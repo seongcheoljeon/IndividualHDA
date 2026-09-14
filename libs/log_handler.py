@@ -6,10 +6,50 @@ from __future__ import annotations
 # modified date:
 # description:
 import logging
+import logging.handlers
+import os
+import re
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
+
+_FILE_HANDLER_MARK = "_ihda_file_handler"
+_TAGS = re.compile(r"<[^>]+>")
+
+
+class _PlainFormatter(logging.Formatter):
+    """Panel messages carry <font> markup; the file gets plain text."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        return _TAGS.sub("", super().format(record))
+
+
+def install_file_logging(directory: Path) -> Path:
+    """Rotating file log shared by every panel in the process; idempotent.
+
+    INFO by default, DEBUG when IHDA_DEBUG is set. Handlers filter by level, so the
+    root logger stays at DEBUG for the panel widget handler.
+    """
+    root = logging.getLogger()
+    for handler in root.handlers:
+        if getattr(handler, _FILE_HANDLER_MARK, False):
+            return Path(handler.baseFilename)  # type: ignore[attr-defined]
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / "ihda.log"
+    handler = logging.handlers.RotatingFileHandler(
+        path, maxBytes=2 * 1024 * 1024, backupCount=5, encoding="utf-8"
+    )
+    handler.setFormatter(
+        _PlainFormatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+    )
+    handler.setLevel(logging.DEBUG if os.environ.get("IHDA_DEBUG") else logging.INFO)
+    setattr(handler, _FILE_HANDLER_MARK, True)
+    root.addHandler(handler)
+    if root.level == logging.NOTSET or root.level > logging.DEBUG:
+        root.setLevel(logging.DEBUG)
+    return path
 
 
 class _LogRelay(QtCore.QObject):

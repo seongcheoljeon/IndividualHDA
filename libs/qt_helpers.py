@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from importlib import import_module
+from pathlib import Path
 
-from PySide6 import QtCore
+from PySide6 import QtCore, QtWidgets
 
 
 def wildcard_expression(
@@ -21,6 +22,30 @@ def wildcard_expression(
             QtCore.QRegularExpression.PatternOption.CaseInsensitiveOption
         )
     return expression
+
+
+def startup_fallback(error: BaseException, log_dir: Path) -> QtWidgets.QWidget:
+    """What Houdini shows instead of a traceback when the panel cannot start."""
+    from libs.ihda_system import IHDASystem
+
+    widget = QtWidgets.QWidget()
+    layout = QtWidgets.QVBoxLayout(widget)
+    title = QtWidgets.QLabel("<b>Individual HDA could not start</b>")
+    message = QtWidgets.QLabel(f"{type(error).__name__}: {error}")
+    message.setWordWrap(True)
+    message.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
+    hint = QtWidgets.QLabel(
+        "Details are in the log folder. Fix the cause (Preferences data folder, a "
+        "locked library database, a broken settings file) and reopen the panel tab."
+    )
+    hint.setWordWrap(True)
+    button = QtWidgets.QPushButton("Open log folder")
+    button.clicked.connect(lambda: IHDASystem.open_folder(dirpath=log_dir))
+    for item in (title, message, hint):
+        layout.addWidget(item)
+    layout.addWidget(button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
+    layout.addStretch(1)
+    return widget
 
 
 def dark_stylesheet() -> str:
