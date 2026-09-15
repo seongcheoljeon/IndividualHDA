@@ -27,6 +27,11 @@ unchanged apart from the items below.
   An installed model shows a check mark, its button reads Update (Ollama only
   fetches changed layers) and Enter applies it instead of re-pulling.
   A Remove button deletes an installed model from Ollama after confirmation.
+  qwen3-vl requests carry an empty `<think>` prefill: Ollama 0.34's
+  `qwen3-vl-thinking` parser ignores `think: false`, so the model spent its
+  whole answer budget thinking and the suggestion failed with "no JSON object";
+  the family is read from `/api/show` once per request. An answer made only of
+  thinking is reported as such, and a parse failure quotes the answer's start.
 
 ### Hardening
 

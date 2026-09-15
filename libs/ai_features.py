@@ -107,7 +107,11 @@ def _extract_json(text: str) -> Any:
     if candidate is None:
         start, end = text.find("{"), text.rfind("}")
         if start < 0 or end <= start:
-            raise ValueError("no JSON object in the model answer")
+            excerpt = " ".join(text.split())[:120]
+            raise ValueError(
+                "no JSON object in the model answer"
+                + (f": {excerpt!r}" if excerpt else " (the answer was empty)")
+            )
         candidate = text[start : end + 1]
     return json.loads(candidate)
 

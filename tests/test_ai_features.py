@@ -69,10 +69,16 @@ def test_parse_describe_is_tolerant(answer: str) -> None:
 
 
 def test_parse_describe_rejects_garbage() -> None:
-    with pytest.raises(ValueError):
+    # The error quotes the start of the answer so the log tells what came back.
+    with pytest.raises(ValueError, match="no JSON object.*'I cannot help with that.'"):
         parse_describe("I cannot help with that.")
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="answer was empty"):
+        parse_describe("")
+    with pytest.raises(ValueError, match="no JSON object"):
         parse_describe("[1, 2, 3]")
+    with pytest.raises(ValueError) as info:
+        parse_describe("x" * 500)
+    assert len(str(info.value)) < 200
 
 
 def test_describe_asset_round_trip(tmp_path: Path) -> None:

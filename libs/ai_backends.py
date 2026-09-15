@@ -118,17 +118,34 @@ def stream_json(
         raise AIError(f"request failed: {error}") from error
 
 
+# Assistant-turn prefixes that switch thinking off per model family (Ollama
+# ``details.family``), sent as a trailing assistant message. Ollama 0.34 ships
+# qwen3-vl with the ``qwen3-vl-thinking`` parser, whose ``Init`` ignores the
+# request's ``think`` flag and starts collecting *thinking* until a ``</think>``
+# arrives, while the renderer adds no empty think block for ``think: false``;
+# the model then reasons until ``num_predict`` is spent and ``content`` stays
+# empty. A non-empty assistant prefill flips the parser into content mode
+# (model/parsers/qwen3vl.go, setInitialState) and this exact prefix is what the
+# Hugging Face chat template emits for ``enable_thinking=false``, so the model
+# skips reasoning too. gemma4's parser honors ``think`` and needs nothing.
+NO_THINK_PREFILL: dict[str, str] = {"qwen3vl": "<think>\n\n</think>\n\n"}
+SHOW_TIMEOUT_SEC = 5.0
+
+
 class OllamaProvider:
     """Ollama /api/chat, streamed; images travel as base64 on the user message.
 
     ``think`` is sent as false: thinking models (qwen3, gemma4) otherwise reason
     at length before a one-word or JSON answer, and Ollama only rejects
-    ``think: true`` on models without the capability (server/routes.go).
+    ``think: true`` on models without the capability (server/routes.go). Model
+    families whose Ollama parser ignores the flag get a ``NO_THINK_PREFILL``
+    assistant prefix, chosen from ``/api/show`` once per provider instance.
     """
 
     def __init__(self, settings: AISettings) -> None:
         self.endpoint = normalize_endpoint(settings.endpoint, "http://localhost:11434")
         self.model = settings.model.strip()
+        self._no_think_prefill: str | None = None  # resolved on the first call
         # From the final chunk of the last call: "load" and "total" seconds,
         # "prompt_tokens", "tokens" and "tokens_per_s" (Ollama API: eval_count /
         # eval_duration * 1e9).
@@ -148,6 +165,9 @@ class OllamaProvider:
         if prompt.system:
             messages.append({"role": "system", "content": prompt.system})
         messages.append(user)
+        prefill = self.no_think_prefill()
+        if prefill:
+            messages.append({"role": "assistant", "content": prefill})
         payload: dict[str, Any] = {
             "model": self.model,
             "stream": True,
@@ -157,15 +177,68 @@ class OllamaProvider:
         if prompt.max_tokens is not None:
             payload["options"] = {"num_predict": prompt.max_tokens}
         parts: list[str] = []
+        thinking_chars = 0
+        done_reason = ""
         self.last_timings = {}
         for event in stream_json(f"{self.endpoint}/api/chat", payload):
             if "error" in event:
                 raise AIError(str(event["error"]))
-            parts.append(str((event.get("message") or {}).get("content", "")))
+            message = event.get("message") or {}
+            parts.append(str(message.get("content", "")))
+            thinking_chars += len(str(message.get("thinking", "")))
             if event.get("done"):
+                done_reason = str(event.get("done_reason", ""))
                 self.last_timings = _timings(event)
                 break
-        return "".join(parts)
+        text = "".join(parts)
+        if not text.strip() and thinking_chars:
+            raise AIError(_only_thinking_message(self.model, prompt, done_reason))
+        return text
+
+    def no_think_prefill(self) -> str:
+        """Assistant prefix that disables thinking for this model, or "".
+
+        Looked up from ``/api/show`` (``details.family`` plus the ``thinking``
+        capability) and cached on the instance. A server that does not answer
+        yields "" without caching, so the chat call reports the real error.
+        """
+        if self._no_think_prefill is not None:
+            return self._no_think_prefill
+        try:
+            info = post_json(
+                f"{self.endpoint}/api/show",
+                {"model": self.model},
+                timeout=SHOW_TIMEOUT_SEC,
+            )
+        except AIError:
+            return ""
+        details = info.get("details") or {}
+        families = {str(details.get("family", ""))}
+        families.update(str(f) for f in details.get("families") or ())
+        prefill = ""
+        if "thinking" in (info.get("capabilities") or ()):
+            for family, prefix in NO_THINK_PREFILL.items():
+                if family in families:
+                    prefill = prefix
+        self._no_think_prefill = prefill
+        return prefill
+
+
+def _only_thinking_message(model: str, prompt: Prompt, done_reason: str) -> str:
+    if done_reason == "length":
+        budget = (
+            f"its whole {prompt.max_tokens}-token answer budget"
+            if prompt.max_tokens is not None
+            else "its whole answer budget"
+        )
+        return (
+            f"{model} spent {budget} thinking and returned no text; "
+            "update Ollama or choose another model in Tools > Local AI Models…"
+        )
+    return (
+        f"{model} answered only in its thinking channel and returned no text; "
+        "update Ollama or choose another model in Tools > Local AI Models…"
+    )
 
 
 def _timings(event: dict[str, Any]) -> dict[str, float]:

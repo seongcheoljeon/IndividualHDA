@@ -94,6 +94,17 @@ own machine through [Ollama](https://ollama.com).
 Only asset metadata and the thumbnail are sent to the model, never file paths
 or user names. Nothing is written to the library without your click.
 
+Recommended models are `qwen3-vl` (4b, 8b) and `gemma4` (12b, 26b). Requests
+disable model thinking, so an answer takes seconds rather than minutes; for
+`qwen3-vl` the panel also sends an empty think block, because Ollama 0.34
+otherwise lets the model think until its answer budget runs out. **Test
+connection** in the model dialog shows load and generation time.
+
+If the log reports that the model *spent its answer budget thinking* or
+*answered only in its thinking channel*, update Ollama or choose another model
+in **Tools → Local AI Models…**. A *no JSON object* error quotes the start of
+the answer so you can see what the model returned.
+
 ## Data safety
 
 The database uses SQLite schema v4 with foreign keys, validation checks, normalized tags, indexes, and transactional migrations. Existing databases are backed up before an upgrade.
@@ -131,7 +142,7 @@ It uses temporary files and a fresh Houdini process. Architecture, schema, recov
 
 ## Support
 
-<a href="https://buymeacoffee.com/seongcheol"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a book&emoji=📖&slug=seongcheol&button_colour=40DCA5&font_colour=ffffff&font_family=Bree&outline_colour=000000&coffee_colour=FFDD00" alt="Buy me a book" /></a>
+<a href="https://buymeacoffee.com/seongcheol"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20book&emoji=%F0%9F%93%96&slug=seongcheol&button_colour=40DCA5&font_colour=ffffff&font_family=Bree&outline_colour=000000&coffee_colour=FFDD00" alt="Buy me a book" /></a>
 
 ## License
 

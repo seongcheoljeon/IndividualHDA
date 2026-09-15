@@ -173,17 +173,26 @@ def test_ollama_provider_request_shape(monkeypatch: pytest.MonkeyPatch) -> None:
             },
         )
     )
+    show = {"details": {"family": "gemma4"}, "capabilities": ["thinking"]}
     monkeypatch.setattr(
-        ai_backends, "_open", opener({"http://h:11434/api/chat": reply}, calls)
+        ai_backends,
+        "_open",
+        opener(
+            {"http://h:11434/api/chat": reply, "http://h:11434/api/show": show}, calls
+        ),
     )
     provider = OllamaProvider(
-        AISettings(kind="local", endpoint="http://h:11434/", model="qwen3-vl:8b")
+        AISettings(kind="local", endpoint="http://h:11434/", model="gemma4:12b")
     )
     text = provider.complete(Prompt("describe", system="be brief", images=(PNG,)))
     assert text == "OK"
+    # /api/show is consulted once per provider, then the chat request follows.
+    assert [c[0].rsplit("/", 1)[1] for c in calls] == ["show", "chat"]
+    assert json.loads(calls[0][1]) == {"model": "gemma4:12b"}
     body = json.loads(calls[-1][1])
-    assert body["model"] == "qwen3-vl:8b" and body["stream"] is True
+    assert body["model"] == "gemma4:12b" and body["stream"] is True
     assert body["think"] is False and "options" not in body
+    assert body["messages"][-1]["role"] == "user"  # gemma4 honors think: no prefill
     assert provider.last_timings == {
         "load": 24.5,
         "total": 26.0,
@@ -199,6 +208,7 @@ def test_ollama_provider_request_shape(monkeypatch: pytest.MonkeyPatch) -> None:
         "OK  (model load 24.5 s, total 26.0 s, 3 tokens at 2.0 tok/s)"
     )
     assert json.loads(calls[-1][1])["options"] == {"num_predict": 8}
+    assert "show" not in [c[0].rsplit("/", 1)[1] for c in calls[2:]]
 
     error = json.dumps({"error": "model 'x' not found"}).encode()
     monkeypatch.setattr(
@@ -238,3 +248,115 @@ def test_ollama_provider_request_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(AIError, match="HTTP 404") as info:
         provider.complete(Prompt("x"))
     assert info.value.status == 404
+
+
+def _chat_stream(*chunks: dict[str, Any]) -> bytes:
+    return b"\n".join(json.dumps(chunk).encode() for chunk in chunks)
+
+
+def test_qwen3_vl_gets_an_empty_think_prefill(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ollama 0.34's qwen3-vl parser ignores think:false; the prefill fixes it."""
+    calls: list[Any] = []
+    reply = _chat_stream(
+        {"message": {"role": "assistant", "content": "{}"}, "done": False},
+        {"message": {"role": "assistant", "content": ""}, "done": True},
+    )
+    show = {
+        "details": {"family": "qwen3vl", "families": ["qwen3vl"]},
+        "capabilities": ["completion", "vision", "tools", "thinking"],
+    }
+    monkeypatch.setattr(
+        ai_backends,
+        "_open",
+        opener(
+            {"http://h:11434/api/chat": reply, "http://h:11434/api/show": show}, calls
+        ),
+    )
+    provider = OllamaProvider(
+        AISettings(kind="local", endpoint="http://h:11434", model="qwen3-vl:4b")
+    )
+    assert provider.complete(Prompt("describe", system="json")) == "{}"
+    messages = json.loads(calls[-1][1])["messages"]
+    assert [m["role"] for m in messages] == ["system", "user", "assistant"]
+    assert messages[-1]["content"] == "<think>\n\n</think>\n\n"
+    assert calls[0][2] == ai_backends.SHOW_TIMEOUT_SEC
+
+    # The same family without the thinking capability (an -instruct build) and a
+    # server that cannot describe the model both get a plain request.
+    for show_reply in (
+        {"details": {"family": "qwen3vl"}, "capabilities": ["completion", "vision"]},
+        urllib.error.URLError("down"),
+    ):
+        calls.clear()
+        monkeypatch.setattr(
+            ai_backends,
+            "_open",
+            opener(
+                {
+                    "http://h:11434/api/chat": reply,
+                    "http://h:11434/api/show": show_reply,
+                },
+                calls,
+            ),
+        )
+        provider = OllamaProvider(
+            AISettings(kind="local", endpoint="http://h:11434", model="qwen3-vl:4b")
+        )
+        assert provider.complete(Prompt("describe")) == "{}"
+        assert json.loads(calls[-1][1])["messages"][-1]["role"] == "user"
+    # An unreachable /api/show is not cached: the next call asks again.
+    assert [c[0].rsplit("/", 1)[1] for c in calls] == ["show", "chat"]
+    provider.complete(Prompt("describe"))
+    assert [c[0].rsplit("/", 1)[1] for c in calls] == ["show", "chat", "show", "chat"]
+
+
+def test_answer_made_only_of_thinking_is_an_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[Any] = []
+    show = {"details": {"family": "gemma4"}, "capabilities": ["thinking"]}
+    provider = OllamaProvider(
+        AISettings(kind="local", endpoint="http://h:11434", model="gemma4:12b")
+    )
+    budget_spent = _chat_stream(
+        {"message": {"role": "assistant", "thinking": "Let me", "content": ""}},
+        {"message": {"role": "assistant", "thinking": " think…", "content": ""}},
+        {
+            "message": {"role": "assistant", "content": ""},
+            "done": True,
+            "done_reason": "length",
+        },
+    )
+    monkeypatch.setattr(
+        ai_backends,
+        "_open",
+        opener(
+            {"http://h:11434/api/chat": budget_spent, "http://h:11434/api/show": show},
+            calls,
+        ),
+    )
+    with pytest.raises(AIError, match="whole 400-token answer budget thinking"):
+        provider.complete(Prompt("describe", max_tokens=400))
+
+    misrouted = _chat_stream(
+        {"message": {"role": "assistant", "thinking": '{"a": 1}', "content": ""}},
+        {
+            "message": {"role": "assistant", "content": ""},
+            "done": True,
+            "done_reason": "stop",
+        },
+    )
+    monkeypatch.setattr(
+        ai_backends, "_open", opener({"http://h:11434/api/chat": misrouted}, calls)
+    )
+    with pytest.raises(AIError, match="only in its thinking channel"):
+        provider.complete(Prompt("describe"))
+
+    # No thinking and no text stays an empty answer for the caller to judge.
+    empty = _chat_stream(
+        {"message": {"content": ""}, "done": True, "done_reason": "stop"}
+    )
+    monkeypatch.setattr(
+        ai_backends, "_open", opener({"http://h:11434/api/chat": empty}, calls)
+    )
+    assert provider.complete(Prompt("describe")) == ""
