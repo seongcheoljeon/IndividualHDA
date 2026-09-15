@@ -142,7 +142,19 @@ def test_vram_detection_and_recommendation(monkeypatch: pytest.MonkeyPatch) -> N
 
 def test_ollama_provider_request_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: list[Any] = []
-    reply = {"message": {"role": "assistant", "content": "OK"}}
+    reply = b"\n".join(
+        json.dumps(chunk).encode()
+        for chunk in (
+            {"message": {"role": "assistant", "content": "O"}, "done": False},
+            {"message": {"role": "assistant", "content": "K"}, "done": False},
+            {
+                "message": {"role": "assistant", "content": ""},
+                "done": True,
+                "load_duration": 24_500_000_000,
+                "total_duration": 26_000_000_000,
+            },
+        )
+    )
     monkeypatch.setattr(
         ai_backends, "_open", opener({"http://h:11434/api/chat": reply}, calls)
     )
@@ -152,13 +164,29 @@ def test_ollama_provider_request_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     text = provider.complete(Prompt("describe", system="be brief", images=(PNG,)))
     assert text == "OK"
     body = json.loads(calls[-1][1])
-    assert body["model"] == "qwen3-vl:8b" and body["stream"] is False
+    assert body["model"] == "qwen3-vl:8b" and body["stream"] is True
+    assert body["think"] is False and "options" not in body
+    assert provider.last_timings == {"load": 24.5, "total": 26.0}
     assert body["messages"][0] == {"role": "system", "content": "be brief"}
     assert body["messages"][1]["content"] == "describe"
     assert body["messages"][1]["images"][0].startswith("iVBORw0KGgo")
     assert calls[-1][2] == ai_backends.TIMEOUT_SEC
-    assert probe(provider) == "OK"
+    assert probe(provider) == "OK  (model load 24.5 s, total 26.0 s)"
+    assert json.loads(calls[-1][1])["options"] == {"num_predict": 8}
 
+    error = json.dumps({"error": "model 'x' not found"}).encode()
+    monkeypatch.setattr(
+        ai_backends, "_open", opener({"http://h:11434/api/chat": error}, calls)
+    )
+    with pytest.raises(AIError, match="not found"):
+        provider.complete(Prompt("x"))
+    monkeypatch.setattr(
+        ai_backends,
+        "_open",
+        opener({"http://h:11434/api/chat": TimeoutError("timed out")}, calls),
+    )
+    with pytest.raises(AIError, match="request failed: timed out"):
+        provider.complete(Prompt("x"))
     with pytest.raises(AIError, match="PNG and JPEG"):
         provider.complete(Prompt("x", images=(b"gif89a",)))
     with pytest.raises(AIError, match="choose a model"):

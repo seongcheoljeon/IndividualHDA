@@ -22,6 +22,10 @@ unchanged apart from the items below.
 - **Local AI.** Ollama backend; Tools > Local AI Models… detects the server,
   recommends a vision-capable model for the GPU, downloads it with progress and
   applies it; an AI button suggests a note and tags for the selected asset.
+  Chat requests stream and disable model thinking, so a slow first load no
+  longer trips the 60 s timeout; Test connection reports load and total time.
+  An installed model shows a check mark, its button reads Update (Ollama only
+  fetches changed layers) and Enter applies it instead of re-pulling.
 
 ### Hardening
 

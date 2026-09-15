@@ -71,12 +71,38 @@ def test_download_recommended_then_use(app: Any) -> None:
     assert "GPU memory: 12" in dialog.vram_label.text()
     assert dialog.selected_model() == "gemma4:12b"  # preselected by VRAM
     assert dialog.download_button.isEnabled() and not dialog.use_button.isEnabled()
+    marks = {
+        dialog.tree.topLevelItem(row).text(0): dialog.tree.topLevelItem(row).text(1)
+        for row in range(dialog.tree.topLevelItemCount())
+    }
+    assert marks["qwen3-vl:4b"] == "\u2713" and marks["gemma4:12b"] == ""
+    assert dialog.download_button.text() == "Download"
+    assert dialog.download_button.isDefault() and not dialog.use_button.isDefault()
 
     dialog.download()
     wait_tasks(app, dialog)  # pull
     wait_tasks(app, dialog)  # follow-up refresh
     assert dialog.progress_bar.value() == 100 and dialog.installed_list.count() == 2
+    assert dialog.status.text() == "Download complete"
     assert dialog.use_button.isEnabled()
+    # Installed now: the pull button turns into an update check and Enter applies.
+    assert dialog.download_button.text() == "Update"
+    assert dialog.use_button.isDefault() and not dialog.download_button.isDefault()
+
+    def pull_up_to_date(
+        endpoint: str, model: str, *, progress: Any, cancel: threading.Event
+    ) -> bool:
+        progress("pulling manifest", 0, 0)
+        progress("pulling 1278394b6936", 7_600_000_000, 7_600_000_000)  # present
+        progress("success", 0, 0)
+        return True
+
+    client.pull = pull_up_to_date
+    dialog.download()
+    assert dialog.status.text() == "Checking gemma4:12b for updates…"
+    wait_tasks(app, dialog)
+    wait_tasks(app, dialog)
+    assert dialog.status.text() == "gemma4:12b is up to date"
     dialog.use_selected()
     assert chosen == [
         AISettings(kind="local", endpoint="http://localhost:11434", model="gemma4:12b")

@@ -45,6 +45,7 @@ class Prompt:
     text: str
     system: str = ""
     images: tuple[bytes, ...] = ()  # encoded image bytes for multimodal backends
+    max_tokens: int | None = None  # output cap; None lets the backend decide
 
 
 class AIProvider(Protocol):

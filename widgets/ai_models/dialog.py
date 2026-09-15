@@ -55,6 +55,8 @@ class LocalModelsDialog(QtWidgets.QDialog):
         self._destroying = False
         self._installed: set[str] = set()
         self._version: str | None = None
+        self._pulling = ""  # model of the running pull
+        self._pull_transferred = False  # a layer actually came down the wire
         self.progress.connect(self._on_progress)
         self._build(endpoint)
         QtCore.QTimer.singleShot(0, self.refresh)
@@ -108,12 +110,15 @@ class LocalModelsDialog(QtWidgets.QDialog):
         self.vram_label = QtWidgets.QLabel("GPU memory: detecting…")
         rec_layout.addWidget(self.vram_label)
         self.tree = QtWidgets.QTreeWidget()
-        self.tree.setHeaderLabels(["Model", "Download", "Min GPU", "Vision", "Note"])
+        self.tree.setHeaderLabels(
+            ["Model", "Installed", "Download", "Min GPU", "Vision", "Note"]
+        )
         self.tree.setRootIsDecorated(False)
         for choice in self.client.RECOMMENDED:
             item = QtWidgets.QTreeWidgetItem(
                 [
                     choice.name,
+                    "",
                     f"{choice.download_gb:.1f} GB",
                     f"{choice.min_vram_gb:g} GB",
                     "yes" if choice.vision else "no",
@@ -183,12 +188,22 @@ class LocalModelsDialog(QtWidgets.QDialog):
     def _sync_buttons(self) -> None:
         model = self.selected_model()
         busy = self.tasks.busy
+        installed = bool(model) and _installed_name(model) in self._installed
+        # Pulling an installed model only fetches layers whose digest changed, so
+        # the button becomes "Update" instead of being disabled.
+        self.download_button.setText("Update" if installed else "Download")
+        self.download_button.setToolTip(
+            f"{model} is installed; downloads only if ollama.com has a newer version"
+            if installed
+            else "Download the selected model into Ollama"
+        )
         self.download_button.setEnabled(
             bool(model) and self._version is not None and not busy
         )
-        self.use_button.setEnabled(
-            bool(model) and _installed_name(model) in self._installed and not busy
-        )
+        self.use_button.setEnabled(installed and not busy)
+        # Enter applies an installed model rather than re-pulling it.
+        self.use_button.setDefault(installed and not busy)
+        self.download_button.setDefault(bool(model) and not installed and not busy)
         self.test_button.setEnabled(
             bool(model) and self._version is not None and not busy
         )
@@ -232,6 +247,7 @@ class LocalModelsDialog(QtWidgets.QDialog):
                 str(item.data(0, QtCore.Qt.ItemDataRole.UserRole))
             )
             item.setText(0, item.data(0, QtCore.Qt.ItemDataRole.UserRole))
+            item.setText(1, "\u2713" if installed in self._installed else "")
             item.setForeground(
                 0,
                 QtGui.QBrush(
@@ -252,7 +268,12 @@ class LocalModelsDialog(QtWidgets.QDialog):
         endpoint = self.endpoint_url()
         client = self.client
         self.progress_bar.setRange(0, 0)  # busy until the first total arrives
-        self.status.setText(f"Downloading {model}…")
+        self._pulling, self._pull_transferred = model, False
+        self.status.setText(
+            f"Checking {model} for updates…"
+            if _installed_name(model) in self._installed
+            else f"Downloading {model}…"
+        )
         self._run(
             lambda token: client.pull(
                 endpoint, model, progress=self.progress.emit, cancel=token
@@ -263,6 +284,8 @@ class LocalModelsDialog(QtWidgets.QDialog):
     @QtCore.Slot(str, int, int)
     def _on_progress(self, status: str, completed: int, total: int) -> None:
         if total > 0:
+            if completed < total:
+                self._pull_transferred = True
             self.progress_bar.setRange(0, 100)
             self.progress_bar.setValue(int(completed * 100 / total))
         self.status.setText(
@@ -273,7 +296,11 @@ class LocalModelsDialog(QtWidgets.QDialog):
         if finished:
             self.progress_bar.setRange(0, 100)
             self.progress_bar.setValue(100)
-            self.status.setText("Download complete")
+            self.status.setText(
+                "Download complete"
+                if self._pull_transferred
+                else f"{self._pulling} is up to date"
+            )
             QtCore.QTimer.singleShot(0, self.refresh)
         else:
             self.progress_bar.setRange(0, 100)
@@ -288,7 +315,7 @@ class LocalModelsDialog(QtWidgets.QDialog):
         )
 
     def _tested(self, answer: Any) -> None:
-        self.status.setText(f"Connection OK, model answered: {answer!r}")
+        self.status.setText(f"Connection OK, model answered: {answer}")
 
     def use_selected(self) -> None:
         settings = self._settings()
