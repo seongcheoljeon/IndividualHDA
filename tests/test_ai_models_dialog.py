@@ -47,6 +47,7 @@ def fake_client(version: str | None, installed: list[str], vram: float | None) -
         ],
         detect_vram_gb=lambda: vram,
         pull=pull,
+        delete_model=lambda endpoint, model: installed.remove(model),
     )
 
 
@@ -165,6 +166,26 @@ def test_preference_button_applies_settings_without_saving(
     preference.shutdown()
     app.processEvents()
     preference.close()
+
+
+def test_remove_installed_model_asks_first_then_refreshes(app: Any) -> None:
+    installed = ["qwen3-vl:4b", "gemma4:12b"]
+    dialog = LocalModelsDialog(client=fake_client("0.12.1", installed, 12.0))
+    wait_tasks(app, dialog)
+    assert not dialog.remove_button.isEnabled()
+    dialog.installed_list.setCurrentRow(1)  # gemma4:12b (sorted by the client)
+    assert dialog.remove_button.isEnabled()
+    asked: list[str] = []
+    dialog.confirm_remove = lambda model: asked.append(model) or False  # type: ignore[method-assign]
+    dialog.remove_selected()
+    assert asked == ["gemma4:12b"] and not dialog.tasks.busy
+    dialog.confirm_remove = lambda model: True  # type: ignore[method-assign]
+    dialog.remove_selected()
+    wait_tasks(app, dialog)  # delete
+    wait_tasks(app, dialog)  # refresh
+    assert dialog.status.text() == "Removed gemma4:12b"
+    assert dialog.installed_list.count() == 1 and installed == ["qwen3-vl:4b"]
+    dialog.close()
 
 
 def test_progress_survives_byte_counts_beyond_32_bits(app: Any) -> None:

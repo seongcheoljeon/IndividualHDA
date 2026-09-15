@@ -26,6 +26,7 @@ unchanged apart from the items below.
   longer trips the 60 s timeout; Test connection reports load and total time.
   An installed model shows a check mark, its button reads Update (Ollama only
   fetches changed layers) and Enter applies it instead of re-pulling.
+  A Remove button deletes an installed model from Ollama after confirmation.
 
 ### Hardening
 

@@ -117,6 +117,21 @@ def test_pull_streams_progress_and_handles_cancel_and_errors(
         )
 
 
+def test_delete_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[Any] = []
+    monkeypatch.setattr(
+        ollama, "_open", opener({"http://h:11434/api/delete": b""}, calls)
+    )
+    ollama.delete_model("http://h:11434", "gemma4:12b")
+    assert json.loads(calls[-1][1]) == {"model": "gemma4:12b"}
+    missing = urllib.error.HTTPError("u", 404, "nf", {}, io.BytesIO(b""))
+    monkeypatch.setattr(
+        ollama, "_open", opener({"http://h:11434/api/delete": missing}, calls)
+    )
+    with pytest.raises(AIError, match="HTTP 404"):
+        ollama.delete_model("http://h:11434", "nope:1b")
+
+
 def test_vram_detection_and_recommendation(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_run(args: list[str], **kwargs: Any) -> Any:
         class Out:

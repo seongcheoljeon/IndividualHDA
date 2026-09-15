@@ -78,6 +78,23 @@ def version(endpoint: str, timeout: float = 2.0) -> str | None:
         return None
 
 
+def delete_model(endpoint: str, model: str, timeout: float = 30.0) -> None:
+    """DELETE /api/delete; 404 (not installed) is reported as AIError."""
+    request = urllib.request.Request(
+        f"{endpoint_url(endpoint)}/api/delete",
+        data=json.dumps({"model": model}).encode("utf-8"),
+        method="DELETE",
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with _open(request, timeout=timeout):
+            pass
+    except urllib.error.HTTPError as error:
+        raise AIError(f"could not remove {model}: HTTP {error.code}") from error
+    except (urllib.error.URLError, OSError, TimeoutError) as error:
+        raise AIError(f"could not remove {model}: {error}") from error
+
+
 def installed_models(endpoint: str, timeout: float = 5.0) -> list[InstalledModel]:
     try:
         payload = _get_json(f"{endpoint_url(endpoint)}/api/tags", timeout)

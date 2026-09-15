@@ -101,6 +101,16 @@ class LocalModelsDialog(QtWidgets.QDialog):
         self.installed_list = QtWidgets.QListWidget()
         self.installed_list.itemSelectionChanged.connect(self._sync_buttons)
         installed_layout.addWidget(self.installed_list)
+        remove_row = QtWidgets.QHBoxLayout()
+        remove_row.addStretch(1)
+        self.remove_button = QtWidgets.QPushButton("Remove")
+        self.remove_button.setToolTip(
+            "Delete the selected installed model from Ollama (frees its disk space)"
+        )
+        self.remove_button.setEnabled(False)
+        self.remove_button.clicked.connect(self.remove_selected)
+        remove_row.addWidget(self.remove_button)
+        installed_layout.addLayout(remove_row)
         layout.addWidget(installed)
 
         recommended = QtWidgets.QGroupBox(
@@ -201,12 +211,43 @@ class LocalModelsDialog(QtWidgets.QDialog):
             bool(model) and self._version is not None and not busy
         )
         self.use_button.setEnabled(installed and not busy)
+        self.remove_button.setEnabled(bool(self._installed_selection()) and not busy)
         # Enter applies an installed model rather than re-pulling it.
         self.use_button.setDefault(installed and not busy)
         self.download_button.setDefault(bool(model) and not installed and not busy)
         self.test_button.setEnabled(
             bool(model) and self._version is not None and not busy
         )
+
+    def _installed_selection(self) -> str:
+        chosen = self.installed_list.selectedItems()
+        return chosen[0].text().split("  ")[0] if chosen else ""
+
+    def confirm_remove(self, model: str) -> bool:
+        """Yes/No dialog; tests replace this attribute."""
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Remove model",
+            f"Delete {model} from Ollama?\nThe download can be repeated later.",
+        )
+        return answer == QtWidgets.QMessageBox.StandardButton.Yes
+
+    def remove_selected(self) -> None:
+        model = self._installed_selection()
+        if not model or not self.confirm_remove(model):
+            return
+        endpoint = self.endpoint_url()
+        client = self.client
+        self.status.setText(f"Removing {model}…")
+        self._run(
+            lambda token: client.delete_model(endpoint, model) or model,
+            self._removed,
+            cancellable=False,
+        )
+
+    def _removed(self, model: Any) -> None:
+        self.status.setText(f"Removed {model}")
+        QtCore.QTimer.singleShot(0, self.refresh)
 
     def _settings(self) -> AISettings:
         return AISettings(
