@@ -20,6 +20,7 @@ from libs.domain import AssetData
 MAX_IMAGE_BYTES = 2 * 1024 * 1024
 MAX_VOCABULARY = 40
 MAX_TAGS = 12
+MAX_ANSWER_TOKENS = 400  # two sentences plus tags in JSON; stops a runaway answer
 
 SYSTEM = (
     "You describe Houdini digital assets for a studio asset library. "
@@ -96,6 +97,7 @@ def build_describe_prompt(
         text="\n".join(lines),
         system=SYSTEM,
         images=(image,) if image is not None else (),
+        max_tokens=MAX_ANSWER_TOKENS,
     )
 
 

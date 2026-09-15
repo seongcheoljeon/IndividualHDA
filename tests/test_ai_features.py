@@ -100,6 +100,7 @@ def test_describe_asset_round_trip(tmp_path: Path) -> None:
         and "기존 노트" in seen[0].text
         and "점" in seen[0].text
     )
+    assert seen[0].max_tokens == 400
     (tmp_path / "big.png").write_bytes(PNG + b"0" * (3 * 1024 * 1024))
     describe_asset(Fake(), asset, thumbnail=tmp_path / "big.png")
     assert seen[1].images == ()  # oversized thumbnails are skipped, not sent

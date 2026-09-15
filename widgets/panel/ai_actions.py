@@ -11,6 +11,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 import public
 from libs import log_handler
+from libs.ai_backends import format_timings
 from libs.ai_features import Description, describe_asset
 
 
@@ -62,6 +63,7 @@ class AIActionsMixin:
             )
             return
         provider = self._services.ai(settings)
+        self._ai_provider = provider  # timings of the finished call are read from it
         asset = dict(data)
         thumbnail: pathlib.Path | None = None
         if data.get(public.Key.thumbnail_dirpath) and data.get(
@@ -103,9 +105,13 @@ class AIActionsMixin:
         existing = self._split_tag_string(tag_str=self._hda_tags)
         merged = sorted(set(existing) | set(description.tags))
         self.textEdit__tag.setPlainText(self._set_tag_string(merged))
+        timings = format_timings(
+            getattr(getattr(self, "_ai_provider", None), "last_timings", None) or {}
+        )
         log_handler.LogHandler.log_msg(
             method=logging.info,
-            msg="AI suggestion filled the note and tag editors; press the save buttons to keep them",
+            msg="AI suggestion filled the note and tag editors; press the save buttons"
+            " to keep them" + (f" ({timings})" if timings else ""),
         )
 
     @QtCore.Slot(object, object)

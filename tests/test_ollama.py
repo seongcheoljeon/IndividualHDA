@@ -152,6 +152,9 @@ def test_ollama_provider_request_shape(monkeypatch: pytest.MonkeyPatch) -> None:
                 "done": True,
                 "load_duration": 24_500_000_000,
                 "total_duration": 26_000_000_000,
+                "prompt_eval_count": 900,
+                "eval_count": 3,
+                "eval_duration": 1_500_000_000,
             },
         )
     )
@@ -166,12 +169,20 @@ def test_ollama_provider_request_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     body = json.loads(calls[-1][1])
     assert body["model"] == "qwen3-vl:8b" and body["stream"] is True
     assert body["think"] is False and "options" not in body
-    assert provider.last_timings == {"load": 24.5, "total": 26.0}
+    assert provider.last_timings == {
+        "load": 24.5,
+        "total": 26.0,
+        "prompt_tokens": 900.0,
+        "tokens": 3.0,
+        "tokens_per_s": 2.0,
+    }
     assert body["messages"][0] == {"role": "system", "content": "be brief"}
     assert body["messages"][1]["content"] == "describe"
     assert body["messages"][1]["images"][0].startswith("iVBORw0KGgo")
     assert calls[-1][2] == ai_backends.TIMEOUT_SEC
-    assert probe(provider) == "OK  (model load 24.5 s, total 26.0 s)"
+    assert probe(provider) == (
+        "OK  (model load 24.5 s, total 26.0 s, 3 tokens at 2.0 tok/s)"
+    )
     assert json.loads(calls[-1][1])["options"] == {"num_predict": 8}
 
     error = json.dumps({"error": "model 'x' not found"}).encode()
@@ -186,6 +197,18 @@ def test_ollama_provider_request_shape(monkeypatch: pytest.MonkeyPatch) -> None:
         opener({"http://h:11434/api/chat": TimeoutError("timed out")}, calls),
     )
     with pytest.raises(AIError, match="request failed: timed out"):
+        provider.complete(Prompt("x"))
+    # A stream that keeps trickling past the overall ceiling is abandoned.
+    trickle = b"\n".join(
+        json.dumps({"message": {"content": "."}, "done": False}).encode()
+        for _ in range(3)
+    )
+    monkeypatch.setattr(
+        ai_backends, "_open", opener({"http://h:11434/api/chat": trickle}, calls)
+    )
+    clock = iter([0.0, 0.0, 400.0, 400.0, 400.0])
+    monkeypatch.setattr(ai_backends.time, "monotonic", lambda: next(clock))
+    with pytest.raises(AIError, match="gave up after 300 s"):
         provider.complete(Prompt("x"))
     with pytest.raises(AIError, match="PNG and JPEG"):
         provider.complete(Prompt("x", images=(b"gif89a",)))
