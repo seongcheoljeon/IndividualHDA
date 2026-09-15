@@ -139,3 +139,13 @@ def test_preference_button_applies_settings_without_saving(
     preference.shutdown()
     app.processEvents()
     preference.close()
+
+
+def test_progress_survives_byte_counts_beyond_32_bits(app: Any) -> None:
+    dialog = LocalModelsDialog(client=fake_client("0.12.1", [], None))
+    wait_tasks(app, dialog)
+    dialog.progress.emit("pulling abc", 1_200_000_000, 7_298_896_370)
+    app.processEvents()
+    assert dialog.progress_bar.value() == 16
+    assert "1.1 GB / 6.8 GB" in dialog.status.text()
+    dialog.close()

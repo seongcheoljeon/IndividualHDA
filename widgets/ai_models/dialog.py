@@ -29,7 +29,9 @@ def _installed_name(name: str) -> str:
 
 class LocalModelsDialog(QtWidgets.QDialog):
     settingsChosen = QtCore.Signal(object)  # AISettings
-    progress = QtCore.Signal(str, int, int)  # status, completed, total
+    # status, completed bytes, total bytes. `object` keeps Python ints: a Qt `int`
+    # argument is 32-bit and a 7 GB model overflows it (libshiboken Overflow).
+    progress = QtCore.Signal(str, object, object)
 
     def __init__(
         self,
