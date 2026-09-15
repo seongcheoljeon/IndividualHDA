@@ -152,6 +152,9 @@ def main() -> None:
         app.processEvents()
         print("Panel construction and shutdown: PASS", flush=True)
         geo.destroy()
+        from libs.log_handler import uninstall_file_logging
+
+        uninstall_file_logging()  # Windows cannot delete an open ihda.log
         print(
             "Houdini",
             hou.applicationVersionString(),

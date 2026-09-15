@@ -53,6 +53,19 @@ def install_file_logging(directory: Path) -> Path:
     return path
 
 
+def uninstall_file_logging() -> None:
+    """Close the process-wide file handler so its directory can be removed.
+
+    Windows refuses to delete an open log file; callers that remove the
+    configuration directory (reset app properties, host smoke test) run this first.
+    """
+    root = logging.getLogger()
+    for handler in list(root.handlers):
+        if getattr(handler, _FILE_HANDLER_MARK, False):
+            root.removeHandler(handler)
+            handler.close()
+
+
 class _LogRelay(QtCore.QObject):
     message = QtCore.Signal(str)
 

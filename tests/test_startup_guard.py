@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import shutil
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -10,7 +11,7 @@ from typing import Any
 import pytest
 
 import public
-from libs.log_handler import _FILE_HANDLER_MARK, install_file_logging
+from libs.log_handler import install_file_logging, uninstall_file_logging
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,16 +20,9 @@ ROOT = Path(__file__).resolve().parents[1]
 def fresh_file_logging() -> Any:
     """The file handler is process-wide on purpose; each test starts without one."""
 
-    def remove() -> None:
-        root = logging.getLogger()
-        for handler in list(root.handlers):
-            if getattr(handler, _FILE_HANDLER_MARK, False):
-                root.removeHandler(handler)
-                handler.close()
-
-    remove()
+    uninstall_file_logging()
     yield
-    remove()
+    uninstall_file_logging()
 
 
 def load_panel_script(
@@ -67,10 +61,9 @@ def test_file_logging_is_idempotent_and_plain(tmp_path: Path) -> None:
         text = path.read_text(encoding="utf-8")
         assert "보고 done" in text and "<font" not in text
     finally:
-        for handler in root.handlers:
-            if handler not in before:
-                root.removeHandler(handler)
-                handler.close()
+        uninstall_file_logging()
+    assert list(root.handlers) == before
+    shutil.rmtree(tmp_path / "logs")  # closed: removable on Windows too
 
 
 def test_panel_script_returns_fallback_widget_on_failure(

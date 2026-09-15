@@ -245,6 +245,7 @@ class IndividualHDA(
         # 앱 속성 초기화를 선택했다면
         if self._is_reset_app_properties:
             if public.Paths.config_dirpath.exists():
+                log_handler.uninstall_file_logging()
                 ihda_system.IHDASystem.remove_dir(dirpath=public.Paths.config_dirpath)
         else:
             self._ui_settings.save_main_window_geometry()
