@@ -14,13 +14,16 @@ from PySide6 import QtGui, QtWidgets
 import public
 from libs.ai_provider import FIELDS, KINDS, PLACEHOLDERS, AISettings
 from libs.ffmpeg_api import FFmpegAPI
-from widgets.preference import preference_ui, preference_ui_settings
+from widgets.preference import preference_ui_settings
+from widgets.preference.layout import PreferenceLayout
+from widgets.preference.presenter import PreferencePresenter
 
 
-class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
+class Preference(QtWidgets.QDialog, PreferenceLayout):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setupUi(self)
+        self.build_ui(self)
+        self._presenter = PreferencePresenter(self)
         self.__build_ai_group()
         self.__pref_settings = preference_ui_settings.PreferenceUISettings(window=self)
         self.__data_final_dirpath = None
@@ -53,7 +56,7 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
         form.addRow("Local models", self.pushButton__ai_models)
         self.__local_models: Any = None
         # Between the FFmpeg group and APP Properties.
-        self.verticalLayout_13.insertWidget(2, box)
+        self.verticalLayout__preferences.insertWidget(2, box)
         self.comboBox__ai_kind.currentTextChanged.connect(self.__slot_ai_kind_changed)
         self.__slot_ai_kind_changed(self.comboBox__ai_kind.currentText())
 
@@ -288,17 +291,7 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
             return False
 
     def accept(self) -> None:
-        msgbox = QtWidgets.QMessageBox(self)
-        msgbox.setWindowTitle("iHDA Preference")
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        if not len(self.lineEdit__data_dirpath.text().strip()):
-            msgbox.setText("Please specify the folder where the data is stored")
-            msgbox.exec()
-        elif not self.data_dirpath.exists():
-            msgbox.setText("Directory does not exist")
-            msgbox.exec()
-        else:
+        if self._presenter.validate(self.lineEdit__data_dirpath.text()):
             self.__pref_settings.save_main_window_geometry()
             self.__pref_settings.save_splitter_status()
             self.__pref_settings.save_cfg_dict_to_file()
@@ -306,7 +299,10 @@ class Preference(QtWidgets.QDialog, preference_ui.Ui_Dialog__preference):
             if len(self.lineEdit__ffmpeg_dirpath.text().strip()):
                 if self.ffmpeg_dirpath.exists():
                     self.__is_ffmpeg_valid = True
-            self.close()
+            super().accept()
+
+    def show_preference_error(self, message: str) -> None:
+        QtWidgets.QMessageBox.warning(self, "iHDA Preference", message)
 
     def get_data_dirpath_from_saved(self) -> pathlib.Path | None:
         data_dirpath = self.__pref_settings.get_data_dirpath_from_saved()

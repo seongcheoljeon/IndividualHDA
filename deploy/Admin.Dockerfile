@@ -1,0 +1,16 @@
+FROM postgres:16-bookworm
+RUN apt-get update && apt-get install -y --no-install-recommends python3 python3-venv \
+    && rm -rf /var/lib/apt/lists/* \
+    && python3 -m venv /opt/ihda \
+    && useradd --uid 10001 --create-home ihda \
+    && mkdir -p /data/backups /data/blobs /data/restored \
+    && chown -R ihda:ihda /data
+ENV PATH="/opt/ihda/bin:$PATH"
+WORKDIR /app
+COPY requirements-server.txt ./
+RUN pip install --no-cache-dir -r requirements-server.txt
+COPY ihda_server ./ihda_server
+COPY libs ./libs
+USER ihda
+ENTRYPOINT ["python", "-m", "ihda_server.cli"]
+CMD ["--help"]

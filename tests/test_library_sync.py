@@ -56,7 +56,15 @@ def test_reload_and_revision_poll_follow_external_changes(
     wait_sync(app, panel)
     assert [row["hda_name"] for row in panel._assets.rows] == ["Fire", "Water"]
     assert panel._selection.asset.id == 1 and panel._selection.asset.row == 1
-    assert panel.comboBox__hist_ihda_node.count() == 2
+    from model.ihda_list_model import ListModel
+    from model.ihda_table_model import TableModel
+
+    assert panel._selection.asset.name == "Water"
+    assert panel._selection.asset.version == "1.0"
+    assert panel._ihda_list_view.currentIndex().data(ListModel.id_role) == 1
+    assert panel._ihda_table_view.currentIndex().data(TableModel.id_role) == 1
+    assert panel.comboBox__hist_ihda_node.currentData() == -1
+    assert panel.comboBox__hist_ihda_node.count() == 3
     assert panel._ihda_history_model.rowCount() == 2
 
     # The poller notices a revision change and drops a selection that vanished.

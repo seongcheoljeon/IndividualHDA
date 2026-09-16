@@ -15,6 +15,25 @@ from libs.keys import Key, Type
 
 
 class AssetsOperations(DatabaseSession):
+    def asset_available(self, asset_id: int, history_id: int | None = None) -> bool:
+        if (
+            self._connect.execute(
+                "SELECT 1 FROM asset_identity WHERE asset_id=? AND deleted_at IS NULL",
+                (asset_id,),
+            ).fetchone()
+            is None
+        ):
+            return False
+        return (
+            history_id is None
+            or self._connect.execute(
+                """SELECT 1 FROM version_identity v JOIN hda_history h ON h.id=v.history_id
+            WHERE h.id=? AND h.hda_key_id=? AND v.deleted_at IS NULL""",
+                (history_id, asset_id),
+            ).fetchone()
+            is not None
+        )
+
     def insert_hda_info(
         self,
         hda_key_id: int | None = None,
@@ -76,13 +95,13 @@ class AssetsOperations(DatabaseSession):
     def insert_tag_info(
         self, hda_key_id: int | None = None, tag_lst: list[str] | None = None
     ) -> int | None:
-        if not tag_lst:
+        if tag_lst is None:
             return None
         query = """INSERT INTO tag_info (hda_key_id, tag) VALUES (?, ?)"""
         try:
             dat: tuple[Any, ...] = (
                 hda_key_id,
-                DatabaseValues._make_tag_to_string(tag_lst=tag_lst),
+                DatabaseValues._make_tag_to_string(tag_lst=tag_lst) or "",
             )
             cursor = self._cursor.execute(query, dat)
             self._commit()
@@ -313,38 +332,35 @@ class AssetsOperations(DatabaseSession):
             return None
 
     def update_load_count(self, hda_key_id: int | None = None) -> int | None:
-        query = """
-        UPDATE hda_info SET load_count = load_count + 1 WHERE hda_key_id = ?
-        """
-        query_params: tuple[Any, ...] = (hda_key_id,)
+        from libs.database.lifecycle import PersonalLifecycle
+        from libs.library_metadata import new_identity
+
+        if hda_key_id is None:
+            return 0
         try:
-            cursor = self._cursor.execute(query, query_params)
-            self._commit()
-            return cursor.rowcount
-        except Exception as err:
-            self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="*** load_count (update) ***"
+            with self.transaction():
+                PersonalLifecycle(self._connect).record_use(hda_key_id, new_identity())
+            return 1
+        except Exception as error:
+            logging.getLogger(__name__).warning(
+                "Could not record successful import: %s", error
             )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
             return None
 
     def update_hda_favorite(self, hda_key_id: int | None = None) -> int | None:
-        query = """
-        UPDATE hda_info SET is_favorite = is_favorite <> 1 WHERE hda_key_id = ?
-        """
-        query_params: tuple[Any, ...] = (hda_key_id,)
-        try:
-            cursor = self._cursor.execute(query, query_params)
-            self._commit()
-            return cursor.rowcount
-        except Exception as err:
-            self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="*** hda_favorite (update) ***"
-            )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
-            return None
+        from libs.database.lifecycle import PersonalLifecycle
+
+        if hda_key_id is None:
+            return 0
+        with self.transaction():
+            row = self._connect.execute(
+                "SELECT favorite FROM asset_user_preferences WHERE asset_id=?",
+                (hda_key_id,),
+            ).fetchone()
+            if row is None:
+                return 0
+            PersonalLifecycle(self._connect).favorite(hda_key_id, not bool(row[0]))
+        return 1
 
     def update_note_info(
         self, hda_key_id: int | None = None, note: str = ""
@@ -644,7 +660,7 @@ class AssetsOperations(DatabaseSession):
         if tags is None:
             data[Key.hda_tags] = []
         else:
-            data[Key.hda_tags] = tags.split("#")
+            data[Key.hda_tags] = normalize_tags(tags)
         video_dirpath = data.get(Key.video_dirpath)
         if video_dirpath is not None:
             data[Key.video_dirpath] = pathlib.Path(video_dirpath)
@@ -772,6 +788,7 @@ FROM hda_key AS hkey
          INNER JOIN hipfile_info AS hipinfo
             ON hkey.id = hinfo.hda_key_id AND hkey.id = ninfo.hda_key_id AND hkey.id = hipinfo.hda_key_id
 WHERE (? IS NULL OR hkey.user_id = ?)
+AND hkey.id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL)
         """
         query_params: tuple[Any, ...] = (user_id, user_id)
         if category is not None:
@@ -805,7 +822,7 @@ WHERE (? IS NULL OR hkey.user_id = ?)
             if tags is None:
                 tmp_dict[Key.hda_tags] = []
             else:
-                tmp_dict[Key.hda_tags] = tags.split("#")
+                tmp_dict[Key.hda_tags] = normalize_tags(tags)
             tmp_dict[Key.hda_dirpath] = pathlib.Path(tmp_dict[Key.hda_dirpath])
             tmp_dict[Key.hip_dirpath] = pathlib.Path(tmp_dict[Key.hip_dirpath])
             if tmp_dict[Key.thumbnail_dirpath] is not None:

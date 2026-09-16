@@ -13,6 +13,7 @@ from libs.database.values import DatabaseValues
 from libs.domain import HistoryData
 from libs.keys import Key
 from libs.path_updates import PathMoves, relocated_path
+from libs.tags import normalize_tags
 
 
 class HistoryOperations(DatabaseSession):
@@ -352,7 +353,7 @@ class HistoryOperations(DatabaseSession):
         self, user_id: str | None = None
     ) -> list[tuple[Any, ...]]:
         query = """
-        SELECT id, hda_key_id, hda_dirpath, hda_filename FROM hda_history WHERE userid = ?
+        SELECT id, hda_key_id, hda_dirpath, hda_filename FROM hda_history WHERE id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) AND hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND userid = ?
         """
         query_params: tuple[Any, ...] = (user_id,)
         cursor = self._cursor.execute(query, query_params)
@@ -425,7 +426,7 @@ class HistoryOperations(DatabaseSession):
                 operating_system, node_old_path, node_def_desc, node_type_name, node_category, userid, icon,
                 (SELECT tag FROM tag_info WHERE hda_key_id = hda_history.hda_key_id),
                 thumb_filename, thumb_dirpath, video_filename, video_dirpath
-            FROM hda_history WHERE hda_key_id = ? AND userid = ?
+            FROM hda_history WHERE id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) AND hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND hda_key_id = ? AND userid = ?
             """
             query_params: tuple[Any, ...] = (hda_key_id, user_id)
         else:
@@ -435,7 +436,7 @@ class HistoryOperations(DatabaseSession):
                 operating_system, node_old_path, node_def_desc, node_type_name, node_category, userid, icon,
                 (SELECT tag FROM tag_info WHERE hda_key_id = hda_history.hda_key_id),
                 thumb_filename, thumb_dirpath, video_filename, video_dirpath
-            FROM hda_history WHERE userid = ?
+            FROM hda_history WHERE id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) AND hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND userid = ?
             """
             query_params = (user_id,)
         if search_date is not None:
@@ -462,7 +463,7 @@ class HistoryOperations(DatabaseSession):
             if tags is None:
                 tmp_dict[Key.History.tags] = []
             else:
-                tmp_dict[Key.History.tags] = tags.split("#")
+                tmp_dict[Key.History.tags] = normalize_tags(tags)
             tmp_dict[Key.History.icon] = tmp_dict[Key.History.icon].split(",")
             tmp_dict[Key.History.ihda_dirpath] = pathlib.Path(
                 tmp_dict[Key.History.ihda_dirpath]

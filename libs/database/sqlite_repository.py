@@ -11,7 +11,7 @@ import logging
 import sqlite3
 import threading
 from collections.abc import Callable, Sequence
-from contextlib import closing, suppress
+from contextlib import AbstractContextManager, closing, suppress
 from pathlib import Path
 from typing import Any
 
@@ -38,9 +38,13 @@ class SqliteLibraryRepository:
         self,
         db_filepath: Path,
         open_database: Callable[[Path], SQLite3DatabaseAPI] = SQLite3DatabaseAPI,
+        *,
+        session_factory: Callable[[], AbstractContextManager[SQLite3DatabaseAPI]]
+        | None = None,
     ) -> None:
         self._db_filepath = Path(db_filepath)
         self._open_database = open_database
+        self._session_factory = session_factory
 
     @property
     def db_filepath(self) -> Path:
@@ -51,9 +55,16 @@ class SqliteLibraryRepository:
             raise LibraryUnavailable(f"database file not found: {self._db_filepath}")
         return self._open_database(self._db_filepath)
 
+    def _session(self) -> AbstractContextManager[SQLite3DatabaseAPI]:
+        return (
+            self._session_factory()
+            if self._session_factory is not None
+            else closing(self._open())
+        )
+
     # --- session / identity -------------------------------------------------
     def ensure_user(self, user: str) -> None:
-        with closing(self._open()) as db:
+        with self._session() as db:
             if not db.is_exist_user_id(user):
                 if db.insert_users(user_id=user, email=f"{user}@local") is None:
                     raise LibraryError(f"could not create library user {user!r}")
@@ -78,13 +89,24 @@ class SqliteLibraryRepository:
     ) -> list[AssetData]:
         if not self._db_filepath.is_file():
             return []
-        with closing(self._open()) as db:
+        with self._session() as db:
             return db.get_hda_data(category=category, user_id=owner)
+
+    def asset_available(self, asset_id: int, history_id: int | None = None) -> bool:
+        with self._session() as db:
+            return db.asset_available(asset_id, history_id)
+
+    def record_use(self, asset_id: int) -> None:
+        try:
+            with self._session() as db:
+                db.update_load_count(asset_id)
+        except Exception as error:
+            log.warning("Imported asset, but usage could not be recorded: %s", error)
 
     def categories(self, owner: str | None = None) -> list[str]:
         if not self._db_filepath.is_file():
             return []
-        with closing(self._open()) as db:
+        with self._session() as db:
             return db.get_hda_category(user_id=owner) or []
 
     def histories(
@@ -92,7 +114,7 @@ class SqliteLibraryRepository:
     ) -> list[HistoryData]:
         if not self._db_filepath.is_file():
             return []
-        with closing(self._open()) as db:
+        with self._session() as db:
             return db.get_hda_history(
                 hda_key_id=asset_id, user_id=owner, search_date=search_date
             )
@@ -100,40 +122,40 @@ class SqliteLibraryRepository:
     def asset_icons(self, owner: str | None = None) -> list[Any]:
         if not self._db_filepath.is_file():
             return []
-        with closing(self._open()) as db:
+        with self._session() as db:
             return db.get_icon_info_by_user(user_id=owner) or []
 
     def history_thumbnails(self, owner: str | None = None) -> list[Any]:
         if not self._db_filepath.is_file():
             return []
-        with closing(self._open()) as db:
+        with self._session() as db:
             return db.get_thumbnail_by_hda_history(user_id=owner) or []
 
     def history_videos(self, asset_id: int) -> list[Path]:
-        with closing(self._open()) as db:
+        with self._session() as db:
             return list(db.get_history_video_info(hda_key_id=asset_id) or [])
 
     def video_matches_version(self, asset_id: int, version: str) -> bool:
-        with closing(self._open()) as db:
+        with self._session() as db:
             return bool(
                 db.is_video_and_ihda_same_version(hda_key_id=asset_id, version=version)
             )
 
     def is_latest_history(self, asset_id: int, history_id: int) -> bool:
-        with closing(self._open()) as db:
+        with self._session() as db:
             return bool(
                 db.is_most_recent_ihda_history(hda_key_id=asset_id, hist_id=history_id)
             )
 
     def is_latest_version(self, asset_id: int, version: str) -> bool:
-        with closing(self._open()) as db:
+        with self._session() as db:
             return bool(
                 db.is_ihda_lastest_version(hda_key_id=asset_id, version=version)
             )
 
     # --- lookups the panel used to make on the facade directly -----------
     def has_asset(self, owner: str, category: str, name: str) -> bool:
-        with closing(self._open()) as db:
+        with self._session() as db:
             return bool(
                 db.is_exist_hda_name(user_id=owner, category=category, hda_name=name)
             )
@@ -142,7 +164,7 @@ class SqliteLibraryRepository:
         self, owner: str, category: str, name: str
     ) -> tuple[int, str | None, str | None] | None:
         """(asset id, stored node type, current version) for an existing asset."""
-        with closing(self._open()) as db:
+        with self._session() as db:
             ids = db.get_hda_key_id(category=category, name=name, user_id=owner)
             if not ids:
                 return None
@@ -154,53 +176,53 @@ class SqliteLibraryRepository:
             )
 
     def asset_ids(self, owner: str | None = None) -> list[int]:
-        with closing(self._open()) as db:
+        with self._session() as db:
             return [int(i) for i in (db.get_hda_key_id(user_id=owner) or [])]
 
     def asset_names(self, owner: str | None = None) -> list[tuple[int, str]]:
-        with closing(self._open()) as db:
+        with self._session() as db:
             rows = db.get_hda_name(user_id=owner, with_id=True) or []
             return [(int(row[0]), str(row[1])) for row in rows]
 
     def asset_filepath(self, asset_id: int) -> Path | None:
-        with closing(self._open()) as db:
+        with self._session() as db:
             path = db.get_hda_filepath(hda_key_id=asset_id)
             return Path(path) if path is not None else None
 
     def has_history(self, asset_id: int) -> bool:
-        with closing(self._open()) as db:
+        with self._session() as db:
             return bool(db.is_exist_hda_history(hda_key_id=asset_id))
 
     def has_note_history(self, asset_id: int) -> bool:
-        with closing(self._open()) as db:
+        with self._session() as db:
             return bool(db.is_exist_hda_note_history(hda_key_id=asset_id))
 
     def note_history(self, asset_id: int) -> list[Any]:
-        with closing(self._open()) as db:
+        with self._session() as db:
             return list(
                 db.get_hda_note_history(hda_key_id=asset_id, with_datetime=True) or []
             )
 
     def history_counts(self) -> tuple[int, int]:
-        with closing(self._open()) as db:
+        with self._session() as db:
             return int(db.count_hda_history() or 0), int(
                 db.count_hda_note_history() or 0
             )
 
     def latest_video(self, asset_id: int, version: str) -> Any:
-        with closing(self._open()) as db:
+        with self._session() as db:
             return db.get_hda_history_video_most_recent_by_ver(
                 hda_key_id=asset_id, version=version
             )
 
     def record_detail(self, record_id: int) -> Any:
-        with closing(self._open()) as db:
+        with self._session() as db:
             return db.get_only_detailview_record_data(record_id=record_id)
 
     def set_thumbnail(
         self, asset_id: int, directory: Path, filename: str, version: str
     ) -> bool:
-        with closing(self._open()) as db:
+        with self._session() as db:
             done = db.update_thumbnail_info(
                 hda_key_id=asset_id,
                 dirpath=directory,
@@ -215,7 +237,7 @@ class SqliteLibraryRepository:
         self, asset_id: int, directory: Path, filename: str, version: str
     ) -> str:
         """Insert or update the preview video row; returns "insert" or "update"."""
-        with closing(self._open()) as db:
+        with self._session() as db:
             kind = (
                 "update"
                 if db.get_video_info(hda_key_id=asset_id) is not None
@@ -234,7 +256,7 @@ class SqliteLibraryRepository:
 
     def add_history_row(self, row: Sequence[Any]) -> int:
         """Append one hda_history row (column order of the facade) and return its id."""
-        with closing(self._open()) as db:
+        with self._session() as db:
             if db.insert_hda_history(data=list(row)) is None:
                 raise LibraryError("history row was not inserted")
             history_id = db.get_last_insert_id
@@ -243,12 +265,12 @@ class SqliteLibraryRepository:
         return int(history_id)
 
     def delete_note_history(self, asset_id: int | None = None) -> None:
-        with closing(self._open()) as db:
+        with self._session() as db:
             if db.delete_hda_note_history(hda_key_id=asset_id) is None:
                 raise LibraryError("note history was not deleted")
 
     def delete_scene_record(self, record_id: int) -> bool:
-        with closing(self._open()) as db:
+        with self._session() as db:
             done = db.delete_hda_record(record_id=record_id)
         if done is None:
             raise LibraryError("scene record was not deleted")
@@ -277,7 +299,7 @@ class SqliteLibraryRepository:
     def distinct_tags(self, owner: str | None = None) -> list[str]:
         if not self._db_filepath.is_file():
             return []
-        with closing(self._open()) as db:
+        with self._session() as db:
             return db.distinct_tags(user_id=owner)
 
     # --- writes --------------------------------------------------------------
@@ -297,14 +319,28 @@ class SqliteLibraryRepository:
             self._discard_registration_files(payload)
             raise
 
-    @staticmethod
-    def _discard_registration_files(p: RegistrationPayload) -> None:
+    def _discard_registration_files(self, p: RegistrationPayload) -> None:
         """HOM wrote the HDA and thumbnail before the database write; both are new
         files (names carry the version), so a failed registration removes them."""
+        from libs.library_maintenance import references
+
+        try:
+            with self._session() as db:
+                referenced = {ref.path.resolve() for ref in references(db._connect)}
+        except Exception as error:
+            # A failed verification cannot prove rollback: retain files and keep
+            # the original registration error instead of masking it with cleanup.
+            log.warning(
+                "Registration files retained; references could not be checked: %s",
+                error,
+            )
+            return
         for path in (
             p.hda_dirpath / p.hda_filename,
             p.thumb_dirpath / p.thumb_filename,
         ):
+            if path.resolve() in referenced:
+                continue
             try:
                 path.unlink(missing_ok=True)
             except OSError as error:
@@ -318,7 +354,7 @@ class SqliteLibraryRepository:
     def _register_asset(self, payload: RegistrationPayload) -> RegistrationResult:
         p = payload
         thumb_filepath = p.thumb_dirpath / p.thumb_filename
-        with closing(self._open()) as db:
+        with self._session() as db:
             if db.is_exist_hda_name(
                 user_id=p.user, category=p.cate_name, hda_name=p.node_name
             ):
@@ -394,7 +430,7 @@ class SqliteLibraryRepository:
                             info_id=info_id, node_output_connect_lst=p.output_conn
                         ),
                     ]
-                    history = self._history_row(key_id, "NODE (INSERT)", p, None, None)
+                    history = self._history_row(key_id, p.description, p, None, None)
                     ok.append(db.insert_hda_history(data=history))
                     history_id = db.get_last_insert_id
                     if any(value is None for value in ok):
@@ -419,9 +455,16 @@ class SqliteLibraryRepository:
     ) -> RegistrationResult:
         p = payload
         thumb_filepath = p.thumb_dirpath / p.thumb_filename
-        with closing(self._open()) as db:
+        with self._session() as db:
             try:
                 with db.transaction():
+                    if db._connect.execute(
+                        "SELECT 1 FROM hda_history WHERE hda_key_id=? AND version=?",
+                        (asset_id, p.version),
+                    ).fetchone():
+                        raise LibraryConflict(
+                            "This version already exists, including Trash"
+                        )
                     ok = [
                         db.update_hda_info(
                             hda_key_id=asset_id,
@@ -475,7 +518,7 @@ class SqliteLibraryRepository:
                     before = db.get_update_before_data(hda_key_id=asset_id) or {}
                     video = (before.get("video_dirpath"), before.get("video_filename"))
                     history = self._history_row(
-                        asset_id, "NODE (UPDATE)", p, video[1], video[0]
+                        asset_id, p.description, p, video[1], video[0]
                     )
                     if db.insert_hda_history(data=history) is None:
                         raise sqlite3.DatabaseError("Could not write asset history")
@@ -496,36 +539,36 @@ class SqliteLibraryRepository:
         return RegistrationResult(asset, history, int(history_id or 0), thumb_filepath)
 
     def set_note(self, asset_id: int, note: str) -> None:
-        with closing(self._open()) as db:
+        with self._session() as db:
             if db.is_exist_note(hda_key_id=asset_id):
                 done = db.update_note_info(hda_key_id=asset_id, note=note)
             else:
                 done = db.insert_note_info(hda_key_id=asset_id, note=note)
-        if done is None:
+        if done != 1:
             raise LibraryError("note was not saved")
 
     def set_tags(self, asset_id: int, tags: Sequence[str]) -> None:
-        with closing(self._open()) as db:
+        with self._session() as db:
             if db.is_exist_tag(hda_key_id=asset_id):
                 done = db.update_tag_info(hda_key_id=asset_id, tag_lst=list(tags))
             else:
                 done = db.insert_tag_info(hda_key_id=asset_id, tag_lst=list(tags))
-        if done is None:
+        if done != 1:
             raise LibraryError("tags were not saved")
 
     def toggle_favorite(self, asset_id: int) -> bool:
-        with closing(self._open()) as db:
+        with self._session() as db:
             done = db.update_hda_favorite(hda_key_id=asset_id)
         if done is None:
             raise LibraryError("favorite flag was not saved")
         return bool(done)
 
     def rename_asset(self, plan: RenamePlan) -> tuple[int, int]:
-        with closing(self._open()) as db:
+        with self._session() as db:
             return rename_asset(SQLiteRenameRepository(db), plan)
 
     def delete_asset(self, asset_id: int, directory: Path) -> None:
-        with closing(self._open()) as db:
+        with self._session() as db:
             try:
                 asset_commands.delete_asset(db, asset_id, directory)
             except RuntimeError as error:
@@ -534,7 +577,7 @@ class SqliteLibraryRepository:
     def delete_history(
         self, asset_id: int, history_id: int, files: Sequence[Path]
     ) -> None:
-        with closing(self._open()) as db:
+        with self._session() as db:
             try:
                 asset_commands.delete_history(db, asset_id, history_id, list(files))
             except ValueError as error:  # most recent history

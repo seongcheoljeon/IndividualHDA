@@ -115,3 +115,328 @@ backups and search paging/cancellation are covered by the regression suite; see
 [LIBRARY_TOOLS.md](LIBRARY_TOOLS.md) for behavior, limits and how to reproduce the
 explorer measurements. Full interactive acceptance on Windows, macOS and Linux
 remains pending.
+
+## Asset browser MVP migration — 2026-09-15
+
+Validated with Python 3.11.15 / PySide6 6.11.2 and the offscreen Qt platform:
+
+- Full regression run: **203 passed**. The final widget naming/layout grouping
+  was subsequently checked by the coverage runs below. This was the initial
+  browser-only step; see the full Python-layout migration below.
+- `ruff check .`, `ruff format --check .`, `mypy`, and `git diff --check`: passed.
+- Coverage: **66.08% overall** (60% required), **99%** across the new browser/search
+  modules; the presenter and search gateway each reached 100%.
+- Coverage was collected in two runs: 202 tests with
+  `-k 'not test_download_recommended_then_use'`, then that test alone with
+  `--cov-append`. The unmodified AI download test intermittently failed waiting
+  for its follow-up refresh during an instrumented full run, but passed alone.
+  The follow-up refresh timing issue was subsequently fixed in the full layout
+  migration below; no test was permanently skipped or weakened.
+- Browser checks cover delayed responses, cancellation, library replacement,
+  close, search errors retaining results, list/table filters and selection,
+  multi-selection clicks, old splitter-state compatibility, saved zoom restore,
+  and imports without Qt/Houdini/SQLite in the presenter/search contract.
+- A standalone offscreen render was inspected. Real Houdini embedded/floating
+  windows, native menus and Houdini drag/drop were **not run** in this environment.
+- FastAPI/PostgreSQL, permissions, remote file storage and migrations are future
+  work; this change only adds an injectable search boundary and local adapter.
+
+
+## Full Python layout migration — 2026-09-15
+
+- Removed all seven application `.ui` files and all seven generated layout
+  modules. Runtime imports now use maintained `layout.py` modules and `build_ui()`;
+  layout creation has no Designer, XML-loader or UI-compiler dependency.
+- Compared the pre-migration and final layouts: **414 Qt objects** matched for
+  their applicable text, tooltip, font, size constraints, size policy, control
+  defaults, orientation, tab, spacing and margin properties after accounting for
+  intentional descriptive layout/widget renames.
+- Final full regression run, including coverage in a **single invocation**:
+  **210 passed**, **68.29% overall coverage** (60% required). All seven new layout
+  modules and `widgets/layout_helpers.py` reached 100% statement coverage.
+- `ruff check .`, `ruff format --check .`, `mypy` and `git diff --check`: passed.
+  All layout modules are included in the maintained-code checks; the old generated
+  layout exclusions and compiler-drift test have been removed.
+- Replaced the compiler test with runtime construction, dialog accept/reject,
+  tab/menu/embedding contracts and a check that application Designer sources do
+  not return. Existing populated-panel, settings and optional-media tests passed.
+- Fixed the AI dialog follow-up refresh race found during repeated coverage runs:
+  download/delete completions request refresh at `TaskController.idle`, after the
+  previous worker is released. Four deterministic cases cover completion arriving
+  before worker termination and closing before idle for both operations.
+- Houdini's `hou` module is unavailable in this environment. Real host embedding,
+  native drag/drop, menus and visual acceptance still require a Houdini session.
+- Screen locations, naming rules and the direct-code editing workflow are in
+  [UI_EDITING.md](UI_EDITING.md).
+
+## Feature presenters and metadata saves — 2026-09-15
+
+Extended the code UI migration with presenters for metadata editing, lifecycle
+commands, media metadata, history dates, detail display and dialog policies.
+Existing Qt models, host callbacks and local transaction/recovery services remain
+in their adapters. No FastAPI/PostgreSQL server was introduced in this change.
+
+Validation:
+
+- Full suite: **247 passed in 46.49 seconds**.
+- Coverage: **69.90%** across libs/model/view/widgets/main/public/ui_settings;
+  required minimum is 60%.
+- Ruff check and format check passed (192 maintained Python files).
+- mypy passed (156 source files); no additional ignore overrides were introduced.
+- `git diff --check` passed.
+
+Tests cover delayed metadata completion after selection changes, newer edits made
+while saving, error/retry, library replacement, deleted assets, rejected submissions,
+and retaining drafts on same-library preference changes. Real panel save buttons
+persist notes/tags through a TaskController and SQLite and update shared models.
+Reload tests reject results captured before a write or from another repository.
+
+Lifecycle tests exercise registration, version creation, protected latest history,
+rename and deletion against a temporary SQLite library. Command/media tests verify
+that storage failures do not publish UI updates. Dialog tests verify that invalid
+inputs do not emit accepted, including the actual button-box path. Additional
+checks cover immutable detail records, missing thumbnails, history date validation,
+stale explorer pages, AI action availability, and host-scaled web zoom.
+
+Empty tag saves now create a valid empty tag value and return an empty list on
+asset/history reads. Missing/deleted-asset writes report failure. Presenter imports
+are checked for Qt/Houdini/main/concrete-database dependencies.
+
+The user confirmed the preceding Python-layout migration runs in Houdini. This
+follow-up was validated with offscreen Qt and local SQLite; native Houdini checks
+for registration, rename/delete, note/tag saves and preview capture are still needed.
+Drafts are retained in memory during a panel session; they are not restart recovery.
+
+## Personal / Team workspace — 2026-09-15
+
+Verified locally on Linux / Python 3.11 with offscreen Qt:
+
+- Full suite, including the server: **273 passed**, **70.38% coverage** (60% gate).
+- Actual PostgreSQL 16.15: shared backend/HTTP/workspace tests **25 passed**.
+  A preceding combined architecture/Qt/PostgreSQL run passed **44 tests**.
+- CLI initialization, user/project creation, token issuance, production
+  `create_app` startup and token revocation passed against the temporary PostgreSQL DB.
+- Ruff check and format: **214 files**; mypy: **175 source files**; `git diff --check` passed.
+- `docker compose config --quiet` passed. Image build/container execution was not
+  tested because this environment has no running Docker daemon.
+- Two upstream TestClient deprecation warnings remain (httpx and BlockingPortal).
+
+The real HTTP fixture runs Uvicorn in a separate process, matching deployment.
+An earlier in-process server thread caused WebEngine garbage collection on the
+wrong thread and exited with code 133 in the full suite. Process isolation fixed
+that test interaction; the full suite above completed after the fix.
+
+```sh
+QT_QPA_PLATFORM=offscreen QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu \
+  python -m pytest -q \
+  --cov=ihda_server --cov=libs --cov=model --cov=view --cov=widgets \
+  --cov=main --cov=public --cov=ui_settings --cov-fail-under=60
+```
+
+The tests use disposable databases/files and loopback HTTP. They do not establish
+acceptance of the new workspace's native Houdini capture/thumbnail/import flow,
+Windows/macOS behavior, or a deployed HTTPS proxy. Those checks remain manual/CI
+follow-up. See [TEAM_LIBRARY.md](TEAM_LIBRARY.md) for setup, scope, backup and retry
+procedures. The temporary PostgreSQL process was stopped after validation.
+
+## Main-panel personal/team integration — 2026-09-15
+
+This supersedes the separate workspace UI described in the preceding validation.
+
+- Full suite: **275 passed**, **70.17% coverage**, including the server (60% gate).
+- Actual PostgreSQL 16.15: **26 passed** across backend, presenter and main-panel integration tests.
+- Ruff check / formatting: **222 files**; mypy: **182 source files**; diff whitespace check passed.
+- The main-panel test verifies widget reuse, personal draft/database preservation,
+  remote note saves off the GUI thread, note search, history rendering, conflict
+  comparison, read-only role controls, failed source changes and stale personal AI replies.
+- Connection settings require a verified project and do not persist credentials.
+- The thumbnail resolver test verifies lazy file resolution outside the GUI thread.
+- Rendered and inspected the main panel offscreen. No separate asset workspace is created.
+- Full-suite Qt cleanup now retires each finished test's leftover windows using
+  deferred deletion on the GUI thread, then collects Python wrappers. Collecting
+  wrappers before retiring their native windows caused a segmentation fault;
+  leaving them for an HTTP worker caused WebEngine thread-affinity failures.
+  The complete suite above passed with the final cleanup ordering.
+- Two upstream TestClient deprecation warnings remain. Native Houdini drag/drop,
+  node capture and imports still require host acceptance testing. The test-only
+  PostgreSQL process was stopped after verification.
+
+## 2026-09-15 — Library metadata and lifecycle v2
+
+- Full regression suite: **291 passed**, coverage **70.21%** (required 60%).
+  Log: `/tmp/ihda-v2-verified-full.log`.
+- Actual PostgreSQL 16 integration/contract tests: **41 passed**, including the v1→v2
+  upgrade, personal preferences, idempotent usage, trash/restore and shared-file cleanup.
+  Log: `/tmp/ihda-v2-verified-pg.log`.
+- Final dialog shutdown/menu changes: **22 UI/architecture tests passed**.
+  Log: `/tmp/ihda-v2-ui-final.log`.
+- Ruff check and format: **237 files** passed. Mypy: **194 source files** passed.
+  `git diff --check` passed.
+- Qt offscreen rendering of Version details inspected (`/tmp/ihda-version-details-v2.png`).
+- Added tests for rollback/retry of personal migrations, legacy pending preservation,
+  trash-containing backup validation, and retained integrity hashes after description edits.
+- Corrected archive relocation to snapshot paths before preview synchronization triggers run;
+  controlled maintenance can relocate trashed metadata without enabling ordinary edits to Trash.
+- Test-client dependencies still emit two upstream deprecation warnings.
+
+Native Houdini acceptance remains manual: restart Houdini, register/update a personal HDA with
+an optional version description, drag/import from Personal and Team, verify per-user favorites,
+move an old version and an asset to Trash, restore them, and verify HDA files remain importable.
+Confirm that closing a metadata dialog or destroying the panel drains its background work.
+Existing real libraries/production servers were not upgraded during development; temporary
+SQLite databases and isolated PostgreSQL schemas were used for validation.
+
+## 2026-09-15 — Personal → Team copy
+
+The user confirmed native Houdini validation of the preceding metadata/lifecycle work.
+This follow-up adds the copy workflow without a schema migration.
+
+- Full regression suite: **303 passed**, coverage **70.52%** (required 60%).
+- PostgreSQL integration group: **53 passed**. After the final capability guard,
+  UTF-8 transport and UI refinements, copy/transport contracts were rerun against
+  PostgreSQL: **29 passed**.
+- Ruff check/format: passed (**245 files**); mypy: **201 source files**, passed.
+- Copy coverage includes read-only source preservation, multiple versions, Unicode
+  notes/tags, source provenance and new destination UUIDs, independent preferences,
+  current-only copies, optional missing previews, required missing HDA rejection,
+  repeated legacy labels, cancellation, source content changes, partial upload
+  resumption, lost commit replies with deleted source files, atomic rollback,
+  missing blob repair, viewer rejection, Trash conflicts, concurrent copying by
+  different users, and dialog shutdown with a running upload.
+- Offscreen Qt preview/copy and worker ownership tests passed; the copy dialog was
+  rendered and visually inspected. Tests used disposable SQLite/PostgreSQL data.
+- Two upstream TestClient deprecation warnings remain.
+
+New native acceptance scope: select a personal HDA → Copy to team… → choose a
+project → Preview → Copy, then open the project and import the copied current and
+historical versions. Confirm thumbnail/video playback and that the personal
+library remains unchanged. This new copy flow has not been run in native Houdini
+by the agent; the user's preceding host validation covers the earlier work.
+
+## 2026-09-15 — Team backup and isolated restore
+
+- Full regression suite: **316 passed, 1 skipped**, coverage **70.52%**.
+  The skipped pg_dump/pg_restore test requires an explicit PostgreSQL test URL;
+  it was run successfully in the separate integration job below.
+- PostgreSQL 16 integration group: **52 passed**. Final dedicated backup tests:
+  **14 passed**, including a real pg_dump/pg_restore round trip.
+- Ruff check/format: **251 files**, passed. Mypy: **206 source files**, passed.
+- Actual restore retained Unicode notes, Trash, preferences and token authentication;
+  a subsequent registration proved sequence values support new writes. A project
+  created after snapshot export was absent from the restored snapshot, as intended.
+- Failure tests cover missing/corrupt/unlisted files, omitted inventory entries,
+  traversal, incomplete manifests, symbolic links, failed dump publication,
+  restore comparison failure, existing-target rejection and competing storage locks.
+- A subprocess blocked all Qt/Houdini imports and successfully ran offline backup
+  verification and the server storage lock. Password transport uses a temporary
+  protected pgpass file; tests assert passwords are absent from process arguments
+  and the file is removed afterwards.
+- Compose configuration validation and CLI help passed. The Docker daemon is not
+  available in this environment, so building/running `deploy/Admin.Dockerfile`
+  remains an operator acceptance check. Native PostgreSQL 16 client tools were
+  exercised directly for the integration tests.
+- Tests used disposable files, databases and schemas. No existing personal library,
+  production DB, deployment configuration or scheduled job was activated.
+
+Before deployment, build the admin image, create a backup on the intended volume,
+run verify-backup, and restore into a new empty UTF-8 DB and absent blob path. Use
+an isolated API instance to verify browsing/downloading before any production
+configuration switch. PostgreSQL roles, TLS and host storage backups remain separate.
+
+## 2026-09-15 — Core class and policy refactoring
+
+- Full suite: **325 passed, 1 skipped**, coverage **70.68%**. The PostgreSQL-only
+  backup round trip skipped in the default run passed in the integration group.
+- Final PostgreSQL integration group: **76 passed**, including copy, restore,
+  migration and main-panel integration. A discovered import error in the local
+  management adapter was fixed before this final successful run.
+- Ruff check/format: **259 files**, passed. Mypy: **213 source files**, passed.
+- New tests cover immutable file-content equality/hash behavior across renames,
+  preserved Blob wire fields, empty-file cancellation, invalid policy rejection,
+  applied HTTP response limits and SQLite lock timeout, in-memory journal replay
+  after a lost reply, and the copy workflow's concrete-adapter import boundary.
+- Existing tests verify API v2 endpoints, pending request fingerprints, copy-journal
+  and backup formats, source preservation, cached downloads, and Qt dialog ownership.
+- Scope: shared file integrity, copy service/adapters, HTTP/DB resource policies and
+  shared protocol/audit limits. Native Houdini interaction was not rerun by the agent.
+  Main-panel/UI class restructuring and search scalability remain separate work.
+
+## Panel state / session refactoring — 2026-09-15
+
+Final validation after selection/details dispatch, reload lifecycle, library session
+ports, Team history guards, and shared UI defaults:
+
+- Full offscreen suite with coverage: **335 passed, 1 skipped**, **70.93%** coverage
+  (required minimum 60%). The optional PostgreSQL backup round-trip is skipped
+  without its environment; this change does not modify server backup code.
+- PostgreSQL 16 run of `test_main_team.py`, `test_panel_refactoring.py`, and
+  `test_architecture.py`: **19 passed**. Team connection, writes, history failure /
+  retry, refresh while viewing history, and return to Personal use the existing UI.
+  Disposable test resources were cleaned and the temporary PostgreSQL server stopped.
+- Ruff check and format: **264 files**; mypy: **217 source files**; diff whitespace
+  checks passed. Two existing upstream TestClient deprecation warnings remain.
+- Selection checks cover complete field refresh after rename/version changes,
+  historical version identity, deleted selections, and both list/table Qt indexes.
+  Lifecycle checks cover rejected/busy submissions, saves invalidating snapshots,
+  library changes, A → B → A selection changes, empty history and closed presenters.
+- Architecture checks restrict shared-state analysis to composed Mixins (independent
+  presenters may use the same private field names), prohibit direct UI writes to
+  selection fields, and keep the new presenters free of Qt/storage/HTTP imports.
+
+Logs: `/tmp/ihda-panel-final-full.log`, `/tmp/ihda-panel-final-postgres.log`.
+Native Houdini execution was not available in this agent environment; the user's
+previous Houdini check predates this refactoring.
+
+## Local registration service — 2026-09-15
+
+- Targeted registration/repository/presenter/host-boundary/architecture suite:
+  **62 passed** (`/tmp/ihda-registration-tests-final.log`).
+- Full offscreen suite: **347 passed, 1 skipped**, **71.12%** coverage
+  (`/tmp/ihda-registration-full.log`). The optional PostgreSQL backup test is
+  skipped without its configured database; no server/schema changes were made.
+- Ruff check/format: **267 files**, mypy: **219 source files**, diff checks passed.
+  Two existing upstream TestClient deprecation warnings remain.
+- New failure tests exercise partial HDA/thumbnail capture, competing publication,
+  SQL history insertion rollback for new registration and version addition, retry
+  without duplicate history, uncertain/postcommit failures, optional thumbnails,
+  flag/overlay restoration and successful commit followed by failed display update.
+- Native Houdini execution was not available. Follow-up host checks and remaining
+  refactoring scope are recorded in `docs/REFACTORING_NEXT.md`.
+
+## Rename and Trash orchestration — 2026-09-15
+
+- Final full offscreen regression suite: **360 passed, 1 skipped**
+  (`/tmp/ihda-mutations-final.log`). Two existing TestClient deprecation warnings.
+- Focused mutation/registration/presenter/recovery/architecture tests: **81 passed**
+  (`/tmp/ihda-mutations-targeted-final.log`). Proxy ordering tests: **18 passed**
+  (`/tmp/ihda-mutations-proxy.log`).
+- Ruff check/format: **269 files**; mypy: **220 source files**; diff checks passed.
+- Coverage instrumentation reached **72.01%** before adapting the legacy proxy
+  test fixture to ID-based deletion. Application sources were unchanged between
+  that coverage run and the final successful full regression run.
+- New regressions cover rename SQL failure and journal rollback, invalid names,
+  mixed successful/failed asset deletion, current-version protection, Trash audit
+  failure rollback, note/file retention, row identity after proxy reorder, committed
+  display failures and rename-overlay cleanup.
+- The optional PostgreSQL backup test remains skipped without its configured DB.
+  This slice changes local application/UI orchestration, not server/schema formats.
+- Native Houdini execution was unavailable; host follow-up steps and remaining
+  refactoring are documented in `docs/REFACTORING_NEXT.md`.
+
+## Main-window composition and lifecycle — 2026-09-15
+
+- Full final offscreen suite: **369 passed, 1 skipped**, **72.26%** coverage
+  (`/tmp/ihda-composition-full-final.log`). The optional PostgreSQL backup test is
+  skipped without its configured DB; two upstream TestClient warnings remain.
+- Final focused panel/Team/startup/architecture/sync suite: **37 passed**
+  (`/tmp/ihda-composition-targeted-final.log`).
+- Ruff check/format: **273 files**; mypy: **223 source files**; diff checks passed.
+- New regressions cover acquired-resource cleanup after startup failure, ordered
+  shutdown, failed-worker retry, duplicate ownership, failed import activation,
+  closing-state preservation, already-deleted dialogs and reentrant close events.
+- Bootstrap, archives, AI and sync no longer appear in the panel's Mixin bases.
+  The shared-state ratchet dropped `_library` and `_repository`; four extracted
+  adapter modules no longer use mypy's `ignore_errors` override.
+- Native Houdini validation remains outstanding for this slice. Reopen panels,
+  close during archive work, reload libraries, use AI and close with tool dialogs
+  open as listed in `docs/REFACTORING_NEXT.md`.

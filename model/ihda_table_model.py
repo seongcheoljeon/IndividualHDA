@@ -245,7 +245,9 @@ class TableModel(QtCore.QAbstractTableModel, ModelStyleMixin):
             hda_filepath = data.get(public.Key.hda_dirpath) / data.get(
                 public.Key.hda_filename
             )
-            if not hda_filepath.exists():
+            if not hda_filepath.exists() and not index.data(TableModel.data_role).get(
+                "remote", False
+            ):
                 font.setItalic(True)
                 font.setStrikeOut(True)
             return font
@@ -295,7 +297,9 @@ class TableModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         flags = super().flags(index)
         if index.isValid():
             hda_filepath = index.data(TableModel.filepath_role)
-            if not hda_filepath.exists():
+            if not hda_filepath.exists() and not index.data(TableModel.data_role).get(
+                "remote", False
+            ):
                 flags = (
                     QtCore.Qt.ItemFlag.ItemIsSelectable
                     | QtCore.Qt.ItemFlag.ItemIsEnabled

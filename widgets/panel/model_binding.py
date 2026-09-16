@@ -14,7 +14,6 @@ from PySide6 import QtCore
 import public
 from libs import log_handler, sqlite3_db_api
 from libs.domain import AssetData
-from libs.library_explorer import search_asset_ids
 from libs.qt_helpers import wildcard_expression
 from model import (
     ihda_category_model,
@@ -31,6 +30,7 @@ from model import (
     ihda_table_proxy_model,
 )
 from model.asset_notifications import QtAssetNotifications
+from widgets.ui_tokens import ASSET_TABLE_COLUMN_WIDTHS, HISTORY_TABLE_COLUMN_WIDTHS
 
 
 class ModelBindingMixin:
@@ -133,11 +133,8 @@ class ModelBindingMixin:
         )
         self._ihda_table_proxy_model.setSourceModel(self._ihda_table_model)
         self._ihda_table_view.setModel(self._ihda_table_proxy_model)
-        self._ihda_table_view.setColumnWidth(0, 250)
-        self._ihda_table_view.setColumnWidth(1, 130)
-        self._ihda_table_view.setColumnWidth(2, 10)
-        self._ihda_table_view.setColumnWidth(3, 60)
-        self._ihda_table_view.setColumnWidth(4, 50)
+        for column, width in ASSET_TABLE_COLUMN_WIDTHS:
+            self._ihda_table_view.setColumnWidth(column, width)
         self._ihda_table_view.resizeColumnToContents(5)
         self._ihda_table_view.resizeColumnToContents(6)
         self._ihda_table_view.resizeColumnToContents(7)
@@ -184,13 +181,10 @@ class ModelBindingMixin:
         self._ihda_history_view.setModel(self._ihda_history_proxy_model)
         self._init_set_hist_ihda_combobox()
         self.label__hist_cnt.setText(str(self._ihda_history_proxy_model.rowCount()))
-        self._ihda_history_view.setColumnWidth(0, 80)
-        self._ihda_history_view.setColumnWidth(1, 255)
-        self._ihda_history_view.setColumnWidth(2, 185)
+        for column, width in HISTORY_TABLE_COLUMN_WIDTHS:
+            self._ihda_history_view.setColumnWidth(column, width)
         self._ihda_history_view.resizeColumnToContents(3)
         self._ihda_history_view.resizeColumnToContents(4)
-        self._ihda_history_view.setColumnWidth(5, 80)
-        self._ihda_history_view.setColumnWidth(7, 150)
         self._ihda_history_view.resizeColumnToContents(9)
         self._ihda_history_view.resizeColumnToContents(10)
         self._ihda_history_view.resizeColumnToContents(11)
@@ -308,56 +302,13 @@ class ModelBindingMixin:
         self._ihda_history_proxy_model.setFilterRegularExpression(regexp)
         self.label__hist_cnt.setText(str(self._ihda_history_proxy_model.rowCount()))
 
-    @QtCore.Slot(str)
-    def _search_filter_regexp_hda_item(self, text: str) -> None:
-        text = text.strip()
-        case_sensitive = self.checkBox__casesensitive_hda.isChecked()
-        database = self._db_filepath
-        proxies = (self._ihda_list_proxy_model, self._ihda_table_proxy_model)
-        if not text or database is None or not database.is_file():
-            # Empty query: purely local, no job. Regex "" accepts every row.
-            self._asset_search.cancel()
-            casesensitivity = (
-                QtCore.Qt.CaseSensitivity.CaseSensitive
-                if case_sensitive
-                else QtCore.Qt.CaseSensitivity.CaseInsensitive
-            )
-            regexp = wildcard_expression(text, casesensitivity)
-            for proxy in proxies:
-                proxy.set_id_filter(None)
-                proxy.setFilterRegularExpression(regexp)
-            self.label__hda_count.setText(str(self._ihda_list_proxy_model.rowCount()))
-            return
-        field = self.comboBox__search_type.currentText() or "All"
-
-        def search(query: str, cancel: Any) -> list[int]:
-            return search_asset_ids(
-                database,
-                query,
-                field=field,
-                case_sensitive=case_sensitive,
-                cancel=cancel,
-            )
-
-        self._asset_search.submit(text, search)
-
-    @QtCore.Slot(object)
-    def _apply_search_ids(self, ids: object) -> None:
-        for proxy in (self._ihda_list_proxy_model, self._ihda_table_proxy_model):
-            proxy.setFilterRegularExpression("")
-            proxy.set_id_filter(frozenset(ids) if ids is not None else None)
-        self.label__hda_count.setText(str(self._ihda_list_proxy_model.rowCount()))
-
-    @QtCore.Slot(object)
-    def _asset_search_failed(self, error: object) -> None:
-        log_handler.LogHandler.log_msg(
-            method=logging.error, msg=f"search failed: {error}"
-        )
+    def _asset_search_failed_message(self, message: str) -> None:
+        log_handler.LogHandler.log_msg(method=logging.error, msg=message)
 
     def _refresh_asset_search(self) -> None:
-        """Re-run the current query after local edits so the id filter is not stale."""
+        """Re-run the current query after edits so the ID filter is not stale."""
         if self.lineEdit__search_hda.text().strip():
-            self._search_filter_regexp_hda_item(self.lineEdit__search_hda.text())
+            self._browser.refresh()
 
     @QtCore.Slot(str)
     def _search_filter_regexp_hda_cate(self, text: str) -> None:

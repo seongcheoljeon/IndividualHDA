@@ -117,7 +117,9 @@ def test_history_deletion_keeps_surviving_file_references(tmp_path: Path) -> Non
         delete_history(db, 1, 1, files)
         assert all(path.exists() for path in files)
         delete_history(db, 1, 2, files)
-        assert not files[0].exists() and not files[1].exists()
+        assert (
+            files[0].exists() and files[1].exists()
+        )  # Trash retains every version file
         assert files[2].exists()  # still used by current video_info and latest history
         with pytest.raises(ValueError, match="most recent"):
             delete_history(db, 1, 3, [folder / "v2.hda"])
@@ -205,7 +207,11 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
     repository = SimpleNamespace(
         set_video=lambda *args: stored.append(args) or "insert",
     )
-    owner = SimpleNamespace(
+
+    class MediaOwner(MediaActionsMixin, SimpleNamespace):
+        pass
+
+    owner = MediaOwner(
         _assets=store,
         _selection=selection,
         _repository=repository,
@@ -220,7 +226,7 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
         owner, 1, "1.0", tmp_path, "encoded.mp4", tmp_path / "preview"
     )
     assert rows == [0, 0]
-    assert history == [1]
+    assert history == []  # Preview changes do not create synthetic HDA versions.
     assert stored == [(1, tmp_path, "encoded.mp4", "1.0")]
 
 

@@ -229,8 +229,11 @@ class PresentationMixin:
     def _slot_preference(self) -> None:
         if self._preference.is_ffmpeg_valid:
             self._video_player.ffmpeg_dirpath = self._preference.ffmpeg_dirpath
+        self._details.close()
         self._library = LibraryContext.from_preference(self._preference, self._user)
         self._repository = self._services.repository(self._library)
+        self._browser.change_repository(self._repository)
+        self._details.change_repository(self._repository, self._library)
         if self._library is not None:
             self._library.asset_root.mkdir(parents=True, exist_ok=True)
             # DB 파일이 존재하지 않는다면 생성
@@ -293,6 +296,7 @@ class PresentationMixin:
         self._set_view_padding(self.doubleSpinBox__zoom.value())
         # main icon size
         self._set_main_default_icon_size()
+        self._browser.refresh()
 
     def _set_main_default_icon_size(self) -> None:
         icon_size = public.UISetting.dft_icon_size

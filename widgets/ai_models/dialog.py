@@ -17,14 +17,12 @@ from libs.ai_backends import probe
 from libs.ai_provider import AIProvider, AISettings, make_provider
 from libs.ihda_system import IHDASystem
 from libs.task_controller import TaskController
+from widgets.ai_models.presenter import LocalModelsPresenter
+from widgets.ai_models.presenter import installed_name as _installed_name
 
 
 def _gb(size_bytes: int) -> str:
     return f"{size_bytes / 1024**3:.1f} GB"
-
-
-def _installed_name(name: str) -> str:
-    return name if ":" in name else f"{name}:latest"
 
 
 class LocalModelsDialog(QtWidgets.QDialog):
@@ -42,6 +40,7 @@ class LocalModelsDialog(QtWidgets.QDialog):
         client: Any = ollama,
     ) -> None:
         super().__init__(parent)
+        self._presenter = LocalModelsPresenter()
         self.client = client
         self.provider_factory = provider_factory
         self.setWindowTitle("Local AI Models")
@@ -55,6 +54,7 @@ class LocalModelsDialog(QtWidgets.QDialog):
         self._destroying = False
         self._installed: set[str] = set()
         self._version: str | None = None
+        self._refresh_after_operation = False
         self._pulling = ""  # model of the running pull
         self._pull_transferred = False  # a layer actually came down the wire
         self.progress.connect(self._on_progress)
@@ -198,7 +198,14 @@ class LocalModelsDialog(QtWidgets.QDialog):
     def _sync_buttons(self) -> None:
         model = self.selected_model()
         busy = self.tasks.busy
-        installed = bool(model) and _installed_name(model) in self._installed
+        actions = self._presenter.actions(
+            model,
+            self._installed,
+            self._version is not None,
+            busy,
+            bool(self._installed_selection()),
+        )
+        installed = actions.installed
         # Pulling an installed model only fetches layers whose digest changed, so
         # the button becomes "Update" instead of being disabled.
         self.download_button.setText("Update" if installed else "Download")
@@ -207,17 +214,13 @@ class LocalModelsDialog(QtWidgets.QDialog):
             if installed
             else "Download the selected model into Ollama"
         )
-        self.download_button.setEnabled(
-            bool(model) and self._version is not None and not busy
-        )
-        self.use_button.setEnabled(installed and not busy)
-        self.remove_button.setEnabled(bool(self._installed_selection()) and not busy)
+        self.download_button.setEnabled(actions.download)
+        self.use_button.setEnabled(actions.use)
+        self.remove_button.setEnabled(actions.remove)
         # Enter applies an installed model rather than re-pulling it.
-        self.use_button.setDefault(installed and not busy)
-        self.download_button.setDefault(bool(model) and not installed and not busy)
-        self.test_button.setEnabled(
-            bool(model) and self._version is not None and not busy
-        )
+        self.use_button.setDefault(actions.use)
+        self.download_button.setDefault(actions.download_default)
+        self.test_button.setEnabled(actions.download)
 
     def _installed_selection(self) -> str:
         chosen = self.installed_list.selectedItems()
@@ -247,7 +250,7 @@ class LocalModelsDialog(QtWidgets.QDialog):
 
     def _removed(self, model: Any) -> None:
         self.status.setText(f"Removed {model}")
-        QtCore.QTimer.singleShot(0, self.refresh)
+        self._refresh_after_operation = True
 
     def _settings(self) -> AISettings:
         return AISettings(
@@ -342,7 +345,7 @@ class LocalModelsDialog(QtWidgets.QDialog):
                 if self._pull_transferred
                 else f"{self._pulling} is up to date"
             )
-            QtCore.QTimer.singleShot(0, self.refresh)
+            self._refresh_after_operation = True
         else:
             self.progress_bar.setRange(0, 100)
             self.status.setText("Download cancelled (finished layers are kept)")
@@ -394,7 +397,13 @@ class LocalModelsDialog(QtWidgets.QDialog):
         self.refresh_button.setEnabled(True)
         self._sync_buttons()
         if self._closing:
+            self._refresh_after_operation = False
             self.accept()
+        elif self._refresh_after_operation:
+            # A result can arrive before QThread.finished clears tasks.busy.
+            # Start the follow-up only at this explicit idle boundary.
+            self._refresh_after_operation = False
+            self.refresh()
 
     def cancel_task(self) -> None:
         self.cancel.set()

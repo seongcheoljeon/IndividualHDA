@@ -11,13 +11,15 @@ import public
 # create date:      2020.03.17 21:09:45
 # modified date:
 # description:
-from widgets.make_video_info import make_video_info_ui
+from widgets.make_video_info.layout import VideoInfoLayout
+from widgets.make_video_info.presenter import VideoInfoPresenter
 
 
-class MakeVideoInfo(QtWidgets.QDialog, make_video_info_ui.Ui_Dialog__makevideoinfo):
+class MakeVideoInfo(QtWidgets.QDialog, VideoInfoLayout):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setupUi(self)
+        self.build_ui(self)
+        self._presenter = VideoInfoPresenter(self)
         self.__sf = 1001
         self.__ef = 1240
         self.__fps = 24
@@ -157,3 +159,10 @@ class MakeVideoInfo(QtWidgets.QDialog, make_video_info_ui.Ui_Dialog__makevideoin
     @property
     def is_crop_mask(self) -> bool:
         return self.checkBox__crop_out_mask_overlay.isChecked()
+
+    def accept(self) -> None:
+        if self._presenter.validate(self.sf, self.ef, self.fps):
+            super().accept()
+
+    def show_video_settings_error(self, message: str) -> None:
+        QtWidgets.QMessageBox.warning(self, "Video settings", message)

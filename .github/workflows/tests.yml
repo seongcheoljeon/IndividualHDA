@@ -32,7 +32,7 @@ jobs:
       - name: Test with coverage
         run: >
           python -m pytest -q
-          --cov=libs --cov=model --cov=view --cov=widgets --cov=main --cov=public --cov=ui_settings
+          --cov=ihda_server --cov=libs --cov=model --cov=view --cov=widgets --cov=main --cov=public --cov=ui_settings
           --cov-report=term --cov-report=xml --cov-fail-under=60
           --junitxml=pytest-report.xml
       - name: Upload test report on failure
@@ -44,3 +44,32 @@ jobs:
             pytest-report.xml
             coverage.xml
           if-no-files-found: ignore
+
+  postgres:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-bookworm
+        env:
+          POSTGRES_DB: ihda_test
+          POSTGRES_USER: ihda
+          POSTGRES_PASSWORD: test-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ihda -d ihda_test"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      QT_QPA_PLATFORM: offscreen
+      IHDA_TEST_POSTGRES_URL: postgresql+psycopg://ihda:test-only-password@127.0.0.1:5432/ihda_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install Qt runtime and test tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libopengl0 libnss3 libxkbcommon0 libasound2t64 postgresql-client-16
+          python -m pip install -r requirements-dev.txt
+      - name: Verify contracts and real HTTP against PostgreSQL
+        run: python -m pytest -q tests/test_team_library.py tests/test_team_workspace.py tests/test_main_team.py tests/test_library_v2.py tests/test_library_v2_migrations.py tests/test_asset_copy.py tests/test_server_backup.py tests/test_core_refactoring.py

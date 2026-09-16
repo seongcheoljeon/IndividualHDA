@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from collections.abc import Callable
 from pathlib import Path
 
 from PySide6 import QtCore, QtGui
@@ -14,9 +15,15 @@ class ImageSignals(QtCore.QObject):
 
 class ImageRead(QtCore.QRunnable):
     def __init__(
-        self, key: int, generation: int, path: Path, signals: ImageSignals
+        self,
+        key: int,
+        generation: int,
+        path: Path,
+        signals: ImageSignals,
+        resolve: Callable[[], Path] | None = None,
     ) -> None:
         super().__init__()
+        self.resolve = resolve
         self.key, self.generation, self.path, self.signals = (
             key,
             generation,
@@ -27,12 +34,16 @@ class ImageRead(QtCore.QRunnable):
     def run(self) -> None:
         image = QtGui.QImage()
         try:
-            reader = QtGui.QImageReader(str(self.path))
+            path = self.resolve() if self.resolve is not None else self.path
+            reader = QtGui.QImageReader(str(path))
             size = reader.size()
             if size.isValid() and max(size.width(), size.height()) > 1024:
                 size.scale(1024, 1024, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
                 reader.setScaledSize(size)
             image = reader.read()
+        except Exception:
+            # A missing/offline preview must not interrupt asset browsing.
+            image = QtGui.QImage()
         finally:
             self.signals.ready.emit(self.key, self.generation, image)
 
@@ -55,6 +66,7 @@ class ThumbnailCache(QtCore.QObject):
         self.byte_limit = byte_limit
         self._bytes = 0
         self._paths: dict[int, Path] = {}
+        self._resolvers: dict[int, Callable[[], Path]] = {}
         self._versions: dict[int, int] = {}
         self._generation = 0
         self._cache: OrderedDict[int, QtGui.QPixmap] = OrderedDict()
@@ -79,6 +91,7 @@ class ThumbnailCache(QtCore.QObject):
 
     def __delitem__(self, key: int) -> None:
         self._paths.pop(key, None)
+        self._resolvers.pop(key, None)
         self._versions.pop(key, None)
         old = self._cache.pop(key, None)
         if old is not None:
@@ -86,16 +99,21 @@ class ThumbnailCache(QtCore.QObject):
 
     def clear(self) -> None:
         self._paths.clear()
+        self._resolvers.clear()
         self._versions.clear()
         self._cache.clear()
         self._bytes = 0
 
-    def set_path(self, key: int, path: Path | None) -> None:
+    def set_path(
+        self, key: int, path: Path | None, resolve: Callable[[], Path] | None = None
+    ) -> None:
         self.__delitem__(key)
         self._generation += 1
         self._versions[key] = self._generation
         if path is not None:
             self._paths[key] = path
+            if resolve is not None:
+                self._resolvers[key] = resolve
         self.changed.emit(key)
 
     def get(self, key: int, default: QtGui.QPixmap | None = None) -> QtGui.QPixmap:
@@ -111,7 +129,11 @@ class ThumbnailCache(QtCore.QObject):
         ):
             generation = self._versions[key]
             self._pending[key] = generation
-            self._pool.start(ImageRead(key, generation, path, self._signals))
+            self._pool.start(
+                ImageRead(
+                    key, generation, path, self._signals, self._resolvers.get(key)
+                )
+            )
         return self.fallback if default is None else default
 
     @staticmethod

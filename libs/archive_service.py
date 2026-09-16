@@ -115,6 +115,7 @@ def prepare_database(stage: str | Path, target_assets: str | Path) -> None:
                 old_root = str(path.parent.parent)
         if old_root:
             root = PurePosixPath(old_root.replace("\\", "/"))
+            path_changes = []
             for table, columns in {
                 "hda_info": ("dirpath",),
                 "thumbnail_info": ("dirpath",),
@@ -135,13 +136,31 @@ def prepare_database(stage: str | Path, target_assets: str | Path) -> None:
                         relative = path.relative_to(root)
                         if ".." in relative.parts:
                             raise ValueError("Asset path escapes library root")
-                        connection.execute(
-                            f"UPDATE {table} SET {column} = ? WHERE id = ?",
+                        path_changes.append(
                             (
+                                table,
+                                column,
                                 str(Path(target_assets).joinpath(*relative.parts)),
                                 identifier,
-                            ),
+                            )
                         )
+            # Snapshot every source path before preview synchronization triggers run.
+            connection.execute("UPDATE write_context SET maintenance=1")
+            for table, column, target, identifier in path_changes:
+                connection.execute(
+                    f"UPDATE {table} SET {column}=? WHERE id=?", (target, identifier)
+                )
+            for (stored,) in connection.execute(
+                "SELECT path FROM file_cleanup"
+            ).fetchall():
+                path = PurePosixPath(stored.replace("\\", "/"))
+                if path.is_relative_to(root):
+                    relative = path.relative_to(root)
+                    connection.execute(
+                        "UPDATE file_cleanup SET path=? WHERE path=?",
+                        (str(Path(target_assets).joinpath(*relative.parts)), stored),
+                    )
+            connection.execute("UPDATE write_context SET maintenance=0")
         connection.commit()
         if connection.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
             raise sqlite3.DatabaseError("Imported database failed integrity check")

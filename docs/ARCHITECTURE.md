@@ -2,14 +2,24 @@
 
 ## Panel
 
-`main.IndividualHDA` remains the panel entry point. It owns window construction,
-shared UI state and shutdown. Feature wiring lives in bootstrap. Designer
-layouts and widget object names are unchanged.
+`main.IndividualHDA` remains the panel entry point and Qt event router.
+`PanelComposition` creates services, session/widgets and models, then connects
+features; `PanelBootstrap` handles initial loading and widget/signal setup.
+`PanelShutdown` owns close policy and `PanelLifetime` orders resource cleanup.
+AI, archive and library-sync integrations are composed objects, with explicit
+forwarding methods for existing panel callers. The 12 remaining feature Mixins
+still share legacy window state; feature presenters use the MVP boundaries below.
+Every screen now has a maintained
+Python layout; no Designer sources or generated layout modules remain. Persisted
+control and splitter names retain their existing identities. See
+[UI_EDITING.md](UI_EDITING.md) for the screen map and editing workflow.
 
-Feature mixins in `widgets/panel/` contain related behavior:
+Feature modules in `widgets/panel/` contain related behavior:
 
 | Module | Responsibility |
 | --- | --- |
+| `composition.py` | Ordered construction and ownership of acquired resources |
+| `lifetime.py`, `shutdown.py` | Worker/timer/view cleanup, close refusal and retry |
 | `bootstrap.py` | Initial loading, widget setup and signal wiring |
 | `presentation.py` | Fonts, sizes, overlays, preferences and application information |
 | `selection.py` | Selection, search, comboboxes and item activation |
@@ -41,6 +51,120 @@ an existing database connection. Its completion slots update the panel on the GU
 thread. `ProcessJob` owns encoders/probes. Panel shutdown waits for archive work
 and stops encoding before dependent UI objects are destroyed.
 
+## Asset browser: first MVP migration
+
+The search controls, zoom/view controls and list/table container are code-built in
+`widgets/asset_browser/view.py`. The code-built `MainWindowLayout` in
+`widgets/panel/layout.py` embeds this widget. Existing
+custom item views, item models and proxy models remain in use. The counter is
+owned by the browser but placed in the existing footer by the integration adapter.
+
+- **View:** widget construction, model filters, result count and asset-ID selection
+  signals. It knows no database, transport, main-window state or business rules.
+- **Presenter:** typed search requests, busy/error state and gateway invocation.
+  It imports neither Qt, Houdini, SQL nor the main window. A failed query leaves
+  the last successful result visible.
+- **Search gateway:** `libs/browser_search.py` defines an immutable `SearchRequest`
+  and the small `AssetSearchGateway` / `SearchRepository` protocols. The local
+  implementation delegates to the existing repository, which owns connections.
+- **Executor:** existing `AssetSearch` runs blocking operations away from the GUI
+  thread and delivers only the current generation, including errors. Search
+  options are captured per request; the optional AI rewrite still runs in the
+  worker. Invalidate immediately when input changes, before debounce fires.
+- **Integration:** `widgets/asset_browser/integration.py` owns browser aliases;
+  `widgets/asset_details/integration.py` adapts the existing metadata editors. It bridges asset IDs back to legacy
+  selection handlers, context menus and Houdini drag/activation actions. Delete
+  main-window aliases as consumers migrate. Code-built widgets retain the existing
+  `widgetType__purpose` style (for example `lineEdit__search_hda`) in both Python
+  attributes and object names. Use descriptive snake_case for presentation and
+  service state; avoid generic names such as `query`, `field` or `manager` for
+  widget attributes. The Presenter never accesses widget attributes directly.
+- **Composition:** `PanelServices` injects the search gateway factory and executor.
+  Preferences replace the gateway and invalidate pending work. Shutdown stops
+  debounce, invalidates outstanding results and drains workers before deletion.
+
+The main panel still owns the shared AssetStore and legacy model construction;
+this change does not claim to migrate all panel state or all business operations.
+The executor contract requires stale-result suppression and GUI-thread delivery.
+A future HTTP implementation also needs bounded request timeouts: cancellation
+invalidates a result but cannot interrupt an arbitrary blocking call.
+
+## Feature presentation boundaries
+
+| Feature | Presenter / use case | Qt integration |
+| --- | --- | --- |
+| Notes and tags | `widgets/asset_details/presenter.py` | `asset_details/integration.py`, `panel/notes.py` |
+| Registration, rename and removal | `widgets/asset_lifecycle/presenter.py`, `libs/asset_lifecycle.py` | `panel/asset_registration.py`, `panel/asset_management.py` |
+| Thumbnail/video metadata | `widgets/asset_media/presenter.py` | `panel/media_actions.py` |
+| Detail display | `widgets/detail_view/presenter.py` | `detail_view/detail_view.py` |
+| History date range | `widgets/history/presenter.py` | `panel/selection.py` |
+| Rename validation | `widgets/rename_ihda/presenter.py` | `rename_ihda/rename_ihda.py` |
+| Video capture validation | `widgets/make_video_info/presenter.py` | `make_video_info/make_video_info.py` |
+| Storage preference validation | `widgets/preference/presenter.py` | `preference/preference.py` |
+| Web zoom | `widgets/web_view/presenter.py` | `web_view/web_view.py` |
+| Playback metadata | `widgets/video_player/presenter.py` | `video_player/video_player.py` |
+| AI model actions | `widgets/ai_models/presenter.py` | `ai_models/dialog.py` |
+| Library explorer paging | `widgets/library_manager/presenter.py` | `library_manager/dialog.py` |
+
+Presenters import no Qt, HOM, main window or concrete database implementation.
+Views retain widget access, model notification, local file dialogs and host calls.
+Existing library maintenance, AI transport, playlist and settings services remain
+responsible for their operations. This is separation of feature policies and
+coordination; it does not eliminate every panel mixin or convert all Qt event
+handlers into presenters.
+
+Metadata saves use their own TaskController. Each request captures its repository,
+asset ID and submitted values. Drafts survive selection changes and failed saves;
+edits made during a save remain dirty. Switching libraries drains the old writer
+and resets drafts; changing preferences for the same library preserves drafts.
+Drafts are held in memory for the current panel session, not persisted across restarts.
+Errors remain visible next to the editor. Library reload results started before a
+metadata write are discarded so they cannot replace newly saved data with old rows.
+
+Lifecycle and media presenters report storage failures without running the
+committed callback. UI/model exceptions after commit propagate separately from
+storage failures. LocalAssetLifecycle owns rename path planning and uses the
+existing journaled SQLite/file transactions. Registration captures HOM data and
+creates host files on the GUI thread before invoking the local use case. These
+lifecycle operations remain synchronous; HTTP implementations need asynchronous
+command execution, cancellation/close handling, and upload/download support before
+they can be enabled. `PanelServices.lifecycle` is the local adapter factory;
+unimplemented server mode is rejected explicitly instead of silently using SQLite.
+
+Dialog button boxes call the dialog's validation; main-panel actions listen to
+`QDialog.accepted`. Connecting a main action directly to a button box's `accepted`
+would bypass validation and must not be reintroduced.
+
+### Personal and team/studio evolution
+
+The browser-facing boundary describes user operations, not database transactions.
+Personal mode executes use cases locally through SQLite/file adapters. Team mode
+will call a FastAPI application that runs server use cases through PostgreSQL and
+file-storage adapters. Pure business rules may be shared; server-side permission
+and consistency checks remain authoritative. Houdini extraction and HDA creation
+stay in the host client.
+
+The current search result is a set of IDs filtering an already loaded AssetStore,
+with the existing repository limit of 5,000 matches. This is a compatibility step,
+not the final remote query design. Before implementing the server:
+
+1. Add paged asset results and server-side sorting/filtering together; avoid one
+   HTTP request per existing repository helper or client-side loading of all rows.
+2. Move rename/delete/register requests to IDs and intent. Resolve paths and
+   perform file operations inside the appropriate use case/storage adapter.
+3. Define revision-based conditional updates and conflict errors, request IDs for
+   idempotent writes, authenticated project/team scope, and API compatibility.
+4. Choose shared storage versus upload/download and local cache resolution;
+   define recovery when file and metadata operations only partially succeed.
+5. Decide offline behavior explicitly. No bidirectional sync or offline write
+   queue is implied by supporting two backends.
+
+Follow-up presentation-logic migration order: detail/notes/tags,
+registration/rename/deletion, history/media, then remaining dialogs. All of their
+layout construction is already Python-only. Each feature gets narrow interfaces and
+its own presenter; avoid a single global presenter or service interface. No
+server, database migration or file relocation is introduced by this first step.
+
 ## Database
 
 `libs.sqlite3_db_api.SQLite3DatabaseAPI` is the compatibility facade. Public class
@@ -70,7 +194,7 @@ The regression suite (`python -m pytest -q`) covers populated-panel search, mode
 notifications, archive roundtrips and rollback, schema migration, process
 lifecycle, cross-module transaction rollback, panel background completion and
 deferred close, host destruction, startup fallbacks, settings tolerance, data
-safety (WAL, orphan cleanup, auto backup), generated-UI drift, version
+safety (WAL, orphan cleanup, auto backup), Python layout construction and dialog contracts, version
 consistency, the architecture ratchets and annotation coverage. CI runs
 `ruff check`, `ruff format --check`, `mypy` and `pytest --cov` with a coverage
 floor (`pyproject.toml`); `requirements-dev.txt` pins the tools. Host-side checks
@@ -104,7 +228,7 @@ confirm the main-thread deferred-execution behavior.
 
 All functions/methods in maintained production Python files have parameter
 and return annotations (implicit `self`/`cls` excluded), as do the Python Panel
-hooks. Test helpers are annotated too. Generated Designer/resource modules are
+hooks. Test helpers are annotated too. Generated resource modules are
 excluded from manual annotation edits.
 
 The syntax target is Python 3.11, matching the installed Houdini 21 build. Modern
@@ -117,7 +241,7 @@ annotations on future changes.
 heterogeneous legacy asset dictionaries. It does not establish a fully static
 schema for those values. `python -m mypy` runs over the whole tree with
 `follow_imports = "normal"` (`pyproject.toml`). Two override groups keep it green:
-generated Designer/resource modules are never checked, and the panel mixins plus
+generated resource modules are never checked, and the panel mixins plus
 the item models carry `ignore_errors` because a mixin's `self._x` attributes are
 declared on the composed `IndividualHDA`, which mypy cannot see from the mixin.
 Remove a module from that second list once it passes; do not add to it.
@@ -290,3 +414,237 @@ Implemented so far:
   and tags from stored metadata, the studio tag vocabulary and the thumbnail. The
   prompt never contains paths, users or hip locations (tested). The answer only
   fills the note/tag editors; the user's Save click persists it.
+
+## Personal/team switching in the main panel
+
+`MainLibraryIntegration` connects the existing asset models and metadata editors to
+`WorkspacePresenter`. The library selector lives in `AssetBrowserView`; connection
+and member settings live in `widgets/library_connection`. There is no separate
+workspace browser. `MainAssetActions` owns Qt menus and file selection; the presenter
+owns commands, drafts, revisions and retries. `PanelCatalog` prepares remote metadata
+on a worker. The existing bounded `ThumbnailCache` accepts a file resolver and
+downloads visible previews on its image workers; QPixmap creation stays on the GUI thread. `asset_row` / `history_row` adapt documents for the existing
+models; `DocumentSearch` searches an immutable snapshot with the existing token syntax.
+
+A team connection is applied only after its initial read succeeds. The personal
+repository/context and draft state are kept for switching back. During team use,
+`window._repository` and `window._library` are `None`; local-only maintenance and
+scene-record actions are disabled. Existing feature boundaries route remote intentions
+to the injected presenter. File downloads happen before GUI-thread Houdini imports.
+Project identity in drag payloads prevents cross-library ID collisions.
+
+The server contract, transactions and deployment are described in
+[TEAM_LIBRARY.md](TEAM_LIBRARY.md). HTTP commands retain optimistic revisions and
+atomic request receipts. Recovery/comparison controls appear only after a failure.
+The legacy `PanelServices.settings.mode` is not the user-facing library selector;
+source switching is coordinated by the integration above.
+
+### Library metadata and lifecycle v2
+
+The v4 SQLite schema/rebuild is a frozen migration input (`database_migrations_v4`).
+The ordered migrator adds identity, preferences, audit, version metadata, file references,
+and trash state without replacing integer IDs. Legacy facade writes share these rules
+through transaction-local request context and database triggers. Missing file diagnostics
+never delete metadata. Personal lifecycle operations are implemented by `PersonalLifecycle`;
+`LocalManagement` and `RemoteManagement` implement the focused management view port.
+
+On the server, `LifecycleStore` joins the existing authorized catalog transaction. Preferences
+have their own revision, while shared mutations append audit events and advance the project
+revision. Retry receipts and audit records commit with mutations. Version snapshots retain
+creation metadata when previews change. Foreign-key-cascaded file references are checked across
+all projects before explicit cleanup. The API is v2; old pending commands are retained for
+manual review, not silently replayed against the changed contract.
+
+The UI remains code-built. Main-library selection is unchanged. Trash and version details
+are small modal views with worker-owned IO; SQL and filesystem deletion never run in the view.
+
+### Personal → Team copying
+
+`PersonalCopySource` reads a SQLite transaction and hashes a portable snapshot without
+writing the personal library. `CopyPresenter` prepares the destination and finds saved
+work; `CopyAssetDialog` owns only form state and worker lifetimes. `CopyTransfer` depends
+on the narrow `CopyDestination` protocol; `HttpCopyDestination` supplies authentication,
+capability checks and blob/command transport. `CopyJobStore` atomically saves the frozen
+selection and request identity under a process lock, without saving credentials.
+
+The server's `copy_asset` command validates nested versions with existing create rules.
+`copy_import` runs under the same project lock, authorization, receipt and transaction as
+other writes. New asset/version identities and source provenance commit together; the
+project revision advances once. Active and trashed assets participate in source/name
+conflict checks. Uploads are content-addressed and precede registration. A lost commit
+response is resolved by replaying the exact saved command before accessing source files.
+Definitive rejected commands can recheck/reupload missing blobs; uncertain requests retain
+their identity. Existing schema JSON fields hold provenance; no migration is needed.
+
+### Server backup and isolated restore
+
+`BackupService` coordinates a `BackupDatabase` protocol, verified file copying and
+atomic publication of completed bundles. `PostgresBackup` exports a repeatable-read
+snapshot, inventories every application table, and gives the same snapshot to
+`pg_dump`. App tables and their sequences/constraints are dumped explicitly, so
+restoration does not recreate the target database's existing public namespace.
+`backup_files` owns manifest validation and file hashing; `backup_cli` supplies
+administrator commands and environment-based connection configuration.
+
+`storage_lock` is a Qt-free cross-process lock shared by upload, cleanup and backup.
+It holds immutable blob contents stable while metadata changes can continue under
+the exported database snapshot. Backup inventory includes registered unreferenced
+uploads and trashed asset files; unregistered temporary files are excluded.
+
+Restore requires an empty dedicated database and an absent blob destination. A
+PostgreSQL advisory lock serializes restore commands to that database. Files and
+dump are verified and staged before a single-transaction restore. Table hashes,
+row counts and ownership are compared before publishing the staged blob directory.
+No existing database is cleared, and service configuration is not changed. A failure
+after the database commit can leave the isolated target populated; the command
+never exposes an unverified blob destination or silently drops that database.
+
+CLI passwords use a temporary protected pgpass file, never subprocess arguments or
+backup manifests. The optional admin container includes PostgreSQL 16 client tools;
+the Houdini client and main UI gain no server maintenance dependencies.
+
+### Core value objects, copy ports and resource policies
+
+`libs/file_integrity.py` defines immutable `FileContent(digest, size)` values and
+streaming `measure_file()`. Generated equality and hashing use exactly the same
+fields. Renaming a file preserves content equality; `Blob` equality still includes
+its filename. The `Blob.content` property is excluded from dataclass serialization,
+so wire references, command fingerprints and pending requests retain their format.
+Cancellation is supplied as a callback; the shared reader has no Qt dependency.
+
+Copy responsibilities now have separate homes:
+
+| Responsibility | Module |
+| --- | --- |
+| Copy orchestration and uncertain-response replay | `libs/team/copy_workflow.py` |
+| Destination and journal protocols | `libs/team/copy_ports.py` |
+| HTTP destination adapter | `libs/team/copy_destination.py` |
+| Atomic JSON persistence and process locking | `libs/team/copy_journal.py` |
+| Compatibility imports for existing callers | `libs/team/copy_transfer.py` |
+
+The workflow acquires `CopyJournal.locked()` instead of knowing a local lock path.
+Its prepare, upload and submit steps are separate methods. The presenter accepts
+destination/journal factories. A memory-backed journal test verifies uncertain
+request replay without filesystem persistence; architecture tests prevent importing
+concrete HTTP/SQLite/journal adapters into the workflow.
+
+Configuration locations:
+
+| Meaning | Location |
+| --- | --- |
+| API version and route prefix | `libs/team/contracts.py`: `API_VERSION`, `API_PREFIX` |
+| Shared command/body/copy caps and default upload size | `libs/team/limits.py` |
+| HTTP response/diagnostic/chunk budgets | injectable `HttpLimits` |
+| SQLAlchemy connection/query/lock timeouts | injectable `DatabaseTimeouts` in `ihda_server/database_policy.py` |
+| File hashing/copy chunk default | `FILE_READ_CHUNK_BYTES` in `libs/file_integrity.py` |
+| Backup manifest size | `MAX_MANIFEST_BYTES` in `ihda_server/backup_files.py` |
+| Restore lock identity and inventory batch size | named constants in `ihda_server/backup_postgres.py` |
+
+For example, construct `HttpTransport(url, credential, limits=HttpLimits(response_bytes=8 * 1024**2))`
+or `make_engine(url, timeouts=DatabaseTimeouts(statement_ms=15_000))`. Policies validate values
+before use. Existing defaults remain unchanged. Protocol caps are shared validation rules;
+changes require coordinated client/server review. The restore advisory lock key is a stable
+cross-process identity, so deployments must continue using the same key.
+
+Use operator overloading for value semantics with an unambiguous meaning. File content
+supports equality, inequality and hashing. Service actions use named methods so database,
+HTTP and file writes are explicit. Version labels remain user-defined strings; this change
+does not introduce a numeric ordering rule for existing labels.
+
+### Panel state and library interaction refactoring
+
+The main panel keeps its Python layouts and named controls. Selection updates now
+use `SelectionState.select_asset/select_history/select_category` rather than
+assigning individual fields across mixins. `PanelSelectionPresenter` sequences
+selection, detail display and dependent-view refresh through `SelectionView`;
+Qt slots only decode model roles and forward input. Its `restore` method
+rebuilds names, paths, versions and row positions from asset/history IDs after a
+reload. The Qt adapter blocks selection signals during model resets, restores both
+list/table indexes and the history filter, and then displays the current details.
+The ALL history option survives reloads. Missing records clear their selection.
+
+`LibrarySyncPresenter` owns the known revision, pending reload and close state. It
+depends on `SyncView` and `SyncExecutor`; the panel supplies repository reads and Qt
+model updates. Results from a replaced repository or from before a metadata save
+are rejected. A save-invalidated result schedules a fresh read when work permits;
+controller idle or the next poll performs the retry. Search filters and unsaved
+metadata drafts remain owned by their existing feature presenters.
+
+`PanelLibrarySession` is the port for selection/details, metadata save, refresh
+and history requests. `PersonalPanelSession` connects local presenters;
+`TeamPanelSession` connects the team integration. `LibraryCapabilities` describes
+metadata editing, local file controls, member administration and the existing
+save-confirmation policy. Storage-specific asset import, copy and recovery remain
+in their dedicated integrations. Adding a backend should implement the required
+ports rather than adding mode checks to the note and refresh slots.
+
+Team history responses carry a selection generation, so A → B → A cannot install
+the first A request. The history cache is marked loaded only on successful current
+results. Busy requests wait for idle, failed requests can be retried, and a late
+history response does not switch the user's current page. Dirty Team drafts retain
+their original revision until explicit conflict review; refresh must not silently
+rebase edits and bypass revision checks.
+
+Shared toolbar icons, compact margins, spacing, tag color and asset/history column
+widths live in `widgets/ui_tokens.py`. Values use Qt logical pixels; font and zoom
+preferences continue to take priority. Keep feature-specific geometry in its layout.
+This removes selection from the shared-panel-state ratchet without pretending that
+all host and model mixins have been eliminated.
+
+### Local registration capture and commit
+
+`libs/asset_registration.py` contains `RegistrationService`. Its small ports are
+`RegistrationCapture` (write HDA/optional thumbnail to supplied temporary paths)
+and `RegistrationWriter` (commit prepared metadata, with reference-aware cleanup
+on failure). `HoudiniRegistrationCapture` is the GUI-thread adapter in
+`widgets/asset_lifecycle/capture.py`. `PanelServices.registration` selects the
+service; the existing `AssetCommandPresenter` executes it before updating views.
+
+The panel collects metadata and confirms new versions before capture. Both new
+assets and added versions follow the same sequence:
+
+1. Reject existing destination files, including dangling symlinks.
+2. Capture into a private `.ihda-registration-*` directory. Require a nonempty HDA;
+   thumbnail absence remains supported when a viewport is unavailable.
+3. Publish using exclusive file creation. On a pre-commit publication failure,
+   remove only files this attempt created, preserving a competing destination.
+4. Delegate metadata commit to the existing local lifecycle/repository. Its SQL
+   transaction and reference-aware cleanup remain authoritative once invoked.
+5. Update views only after success. A view update failure reports that the asset
+   was saved and requests a reload; it is not reported as a rolled-back save.
+
+Display/render flags and the batch overlay are restored with `finally`, including
+cancelled and failed operations. A failure to inspect DB references retains files
+and logs the cleanup issue without replacing the original registration error.
+
+This provides retry after a proven rollback, not a durable registration receipt.
+An abrupt process exit can leave temporary/unreferenced files; existing library
+inspection/cleanup can identify them. Do not automatically delete files when DB
+commit status cannot be verified. Team registration continues using its existing
+upload, command and pending-request receipt path, rather than local file cleanup.
+
+### Rename and Trash presentation boundaries
+
+`LocalAssetLifecycle.rename` validates names through `libs/asset_names.py` before
+building a rename plan. The rename dialog re-exports/uses that same validation;
+node-type conflicts are checked in the application service. File/SQL mutations
+still use the existing rename journal and transaction, including rollback when a
+history update fails. The panel keeps the dialog open on failure and always closes
+the busy overlay. It captures the selected asset before executing the command.
+
+`AssetCommandPresenter` accepts an optional committed-display-error callback.
+The panel uses it to report a successful library change whose UI update failed and
+request a reload, without classifying the change as a failed storage transaction.
+The default presenter behavior still propagates display errors for other clients.
+
+Asset and version Trash commands perform all destructive-looking UI updates only
+inside committed callbacks. In a mixed batch, a failed asset retains its rows,
+histories, selection and draft. Successful updates resolve row positions by ID.
+Historical selection data is refreshed after path relocation and row shifts.
+`_trash_history_rows` is the shared adapter for selected-assets/all-history menus;
+it deduplicates records and skips current versions, while the repository remains
+the authoritative protection at commit time. Note history and media files are
+retained. Deleting a version no longer constructs physical file-removal requests.
+
+The separate scene-record cleanup paths are outside this slice; they remain a
+candidate for the remaining main-window/application-service refactoring.

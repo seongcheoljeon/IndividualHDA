@@ -20,6 +20,8 @@ from model import (
     ihda_record_model,
     ihda_table_model,
 )
+from widgets.history.presenter import HistoryPresenter
+from widgets.ui_tokens import ASSET_COMBO_ICON_SIZE
 
 
 class SelectionMixin:
@@ -52,7 +54,9 @@ class SelectionMixin:
     def _default_set_hist_ihda_combobox(self) -> None:
         self.comboBox__hist_ihda_node.clear()
         root_icon = QtGui.QIcon(
-            self._ihda_icons.pixmap_cate_data.get(public.Name.Icons.root).scaled(30, 30)
+            self._ihda_icons.pixmap_cate_data.get(public.Name.Icons.root).scaled(
+                ASSET_COMBO_ICON_SIZE, ASSET_COMBO_ICON_SIZE
+            )
         )
         self.comboBox__hist_ihda_node.addItem(root_icon, "ALL", -1)
         self.comboBox__hist_ihda_node.setCurrentIndex(0)
@@ -71,7 +75,9 @@ class SelectionMixin:
     def _default_set_inside_ihda_combobox(self) -> None:
         self.comboBox__hda_inside_node.clear()
         root_icon = QtGui.QIcon(
-            self._ihda_icons.pixmap_cate_data.get(public.Name.Icons.root).scaled(30, 30)
+            self._ihda_icons.pixmap_cate_data.get(public.Name.Icons.root).scaled(
+                ASSET_COMBO_ICON_SIZE, ASSET_COMBO_ICON_SIZE
+            )
         )
         self.comboBox__hda_inside_node.addItem(root_icon, "ALL", -1)
         self.comboBox__hda_inside_node.setCurrentIndex(0)
@@ -81,7 +87,9 @@ class SelectionMixin:
     ) -> None:
         if hkey_id not in self._get_all_hist_ihda_combobox_data():
             icon = QtGui.QIcon(
-                self._ihda_icons.pixmap_ihda_data.get(hkey_id).scaled(30, 30)
+                self._ihda_icons.pixmap_ihda_data.get(hkey_id).scaled(
+                    ASSET_COMBO_ICON_SIZE, ASSET_COMBO_ICON_SIZE
+                )
             )
             self.comboBox__hist_ihda_node.addItem(icon, hda_name, hkey_id)
 
@@ -100,7 +108,7 @@ class SelectionMixin:
             else:
                 icon_lst = houdini_api.HoudiniAPI.node_icon_path_lst(node)
             pixmap = self._ihda_icons.get_houdini_icon(icon_lst=icon_lst)
-        icon = QtGui.QIcon(pixmap.scaled(30, 30))
+        icon = QtGui.QIcon(pixmap.scaled(ASSET_COMBO_ICON_SIZE, ASSET_COMBO_ICON_SIZE))
         self.comboBox__hda_inside_node.addItem(icon, hda_name, hkey_id)
 
     def _get_all_hist_ihda_combobox_data(self) -> list[Any]:
@@ -149,6 +157,8 @@ class SelectionMixin:
             else:
                 view_idx = view_idx_lst[idx]
                 self.stackedWidget__whole.setCurrentIndex(view_idx)
+                if view_idx == self._hist_view_idx:
+                    self._panel_library.history()
 
     def _slot_set_view_mode(self) -> None:
         if self._is_icon_mode:
@@ -161,21 +171,10 @@ class SelectionMixin:
         self._search_filter_regexp_hda_cate(self.lineEdit__search_cate.text().strip())
 
     @QtCore.Slot(bool)
-    def _slot_checkbox_hda_item_casesensitive(self, idx: bool) -> None:
-        self._search_filter_regexp_hda_item(self.lineEdit__search_hda.text().strip())
-
-    @QtCore.Slot(bool)
     def _slot_checkbox_hist_hda_item_casesensitive(self, idx: bool) -> None:
         self._search_filter_regexp_hist_hda_item(
             self.lineEdit__search_hda_hist.text().strip()
         )
-
-    @QtCore.Slot(int)
-    def _slot_set_search_target(self, idx: int) -> None:
-        name = self.comboBox__search_type.itemText(idx)
-        self._ihda_list_proxy_model.set_search_field(name)
-        self._ihda_table_proxy_model.set_search_field(name)
-        self._refresh_asset_search()
 
     @QtCore.Slot(int)
     def _slot_set_search_hist_field_target(self, idx: int) -> None:
@@ -207,27 +206,17 @@ class SelectionMixin:
         self._ihda_inside_view.expandAll()
 
     def _slot_hist_ihda_search_date(self, *args: Any) -> None:
-        datetime_lst = []
-        if self.checkBox__hist_search_date.isChecked():
-            date_start = self.dateEdit__hist_search_start.date()
-            date_end = self.dateEdit__hist_search_end.date()
-            if date_start > date_end:
-                log_handler.LogHandler.log_msg(
-                    method=logging.warning,
-                    msg="search date setting is wrong. please check and try again",
-                )
-                return
-            datetime_lst = [
-                date_start.toString(public.Value.qt_date_fmt_str),
-                date_end.toString(public.Value.qt_date_fmt_str),
-            ]
-            log_handler.LogHandler.log_msg(
-                method=logging.info,
-                msg='historical data in the range of "{} ~ {}" were retrieved'.format(
-                    *datetime_lst
-                ),
-            )
-        self._ihda_history_proxy_model.set_datetime(datetime_lst=datetime_lst)
+        HistoryPresenter(self).filter_dates(
+            self.checkBox__hist_search_date.isChecked(),
+            self.dateEdit__hist_search_start.date().toPython(),
+            self.dateEdit__hist_search_end.date().toPython(),
+        )
+
+    def show_history_error(self, message: str) -> None:
+        log_handler.LogHandler.log_msg(method=logging.warning, msg=message)
+
+    def show_history_dates(self, dates: list[str]) -> None:
+        self._ihda_history_proxy_model.set_datetime(datetime_lst=dates)
         self.label__hist_cnt.setText(str(self._ihda_history_proxy_model.rowCount()))
 
     def _select_category(self, category: str | None = None) -> None:
@@ -260,100 +249,51 @@ class SelectionMixin:
             view_hda.setCurrentIndex(find_idx)
             self._slot_on_hda_item_clicked(find_idx)
 
+    def _restore_panel_selection(self) -> None:
+        for view, proxy in (
+            (self._ihda_list_view, self._ihda_list_proxy_model),
+            (self._ihda_table_view, self._ihda_table_proxy_model),
+        ):
+            row = self._selection.asset.row
+            index = (
+                proxy.mapFromSource(proxy.sourceModel().index(row, 0))
+                if row is not None
+                else QtCore.QModelIndex()
+            )
+            view.setCurrentIndex(index)
+        row = self._selection.history.row
+        proxy = self._ihda_history_proxy_model
+        index = (
+            proxy.mapFromSource(proxy.sourceModel().index(row, 0))
+            if row is not None
+            else QtCore.QModelIndex()
+        )
+        self._ihda_history_view.setCurrentIndex(index)
+        category = self._selection.item_text
+        if category:
+            self._select_category(category)
+
     def _refresh_history_current_attribs(self) -> None:
-        hist_data = self._ihda_history_view.currentIndex().data(
-            ihda_history_model.HistoryModel.data_role
+        index = self._ihda_history_view.currentIndex()
+        self._selection.select_history(
+            index.data(ihda_history_model.HistoryModel.data_role),
+            index.data(ihda_history_model.HistoryModel.row_role),
+            str(index.data()) if index.isValid() else None,
         )
-        hist_row = self._ihda_history_view.currentIndex().data(
-            ihda_history_model.HistoryModel.row_role
-        )
-        self._ihda_history_view.currentIndex().data(
-            ihda_history_model.HistoryModel.col_role
-        )
-        hist_hkey_id = self._ihda_history_view.currentIndex().data(
-            ihda_history_model.HistoryModel.id_role
-        )
-        hist_fpath = self._ihda_history_view.currentIndex().data(
-            ihda_history_model.HistoryModel.filepath_role
-        )
-        hist_name = self._ihda_history_view.currentIndex().data(
-            ihda_history_model.HistoryModel.name_role
-        )
-        hist_id = self._ihda_history_view.currentIndex().data(
-            ihda_history_model.HistoryModel.hist_id_role
-        )
-        hist_cate = self._ihda_history_view.currentIndex().data(
-            ihda_history_model.HistoryModel.cate_role
-        )
-        hist_ver = self._ihda_history_view.currentIndex().data(
-            ihda_history_model.HistoryModel.version_role
-        )
-        self._selection.history.data = hist_data
-        self._selection.history.row = hist_row
-        self._selection.history.id = hist_hkey_id
-        self._selection.history.filepath = hist_fpath
-        self._selection.history.name = hist_name
-        self._selection.history.hist_id = hist_id
-        self._selection.history.cate = hist_cate
-        self._selection.history.version = hist_ver
 
     def _refresh_current_attribs(self) -> None:
-        if self._is_icon_mode:
-            row = self._ihda_list_view.currentIndex().data(
-                ihda_list_model.ListModel.row_role
-            )
-            # hda_data = self._ihda_list_model.items[row]
-            hda_data = self._ihda_list_view.currentIndex().data(
-                ihda_list_model.ListModel.data_role
-            )
-            hda_id = self._ihda_list_view.currentIndex().data(
-                ihda_list_model.ListModel.id_role
-            )
-            hda_filepath = self._ihda_list_view.currentIndex().data(
-                ihda_list_model.ListModel.filepath_role
-            )
-            hda_name = self._ihda_list_view.currentIndex().data(
-                ihda_list_model.ListModel.name_role
-            )
-            hda_cate = self._ihda_list_view.currentIndex().data(
-                ihda_list_model.ListModel.cate_role
-            )
-            hda_ver = self._ihda_list_view.currentIndex().data(
-                ihda_list_model.ListModel.version_role
-            )
-        else:
-            row = self._ihda_table_view.currentIndex().data(
-                ihda_table_model.TableModel.row_role
-            )
-            self._ihda_table_view.currentIndex().data(
-                ihda_table_model.TableModel.col_role
-            )
-            # hda_data = self._ihda_table_model.items[row]
-            hda_data = self._ihda_table_view.currentIndex().data(
-                ihda_table_model.TableModel.data_role
-            )
-            hda_id = self._ihda_table_view.currentIndex().data(
-                ihda_table_model.TableModel.id_role
-            )
-            hda_filepath = self._ihda_table_view.currentIndex().data(
-                ihda_table_model.TableModel.filepath_role
-            )
-            hda_name = self._ihda_table_view.currentIndex().data(
-                ihda_table_model.TableModel.name_role
-            )
-            hda_cate = self._ihda_table_view.currentIndex().data(
-                ihda_table_model.TableModel.cate_role
-            )
-            hda_ver = self._ihda_table_view.currentIndex().data(
-                ihda_table_model.TableModel.version_role
-            )
-        self._selection.asset.data = hda_data
-        self._selection.asset.row = row
-        self._selection.asset.id = hda_id
-        self._selection.asset.filepath = hda_filepath
-        self._selection.asset.name = hda_name
-        self._selection.asset.cate = hda_cate
-        self._selection.asset.version = hda_ver
+        view = self._ihda_list_view if self._is_icon_mode else self._ihda_table_view
+        roles = (
+            ihda_list_model.ListModel
+            if self._is_icon_mode
+            else ihda_table_model.TableModel
+        )
+        index = view.currentIndex()
+        self._selection.select_asset(
+            index.data(roles.data_role),
+            index.data(roles.row_role),
+            str(index.data()) if index.isValid() else None,
+        )
 
     def _initialize_hist_current_attribs(self) -> None:
         self._selection.clear_history()
@@ -523,6 +463,10 @@ class SelectionMixin:
 
     @QtCore.Slot(QtCore.QModelIndex)
     def _slot_hda_double_clicked(self, *args: Any) -> None:
+        team = getattr(self, "_team_library", None)
+        if team is not None and team.active:
+            team.actions.play_video()
+            return
         index = args[0]
         if not self._preference.is_ffmpeg_valid:
             log_handler.LogHandler.log_msg(
@@ -571,13 +515,31 @@ class SelectionMixin:
         if not index.isValid():
             return
         if self._is_ihda_history_view:
-            self._selection.history.field = str(index.data())
-            self._refresh_history_current_attribs()
-            self._set_hda_hist_info_to_parms()
+            roles = ihda_history_model.HistoryModel
+            self._panel_selection.select_history(
+                index.data(roles.data_role),
+                index.data(roles.row_role),
+                str(index.data()),
+            )
         else:
-            self._selection.asset.field = str(index.data())
-            self._refresh_current_attribs()
-            self._set_hda_info_to_parms()
+            roles = (
+                ihda_list_model.ListModel
+                if self._is_icon_mode
+                else ihda_table_model.TableModel
+            )
+            self._panel_selection.select_asset(
+                index.data(roles.data_role),
+                index.data(roles.row_role),
+                str(index.data()),
+            )
+
+    def show_asset_selection(self) -> None:
+        self._set_hda_info_to_parms()
+
+    def show_history_selection(self) -> None:
+        self._set_hda_hist_info_to_parms()
+
+    def refresh_selection_dependents(self) -> None:
         # record view 갱신
         if self.checkBox__record_only_current_ihda.isChecked():
             self._slot_record_only_curt_filter()
@@ -596,12 +558,10 @@ class SelectionMixin:
             model_idx = model_idx[0]
         # 카테고리를 검색했을 때, 아무것도 검색이 안되면 column 속성이 없다는 에러 발생하여 예외처리 함.
         try:
-            self._selection.column_idx = model_idx.column()
             index_item = self._ihda_category_proxy_model.mapToSource(model_idx)
             item_text = str(index_item.data()).strip()
-            self._selection.item_text = item_text
             par_lst = self._get_all_category_parent_by_selected_item(index_item)
-            self._selection.parents = par_lst
+            self._selection.select_category(model_idx.column(), item_text, par_lst)
             # 어느 카테고리를 클릭했는지 로깅하는 것인데 비활성화함.
             # log_handler.LogHandler.log_msg(method=logging.info, msg=' > '.join(par_lst))
             node_cate = None if item_text == public.Type.root else item_text

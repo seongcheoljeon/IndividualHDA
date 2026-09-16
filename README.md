@@ -6,6 +6,17 @@ Individual HDA is a personal Houdini digital-asset library. It runs inside Houdi
 
 ![Individual HDA workflow](image/ihda_main.gif)
 
+## Personal and team libraries
+
+Use the library selector above the existing asset browser: **Personal** or
+**Connect team…**. Team assets use the same list, search, notes and tags. Asset
+operations are in the existing right-click menu; connection settings and project
+membership are under **Library Tools**. No separate workspace window is used.
+See [Team library setup](docs/TEAM_LIBRARY.md) for the FastAPI/PostgreSQL server.
+Administrator `backup`, `verify-backup` and `restore-backup` commands create a
+consistent DB/file bundle and verify recovery in an empty isolated database;
+see [backup and recovery](docs/TEAM_LIBRARY.md#백업과-복구).
+
 ## Requirements
 
 - Houdini 21 or later with Qt 6 and Python 3.11+
@@ -107,7 +118,7 @@ the answer so you can see what the model returned.
 
 ## Data safety
 
-The database uses SQLite schema v4 with foreign keys, validation checks, normalized tags, indexes, and transactional migrations. Existing databases are backed up before an upgrade.
+The database uses SQLite schema v5 with foreign keys, validation checks, normalized tags, indexes, and transactional migrations. Existing databases are backed up before an upgrade.
 
 File operations use a persistent journal. Imports, renames, deletions, path repairs, and restores can be recovered after an interrupted operation. Recovery copies are retained until you remove them through **Library Tools**.
 
@@ -127,8 +138,10 @@ python -m mypy
 ```
 
 Optional: `pip install pre-commit && pre-commit install` runs the same lint and
-format checks before each commit. `tests/test_generated_ui.py` fails when a
-`*_ui.py` module drifts from its `.ui` file; regenerate with `pyside6-uic`.
+format checks before each commit. All UI layouts are maintained Python code;
+edit the screen-specific `layout.py` modules directly. See the
+[UI editing guide](docs/UI_EDITING.md) for screen locations and naming conventions.
+`tests/test_layouts.py` checks the actual Qt layouts and dialog behavior.
 
 Run `git config blame.ignoreRevsFile .git-blame-ignore-revs` once so `git blame` skips the mechanical formatting commits listed in that file.
 
@@ -147,3 +160,11 @@ It uses temporary files and a fresh Houdini process. Architecture, schema, recov
 ## License
 
 MIT License. Copyright (c) 2020 Seongcheol Jeon. Third-party notices are in [`THIRD_PARTY_LICENSES.txt`](THIRD_PARTY_LICENSES.txt).
+
+### Library metadata v2
+
+`Library Tools → Trash…` restores deleted assets/versions; files remain until explicit permanent
+cleanup. `Version details…` edits version descriptions and dependencies. Favorites and successful
+import counts are per user. Existing personal libraries upgrade to SQLite schema 5 with a backup.
+Existing team servers require a coordinated app/server upgrade and the explicit `upgrade-db`
+command; see [migration and file maintenance](docs/TEAM_LIBRARY.md#데이터-기반-v2-업그레이드).

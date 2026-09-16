@@ -36,7 +36,7 @@ def search_assets(
             FROM hda_key k JOIN hda_info i ON i.hda_key_id=k.id
             LEFT JOIN tag_info t ON t.hda_key_id=k.id
             LEFT JOIN houdini_node_info n ON n.hda_key_id=k.id
-            WHERE k.user_id=? AND {column} LIKE ? ESCAPE '\\'
+            WHERE k.id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND k.user_id=? AND {column} LIKE ? ESCAPE '\\'
             ORDER BY k.name,k.id LIMIT ? OFFSET ?""",
             (user, pattern, limit, offset),
         ).fetchall()
@@ -116,7 +116,10 @@ def search_asset_ids(
     # ponytail: LIKE/GLOB full scan; swap the body for FTS5 (trigram) if the
     # library grows past ~50k rows or ranking is needed. Callers stay unchanged.
     tokens = query.split()
-    clauses: list[str] = ["(? IS NULL OR k.user_id = ?)"]
+    clauses: list[str] = [
+        "(? IS NULL OR k.user_id = ?)",
+        "k.id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL)",
+    ]
     params: list[object] = [user, user]
     for token in tokens:
         clause, token_params = _token_clause(token, field, case_sensitive)
@@ -144,7 +147,9 @@ def history_versions(
             (SELECT note FROM hda_note_history n WHERE n.hda_key_id=h.hda_key_id
              AND n.hda_version=h.version AND n.registration_datetime<=h.registration_datetime
              ORDER BY n.registration_datetime DESC,n.id DESC LIMIT 1) AS note
-            FROM hda_history h WHERE h.hda_key_id=? ORDER BY h.id DESC""",
+            FROM hda_history h WHERE h.hda_key_id=?
+            AND h.hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL)
+            AND h.id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) ORDER BY h.id DESC""",
                 (asset_id,),
             )
         ]

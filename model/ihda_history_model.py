@@ -254,7 +254,9 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
                 font.setStrikeOut(True)
             else:
                 hda_filepath = hda_dirpath / data.get(public.Key.History.ihda_filename)
-                if not hda_filepath.exists():
+                if not hda_filepath.exists() and not index.data(
+                    HistoryModel.data_role
+                ).get("remote", False):
                     font.setItalic(True)
                     font.setStrikeOut(True)
             return font
@@ -307,7 +309,9 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         flags = super().flags(index)
         if index.isValid():
             hda_filepath = index.data(HistoryModel.filepath_role)
-            if not hda_filepath.exists():
+            if not hda_filepath.exists() and not index.data(HistoryModel.data_role).get(
+                "remote", False
+            ):
                 flags = (
                     QtCore.Qt.ItemFlag.ItemIsSelectable
                     | QtCore.Qt.ItemFlag.ItemIsEnabled

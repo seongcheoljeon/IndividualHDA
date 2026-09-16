@@ -120,23 +120,31 @@ def test_delete_asset_rolls_back_files_when_database_write_fails(
         db.insert_users("user", "user@example.com")
         db.insert_hda_category("sop", "user")
         db.insert_hda_key("Water", "sop", "user")
-        original = db.delete_hda_key_with_id
-        monkeypatch.setattr(db, "delete_hda_key_with_id", lambda **kwargs: None)
-        with pytest.raises(RuntimeError):
+        db._connect.execute("""CREATE TRIGGER reject_trash BEFORE UPDATE OF deleted_at ON asset_identity
+            BEGIN SELECT RAISE(ABORT,'simulated write failure'); END""")
+        with pytest.raises(sqlite3.DatabaseError):
             delete_asset(db, 1, assets)
         assert (assets / "water.hda").read_text() == "asset"
-        assert db.get_count_hda_key(name="Water") == 1
-        monkeypatch.setattr(db, "delete_hda_key_with_id", original)
+        assert (
+            db._connect.execute("SELECT deleted_at FROM asset_identity").fetchone()[0]
+            is None
+        )
+        db._connect.execute("DROP TRIGGER reject_trash")
         delete_asset(db, 1, assets)
-        assert not assets.exists()
-        assert db.get_count_hda_key(name="Water") == 0
-        assert len(list(tmp_path.glob(".ihda-deleted-*/water.hda"))) == 1
+        assert assets.exists()
+        assert db._connect.execute("SELECT deleted_at FROM asset_identity").fetchone()[
+            0
+        ]
+        assert not list(tmp_path.glob(".ihda-deleted-*"))
 
 
 def test_version_one_migration_adds_operation_markers(tmp_path: Path) -> None:
     path = tmp_path / "ihda.db"
-    with SQLite3DatabaseAPI(path) as db:
-        db.insert_users("keep", "keep@example.com")
+    from libs.database_migrations_v4 import migrate as migrate_v4
+
+    with sqlite3.connect(path) as db:
+        migrate_v4(db, path)
+        db.execute("INSERT INTO users VALUES('keep','keep@example.com','2020-01-01')")
     with sqlite3.connect(path) as connection:
         connection.execute("DROP TABLE operation_commits")
         connection.execute("PRAGMA user_version=1")

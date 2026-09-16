@@ -5,6 +5,48 @@
 Client-only groundwork for a multi-user library; behavior in local mode is
 unchanged apart from the items below.
 
+- **Main-window composition.** Separate construction and retryable shutdown from
+  Qt events. Compose bootstrap, AI, archives and library sync instead of inheriting
+  their Mixins. Clean acquired resources on startup failure and keep failed closes
+  in a retryable closing state without restarting stopped services.
+- **Rename and Trash refactoring.** Share name validation and retain journaled
+  rollback. Update asset/history views only after commit, preserve failed items in
+  mixed batches, and retain note history/files in historical-version Trash menus.
+  Report committed display failures separately and always close rename overlays.
+- **Registration capture.** Share staged HDA/thumbnail capture and exclusive file
+  publication between local new registration and version addition. Restore node
+  flags/overlays after failures, preserve uncertain DB commits, and distinguish
+  successful saves from subsequent display-update failures.
+- **Panel refactoring.** Centralize selection updates and restore all derived fields
+  and Qt indexes by identity. Extract reload lifecycle/stale-result handling into a
+  presenter and route metadata/refresh/history through Personal/Team session ports.
+  Keep history filters and ALL on reload, reject stale Team history responses,
+  retry failed/busy history requests, and consolidate shared UI defaults.
+- **Core refactoring.** Introduce immutable file-content values and shared hashing;
+  separate copy orchestration, destination and journal adapters with injectable ports.
+  Consolidate protocol limits/API prefixes and validate HTTP/DB resource policies.
+  Existing command, journal and backup formats remain compatible.
+- **Server backup and recovery.** Add consistent PostgreSQL/blob bundles, offline
+  integrity checks and verified restore into a separate empty database. Administrator
+  CLI commands and an optional tools container keep maintenance out of the main UI.
+  Server storage locking no longer requires Qt.
+- **Personal → Team copy.** Copy an asset with selected versions and previews from
+  its existing menu. Preview conflicts/size, retain source provenance, and resume
+  interrupted uploads or lost registration responses without duplicate assets.
+  Personal originals and preferences remain local; registration is atomic.
+- **Feature presenters.** Extract metadata drafts/saves, lifecycle commands,
+  media metadata, history date filtering, detail formatting and dialog policies
+  into typed presenters. Save notes/tags off the GUI thread; retain drafts after
+  failures and selection changes, and reject stale library reload results.
+- **Validated dialog actions.** Main actions run only after dialog validation.
+  Detail display keeps source records unchanged and web zoom applies host scaling
+  once. Empty tag lists can be saved on assets without a previous tag row.
+- **Python-only UI.** All seven Designer layouts and their generated Python
+  modules are replaced by maintained, typed `layout.py` modules. Layout sections
+  and widget names describe their purpose; see `docs/UI_EDITING.md` for editing.
+  Search and asset browsing use a Presenter and injectable search gateway while
+  preserving local SQLite behavior and settings. AI model download/delete refreshes
+  now wait for worker idle, avoiding intermittent premature-refresh failures.
 - **Storage boundary.** `LibraryRepository` protocol + SQLite adapter; panel
   registration, versioning, tags/notes, favorites, rename and deletion go
   through it. Prepares the HTTP/PostgreSQL server mode.
@@ -119,3 +161,29 @@ Decisions that shaped this release. Verification details live in
 - AI extension point: `libs/ai_provider.py` (`AIProvider.complete`),
   backend/endpoint/model/API-key-env settings in Preferences, a dedicated task
   controller for AI calls. Default backend does nothing; no network code yet.
+
+## Personal / Team workspace
+
+- Add a code-maintained shared workspace using an injected presenter and personal/HTTP adapters.
+- Add atomic revision checks and request receipts, persistent retries and SHA-256 file storage/cache.
+- Add a separate FastAPI/PostgreSQL service, expiring/revocable tokens, projects and member roles.
+- Preserve the existing personal library and observe legacy writes with revision triggers.
+- Add Compose/server packaging, shared adapter/HTTP/Qt regressions and operating documentation.
+
+## Main-panel team integration
+
+- Replace the separate Personal / Team workspace with a library selector in the existing browser.
+- Reuse the existing asset views, category/search controls and note/tag editors for remote data.
+- Move server credentials and memberships into focused settings dialogs; show conflict/retry controls only when needed.
+- Preserve personal data and drafts across successful/failed source changes; isolate local writes in team mode.
+- Keep remote file transfers asynchronous, route asset menus and drag/drop through the team presenter, and remove obsolete workspace UI files.
+
+## Library metadata and lifecycle v2
+
+- Add stable library/asset/version identities, personal preferences, successful usage receipts,
+  transactional audit, version descriptions/dependencies, and explicit file references.
+- Preserve assets and historical files in Trash; add restore and owner-only team permanent deletion.
+- Add code-built Trash and Version details views to the existing Library Tools menu.
+- Separate metadata/preview changes from HDA version creation; preserve historical snapshots.
+- Add SQLite v4→v5 and PostgreSQL v1→v2 upgrades, API v2 compatibility checks, and legacy pending review.
+- Add explicit integrity checks and reference-safe cleanup commands; preserve missing-file metadata.

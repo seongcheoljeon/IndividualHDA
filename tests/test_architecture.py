@@ -16,7 +16,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SKIP_PARTS = {"tests", "benchmarks", ".venv", "__pycache__"}
-GENERATED = ("_ui.py", "_rc.py")
+GENERATED = ("_rc.py",)
 
 # Modules allowed to import hou/hdefereval at runtime (the host boundary).
 HOST_BOUNDARY = {"libs.host", "libs.houdini_api"}
@@ -27,7 +27,6 @@ PUBLIC_IMPORTERS = {
     "libs.houdini_api",
     "libs.ihda_icons",
     "libs.ihda_system",
-    "main",
     "model.ihda_category_model",
     "model.ihda_history_model",
     "model.ihda_inside_model",
@@ -40,12 +39,9 @@ PUBLIC_IMPORTERS = {
     "view.ihda_list_view",
     "view.ihda_record_view",
     "view.ihda_table_view",
-    "widgets.detail_view.detail_view",
     "widgets.make_video_info.make_video_info",
-    "widgets.panel.ai_actions",
     "widgets.panel.asset_management",
     "widgets.panel.asset_registration",
-    "widgets.panel.bootstrap",
     "widgets.panel.context_menus",
     "widgets.panel.host_callbacks",
     "widgets.panel.houdini_actions",
@@ -88,13 +84,10 @@ SHARED_PANEL_STATE = {
     "_ihda_list_proxy_model",
     "_ihda_table_model",
     "_ihda_table_proxy_model",
-    "_library",
-    "_repository",
-    "_selection",
 }
 # Debt: direct SQLite facade use left in panel mixins, per module. Target: empty.
 LOCAL_DB_SITES = {
-    "widgets.panel.asset_management": 2,
+    "widgets.panel.asset_management": 1,
     "widgets.panel.houdini_actions": 1,
 }
 
@@ -176,7 +169,14 @@ def test_shared_panel_state_only_shrinks() -> None:
     for name, tree in MODULES.items():
         if not name.startswith("widgets.panel."):
             continue
-        for node in ast.walk(tree):
+        # Only mixins share the composed window. Presenters have independent
+        # instances, so identically named private fields are not shared state.
+        mixins = [
+            node
+            for node in tree.body
+            if isinstance(node, ast.ClassDef) and node.name.endswith("Mixin")
+        ]
+        for node in (child for mixin in mixins for child in ast.walk(mixin)):
             if isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
                 targets = (
                     node.targets if isinstance(node, ast.Assign) else [node.target]
@@ -209,3 +209,51 @@ def test_direct_facade_sites_only_shrink() -> None:
             if count:
                 sites[name] = count
     assert sites == LOCAL_DB_SITES, f"route through LibraryRepository: {sites}"
+
+
+def test_team_workspace_contract_and_presenter_stay_independent() -> None:
+    forbidden = {
+        "PySide6",
+        "hou",
+        "sqlalchemy",
+        "fastapi",
+        "urllib",
+        "requests",
+        "httpx",
+    }
+    for module in (
+        "libs.team.contracts",
+        "widgets.team_library.presenter",
+        "widgets.panel.selection_presenter",
+        "widgets.panel.sync_presenter",
+        "ihda_server.service",
+    ):
+        assert not IMPORTS[module] & forbidden, module
+    for module, imports in IMPORTS.items():
+        if module.startswith("libs.team.") or module.startswith(
+            "widgets.team_library."
+        ):
+            assert not imports & {"ihda_server", "sqlalchemy", "fastapi", "psycopg"}, (
+                module
+            )
+
+
+def test_panel_selection_fields_are_not_written_by_ui_adapters() -> None:
+    """Use SelectionState methods so identity, version and path cannot diverge."""
+    offenders = []
+    for name, tree in MODULES.items():
+        if not name.startswith("widgets."):
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
+                continue
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                if not isinstance(target, ast.Attribute):
+                    continue
+                if any(
+                    isinstance(part, ast.Attribute) and part.attr == "_selection"
+                    for part in ast.walk(target.value)
+                ):
+                    offenders.append(f"{name}:{node.lineno}")
+    assert not offenders, offenders

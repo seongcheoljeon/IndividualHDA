@@ -46,8 +46,9 @@ class LibrarySettings:
 class RegistrationPayload:
     """Everything a registration needs, gathered on the GUI thread from HOM.
 
-    Files (HDA, thumbnail) already exist on disk when this is built; the adapter
-    only writes metadata. Paths are absolute in local mode.
+    The capture service can build this before files exist. At the repository
+    boundary the HDA has been published (thumbnail is optional); the adapter
+    writes metadata. Paths are absolute in local mode.
     """
 
     user: str
@@ -77,6 +78,7 @@ class RegistrationPayload:
     thumb_dirpath: Path
     thumb_filename: str
     registered_at: str
+    description: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +100,8 @@ class LibraryRepository(Protocol):
     def list_assets(
         self, owner: str | None = None, category: str | None = None
     ) -> list[AssetData]: ...
+    def asset_available(self, asset_id: int, history_id: int | None = None) -> bool: ...
+    def record_use(self, asset_id: int) -> None: ...
     def categories(self, owner: str | None = None) -> list[str]: ...
     def histories(
         self, asset_id: int | None, owner: str | None = None, search_date: Any = None

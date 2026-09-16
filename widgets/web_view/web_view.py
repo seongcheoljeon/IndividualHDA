@@ -15,17 +15,22 @@ from PySide6.QtWebEngineCore import QWebEngineFullScreenRequest, QWebEngineProfi
 import public
 from libs import log_handler
 from libs.houdini_api import HoudiniAPI
-from widgets.web_view import web_ui_settings, web_view_ui
+from widgets.web_view import web_ui_settings
+from widgets.web_view.layout import WebViewLayout
+from widgets.web_view.presenter import WebPresenter
 
 
-class WebView(QtWidgets.QWidget, web_view_ui.Ui_Form__web):
+class WebView(QtWidgets.QWidget, WebViewLayout):
     def __init__(
         self,
         help_site: str | Callable[[], str] | None = None,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        self.setupUi(self)
+        self.build_ui(self)
+        self._presenter = WebPresenter(
+            self, HoudiniAPI.global_scale_factor() if public.IS_HOUDINI else 1.0
+        )
         self.__ui_settings = web_ui_settings.WebUISettings(window=self)
         self.__blank_site = "about:blank"
         self.__help_site = help_site
@@ -176,18 +181,17 @@ class WebView(QtWidgets.QWidget, web_view_ui.Ui_Form__web):
             msg=f"current zoom factor of the webview: {self.curt_zoom_value}",
         )
 
+    def show_zoom(self, factor: float) -> None:
+        self.webEngineView__webview.setZoomFactor(factor)
+
     def __zoom_in(self) -> None:
-        new_zoom = self.webEngineView__webview.zoomFactor() * 1.1
-        if new_zoom <= WebView.__maximum_zoom_factor():
-            self.__set_view_by_zoom_factor(new_zoom)
+        self._presenter.zoom(self.webEngineView__webview.zoomFactor(), 1.1)
 
     def __zoom_out(self) -> None:
-        new_zoom = self.webEngineView__webview.zoomFactor() / 2
-        if new_zoom >= WebView.__minimum_zoom_factor():
-            self.__set_view_by_zoom_factor(new_zoom)
+        self._presenter.zoom(self.webEngineView__webview.zoomFactor(), 0.5)
 
     def __reset_zoom(self) -> None:
-        self.__set_view_by_zoom_factor(1)
+        self._presenter.reset_zoom()
 
     @property
     def curt_zoom_value(self) -> int:

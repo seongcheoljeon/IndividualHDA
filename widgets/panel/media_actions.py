@@ -19,10 +19,13 @@ from PySide6 import QtCore
 
 import public
 from libs import ffmpeg_api, houdini_api, ihda_system, log_handler
-from libs.repository import LibraryError
+from widgets.asset_media.presenter import AssetMediaPresenter, MediaRequest
 
 
 class MediaActionsMixin:
+    def show_media_error(self, message: str) -> None:
+        log_handler.LogHandler.log_msg(method=logging.error, msg=message)
+
     @staticmethod
     def _remove_preview_dir(preview_dirpath: pathlib.Path | None = None) -> bool:
         assert isinstance(preview_dirpath, pathlib.Path)
@@ -35,6 +38,10 @@ class MediaActionsMixin:
         return is_del
 
     def _slot_make_thumbnail(self) -> None:
+        team = getattr(self, "_team_library", None)
+        if team is not None and team.active:
+            team.actions.attach("thumbnail")
+            return
         if public.IS_HOUDINI:
             hda_dirpath = self._selection.asset.data.get(public.Key.hda_dirpath)
             hda_name = self._selection.asset.data.get(public.Key.hda_name)
@@ -51,29 +58,44 @@ class MediaActionsMixin:
             if not thumb_dirpath.exists():
                 thumb_dirpath.mkdir(parents=True)
             houdini_api.HoudiniAPI.create_thumbnail(output_filepath=thumb_filepath)
-            is_update_thumb = self._repository.set_thumbnail(
-                hda_id, thumb_dirpath, thumb_filename, hda_version
+            AssetMediaPresenter(self, self._repository).thumbnail(
+                MediaRequest(hda_id, hda_version, thumb_dirpath, thumb_filename),
+                lambda updated: self._apply_thumbnail(
+                    hda_id, hda_version, thumb_filepath, updated
+                ),
             )
-            # model에서 새로운 파일을 새롭게 읽을 수 있도록 thumb_filepath인자에 값을 배정하지 않았다.
-            # self._update_pixmap_thumbnail(hkey_id=hda_id, thumb_filepath=pathlib.Path())
-            self._update_pixmap_thumbnail(hkey_id=hda_id, thumb_filepath=thumb_filepath)
-            hist_id = self._ihda_history_model.get_history_id_from_model(
-                hkey_id=hda_id, version=hda_version
-            )
-            if hist_id is not None:
-                self._update_pixmap_hist_thumbnail(
-                    hist_id=hist_id, thumb_filepath=thumb_filepath
-                )
-            if is_update_thumb:
-                log_handler.LogHandler.log_msg(
-                    method=logging.info, msg="thumbnail update completed"
-                )
         else:
             log_handler.LogHandler.log_msg(
                 method=logging.warning, msg="run on the houdini"
             )
 
+    def _apply_thumbnail(
+        self,
+        hda_id: int,
+        hda_version: str,
+        thumb_filepath: pathlib.Path,
+        is_update_thumb: bool,
+    ) -> None:
+        # model에서 새로운 파일을 새롭게 읽을 수 있도록 thumb_filepath인자에 값을 배정하지 않았다.
+        # self._update_pixmap_thumbnail(hkey_id=hda_id, thumb_filepath=pathlib.Path())
+        self._update_pixmap_thumbnail(hkey_id=hda_id, thumb_filepath=thumb_filepath)
+        hist_id = self._ihda_history_model.get_history_id_from_model(
+            hkey_id=hda_id, version=hda_version
+        )
+        if hist_id is not None:
+            self._update_pixmap_hist_thumbnail(
+                hist_id=hist_id, thumb_filepath=thumb_filepath
+            )
+        if is_update_thumb:
+            log_handler.LogHandler.log_msg(
+                method=logging.info, msg="thumbnail update completed"
+            )
+
     def _slot_make_video(self) -> None:
+        team = getattr(self, "_team_library", None)
+        if team is not None and team.active:
+            team.actions.attach("video")
+            return
         if self._tasks.busy:
             return
         if not self._preference.is_ffmpeg_valid:
@@ -206,28 +228,24 @@ class MediaActionsMixin:
         row = self._assets.id_rows.get(hda_id)
         if row is None:
             raise RuntimeError("Encoded asset is no longer in the library")
-        try:
-            kind = self._repository.set_video(
-                hda_id, video_dirpath, video_filename, hda_version
-            )
-        except LibraryError:
-            logging.exception("Could not store the preview video for asset %s", hda_id)
-        else:
-            log_handler.LogHandler.log_msg(
-                method=logging.info, msg=f"video {kind} complete"
-            )
-            self._change_hda_data(
-                row=row, key=public.Key.video_dirpath, val=video_dirpath
-            )
-            self._change_hda_data(
-                row=row, key=public.Key.video_filename, val=video_filename
-            )
-            # history
-            self._insert_hist_db_from_curt_hist_data(
-                comment=f"VIDEO ({kind.upper()})", data=self._assets.rows[row]
-            )
-        self._remove_preview_dir(preview_dirpath=preview_dirpath)
+        request = MediaRequest(hda_id, hda_version, video_dirpath, video_filename)
+        if AssetMediaPresenter(self, self._repository).video(
+            request, lambda kind: self._apply_video(row, request, kind)
+        ):
+            self._remove_preview_dir(preview_dirpath=preview_dirpath)
         self._loading_close()
+
+    def _apply_video(self, row: int, request: MediaRequest, kind: str) -> None:
+        video_dirpath, video_filename = request.directory, request.filename
+        log_handler.LogHandler.log_msg(
+            method=logging.info, msg=f"video {kind} complete"
+        )
+        self._change_hda_data(row=row, key=public.Key.video_dirpath, val=video_dirpath)
+        self._change_hda_data(
+            row=row, key=public.Key.video_filename, val=video_filename
+        )
+        # history
+        # Media changes update the current version and its audit trail.
 
     @staticmethod
     def _make_preview(

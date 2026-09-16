@@ -312,9 +312,17 @@ def test_multi_delete_keeps_ids_after_proxy_reorders(app: Any, tmp_path: Path) -
 
     def remove(**values: Any) -> None:
         deleted.append(values["hda_id"])
-        source.remove_item(values["item_row"])
+        current_row = next(
+            row
+            for row, item in enumerate(rows)
+            if item[public.Key.hda_id] == values["hda_id"]
+        )
+        source.remove_item(current_row)
 
     owner = SimpleNamespace(
+        _assets=SimpleNamespace(
+            id_rows={item[public.Key.hda_id]: row for row, item in enumerate(rows)}
+        ),
         _db_filepath=tmp_path / "unused.db",
         _db_api_wrap=lambda path: object(),
         _video_player=SimpleNamespace(player_stop=lambda: None),

@@ -196,6 +196,7 @@ def apply_paths(database: Path, changes: list[PathChange]) -> Path:
                     raise RuntimeError(
                         "Library changed since preview; generate a new preview"
                     )
+            connection.execute("UPDATE write_context SET maintenance=1")
             # hda_info triggers also update record paths. Preserve unaffected records.
             records = connection.execute(
                 "SELECT id, hda_dirpath, hda_filename, node_name FROM hda_node_location_record"
@@ -216,6 +217,7 @@ def apply_paths(database: Path, changes: list[PathChange]) -> Path:
                         f"UPDATE {item.table} SET {item.column}=? WHERE id=?",
                         (item.after, item.row_id),
                     )
+            connection.execute("UPDATE write_context SET maintenance=0")
             if connection.execute("PRAGMA foreign_key_check").fetchone():
                 raise sqlite3.IntegrityError("Path repair failed foreign-key check")
             connection.commit()

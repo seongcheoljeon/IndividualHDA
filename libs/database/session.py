@@ -79,6 +79,11 @@ class DatabaseSession:
         outer = self._transaction_depth == 0
         if outer:
             self._connect.execute("BEGIN IMMEDIATE")
+            from libs.library_metadata import new_identity
+
+            self._connect.execute(
+                "UPDATE write_context SET request_id=?", (new_identity(),)
+            )
         savepoint = f"ihda_nested_{self._transaction_depth}"
         if not outer:
             self._connect.execute(f"SAVEPOINT {savepoint}")
@@ -86,6 +91,7 @@ class DatabaseSession:
         try:
             yield self
             if outer:
+                self._connect.execute("UPDATE write_context SET request_id=NULL")
                 self._connect.commit()
             else:
                 self._connect.execute(f"RELEASE SAVEPOINT {savepoint}")

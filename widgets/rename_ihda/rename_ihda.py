@@ -5,22 +5,20 @@ from __future__ import annotations
 # create date:      2020.04.25 01:20:06
 # modified date:
 # description:
-from re import DOTALL, compile
-
 from PySide6 import QtGui, QtWidgets
 
-from widgets.rename_ihda import rename_ihda_ui
+from widgets.rename_ihda.layout import RenameLayout
+from widgets.rename_ihda.presenter import NameValidation, RenamePresenter
 
 
-class RenameIHDA(QtWidgets.QDialog, rename_ihda_ui.Ui_Dialog__rename_ihda):
+class RenameIHDA(QtWidgets.QDialog, RenameLayout):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self.setupUi(self)
+        self.build_ui(self)
         self.label__bridge.setText(">>>>>")
         self.__final_ihda_name = None
         self.__is_valid_ihda_name = False
-        self.__regex_spec_first_char = compile(r"^[^a-zA-Z0-9_]", DOTALL)
-        self.__regex_find_sepc_char = compile(r"[^a-zA-Z0-9.\-_]", DOTALL)
+        self._presenter = RenamePresenter(self)
         self.__connections()
         self.__valid_ihda_name(self.lineEdit__input_ihda_name.text())
 
@@ -32,60 +30,14 @@ class RenameIHDA(QtWidgets.QDialog, rename_ihda_ui.Ui_Dialog__rename_ihda):
         return self.__final_ihda_name
 
     def __valid_ihda_name(self, text: str) -> None:
-        text = text.replace(" ", "_")
-        self.set_new_ihda_name(text)
-        old_ihda_name = self.label__old_ihda_name.text()
-        if not len(text):
-            self.set_confirm_pixmap(False)
-            self.set_confirm_text("Nothing was entered.")
-            self.is_valid_ihda_name = False
-        elif text == old_ihda_name:
-            self.set_confirm_pixmap(False)
-            self.set_confirm_text("Same as the current iHDA name.")
-            self.is_valid_ihda_name = False
-        elif text.isdigit():
-            self.set_confirm_pixmap(False)
-            self.set_confirm_text("Everythong cannot consist of numbers.")
-            self.is_valid_ihda_name = False
-        elif text.startswith("_"):
-            self.set_confirm_pixmap(False)
-            self.set_confirm_text("The first character cannot be _(underscore).")
-            self.is_valid_ihda_name = False
-        elif text[0].isdigit():
-            self.set_confirm_pixmap(False)
-            self.set_confirm_text("The first character cannot be a number.")
-            self.is_valid_ihda_name = False
-        elif text.startswith("."):
-            self.set_confirm_pixmap(False)
-            self.set_confirm_text("The first character cannot be .(full stop).")
-            self.is_valid_ihda_name = False
-        elif len(text) <= 2:
-            self.set_confirm_pixmap(False)
-            self.set_confirm_text("Must be at least 2 characters.")
-            self.is_valid_ihda_name = False
-        elif len(text) >= 255:
-            self.set_confirm_pixmap(False)
-            self.set_confirm_text("It cannot exceed 255 characters.")
-            self.is_valid_ihda_name = False
-        elif self.__regex_spec_first_char.match(text) is not None:
-            find_str = self.__regex_spec_first_char.match(text).group()
-            self.set_confirm_pixmap(False)
-            self.set_confirm_text(
-                f"The first character cannot contain special characters. ({find_str})"
-            )
-            self.is_valid_ihda_name = False
-        elif self.__regex_find_sepc_char.search(text) is not None:
-            find_str = self.__regex_find_sepc_char.search(text).group()
-            self.set_confirm_pixmap(False)
-            self.set_confirm_text(
-                f"There should be no special characters between the names. ({find_str})"
-            )
-            self.is_valid_ihda_name = False
-        else:
-            self.set_confirm_pixmap(True)
-            self.set_confirm_text("Valid iHDA name.")
-            self.is_valid_ihda_name = True
-            self.__final_ihda_name = text
+        self._presenter.edit(text, self.label__old_ihda_name.text())
+
+    def show_validation(self, validation: NameValidation) -> None:
+        self.set_new_ihda_name(validation.name)
+        self.set_confirm_pixmap(validation.valid)
+        self.set_confirm_text(validation.error or "Valid iHDA name.")
+        self.is_valid_ihda_name = validation.valid
+        self.__final_ihda_name = validation.name if validation.valid else None
 
     def accept(self) -> None:
         if not self.__is_valid_ihda_name:
@@ -96,6 +48,8 @@ class RenameIHDA(QtWidgets.QDialog, rename_ihda_ui.Ui_Dialog__rename_ihda):
             msgbox.setDetailedText(f"{self.label__confirm_ihda_name.text()}")
             msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
             _ = msgbox.exec()
+        else:
+            super().accept()
 
     def clear_parms(self) -> None:
         self.lineEdit__input_ihda_name.clear()
@@ -117,6 +71,7 @@ class RenameIHDA(QtWidgets.QDialog, rename_ihda_ui.Ui_Dialog__rename_ihda):
 
     def set_old_ihda_name(self, text: str) -> None:
         self.label__old_ihda_name.setText(text)
+        self.__valid_ihda_name(self.lineEdit__input_ihda_name.text())
 
     def set_new_ihda_name(self, text: str) -> None:
         self.label__new_ihda_name.setText(text)

@@ -23,6 +23,7 @@ from libs.library_explorer import history_versions, search_assets
 from libs.library_maintenance import Cancelled, apply_paths, inspect_library, plan_paths
 from libs.task_controller import TaskController
 from libs.version_compare import compare_expanded, expand_asset
+from widgets.library_manager.presenter import LibraryManagerPresenter
 
 
 class LibraryManager(QtWidgets.QDialog):
@@ -51,8 +52,7 @@ class LibraryManager(QtWidgets.QDialog):
         self._closing = False
         self._destroying = False
         self._pending_search = False
-        self._offset = 0
-        self._search_generation = 0
+        self._presenter = LibraryManagerPresenter()
         self._temporary: tempfile.TemporaryDirectory[str] | None = None
         layout = QtWidgets.QVBoxLayout(self)
         self.tabs = QtWidgets.QTabWidget()
@@ -202,7 +202,7 @@ class LibraryManager(QtWidgets.QDialog):
 
     def cancel_task(self) -> None:
         self.cancel.set()
-        self._search_generation += 1
+        self._presenter.invalidate()
         self.status.setText("Cancellation requested…")
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
@@ -556,7 +556,7 @@ class LibraryManager(QtWidgets.QDialog):
         )
 
     def _queue_search(self, *_: Any) -> None:
-        self._search_generation += 1
+        self._presenter.invalidate()
         self.cancel.set()
         self.search_timer.start()
 
@@ -566,12 +566,13 @@ class LibraryManager(QtWidgets.QDialog):
         if self.tasks.busy:
             self._pending_search = True
             return
-        generation = self._search_generation
-        offset = self._offset if more else 0
+        request = self._presenter.request(more)
+        offset = request.offset
         text, field = self.search.text(), self.field.currentText()
 
         def ready(rows: list[dict[str, Any]]) -> None:
-            if generation != self._search_generation:
+            status = self._presenter.receive(request, len(rows))
+            if status is None:
                 return
             if not more:
                 self.explorer.setRowCount(0)
@@ -583,15 +584,7 @@ class LibraryManager(QtWidgets.QDialog):
                 ],
                 append=more,
             )
-            self._offset = offset + len(rows)
-            self.status.setText(
-                f"{self._offset} assets loaded"
-                + (
-                    " · end of results"
-                    if len(rows) < 200
-                    else " · load next page for more"
-                )
-            )
+            self.status.setText(status)
 
         self._run(
             lambda token: search_assets(

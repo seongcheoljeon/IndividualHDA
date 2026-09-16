@@ -12,34 +12,18 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 import public
 from libs import log_handler, note_syntax
-from libs.database.values import normalize_tags
+from libs.tags import normalize_tags
 from widgets.detail_view import detail_view
+from widgets.ui_tokens import COMPACT_MARGIN, TAG_TEXT_COLOR
 
 
 class NotesMixin:
     def _set_hda_info_to_parms(self) -> None:
-        if self._selection.asset.data is None:
-            return
-        note = self._selection.asset.data.get(public.Key.hda_note)
-        if note is not None:
-            self.textEdit__note.setPlainText(note)
-            self._set_move_cursor_textedit(self.textEdit__note)
-        else:
-            self.textEdit__note.clear()
-        tags = self._selection.asset.data.get(public.Key.hda_tags)
-        if tags is not None:
-            if len(tags):
-                self.textEdit__tag.setPlainText(self._set_tag_string(tags))
-                self._set_label_tags(tags)
-            else:
-                self.textEdit__tag.clear()
-                self.label__tags.clear()
-        else:
-            self.textEdit__tag.clear()
-            self.label__tags.clear()
+        self._panel_library.select(self._selection.asset.id, self._selection.asset.data)
 
     def _set_hda_hist_info_to_parms(self) -> None:
         if self._selection.history.data is None:
+            self.label__hist_tags.clear()
             return
         tags = self._selection.history.data.get(public.Key.History.tags)
         if tags is not None:
@@ -52,12 +36,12 @@ class NotesMixin:
 
     def _set_label_tags(self, tags: list[str]) -> None:
         self.label__tags.setText(
-            f"<font color=#bfff00>{self._set_tag_string(tags)}</font>"
+            f"<font color={TAG_TEXT_COLOR}>{self._set_tag_string(tags)}</font>"
         )
 
     def _set_label_hist_tags(self, tags: list[str]) -> None:
         self.label__hist_tags.setText(
-            f"<font color=#bfff00>{self._set_tag_string(tags)}</font>"
+            f"<font color={TAG_TEXT_COLOR}>{self._set_tag_string(tags)}</font>"
         )
 
     def _slot_hda_note_history(
@@ -74,7 +58,7 @@ class NotesMixin:
         font.setPointSize(11)
         dialog.setFont(font)
         vertical_layout = QtWidgets.QVBoxLayout(dialog)
-        vertical_layout.setContentsMargins(3, 3, 3, 3)
+        vertical_layout.setContentsMargins(*([COMPACT_MARGIN] * 4))
         plain_textedit = QtWidgets.QPlainTextEdit(dialog)
         note_syntax.NoteHighLighter(plain_textedit)
         plain_textedit.setReadOnly(True)
@@ -110,9 +94,7 @@ class NotesMixin:
     def _clear_parms(self) -> None:
         self.label__hda_count.setText(str(self._ihda_list_proxy_model.rowCount()))
         self.label__cate_count.setText(str(self._get_category_count()))
-        self.textEdit__note.clear()
-        self.textEdit__tag.clear()
-        self.label__tags.clear()
+        self._panel_library.select(None, None)
 
     def _detail_view_ihda_data(self, data: Any = None) -> None:
         detailview = detail_view.DetailView(parent=self)
@@ -164,6 +146,14 @@ class NotesMixin:
         return " ".join(["#" + x for x in sorted(tag_lst)])
 
     def _slot_save_note_tags(self, choice: str = "note") -> None:
+        if (
+            choice not in ("note", "tag")
+            or not self._panel_library.capabilities.edit_metadata
+        ):
+            return
+        if not self._panel_library.capabilities.confirm_metadata_save:
+            self._panel_library.save(choice)
+            return
         if self._selection.asset.data is None:
             log_handler.LogHandler.log_msg(
                 method=logging.warning, msg="iHDA node not clicked"
@@ -182,39 +172,8 @@ class NotesMixin:
         )
         reply = msgbox.exec()
         if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            if self._repository is None:
-                return
-            if choice == "note":
-                self._repository.set_note(self._selection.asset.id, self._hda_note)
-                self._change_hda_data(
-                    row=self._assets.id_rows.get(self._selection.asset.id),
-                    key=public.Key.hda_note,
-                    val=self._hda_note,
-                )
-            elif choice == "tag":
-                tag_lst = self._split_tag_string(tag_str=self._hda_tags)
-                self._repository.set_tags(self._selection.asset.id, tag_lst)
-                self._set_label_tags(tag_lst)
-                self._change_hda_data(
-                    row=self._assets.id_rows.get(self._selection.asset.id),
-                    key=public.Key.hda_tags,
-                    val=tag_lst,
-                )
-                self._ihda_history_model.update_item_data_by_hkey_id_from_model(
-                    hkey_id=self._selection.asset.id,
-                    key=public.Key.History.tags,
-                    val=tag_lst,
-                )
-                self._refresh_asset_search()
-            else:
-                log_handler.LogHandler.log_msg(
-                    method=logging.error, msg="invalid value (note/tag)"
-                )
-                return
-            log_handler.LogHandler.log_msg(
-                method=logging.info,
-                msg=f'{choice}s from the "{self._selection.asset.name} ({self._selection.asset.cate})" iHDA node have been saved',
-            )
+            if choice in ("note", "tag"):
+                self._panel_library.save(choice)
 
     @property
     def _hda_tags(self) -> str:

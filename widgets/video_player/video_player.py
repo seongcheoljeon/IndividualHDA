@@ -18,17 +18,20 @@ import public
 from libs import dragdrop_overlay, ffmpeg_api, log_handler
 from libs.media_playlist import MediaPlaylist
 from libs.process_job import ProcessJob
-from widgets.video_player import video_player_ui, video_ui_settings, video_widget
+from widgets.video_player import video_ui_settings, video_widget
+from widgets.video_player.layout import VideoPlayerLayout
+from widgets.video_player.presenter import VideoPresenter
 
 
-class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
+class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
     def __init__(
         self,
         ffmpeg_dirpath: pathlib.Path | None = None,
         parent: QtWidgets.QWidget | None = None,
     ) -> None:
         super().__init__(parent)
-        self.setupUi(self)
+        self.build_ui(self)
+        self._presenter = VideoPresenter(self)
         self.setAcceptDrops(True)
         # media settgins
         self.__ffmpeg_dirpath = ffmpeg_dirpath
@@ -322,19 +325,19 @@ class VideoPlayer(QtWidgets.QWidget, video_player_ui.Ui_Form__video_player):
         job.start()
 
     def __apply_probe(self, filepath: pathlib.Path, info: Any) -> None:
-        streams = info.get("streams") or []
-        codec = (
-            "video" if any(s.get("codec_type") == "video" for s in streams) else "audio"
-        )
-        icon = "ic_movie_white.png" if codec == "video" else "ic_audiotrack_white.png"
+        self._presenter.metadata(pathlib.Path(filepath), info)
+
+    def show_track_metadata(
+        self, filepath: pathlib.Path, title: str, is_video: bool
+    ) -> None:
+        icon = "ic_movie_white.png" if is_video else "ic_audiotrack_white.png"
         for index in range(self.listWidget__playlist.count()):
             item = self.listWidget__playlist.item(index)
-            if item.text() == filepath:
+            if pathlib.Path(item.text()) == filepath:
                 item.setIcon(QtGui.QIcon(":/video_player_main/icons/" + icon))
-        tags = info.get("format", {}).get("tags", {})
         current = self.listWidget__playlist.currentItem()
-        if current and current.text() == filepath:
-            self.__set_track_info(tags.get("title", pathlib.Path(filepath).name))
+        if current and pathlib.Path(current.text()) == filepath:
+            self.__set_track_info(title)
 
     def __slot_update_duration(self, duration: float) -> None:
         self.horizontalSlider__progress.setMaximum(duration // 1000)

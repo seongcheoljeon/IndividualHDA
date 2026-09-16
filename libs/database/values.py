@@ -2,35 +2,12 @@
 
 from __future__ import annotations
 
-import re
 import socket
 import struct
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 
 from libs.keys import Key
-
-_TAG_SEPARATORS = re.compile(r"[#,\r\n]+")
-
-
-def normalize_tags(tags: str | Iterable[str] | None) -> list[str]:
-    """Split on #, comma or newline; strip; drop empties and case-insensitive repeats.
-
-    Order of first appearance is kept. Tags never contain "#" because tag_info stores
-    them "#"-joined (asset_tags is derived from that column by triggers).
-    """
-    if not tags:
-        return []
-    parts = [tags] if isinstance(tags, str) else list(tags)
-    seen: set[str] = set()
-    result: list[str] = []
-    for part in parts:
-        for tag in _TAG_SEPARATORS.split(str(part)):
-            tag = tag.strip()
-            if not tag or tag.casefold() in seen:
-                continue
-            seen.add(tag.casefold())
-            result.append(tag)
-    return result
+from libs.tags import normalize_tags as normalize_tags
 
 
 class DatabaseValues:

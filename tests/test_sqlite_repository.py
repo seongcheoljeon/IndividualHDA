@@ -61,7 +61,7 @@ def test_repository_roundtrip(tmp_path: Path) -> None:
         and asset["hda_name"] == "Water"
         and asset["hda_tags"] == []
     )
-    assert result.history[1] == "NODE (INSERT)" and result.history_id == 1
+    assert result.history[1] == "" and result.history_id == 1
     assert result.thumb_filepath.is_file()
     assert repo.revision() >= first
     with pytest.raises(LibraryConflict):
@@ -86,7 +86,7 @@ def test_repository_roundtrip(tmp_path: Path) -> None:
     assert second.asset["hda_version"] == "1.1"
     assert second.asset["hda_tags"] == ["물", "smoke", "fire"]
     assert second.asset["hda_note"] == "note 2"
-    assert second.history[1] == "NODE (UPDATE)" and second.history_id == 2
+    assert second.history[1] == "" and second.history_id == 2
     histories = repo.histories(1, owner="tester")
     assert [h["version"] for h in histories] == ["1.0", "1.1"] or len(histories) == 2
     assert repo.is_latest_history(1, 2) and not repo.is_latest_history(1, 1)
@@ -149,10 +149,7 @@ def test_repository_roundtrip(tmp_path: Path) -> None:
 
     repo.delete_asset(1, tmp_path / "sop" / "Water")
     assert repo.list_assets() == []
-    assert not (tmp_path / "sop" / "Water").exists()
-    assert any(
-        p.name.startswith(".ihda-deleted-") for p in (tmp_path / "sop").iterdir()
-    )
+    assert (tmp_path / "sop" / "Water").exists()
 
 
 def test_missing_database_is_reported(tmp_path: Path) -> None:

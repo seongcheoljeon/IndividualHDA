@@ -20,6 +20,13 @@ def delete_asset(
     *,
     operations: OperationFactory = durable_operation,
 ) -> None:
+    from libs.database.lifecycle import PersonalLifecycle
+
+    connection = getattr(db, "_connect", None)
+    if connection is not None:
+        with db.transaction():
+            PersonalLifecycle(connection).change(asset_id, "delete")
+        return
     with operations(db.db_filepath.parent, db) as journal:
         if directory.exists():
             journal.move(
@@ -40,6 +47,18 @@ def delete_history(
     *,
     operations: OperationFactory = durable_operation,
 ) -> None:
+    from libs.database.lifecycle import PersonalLifecycle
+
+    connection = getattr(db, "_connect", None)
+    if connection is not None:
+        from libs.repository import LibraryConflict
+
+        try:
+            with db.transaction():
+                PersonalLifecycle(connection).change(asset_id, "delete", history_id)
+        except LibraryConflict as error:
+            raise ValueError(str(error)) from error
+        return
     with operations(db.db_filepath.parent, db) as journal:
         if db.is_most_recent_ihda_history(hda_key_id=asset_id, hist_id=history_id):
             raise ValueError("The most recent history cannot be deleted")

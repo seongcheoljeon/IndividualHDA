@@ -90,7 +90,9 @@ class LibraryQueriesMixin:
         )
         self._assets.update(row, {key: val})
         if self._selection.asset.id == self._assets.rows[row]["hda_id"]:
-            self._selection.asset.data = self._assets.rows[row]
+            self._selection.select_asset(
+                self._assets.rows[row], row, self._selection.asset.field
+            )
 
     def _insert_hist_db_from_curt_hist_data(
         self,

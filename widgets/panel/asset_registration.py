@@ -6,6 +6,7 @@ They do not own a separate QWidget or change the public panel interface.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -20,7 +21,8 @@ from PySide6 import QtCore, QtWidgets
 
 import public
 from libs import houdini_api, log_handler
-from libs.repository import LibraryError, RegistrationPayload
+from libs.repository import RegistrationPayload, RegistrationResult
+from widgets.asset_lifecycle.capture import HoudiniRegistrationCapture
 
 if TYPE_CHECKING:
     import hou
@@ -31,6 +33,10 @@ class AssetRegistrationMixin:
     def _slot_drop_node_into_hda_view(
         self, node_lst: list[hou.Node] | tuple[hou.Node, ...] | None
     ) -> None:
+        team = getattr(self, "_team_library", None)
+        if team is not None and team.active:
+            team.actions.register_nodes(node_lst)
+            return
         if not public.IS_HOUDINI:
             log_handler.LogHandler.log_msg(
                 method=logging.warning, msg="houdini is not running"
@@ -42,6 +48,8 @@ class AssetRegistrationMixin:
                 msg="folder where the data is stored has not been set or the folder does not exist",
             )
             self._preference.show()
+            return
+        if not node_lst:
             return
         total_node_cnt = len(node_lst)
         # 만약 한번에 등록하려는 노드 개수가 30개를 초과하면 종료
@@ -100,6 +108,12 @@ But it didn't stop, so please wait a little longer.
         node_lst: list[hou.Node] | tuple[hou.Node, ...] | None = None,
         total_node_cnt: int | None = None,
     ) -> None:
+        try:
+            self._register_dropped_nodes(node_lst or (), total_node_cnt or 0)
+        finally:
+            self._dragdrop_overlay_close()
+
+    def _register_dropped_nodes(self, node_lst: Any, total_node_cnt: int) -> None:
         is_declare = False
         for node_cnt, node_dat in enumerate(node_lst):
             node_path = (
@@ -156,7 +170,11 @@ But it didn't stop, so please wait a little longer.
                         )
                         continue
             node_cate = houdini_api.HoudiniAPI.node_category_type_name(node)
-            is_done_node = self._node_declare(node=node)
+            try:
+                is_done_node = self._node_declare(node=node)
+            except Exception as error:
+                self.show_command_error(f"Registration failed for {node_name}: {error}")
+                is_done_node = False
             if not is_done_node:
                 node.setName(node_name, unique_name=True)
                 log_handler.LogHandler.log_msg(
@@ -172,20 +190,28 @@ But it didn't stop, so please wait a little longer.
             )
         if is_declare:
             self._select_category(category=self._selection.item_text)
-        self._dragdrop_overlay_close()
 
     def _node_declare(self, node: hou.Node | None = None) -> bool:
-        node_name = node.name()
         is_display_flag = None
         is_render_flag = None
         if hasattr(node, "isDisplayFlagSet"):
             is_display_flag = node.isDisplayFlagSet()
         if hasattr(node, "isRenderFlagSet"):
             is_render_flag = node.isRenderFlagSet()
+        try:
+            return self._declare_registration(node)
+        finally:
+            if is_display_flag is not None:
+                node.setDisplayFlag(is_display_flag)
+            if is_render_flag is not None:
+                node.setRenderFlag(is_render_flag)
+
+    def _declare_registration(self, node: hou.Node) -> bool:
+        node_name = node.name()
         node_cate = houdini_api.HoudiniAPI.node_category_type_name(node)
         item_key_lst = [node_cate, node_name]
         is_exist_hda_name = self._repository.has_asset(self._user, node_cate, node_name)
-        self._selection.parents = item_key_lst
+        self._selection.set_category_parents(item_key_lst)
         # 만약 등록하려는 Category의 HDA의 이름이 DB에 존재한다면,
         if is_exist_hda_name:
             log_handler.LogHandler.log_msg(
@@ -206,7 +232,21 @@ But it didn't stop, so please wait a little longer.
                 QtWidgets.QMessageBox.StandardButton.Yes
                 | QtWidgets.QMessageBox.StandardButton.No
             )
+            checkBox__version_description = QtWidgets.QCheckBox(
+                "Add a change description", msgbox
+            )
+            msgbox.setCheckBox(checkBox__version_description)
             reply = msgbox.exec()
+            description = ""
+            if (
+                reply == QtWidgets.QMessageBox.StandardButton.Yes
+                and checkBox__version_description.isChecked()
+            ):
+                description, accepted = QtWidgets.QInputDialog.getMultiLineText(
+                    self, "Version description", "What changed?"
+                )
+                if not accepted:
+                    return False
             if reply == QtWidgets.QMessageBox.StandardButton.No:
                 log_handler.LogHandler.log_msg(
                     method=logging.info, msg="update has been canceled"
@@ -230,6 +270,7 @@ But it didn't stop, so please wait a little longer.
             if node_info_dict is None:
                 return False
             # update 진행
+            node_info_dict["version_description"] = description
             is_done_db = self._update_to_hda_db(
                 info_data=node_info_dict, hda_key_id=hda_key_id
             )
@@ -240,14 +281,7 @@ But it didn't stop, so please wait a little longer.
             if node_info_dict is None:
                 return False
             is_done_db = self._insert_to_hda_db(info_data=node_info_dict)
-        # DB 입력 실패면
-        if not is_done_db:
-            return False
-        if is_display_flag is not None:
-            node.setDisplayFlag(is_display_flag)
-        if is_render_flag is not None:
-            node.setRenderFlag(is_render_flag)
-        return True
+        return bool(is_done_db)
 
     def _node_info_data(
         self,
@@ -261,22 +295,6 @@ But it didn't stop, so please wait a little longer.
             log_handler.LogHandler.log_msg(
                 method=logging.error, msg="invalid node. stop node creation"
             )
-            return None
-        get_node = node_info_dict.get(public.Key.node)
-        get_hda_dirpath = node_info_dict.get(public.Key.hda_dirpath)
-        get_hda_filename = node_info_dict.get(public.Key.hda_filename)
-        get_hda_version = node_info_dict.get(public.Key.hda_version)
-        assert isinstance(get_hda_dirpath, pathlib.Path)
-        # hda_dirpath 경로에 HDA file 생성
-        if not get_hda_dirpath.exists():
-            get_hda_dirpath.mkdir(parents=True)
-        is_houdini_api_file = houdini_api.HoudiniAPI.create_hda_file(
-            node=get_node,
-            hda_dirpath=get_hda_dirpath,
-            hda_filename=get_hda_filename,
-            hda_version=get_hda_version,
-        )
-        if not is_houdini_api_file:
             return None
         return node_info_dict
 
@@ -311,10 +329,6 @@ But it didn't stop, so please wait a little longer.
         thumb_filename = houdini_api.HoudiniAPI.make_thumbnail_filename(
             name=node.name(), version=version
         )
-        thumb_dirpath.mkdir(parents=True, exist_ok=True)
-        houdini_api.HoudiniAPI.create_thumbnail(
-            output_filepath=thumb_dirpath / thumb_filename
-        )
         hip_filepath = houdini_api.HoudiniAPI.current_hipfile()
         sf, ef, fps = houdini_api.HoudiniAPI.frame_info()
         return RegistrationPayload(
@@ -345,6 +359,7 @@ But it didn't stop, so please wait a little longer.
             thumb_dirpath=thumb_dirpath,
             thumb_filename=thumb_filename,
             registered_at=datetime.today().strftime(public.Value.datetime_fmt_str),
+            description=info_data.get("version_description", ""),
         )
 
     def _update_to_hda_db(
@@ -353,11 +368,48 @@ But it didn't stop, so please wait a little longer.
         hda_key_id: int | None = None,
     ) -> bool:
         payload = self._registration_payload(info_data)
-        try:
-            result = self._repository.add_version(hda_key_id, payload)
-        except LibraryError as error:
-            log_handler.LogHandler.log_msg(method=logging.error, msg=str(error))
+        return self._register_captured_asset(
+            payload,
+            hda_key_id,
+            lambda result: self._apply_registered_version(hda_key_id, payload, result),
+        )
+
+    def _register_captured_asset(
+        self,
+        payload: RegistrationPayload,
+        asset_id: int | None,
+        committed: Callable[[RegistrationResult], None],
+    ) -> bool:
+        gateway = self._services.lifecycle(self._repository, self._services.names)
+        service = self._services.registration(gateway)
+        node = houdini_api.HoudiniAPI.find_node(payload.node_path)
+        if node is None:
+            self.show_command_error("The Houdini node no longer exists")
             return False
+
+        def show_committed(result: RegistrationResult) -> None:
+            try:
+                committed(result)
+            except Exception as error:
+                self.show_command_error(
+                    f"Asset saved, but the display could not be updated: {error}. Reload the library."
+                )
+                try:
+                    self.reload_library()
+                except Exception as reload_error:
+                    self.show_command_error(f"Automatic reload failed: {reload_error}")
+
+        return self._asset_commands().capture_and_register(
+            service,
+            payload,
+            HoudiniRegistrationCapture(node, payload.version),
+            asset_id,
+            show_committed,
+        )
+
+    def _apply_registered_version(
+        self, hda_key_id: int, payload: RegistrationPayload, result: RegistrationResult
+    ) -> None:
         self._update_pixmap_thumbnail(
             hkey_id=hda_key_id, thumb_filepath=result.thumb_filepath
         )
@@ -373,18 +425,24 @@ But it didn't stop, so please wait a little longer.
             tags=result.asset.get(public.Key.hda_tags),
         )
         self._set_hist_ihda_to_combobox(hkey_id=hda_key_id, hda_name=payload.node_name)
-        return True
 
     def _insert_to_hda_db(
         self,
         info_data: dict[str, Any] | None = None,
     ) -> bool:
         payload = self._registration_payload(info_data)
-        try:
-            result = self._repository.register_asset(payload)
-        except LibraryError as error:
-            log_handler.LogHandler.log_msg(method=logging.error, msg=str(error))
-            return False
+        return self._register_captured_asset(
+            payload,
+            None,
+            lambda result: self._apply_registered_asset(info_data, payload, result),
+        )
+
+    def _apply_registered_asset(
+        self,
+        info_data: dict[str, Any],
+        payload: RegistrationPayload,
+        result: RegistrationResult,
+    ) -> None:
         key_id = result.asset[public.Key.hda_id]
         self._add_pixmap_ihda(hkey_id=key_id, icon_lst=payload.icon_path_lst)
         self._add_pixmap_thumbnail(hkey_id=key_id, thumb_filepath=result.thumb_filepath)
@@ -409,4 +467,3 @@ But it didn't stop, so please wait a little longer.
             method=logging.info,
             msg="comments have been added to existing Houdini node(s)",
         )
-        return True

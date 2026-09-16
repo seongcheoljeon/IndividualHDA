@@ -22,6 +22,10 @@ from model import (
 
 class ContextMenusMixin:
     def _build_context_history_menu(self, point: QtCore.QPoint) -> None:
+        team = getattr(self, "_team_library", None)
+        if team is not None and team.active:
+            team.actions.history_menu(point)
+            return
         index = self._ihda_history_view.indexAt(point)
         if not index.isValid():
             return
@@ -61,7 +65,7 @@ class ContextMenusMixin:
         context_menu.addSeparator()
         context_menu.addAction(action_context_menu_remove)
         # refresh current data
-        self._selection.history.field = index.data()
+        self._selection.set_field(index.data(), history=True)
         self._refresh_history_current_attribs()
         self._set_hda_hist_info_to_parms()
         if self._selection.history.data is None:
@@ -85,6 +89,10 @@ class ContextMenusMixin:
             pass
 
     def _build_context_ihda_menu(self, point: QtCore.QPoint) -> None:
+        team = getattr(self, "_team_library", None)
+        if team is not None and team.active:
+            team.actions.context_menu(point)
+            return
         view = self._ihda_list_view if self._is_icon_mode else self._ihda_table_view
         index = view.indexAt(point)
         if not index.isValid():
@@ -123,6 +131,7 @@ class ContextMenusMixin:
             QtGui.QIcon(QtGui.QPixmap(f":/main/icons/{favorite_icon}"))
         )
 
+        action_hda_context_menu_copy = hda_context_menu.addAction("Copy to team…")
         action_hda_context_menu_detail = hda_context_menu.addAction("Detail")
         action_hda_context_menu_detail.setIcon(
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_format_quote_white.png"))
@@ -180,7 +189,7 @@ class ContextMenusMixin:
         context_menu.addMenu(hist_context_menu)
         context_menu.addSeparator()
         # refresh current data
-        self._selection.asset.field = index.data()
+        self._selection.set_field(index.data())
         self._refresh_current_attribs()
         self._set_hda_info_to_parms()
 
@@ -197,6 +206,8 @@ class ContextMenusMixin:
                 public.Key.hip_filename
             )
             self._open_houdini_file(hip_filepath=hip_filepath)
+        elif action == action_hda_context_menu_copy:
+            self._open_copy_to_team()
         elif action == action_hda_context_menu_favorite:
             self._hda_favorite()
         elif action == action_hda_context_menu_detail:
@@ -236,8 +247,7 @@ class ContextMenusMixin:
                 f'Delete the <font color=red>"{len(indexes)}"</font> selected iHDA nodes?'
             )
             msgbox.setInformativeText(
-                "All information about that node, including previews, video, thumbnails\n"
-                "history and reocrds, will be deleted. (Folder/File/DB is also deleted)"
+                "Move assets to Trash. Files, versions and note history are retained for restoration."
             )
             msgbox.setStandardButtons(
                 QtWidgets.QMessageBox.StandardButton.Yes
@@ -284,7 +294,7 @@ class ContextMenusMixin:
             msgbox.setWindowTitle("Delete iHDA node history")
             msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
             msgbox.setText(
-                f'Delete the selected <font color=red>"{len(indexes)}"</font> iHDA node history?'
+                f"Move historical versions of the selected {len(indexes)} assets to Trash? Current versions, files and note history are retained."
             )
             msgbox.setStandardButtons(
                 QtWidgets.QMessageBox.StandardButton.Yes
@@ -305,12 +315,6 @@ class ContextMenusMixin:
                 else:
                     hda_id = index.data(ihda_table_model.TableModel.id_role)
                     hda_name = index.data(ihda_table_model.TableModel.name_role)
-                if self._repository.has_note_history(hda_id):
-                    self._repository.delete_note_history(hda_id)
-                    log_handler.LogHandler.log_msg(
-                        method=logging.info,
-                        msg=f'all the note history of "{hda_name}" iHDA node has been deleted',
-                    )
                 if not self._repository.has_history(hda_id):
                     log_handler.LogHandler.log_msg(
                         method=logging.warning,
@@ -324,20 +328,7 @@ class ContextMenusMixin:
                     )
                 )
                 del_hist_data_lst.extend(hist_data_lst)
-                # video playlist 삭제
-                # 현재 iHDA 노드의 모든 video file 정보
-                self._delete_video_playlist(
-                    video_filepath_list=self._repository.history_videos(hda_id)
-                )
-            # 히스토리 데이터 삭제
-            for hist_data in sorted(
-                del_hist_data_lst,
-                key=lambda x: x.get(public.Key.History.item_row),
-                reverse=True,
-            ):
-                self._delete_each_hist_ihda_item(hist_data=hist_data, verbose=True)
-            self._initialize_hist_current_attribs()
-            self._clear_hist_parms()
+            self._trash_history_rows(del_hist_data_lst)
         else:
             pass
 

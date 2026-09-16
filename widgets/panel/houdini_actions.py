@@ -24,6 +24,10 @@ class HoudiniActionsMixin:
     @QtCore.Slot(object)
     def _slot_mouse_move_event_on_houdini(self, drop_data: Any) -> None:
         # [[id, name, category, filename, dirpath, icon_lst, tag_lst], [...], ...]
+        team = getattr(self, "_team_library", None)
+        if team is not None and team.active:
+            team.actions.import_drop(drop_data)
+            return
         if not public.IS_HOUDINI:
             log_handler.LogHandler.log_msg(
                 method=logging.warning, msg="please drag from houdini"
@@ -175,6 +179,16 @@ class HoudiniActionsMixin:
                     item_row = self._get_ihda_data_by_id(
                         hda_id=hda_id, key=public.Key.item_row
                     )
+            if not db_api.asset_available(
+                hda_id,
+                model_data.get(public.Key.History.hist_id)
+                if self._is_ihda_history_view
+                else None,
+            ):
+                self.show_command_error(
+                    "This asset or version is in Trash. Refresh the library."
+                )
+                continue
             hda_filepath = hda_dirpath / hda_filename
             assert isinstance(hda_dirpath, pathlib.Path)
             # DB에는 존재하지만 지정된 곳에 파일이 존재하지 않는다면
@@ -186,24 +200,9 @@ class HoudiniActionsMixin:
                 continue
             # item의 row (model에서 셋팅해 놓았음)
             if self._is_ihda_history_view:
-                self._selection.history.row = item_row
-                self._selection.history.filepath = hda_filepath
-                self._selection.history.name = hda_name
-                self._selection.history.id = hda_id
-                self._selection.history.data = model_data
-                self._selection.history.cate = hda_cate
-                self._selection.history.hist_id = model_data.get(
-                    public.Key.History.hist_id
-                )
-                self._selection.history.version = hda_ver
+                self._selection.select_history(model_data, item_row)
             else:
-                self._selection.asset.row = item_row
-                self._selection.asset.filepath = hda_filepath
-                self._selection.asset.name = hda_name
-                self._selection.asset.id = hda_id
-                self._selection.asset.data = model_data
-                self._selection.asset.cate = hda_cate
-                self._selection.asset.version = hda_ver
+                self._selection.select_asset(model_data, item_row)
             # 현재 Houdini 라이센스
             curt_houdini_license = houdini_api.HoudiniAPI.current_houdini_license()
             # 후디니는 commercial라이센스인데 iHDA는 아니라면

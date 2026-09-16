@@ -56,3 +56,36 @@ def test_async_thumbnail_cache_is_bounded_and_rejects_stale_images(
     app.processEvents()
     assert 10 not in cache
     assert cache.decoded_count <= 2
+
+
+def test_thumbnail_resolver_is_lazy_and_runs_outside_gui_thread(
+    app: Any, tmp_path: Path
+) -> None:
+    from PySide6 import QtCore, QtGui, QtTest
+
+    from libs.thumbnail_cache import ThumbnailCache
+
+    path = tmp_path / "downloaded.png"
+    image = QtGui.QImage(8, 8, QtGui.QImage.Format.Format_RGB32)
+    image.fill(QtCore.Qt.GlobalColor.blue)
+    image.save(str(path))
+    calls = []
+
+    def resolve() -> Path:
+        calls.append(QtCore.QThread.currentThread())
+        return path
+
+    cache = ThumbnailCache(QtGui.QPixmap(2, 2))
+    try:
+        cache.set_path(1, tmp_path / "not-downloaded.png", resolve=resolve)
+        assert calls == []
+        cache.get(1)
+        for _ in range(500):
+            app.processEvents()
+            if cache.pending_count == 0:
+                break
+            QtTest.QTest.qWait(10)
+        assert calls and all(thread != app.thread() for thread in calls)
+        assert cache.get(1).size() == QtCore.QSize(8, 8)
+    finally:
+        cache.shutdown()

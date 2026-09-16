@@ -93,7 +93,9 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
         flags = super().flags(index)
         if index.isValid():
             hda_filepath = index.data(ListModel.filepath_role)
-            if not hda_filepath.exists():
+            if not hda_filepath.exists() and not index.data(ListModel.data_role).get(
+                "remote", False
+            ):
                 flags = (
                     QtCore.Qt.ItemFlag.ItemIsSelectable
                     | QtCore.Qt.ItemFlag.ItemIsEnabled
@@ -204,7 +206,9 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
             hda_filepath = index_dat.get(public.Key.hda_dirpath) / index_dat.get(
                 public.Key.hda_filename
             )
-            if not hda_filepath.exists():
+            if not hda_filepath.exists() and not index.data(ListModel.data_role).get(
+                "remote", False
+            ):
                 font.setItalic(True)
                 font.setStrikeOut(True)
             return font

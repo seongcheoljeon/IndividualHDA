@@ -1,0 +1,52 @@
+services:
+  database:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_DB: ihda
+      POSTGRES_USER: ihda
+      POSTGRES_PASSWORD: ${IHDA_POSTGRES_PASSWORD:?Set IHDA_POSTGRES_PASSWORD in .env}
+    volumes:
+      - database_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ihda -d ihda"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+  api:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    environment:
+      IHDA_DATABASE_URL: postgresql+psycopg://ihda:${IHDA_POSTGRES_PASSWORD}@database:5432/ihda
+      IHDA_BLOB_ROOT: /data/blobs
+      IHDA_MAX_UPLOAD_BYTES: "1073741824"
+    volumes:
+      - blob_data:/data/blobs
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: unless-stopped
+  admin:
+    profiles: ["tools"]
+    build:
+      context: .
+      dockerfile: deploy/Admin.Dockerfile
+    environment:
+      IHDA_DATABASE_URL: postgresql+psycopg://ihda:${IHDA_POSTGRES_PASSWORD}@database:5432/ihda
+      IHDA_BLOB_ROOT: /data/blobs
+      IHDA_RESTORE_DATABASE_URL: ${IHDA_RESTORE_DATABASE_URL:-}
+    volumes:
+      - blob_data:/data/blobs
+      - backup_data:/data/backups
+      - restored_data:/data/restored
+    depends_on:
+      database:
+        condition: service_healthy
+volumes:
+  backup_data:
+  restored_data:
+  database_data:
+  blob_data:

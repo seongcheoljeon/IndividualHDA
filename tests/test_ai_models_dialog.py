@@ -196,3 +196,51 @@ def test_progress_survives_byte_counts_beyond_32_bits(app: Any) -> None:
     assert dialog.progress_bar.value() == 16
     assert "1.1 GB / 6.8 GB" in dialog.status.text()
     dialog.close()
+
+
+@pytest.mark.parametrize("operation", ["remove", "download"])
+@pytest.mark.parametrize("close_before_idle", [False, True])
+def test_followup_refresh_waits_for_controller_idle(
+    app: Any, operation: str, close_before_idle: bool
+) -> None:
+    """Deliver completion before the worker stops, even across an event-loop turn."""
+    client = fake_client("0.12.1", ["qwen3-vl:4b"], 12.0)
+    probes: list[str] = []
+    original_probe = client.installed_models
+
+    def installed_models(endpoint: str) -> Any:
+        probes.append(endpoint)
+        return original_probe(endpoint)
+
+    client.installed_models = installed_models
+    dialog = LocalModelsDialog(client=client)
+    wait_tasks(app, dialog)
+    before = len(probes)
+    started, release = threading.Event(), threading.Event()
+
+    def worker() -> None:
+        started.set()
+        release.wait(3)
+
+    try:
+        assert dialog.tasks.start(worker, lambda result: None)
+        assert started.wait(2)
+        if operation == "remove":
+            dialog._removed("qwen3-vl:4b")
+        else:
+            dialog._pull_transferred = True
+            dialog._pulled(True)
+        completion_status = dialog.status.text()
+        if close_before_idle:
+            dialog.reject()
+        app.processEvents()  # a zero-delay refresh used to run too early here
+        assert dialog.tasks.busy
+        assert len(probes) == before
+        assert dialog.status.text() == completion_status
+        release.set()
+        wait_tasks(app, dialog)
+        assert len(probes) == before + (0 if close_before_idle else 1)
+        assert dialog.status.text() == completion_status
+    finally:
+        release.set()
+        dialog.shutdown()

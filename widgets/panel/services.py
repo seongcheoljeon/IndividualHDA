@@ -10,7 +10,19 @@ from PySide6.QtCore import QObject
 
 from libs.ai_provider import AIProvider, AISettings, make_provider
 from libs.archive_transfer import ArchiveTransfer
+from libs.asset_lifecycle import (
+    AssetLifecycleGateway,
+    LifecycleRepository,
+    LocalAssetLifecycle,
+)
+from libs.asset_registration import RegistrationService, RegistrationWriter
 from libs.asset_rename import AssetNames
+from libs.asset_search import AssetSearch
+from libs.browser_search import (
+    AssetSearchGateway,
+    RepositoryAssetSearch,
+    SearchRepository,
+)
 from libs.database.sqlite_repository import SqliteLibraryRepository
 from libs.domain import LibraryContext
 from libs.houdini_api import HoudiniAPI
@@ -28,9 +40,25 @@ class PanelServices:
     names: AssetNames = HoudiniAPI
     ai: Callable[[AISettings], AIProvider] = make_provider
 
+    lifecycle: Callable[[LifecycleRepository, AssetNames], AssetLifecycleGateway] = (
+        LocalAssetLifecycle
+    )
+
+    registration: Callable[[RegistrationWriter], RegistrationService] = (
+        RegistrationService
+    )
+
+    asset_search: Callable[[QObject], AssetSearch] = AssetSearch
+    search_gateway: Callable[[SearchRepository], AssetSearchGateway] = (
+        RepositoryAssetSearch
+    )
+
     def repository(self, context: LibraryContext | None) -> LibraryRepository | None:
         """Storage adapter for this session; None until a data directory is chosen."""
+        if self.settings.mode != "local":
+            raise ValueError(
+                "Server mode requires a configured remote services adapter"
+            )
         if context is None:
             return None
-        # ponytail: settings.mode == "server" dispatches to the HTTP adapter in Phase 2.
         return SqliteLibraryRepository(context.db_filepath, self.open_database)

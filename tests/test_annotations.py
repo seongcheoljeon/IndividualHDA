@@ -17,7 +17,7 @@ def test_maintained_function_signatures_are_annotated() -> None:
         if not any(
             part in (".venv", ".git", "tests") for part in path.relative_to(ROOT).parts
         )
-        and not path.name.endswith(("_ui.py", "_rc.py"))
+        and not path.name.endswith("_rc.py")
     }
     panel = ROOT / "python_panels" / "individualHDA.pypanel"
     sources[panel.name] = ET.parse(panel).findtext(".//script") or ""

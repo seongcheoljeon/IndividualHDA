@@ -195,6 +195,24 @@ def test_v2_upgrade_repairs_derived_tags_and_installs_indexes(
         connection.execute("DROP TRIGGER sync_tags_update")
         connection.execute("""CREATE TRIGGER sync_tags_update AFTER UPDATE ON tag_info
             BEGIN SELECT 1; END""")
+        # Build a genuine pre-v5 database rather than only downgrading its version marker.
+        for (name,) in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'v5_%'"
+        ).fetchall():
+            connection.execute(f'DROP TRIGGER "{name}"')
+        for table in (
+            "version_files",
+            "asset_user_preferences",
+            "version_identity",
+            "asset_identity",
+            "audit_events",
+            "usage_requests",
+            "library_identity",
+            "file_cleanup",
+            "write_context",
+            "migration_reports",
+        ):
+            connection.execute(f'DROP TABLE "{table}"')
         connection.execute("PRAGMA user_version=2")
         connection.commit()
         migrate(connection, path)

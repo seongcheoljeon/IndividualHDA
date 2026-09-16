@@ -10,6 +10,8 @@ from libs.paths import SQLite, hda_base_dirpath
 
 
 class AssetData(TypedDict, total=False):
+    remote: bool
+    library_id: str
     hda_id: int
     hda_name: str
     hda_cate: str
@@ -46,6 +48,8 @@ class AssetData(TypedDict, total=False):
 
 
 class HistoryData(TypedDict, total=False):
+    remote: bool
+    library_id: str
     hist_id: int
     hda_id: int
     comment: str | None
@@ -126,6 +130,58 @@ class SelectionState:
     parents: list[str] = field(default_factory=list)
     column_idx: int | None = None
     item_text: str | None = None
+
+    def select_asset(
+        self, data: AssetData | None, row: int | None = None, field: str | None = None
+    ) -> None:
+        directory = data.get("hda_dirpath") if data else None
+        filename = data.get("hda_filename") if data else None
+        self.asset = ItemSelection(
+            data=data,
+            row=row,
+            field=field,
+            id=data.get("hda_id") if data else None,
+            name=data.get("hda_name") if data else None,
+            cate=data.get("hda_cate") if data else None,
+            version=data.get("hda_version") if data else None,
+            filepath=directory / filename if directory and filename else None,
+        )
+
+    def select_history(
+        self, data: HistoryData | None, row: int | None = None, field: str | None = None
+    ) -> None:
+        directory = data.get("ihda_dirpath") if data else None
+        filename = data.get("ihda_filename") if data else None
+        self.history = ItemSelection(
+            data=data,
+            row=row,
+            field=field,
+            id=data.get("hda_id") if data else None,
+            name=data.get("org_hda_name") if data else None,
+            cate=data.get("node_category") if data else None,
+            version=data.get("version") if data else None,
+            hist_id=data.get("hist_id") if data else None,
+            filepath=directory / filename if directory and filename else None,
+        )
+
+    def select_category(self, column: int, text: str, parents: list[str]) -> None:
+        self.column_idx, self.item_text, self.parents = column, text, list(parents)
+
+    def set_category_parents(self, parents: list[str]) -> None:
+        self.parents = list(parents)
+
+    def set_field(self, value: str | None, *, history: bool = False) -> None:
+        (self.history if history else self.asset).field = value
+
+    def restore_asset_id(self, asset_id: int | None) -> None:
+        """Remember identity while rows are being loaded; no stale item data."""
+        self.clear_asset()
+        self.asset.id = asset_id
+
+    def clear(self) -> None:
+        self.clear_asset()
+        self.clear_history()
+        self.select_category(0, "", [])
 
     def clear_asset(self) -> None:
         self.asset = ItemSelection()

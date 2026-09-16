@@ -82,6 +82,15 @@ def test_panel_constructs(app: Any, monkeypatch: pytest.MonkeyPatch) -> None:
 
     panel = IndividualHDA()
     assert panel.comboBox__search_type.count() == 5
+    source = panel._browser.view.comboBox__library_source
+    assert source.currentText() == "Personal"
+    panel._team_library.open_connection()
+    connection = panel._team_library._connection
+    assert connection is not None and connection.isVisible()
+    assert not hasattr(connection, "tableWidget__assets")
+    connection.reject()
+    app.processEvents()
+    assert panel._team_library._connection is None
     panel.close()
 
 
@@ -159,6 +168,41 @@ def test_panel_with_saved_library(
     panel.lineEdit__search_hda.setText("")
     app.processEvents()
     assert model.rowCount() == 1
+    # The code-built browser still drives the legacy selection/detail path.
+    browser = panel._browser.view
+    browser.listView__hda.clicked.emit(model.index(0, 0))
+    assert panel._selection.asset.id == key
+    browser.pushButton__table_mode.click()
+    browser.tableView__hda.setCurrentIndex(panel._ihda_table_proxy_model.index(0, 0))
+    browser.tableView__hda.clicked.emit(panel._ihda_table_proxy_model.index(0, 0))
+    assert (
+        panel._selection.asset.id == key
+        and browser.stackedWidget__hda.currentIndex() == 1
+    )
+    # Real save buttons -> presenter -> worker -> SQLite -> shared models.
+    monkeypatch.setattr(
+        QtWidgets.QMessageBox,
+        "exec",
+        lambda _: QtWidgets.QMessageBox.StandardButton.Yes,
+    )
+    panel.textEdit__note.setPlainText("saved from the metadata presenter")
+    panel.pushButton__note_save.click()
+    panel._details.close()  # drain the worker and deliver its GUI callback
+    assert (
+        panel._repository.list_assets()[0]["hda_note"]
+        == "saved from the metadata presenter"
+    )
+    assert panel._assets.rows[0]["hda_note"] == "saved from the metadata presenter"
+    panel.textEdit__tag.setPlainText("#Water #water #한글")
+    panel.pushButton__tag_save.click()
+    panel._details.close()
+    assert panel._repository.list_assets()[0]["hda_tags"] == ["Water", "한글"]
+    assert not panel.label__metadata_status.text()
+    panel.doubleSpinBox__zoom.setValue(150)
+    panel._ui_settings.save_cfg_dict_to_file()
+    panel.doubleSpinBox__zoom.setValue(100)
+    panel._ui_settings.load_cfg_dict_from_file()
+    assert panel.doubleSpinBox__zoom.value() == 150
     panel._open_library_tools(4)
     dialog = panel._library_manager
     assert dialog.tabs.count() == 6 and dialog.tabs.currentIndex() == 4
