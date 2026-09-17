@@ -17,7 +17,7 @@ jobs:
           - suite: server
             requirements: requirements-test-server.txt
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -37,7 +37,7 @@ jobs:
       QT_QPA_PLATFORM: offscreen
       QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
@@ -82,7 +82,7 @@ jobs:
       QT_QPA_PLATFORM: offscreen
       IHDA_TEST_POSTGRES_URL: postgresql+psycopg://ihda:test-only-password@127.0.0.1:5432/ihda_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
