@@ -28,10 +28,12 @@ class DetailView(QtWidgets.QDialog, DetailViewLayout):
     def show_detail_ihda_data(
         self, data: Any = None, is_histview: bool | None = None
     ) -> None:
-        self._presenter.show(data or {}, history=bool(is_histview))
+        if data is not None:
+            self._presenter.show(data, history=bool(is_histview))
 
     def show_detail_record_data(self, data: Any = None) -> None:
-        self._presenter.show(data or {}, record=True)
+        if data is not None:
+            self._presenter.show(data, record=True)
 
     def show_content(self, content: DetailContent) -> None:
         self.textBrowser__detail.setPlainText(content.text)

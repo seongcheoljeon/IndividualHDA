@@ -19,6 +19,7 @@ from ihda_server import lifecycle_schema as state
 from ihda_server import schema as tables
 from ihda_server.lifecycle import LifecycleStore
 from libs.library_metadata import new_identity, version_details
+from libs.search_limits import QUERY_TEXT_MAX, TEAM_PAGE_DEFAULT, TEAM_PAGE_MAX
 from libs.tags import normalize_tags
 from libs.team.contracts import (
     Blob,
@@ -217,9 +218,9 @@ class SqlCatalog:
         user_id: str,
         query: str = "",
         offset: int = 0,
-        limit: int = 100,
+        limit: int = TEAM_PAGE_DEFAULT,
     ) -> Page:
-        if offset < 0 or not 1 <= limit <= 200 or len(query) > 1000:
+        if offset < 0 or not 1 <= limit <= TEAM_PAGE_MAX or len(query) > QUERY_TEXT_MAX:
             raise TeamError("Invalid pagination or query")
         with self._engine.connect() as connection:
             self.authorize(connection, project_id, user_id)
@@ -287,6 +288,14 @@ class SqlCatalog:
             info = self.lifecycle.asset_state(connection, asset_id)
             if info["deleted_at"]:
                 raise NotFound("Asset is in the trash")
+            from ihda_server.tracking import team_tracking
+
+            document = {
+                **document,
+                "dependencies": team_tracking(connection, project_id).dependencies(
+                    document["version_uuid"]
+                ),
+            }
             return self.lifecycle.decorate(connection, document, user_id)
 
     def histories(
@@ -294,7 +303,7 @@ class SqlCatalog:
     ) -> list[dict[str, Any]]:
         with self._engine.connect() as connection:
             self.authorize(connection, project_id, user_id)
-            return [
+            rows = [
                 dict(row)
                 for row in connection.execute(
                     select(
@@ -319,6 +328,18 @@ class SqlCatalog:
                     .order_by(tables.history.c.id.desc())
                 ).mappings()
             ]
+
+            from ihda_server.tracking import team_tracking
+
+            tracking = team_tracking(connection, project_id)
+            for row in rows:
+                row["document"] = {
+                    **row["document"],
+                    "dependencies": tracking.dependencies(
+                        row["document"]["version_uuid"]
+                    ),
+                }
+            return rows
 
     def execute(
         self, project_id: str, user_id: str, command: Command
@@ -352,6 +373,12 @@ class SqlCatalog:
                         )
                     return dict(receipt["result"])
                 result = self._apply(connection, project_id, user_id, command)
+                from ihda_server.tracking import verify_current
+
+                try:
+                    verify_current(connection, project_id)
+                except ValueError as error:
+                    raise Conflict(str(error)) from error
                 if command.operation not in {"preference", "usage"}:
                     connection.execute(
                         update(tables.projects)
@@ -553,6 +580,15 @@ class SqlCatalog:
                         **version_details(snapshot),
                         **{k: v for k, v in values.items() if k != "history_id"},
                     }
+                    from ihda_server.tracking import team_tracking
+
+                    tracking = team_tracking(connection, project_id)
+                    tracking.replace_dependencies(
+                        snapshot["version_uuid"], details.get("dependencies", [])
+                    )
+                    details["dependencies"] = tracking.dependencies(
+                        snapshot["version_uuid"]
+                    )
                     snapshot.update(details)
                     connection.execute(
                         update(state.version_state)
@@ -618,6 +654,7 @@ class SqlCatalog:
                         tables.assets.c.name,
                         tables.assets.c.revision,
                         state.asset_state.c.deleted_at,
+                        state.asset_state.c.uuid.label("asset_uuid"),
                     )
                     .join(state.asset_state)
                     .where(
@@ -637,6 +674,8 @@ class SqlCatalog:
                     tables.history.c.id.label("history_id"),
                     tables.history.c.version,
                     state.version_state.c.deleted_at,
+                    state.asset_state.c.uuid.label("asset_uuid"),
+                    state.version_state.c.uuid.label("version_uuid"),
                 )
                 .select_from(tables.assets)
                 .join(tables.history)
@@ -717,3 +756,46 @@ class SqlCatalog:
                 category,
                 {"library_uuid": library_uuid, "asset_uuid": asset_uuid},
             )
+
+    def tracking_read(
+        self,
+        project_id: str,
+        user_id: str,
+        kind: str,
+        asset_uuid: str,
+        version_uuid: str | None = None,
+        offset: int = 0,
+        limit: int = TEAM_PAGE_DEFAULT,
+    ) -> list[dict[str, Any]]:
+        from ihda_server.tracking import team_tracking
+
+        try:
+            with self._engine.connect() as connection:
+                self.authorize(connection, project_id, user_id)
+                return team_tracking(connection, project_id).read(
+                    kind, asset_uuid, version_uuid, offset, limit
+                )
+        except ValueError as error:
+            raise TeamError(str(error)) from error
+
+    def tracking_execute(
+        self, project_id: str, user_id: str, body: dict[str, Any]
+    ) -> dict[str, Any]:
+        from ihda_server.tracking import team_tracking
+
+        try:
+            if set(body) != {"request_id", "operation", "values"} or not isinstance(
+                body["values"], dict
+            ):
+                raise ValueError("Invalid tracking request")
+            with self._engine.begin() as connection:
+                self.lock(connection, project_id)
+                self.authorize(
+                    connection, project_id, user_id, write=body["operation"] != "scene"
+                )
+                result = team_tracking(connection, project_id).execute(
+                    user_id, body["request_id"], body["operation"], body["values"]
+                )
+                return result
+        except (ValueError, TypeError, KeyError) as error:
+            raise TeamError(str(error)) from error

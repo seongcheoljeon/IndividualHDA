@@ -11,6 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from libs.ai_defaults import OLLAMA_ENDPOINT, OLLAMA_MODEL
+
 KINDS = ("none", "local", "anthropic", "openai")
 
 # Which AISettings fields each backend needs; the Preference dialog enables only
@@ -22,7 +24,7 @@ FIELDS: dict[str, tuple[str, ...]] = {
     "openai": ("endpoint", "model", "api_key_env"),
 }
 PLACEHOLDERS: dict[str, dict[str, str]] = {
-    "local": {"endpoint": "http://localhost:11434", "model": "qwen3-vl:8b"},
+    "local": {"endpoint": OLLAMA_ENDPOINT, "model": OLLAMA_MODEL},
     "anthropic": {"model": "claude-sonnet-5", "api_key_env": "ANTHROPIC_API_KEY"},
     "openai": {
         "endpoint": "https://api.openai.com/v1",

@@ -197,10 +197,15 @@ def test_v2_upgrade_repairs_derived_tags_and_installs_indexes(
             BEGIN SELECT 1; END""")
         # Build a genuine pre-v5 database rather than only downgrading its version marker.
         for (name,) in connection.execute(
-            "SELECT name FROM sqlite_master WHERE type='trigger' AND name LIKE 'v5_%'"
+            "SELECT name FROM sqlite_master WHERE type='trigger' AND (name LIKE 'v5_%' OR name LIKE 'v6_%')"
         ).fetchall():
             connection.execute(f'DROP TRIGGER "{name}"')
         for table in (
+            "version_dependencies",
+            "version_checks",
+            "scene_usages",
+            "tracking_requests",
+            "registration_jobs",
             "version_files",
             "asset_user_preferences",
             "version_identity",
@@ -213,6 +218,11 @@ def test_v2_upgrade_repairs_derived_tags_and_installs_indexes(
             "migration_reports",
         ):
             connection.execute(f'DROP TABLE "{table}"')
+        connection.execute("DROP INDEX idx_scene_record_version")
+        for column in ("library_uuid", "asset_uuid", "version_uuid", "link_status"):
+            connection.execute(
+                f"ALTER TABLE hda_node_location_record DROP COLUMN {column}"
+            )
         connection.execute("PRAGMA user_version=2")
         connection.commit()
         migrate(connection, path)

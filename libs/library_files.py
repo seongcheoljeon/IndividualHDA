@@ -42,13 +42,15 @@ def cleanup(
                 try:
                     path.unlink(missing_ok=True)
                     db._connect.execute(
-                        "DELETE FROM file_cleanup WHERE path=?", (stored,)
+                        "DELETE FROM file_cleanup WHERE path=:stored",
+                        {"stored": stored},
                     )
                 except OSError as exception:
                     error = str(exception)
             if apply and error:
                 db._connect.execute(
-                    "UPDATE file_cleanup SET error=? WHERE path=?", (error, stored)
+                    "UPDATE file_cleanup SET error=:error WHERE path=:stored",
+                    {"error": error, "stored": stored},
                 )
             results.append(
                 {

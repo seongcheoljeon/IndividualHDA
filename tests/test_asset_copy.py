@@ -6,9 +6,9 @@ from threading import Event
 from typing import Any
 
 import pytest
-from test_sqlite_repository import payload
-from test_team_library import TestTransport
-from test_team_library import server as server  # noqa: F401
+from support.personal import payload
+from support.team import TestTransport
+from support.team import server as server  # noqa: F401
 
 from libs.database.sqlite_repository import SqliteLibraryRepository
 from libs.library_maintenance import Cancelled

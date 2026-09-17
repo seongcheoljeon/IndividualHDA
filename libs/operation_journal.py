@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from libs.contracts import TransactionalRepository
+from libs.legacy_documents import journal_moves_v1
 from libs.settings_store import save_json
 
 
@@ -58,7 +59,7 @@ class MoveJournal:
     def __init__(self, directory: Path, database: Path | None = None) -> None:
         self.path = directory / f".ihda-operation-{uuid.uuid4().hex}.json"
         self.state: dict[str, Any] = {
-            "version": 1,
+            "version": 2,
             "id": self.path.stem,
             "committed": False,
             "database": str(database.resolve()) if database else None,
@@ -78,7 +79,9 @@ class MoveJournal:
             raise FileExistsError(destination)
         if not source.exists():
             raise FileNotFoundError(source)
-        self.state["moves"].append([str(source), str(destination)])
+        self.state["moves"].append(
+            {"source": str(source), "destination": str(destination)}
+        )
         self._save()  # Persist intent before mutation, including the crash window.
         source.rename(destination)
         sync_directory(source.parent)
@@ -94,8 +97,8 @@ class MoveJournal:
         ) as connection:
             return (
                 connection.execute(
-                    "SELECT 1 FROM operation_commits WHERE operation_id = ?",
-                    (self.state["id"],),
+                    "SELECT 1 FROM operation_commits WHERE operation_id = :id",
+                    {"id": self.state["id"]},
                 ).fetchone()
                 is not None
             )
@@ -108,7 +111,8 @@ class MoveJournal:
 
     def rollback(self) -> None:
         while self.state["moves"]:
-            source, destination = map(Path, self.state["moves"][-1])
+            move = self.state["moves"][-1]
+            source, destination = Path(move["source"]), Path(move["destination"])
             if destination.exists() or destination.is_symlink():
                 if source.exists() or source.is_symlink():
                     raise RuntimeError(
@@ -132,8 +136,22 @@ def recover_operations(directory: Path) -> list[Path]:
     with operation_lock(directory):
         for path in sorted(directory.glob(".ihda-operation-*.json")):
             state = json.loads(path.read_text(encoding="utf-8"))
-            if state.get("version") != 1 or not isinstance(state.get("moves"), list):
+            if (
+                type(state.get("version")) is not int
+                or state["version"] not in (1, 2)
+                or not isinstance(state.get("moves"), list)
+            ):
                 raise ValueError(f"Unsupported operation journal: {path}")
+            if state["version"] == 1:
+                state["moves"] = journal_moves_v1(state["moves"])
+                state["version"] = 2
+            for move in state["moves"]:
+                if (
+                    not isinstance(move, dict)
+                    or set(move) != {"source", "destination"}
+                    or not all(isinstance(value, str) for value in move.values())
+                ):
+                    raise ValueError(f"Invalid operation journal move: {path}")
             journal = object.__new__(MoveJournal)
             journal.path, journal.state = path, state
             if state["committed"] or journal._database_committed():

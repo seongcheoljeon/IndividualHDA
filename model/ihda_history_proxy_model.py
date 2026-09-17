@@ -6,12 +6,13 @@ from collections.abc import Sequence
 
 from PySide6 import QtCore
 
+from libs.model_columns import HistoryColumn
 from model.ihda_history_model import HistoryModel
 from model.proxy_filters import AssetProxyModel
 
 
 class HistoryProxyModel(AssetProxyModel):
-    name_column = 1
+    name_column = HistoryColumn.NAME
     tag_role = HistoryModel.tag_role
     type_role = HistoryModel.type_role
 

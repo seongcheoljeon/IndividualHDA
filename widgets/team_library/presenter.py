@@ -7,6 +7,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Protocol
 
+from libs.search_limits import TEAM_PAGE_DEFAULT, TEAM_PAGE_MAX
 from libs.tags import normalize_tags
 from libs.team.contracts import (
     AssetCatalog,
@@ -52,6 +53,8 @@ class WorkspacePresenter:
         backend: WorkspaceBackend,
         executor: WorkspaceExecutor,
         pending: PendingCommand,
+        *,
+        page_size: int = TEAM_PAGE_DEFAULT,
     ) -> None:
         self._view, self._backend, self._executor, self._pending = (
             view,
@@ -66,7 +69,9 @@ class WorkspacePresenter:
         self._busy = False
         self.failed_command: Command | None = None
         self._closed = False
-        self.query, self.offset, self.limit = "", 0, 100
+        if type(page_size) is not int or not 1 <= page_size <= TEAM_PAGE_MAX:
+            raise ValueError("Invalid team page size")
+        self.query, self.offset, self.limit = "", 0, page_size
 
     def _run(
         self, operation: Callable[[], Any], completed: Callable[[Any], None]
@@ -257,28 +262,29 @@ class WorkspacePresenter:
             self._view.show_error(str(error))
             return
 
+        from libs.paths import Paths
+        from libs.team.registration_recovery import TeamRegistrationRecovery
+
+        recovery = TeamRegistrationRecovery(
+            Paths.config_dirpath / "workspace" / "registrations",
+            self._backend.namespace,
+        )
+        metadata = dict(metadata)
+        identity = metadata.pop("_registration_job_id", None)
+
         def operation() -> dict[str, Any]:
-            if self._pending.load() is not None:
-                raise TeamError("Resolve the pending request first")
-            files = {"asset": asdict(self._backend.upload(path))}
-            if thumbnail is not None:
-                files["thumbnail"] = asdict(self._backend.upload(thumbnail))
-            values: dict[str, Any] = {
-                "version": version,
-                "description": description,
-                "metadata": metadata or (asset.get("metadata", {}) if asset else {}),
-                "files": files,
-            }
-            if asset is None:
-                values.update(name=name, category=category)
-            command = Command(
-                "create" if asset is None else "version",
-                asset_id=asset["id"] if asset else None,
-                expected_revision=asset["revision"] if asset else None,
-                values=values,
+            job_id = recovery.prepare(
+                path,
+                name,
+                category,
+                version,
+                metadata or (asset.get("metadata", {}) if asset else {}),
+                thumbnail,
+                asset,
+                description,
+                identity,
             )
-            command.validate()
-            return self._execute(command)
+            return recovery.retry(job_id, self._backend, self._pending)
 
         self._run(operation, self._committed)
 

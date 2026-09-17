@@ -72,6 +72,10 @@ class TaskController(QObject):
             raise
         return True
 
+    def close(self) -> None:
+        self.shutdown_process()
+        self.drain()
+
     def shutdown_process(self) -> None:
         if self._video_job is not None:
             self._video_job.shutdown()

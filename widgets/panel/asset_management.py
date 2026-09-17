@@ -1,6 +1,6 @@
 """Asset management for the Houdini panel.
 
-Shares protected panel state; Qt and HOM calls stay on the GUI thread.
+Explicit bindings connect this feature to its view and collaborators.
 """
 
 from __future__ import annotations
@@ -11,26 +11,72 @@ from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore
 
+from libs.scene_record_cleanup import RecordCleanupResult, SceneRecordCleanup
+
 if TYPE_CHECKING:
     from libs.sqlite3_db_api import SQLite3DatabaseAPI
+    from widgets.video_player import UnavailableVideoPlayer
+    from widgets.video_player.video_player import VideoPlayer
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from PySide6 import QtGui, QtWidgets
 
-import public
-from libs import houdini_api, log_handler
+from libs import houdini_api, keys, log_handler
+from libs.asset_contracts import AssetData, HistoryData
 from libs.asset_lifecycle import RenameResult
-from libs.domain import AssetData
 from model import ihda_history_model, ihda_list_model, ihda_table_model
 from widgets.asset_lifecycle.presenter import AssetCommandPresenter
 
+if TYPE_CHECKING:
+    from libs.ihda_icons import IHDAIcons
+    from widgets.asset_details.integration import AssetDetailsIntegration
+    from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.library_queries import PanelLibraryQueries
+    from widgets.panel.library_tools import PanelLibraryTools
+    from widgets.panel.model_binding import PanelModelBinding
+    from widgets.panel.notes import PanelNotes
+    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.selection import PanelSelection
+    from widgets.panel.services import PanelServices
+    from widgets.panel.state import PanelSessionState, PanelViews
+    from widgets.rename_ihda.rename_ihda import RenameIHDA
+    from widgets.team_library.integration import MainLibraryIntegration
 
-class AssetManagementMixin:
+
+@dataclass(frozen=True, slots=True)
+class PanelAssetManagementBindings:
+    details: AssetDetailsIntegration
+    icons: IHDAIcons
+    models: PanelModelBinding
+    notes: PanelNotes
+    parent: QtWidgets.QWidget
+    presentation: PanelPresentation
+    queries: PanelLibraryQueries
+    reload_library: Callable[[], None]
+    rename_dialog: RenameIHDA
+    selection: PanelSelection
+    services: PanelServices
+    session: PanelSessionState
+    team: Callable[[], MainLibraryIntegration]
+    tools: PanelLibraryTools
+    ui: MainWindowLayout
+    video_player: VideoPlayer | UnavailableVideoPlayer
+    views: PanelViews
+
+
+class PanelAssetManagement:
+    bindings: PanelAssetManagementBindings
+
     def _asset_commands(self) -> AssetCommandPresenter:
         return AssetCommandPresenter(
             self,
-            self._services.lifecycle(self._repository, self._services.names),
+            self.bindings.services.lifecycle(
+                self.bindings.session.require_repository(), self.bindings.services.names
+            ),
             self._committed_asset_display_failed,
         )
 
@@ -39,7 +85,7 @@ class AssetManagementMixin:
             f"Library change saved, but display update failed: {error}. Reload the library."
         )
         try:
-            self.reload_library()
+            self.bindings.reload_library()
         except Exception as reload_error:
             self.show_command_error(f"Automatic reload failed: {reload_error}")
 
@@ -47,15 +93,15 @@ class AssetManagementMixin:
         log_handler.LogHandler.log_msg(method=logging.error, msg=message)
 
     def _slot_cleanup_hda_record(self) -> None:
-        msgbox = QtWidgets.QMessageBox(self)
-        msgbox.setFont(self._get_default_font())
+        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
+        msgbox.setFont(self.bindings.presentation._get_default_font())
         msgbox.setWindowTitle("Cleanup iHDA Record")
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setText(
             "Are you sure you want to remove all unnecessary iHDA record data that does not exist?"
         )
         msgbox.setDetailedText(
-            "NOTE: Don't worry. Only unused information is cleaned up."
+            "Only scene-record metadata is removed. HIP and HDA files are kept."
         )
         msgbox.setStandardButtons(
             QtWidgets.QMessageBox.StandardButton.Yes
@@ -63,54 +109,80 @@ class AssetManagementMixin:
         )
         reply = msgbox.exec()
         if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            db_api = self._db_api_wrap(self._db_filepath)
-            if db_api is None:
-                return
-            self._delete_unused_hda_record_info(db_api=db_api)
+            self._delete_unused_hda_record_info()
 
     def _delete_unused_hda_record_info(
         self, db_api: SQLite3DatabaseAPI | None = None
     ) -> None:
-        record_data = db_api.get_all_hda_record_fileinfo(user_id=self._user)
-        if not len(record_data):
-            log_handler.LogHandler.log_msg(
-                method=logging.info, msg="record data does not exist"
-            )
+        if self.bindings.session.repository is None or self.bindings.team().active:
             return
-        for record_info_dat in record_data:
-            record_id, hip_dirpath, hip_filename, hda_dirpath, hda_filename = (
-                record_info_dat
+        try:
+            result = SceneRecordCleanup(self.bindings.session.repository).cleanup(
+                self.bindings.session.user
             )
-            hip_dirpath = pathlib.Path(hip_dirpath)
-            hip_filepath = hip_dirpath / hip_filename
-            hda_dirpath = pathlib.Path(hda_dirpath)
-            hda_filepath = hda_dirpath / hda_filename
-            if not hip_filepath.exists():
-                db_api.delete_hda_record(record_id=record_id)
-                log_handler.LogHandler.log_msg(
-                    method=logging.info,
-                    msg=f"ID {record_id} record information has been deleted",
+        except Exception as error:
+            self.show_command_error(str(error))
+            return
+        self._apply_scene_record_cleanup(result)
+
+    def _apply_scene_record_cleanup(self, result: RecordCleanupResult) -> None:
+        model, view = self.bindings.models.record_model, self.bindings.views.record
+        selected: set[int] = set()
+        for index in view.selectionModel().selectedRows(0):
+            selected.update(model.selected_record_ids(index))
+        try:
+            if result.deleted:
+                model.remove_record_ids(result.deleted)
+        except Exception as error:
+            self.show_command_error(
+                f"Records were deleted, but the view could not be updated: {error}"
+            )
+            try:
+                data = self.bindings.queries._get_hda_loc_record_data(
+                    self.bindings.queries._db_filepath
                 )
-            if not hda_filepath.exists():
-                db_api.delete_hda_record(record_id=record_id)
-                log_handler.LogHandler.log_msg(
-                    method=logging.info,
-                    msg=f"ID {record_id} record information has been deleted",
+                if data is None:
+                    raise RuntimeError("Scene records could not be reloaded")
+                model.replace_record_data(data)
+            except Exception as reload_error:
+                self.show_command_error(
+                    f"Scene record reload failed: {reload_error}. Reopen the panel."
                 )
-        self._ihda_record_model.remove_invalid_record_data()
-        self.label__loc_record_count.setText(
-            str(self._ihda_record_proxy_model.get_row_count())
-        )
-        log_handler.LogHandler.log_msg(
-            method=logging.debug, msg="cleanup of iHDA record information is complete"
-        )
+                return
+        view.expandAll()
+        proxy = self.bindings.models.record_proxy_model
+
+        def restore(parent: QtCore.QModelIndex) -> None:
+            for row in range(proxy.rowCount(parent)):
+                index = proxy.index(row, 0, parent)
+                if index.data(model.record_id_role) in selected:
+                    view.selectionModel().select(
+                        index,
+                        QtCore.QItemSelectionModel.SelectionFlag.Select
+                        | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+                    )
+                restore(index)
+
+        restore(QtCore.QModelIndex())
+        self.bindings.ui.label__loc_record_count.setText(str(proxy.get_row_count()))
+        if result.failed:
+            self.show_command_error(
+                "Some records were kept: "
+                + "; ".join(
+                    f"{identity}: {message}" for identity, message in result.failed
+                )
+            )
 
     def _slot_favorite_node(self) -> None:
-        is_favorite_nodes = self.pushButton__favorite_node.isChecked()
-        self._ihda_list_proxy_model.is_favorite_nodes = is_favorite_nodes
-        self._ihda_table_proxy_model.is_favorite_nodes = is_favorite_nodes
-        self.label__hda_count.setText(str(self._ihda_list_proxy_model.rowCount()))
-        self.label__cate_count.setText(str(self._get_category_count()))
+        is_favorite_nodes = self.bindings.ui.pushButton__favorite_node.isChecked()
+        self.bindings.models.list_proxy_model.is_favorite_nodes = is_favorite_nodes
+        self.bindings.models.table_proxy_model.is_favorite_nodes = is_favorite_nodes
+        self.bindings.ui.label__hda_count.setText(
+            str(self.bindings.models.list_proxy_model.rowCount())
+        )
+        self.bindings.ui.label__cate_count.setText(
+            str(self.bindings.models._get_category_count())
+        )
         if is_favorite_nodes:
             favorite_icon = "ic_favorite_white.png"
             log_handler.LogHandler.log_msg(
@@ -121,7 +193,7 @@ class AssetManagementMixin:
             log_handler.LogHandler.log_msg(
                 method=logging.info, msg="turn off favorite filtering"
             )
-        self.pushButton__favorite_node.setIcon(
+        self.bindings.ui.pushButton__favorite_node.setIcon(
             QtGui.QIcon(QtGui.QPixmap(f":/main/icons/{favorite_icon}"))
         )
 
@@ -135,27 +207,49 @@ class AssetManagementMixin:
         return True
 
     def _slot_hda_name_changed(self) -> None:
-        if not self._rename_ihda.is_valid_ihda_name:
+        if not self.bindings.rename_dialog.is_valid_ihda_name:
             return
-        new_name = self._rename_ihda.final_ihda_name
-        self._dragdrop_overlay_show(text="Change iHDA Node Name")
+        new_name = self.bindings.rename_dialog.final_ihda_name
+        self.bindings.presentation._dragdrop_overlay_show(text="Change iHDA Node Name")
         try:
             if self._change_ihda_name(new_hda_name=new_name):
-                self._rename_ihda.close()
+                self.bindings.rename_dialog.close()
         finally:
-            self._dragdrop_overlay_close()
+            self.bindings.presentation._dragdrop_overlay_close()
 
     def _change_ihda_name(self, new_hda_name: str | None = None) -> bool:
-        data = dict(self._selection.asset.data) if self._selection.asset.data else None
-        if data is None or new_hda_name is None or self._repository is None:
+        data = (
+            self.bindings.selection.state.asset.data
+            if self.bindings.selection.state.asset.data
+            else None
+        )
+        if (
+            data is None
+            or new_hda_name is None
+            or self.bindings.session.repository is None
+        ):
             return False
-        hda_id = data[public.Key.hda_id]
-        row = self._assets.id_rows.get(hda_id)
+        hda_id = data.hda_id
+        row = self.bindings.models.assets.id_rows.get(hda_id)
         if row is None:
             return False
-        self._video_player.player_stop()
+        self.bindings.video_player.player_stop()
+        from widgets.library_metadata.dependency_warning import (
+            confirm_local_dependencies,
+        )
+
         try:
-            video_paths = self._repository.history_videos(hda_id)
+            if not confirm_local_dependencies(
+                self.bindings.parent,
+                {"asset_id": hda_id},
+                database=self.bindings.session.context.db_filepath
+                if self.bindings.session.context
+                else None,
+            ):
+                return False
+            video_paths = self.bindings.session.require_repository().history_videos(
+                hda_id
+            )
         except Exception as error:
             self.show_command_error(str(error))
             return False
@@ -165,15 +259,17 @@ class AssetManagementMixin:
             self._apply_renamed_asset(data, result)
 
         return self._asset_commands().rename(
-            dict(data),
+            data,
             new_hda_name,
             committed,
         )
 
     def _apply_renamed_asset(self, data: AssetData, result: RenameResult) -> None:
         plan = result.plan
-        hda_id, hda_version = data[public.Key.hda_id], data[public.Key.hda_version]
-        row = self._assets.id_rows.get(hda_id)
+        hda_id, hda_version = data.hda_id, data.hda_version
+        row = self.bindings.models.assets.id_rows.get(hda_id)
+        if row is None:
+            return
         new_hda_name = plan.name
         is_update_hda_name, is_update_hda_name_hist = (
             result.asset_rows,
@@ -190,88 +286,104 @@ class AssetManagementMixin:
             plan.video_filename,
         )
         if bool(is_update_hda_name):
-            val_datetime = datetime.today().strftime(public.Value.datetime_fmt_str)
-            self._change_hda_data(row=row, key=public.Key.hda_name, val=new_hda_name)
-            self._change_hda_data(
-                row=row, key=public.Key.hda_filename, val=new_hda_filename
+            val_datetime = datetime.today().strftime(keys.Value.datetime_fmt_str)
+            self.bindings.queries._change_hda_data(
+                row=row, key=keys.Key.hda_name, val=new_hda_name
             )
-            self._change_hda_data(
-                row=row, key=public.Key.hda_dirpath, val=new_hda_dirpath
+            self.bindings.queries._change_hda_data(
+                row=row, key=keys.Key.hda_filename, val=new_hda_filename
             )
-            self._change_hda_data(
-                row=row, key=public.Key.node_old_path, val=new_node_old_path
+            self.bindings.queries._change_hda_data(
+                row=row, key=keys.Key.hda_dirpath, val=new_hda_dirpath
             )
-            self._change_hda_data(row=row, key=public.Key.hda_mtime, val=val_datetime)
+            self.bindings.queries._change_hda_data(
+                row=row, key=keys.Key.node_old_path, val=new_node_old_path
+            )
+            self.bindings.queries._change_hda_data(
+                row=row, key=keys.Key.hda_mtime, val=val_datetime
+            )
             if new_thumbnail_dirpath is not None:
-                self._change_hda_data(
-                    row=row, key=public.Key.thumbnail_dirpath, val=new_thumbnail_dirpath
+                self.bindings.queries._change_hda_data(
+                    row=row, key=keys.Key.thumbnail_dirpath, val=new_thumbnail_dirpath
                 )
-                self._change_hda_data(
+                self.bindings.queries._change_hda_data(
                     row=row,
-                    key=public.Key.thumbnail_filename,
+                    key=keys.Key.thumbnail_filename,
                     val=new_thumbnail_filename,
                 )
             if new_video_dirpath is not None:
-                self._change_hda_data(
-                    row=row, key=public.Key.video_dirpath, val=new_video_dirpath
+                self.bindings.queries._change_hda_data(
+                    row=row, key=keys.Key.video_dirpath, val=new_video_dirpath
                 )
-                self._change_hda_data(
-                    row=row, key=public.Key.video_filename, val=new_video_filename
+                self.bindings.queries._change_hda_data(
+                    row=row, key=keys.Key.video_filename, val=new_video_filename
                 )
             if new_thumbnail_dirpath is not None and new_thumbnail_filename:
-                self._ihda_icons.update_pixmap_thumbnail_data(
+                self.bindings.icons.update_pixmap_thumbnail_data(
                     hda_id, new_thumbnail_dirpath / new_thumbnail_filename
                 )
-            self._selection.select_asset(
-                self._assets.rows[row], row, self._selection.asset.field
+            self.bindings.selection.state.select_asset(
+                self.bindings.models.assets.rows[row],
+                row,
+                self.bindings.selection.state.asset.field,
             )
-            self._refresh_asset_search()
+            self.bindings.models._refresh_asset_search()
             # record 데이터 갱신 함수 호출. 이 함수만 하면 data는 바뀌지만 뷰에서는 바뀌지 않늗 문제가 있다.
-            self._ihda_record_model.rename_record_item(
+            self.bindings.models.record_model.rename_record_item(
                 hda_id=hda_id,
                 new_name=new_hda_name,
                 hda_dirpath=new_hda_dirpath,
                 hda_version=hda_version,
+                hda_filename=plan.filename,
             )
             # 그래서 임시 방편으로 reload 함수를 강제 호출했다.
-            self._ihda_record_model.reload()
+            self.bindings.models.record_model.reload()
             if bool(is_update_hda_name_hist):
                 # history ihda combobox text 변경
-                find_cmbox_idx = self._find_hist_ihda_combobox_index(hkey_id=hda_id)
+                find_cmbox_idx = self.bindings.selection._find_hist_ihda_combobox_index(
+                    hkey_id=hda_id
+                )
                 if find_cmbox_idx is not None:
-                    self.comboBox__hist_ihda_node.setItemText(
+                    self.bindings.ui.comboBox__hist_ihda_node.setItemText(
                         find_cmbox_idx, new_hda_name
                     )
-                changed_history = self._ihda_history_model.relocate_asset_paths(
-                    hda_id, plan.moves
+                changed_history = (
+                    self.bindings.models.history_model.relocate_asset_paths(
+                        hda_id, plan.moves
+                    )
                 )
-                self._ihda_icons.make_pixmap_hist_thumbnail_data(changed_history)
+                self.bindings.icons.make_pixmap_hist_thumbnail_data(changed_history)
                 self._restore_history_selection_data()
                 # history trigger 주석처리로 인해 DB 삽입을 직접해줘야 한다.
                 # The transactional audit records renames; no synthetic HDA version.
 
     def _restore_history_selection_data(self) -> None:
-        history_id = self._selection.history.hist_id
+        history_id = self.bindings.selection.state.history.hist_id
         if history_id is None:
             return
-        row = self._ihda_history_model.get_hist_id_row_map_from_model().get(history_id)
+        row = self.bindings.models.history_model.get_hist_id_row_map_from_model().get(
+            history_id
+        )
         if row is not None:
-            data = self._ihda_history_model.index(row, 0).data(
+            data = self.bindings.models.history_model.index(row, 0).data(
                 ihda_history_model.HistoryModel.data_role
             )
-            self._selection.select_history(data, row, self._selection.history.field)
+            self.bindings.selection.state.select_history(
+                data, row, self.bindings.selection.state.history.field
+            )
 
     def _get_hda_id_row_map(self) -> Mapping[int, int]:
-        return self._assets.id_rows
+        return self.bindings.models.assets.id_rows
 
     def _slot_db_cleanup(self) -> None:
         # Missing files are diagnostics, not evidence that their metadata is disposable.
-        self._open_library_tools(0)
+        self.bindings.tools._open_library_tools(0)
 
     def _slot_delete_all_history(self) -> None:
-        cnt_hda_hist, cnt_hda_note_hist = self._repository.history_counts()
-        msgbox = QtWidgets.QMessageBox(self)
-        msgbox.setFont(self._get_default_font())
+        counts = self.bindings.session.require_repository().history_counts()
+        cnt_hda_hist, cnt_hda_note_hist = counts.versions, counts.notes
+        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
+        msgbox.setFont(self.bindings.presentation._get_default_font())
         msgbox.setWindowTitle("Delete all iHDA history")
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setText(
@@ -300,43 +412,41 @@ iHDA note history: {cnt_hda_note_hist}
         if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             # 만약 파일들까지 삭제한다면
             # if chkbox.isChecked():
-            all_hkey_id = self._repository.asset_ids(self._user)
+            all_hkey_id = self.bindings.session.require_repository().asset_ids(
+                self.bindings.session.user
+            )
             # player가 재생중이거나 일시정지 상태면 정지
-            self._video_player.player_stop()
+            self.bindings.video_player.player_stop()
             del_hist_data_lst = []
             for hkey_id in sorted(all_hkey_id, reverse=True):
-                hist_data_lst = (
-                    self._ihda_history_model.get_hist_data_by_hkey_id_from_model(
-                        hkey_id=hkey_id
-                    )
+                hist_data_lst = self.bindings.models.history_model.get_hist_data_by_hkey_id_from_model(
+                    hkey_id=hkey_id
                 )
                 del_hist_data_lst.extend(hist_data_lst)
             self._trash_history_rows(del_hist_data_lst)
 
-    def _trash_history_rows(self, histories: Any) -> None:
-        snapshots = {
-            history[public.Key.History.hist_id]: dict(history) for history in histories
-        }
+    def _trash_history_rows(self, histories: list[HistoryData]) -> None:
+        snapshots = {history.hist_id: history for history in histories}
         for history in snapshots.values():
-            if not self._repository.is_latest_history(
-                history[public.Key.History.hda_id], history[public.Key.History.hist_id]
+            if not self.bindings.session.require_repository().is_latest_history(
+                history.hda_id, history.hist_id
             ):
                 self._delete_each_hist_ihda_item(history)
 
     def _hda_favorite(self) -> None:
-        if self._selection.asset.data is None:
+        if self.bindings.selection.state.asset.data is None:
             log_handler.LogHandler.log_msg(
                 method=logging.error, msg="no node selected "
             )
             return
-        hda_id = self._selection.asset.id
-        is_update = self._repository.toggle_favorite(hda_id)
+        hda_id = self.bindings.selection.state.asset.require_data().hda_id
+        is_update = self.bindings.session.require_repository().toggle_favorite(hda_id)
         if bool(is_update):
-            row = self._assets.id_rows.get(self._selection.asset.id)
-            key = public.Key.is_favorite_hda
-            val = self._selection.asset.data.get(public.Key.is_favorite_hda) ^ 1
-            hda_name = self._selection.asset.name
-            self._change_hda_data(row=row, key=key, val=val)
+            row = self.bindings.models.assets.id_rows.get(hda_id)
+            key = keys.Key.is_favorite_hda
+            val = self.bindings.selection.state.asset.require_data().is_favorite_hda ^ 1
+            hda_name = self.bindings.selection.state.asset.name
+            self.bindings.queries._change_hda_data(row=row, key=key, val=val)
             if val:
                 log_handler.LogHandler.log_msg(
                     method=logging.info,
@@ -348,12 +458,18 @@ iHDA note history: {cnt_hda_note_hist}
                     msg=f'the "{hda_name}" node has been released from the favorites node',
                 )
 
-    def _remove_selected_record_item(self, index: QtCore.QModelIndex = None) -> None:
-        if not index.isValid():
+    def _remove_selected_record_item(
+        self, index: QtCore.QModelIndex | None = None
+    ) -> None:
+        if index is None or not index.isValid():
             return
+        repository = self.bindings.session.repository
+        if repository is None or self.bindings.team().active:
+            return
+        identities = self.bindings.models.record_model.selected_record_ids(index)
         record_data_name = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
-        msgbox = QtWidgets.QMessageBox(self)
-        msgbox.setFont(self._get_default_font())
+        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
+        msgbox.setFont(self.bindings.presentation._get_default_font())
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setWindowTitle("Remove iHDA Record Information")
         msgbox.setText(
@@ -364,34 +480,26 @@ iHDA note history: {cnt_hda_note_hist}
             | QtWidgets.QMessageBox.StandardButton.No
         )
         reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.StandardButton.No:
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
             return
-        record_id_list = self._ihda_record_model.remove_selected_record_data(
-            index=index
-        )
-        # DB 삭제
-        for record_id in sorted(record_id_list):
-            is_removed = self._repository.delete_scene_record(record_id)
-            if is_removed:
-                log_handler.LogHandler.log_msg(
-                    method=logging.info,
-                    msg=f'"{record_data_name}" data on record ID {record_id} has been deleted',
-                )
-        # 유효한 데이터가 남아 있지 않은 껍데기 데이터 삭제하는 함수 호출
-        self._ihda_record_model.remove_invalid_hull_record_item_model()
-        self.label__loc_record_count.setText(
-            str(self._ihda_record_proxy_model.get_row_count())
-        )
+        if (
+            repository is not self.bindings.session.repository
+            or self.bindings.team().active
+        ):
+            self.show_command_error("The library changed; select the records again.")
+            return
+        result = SceneRecordCleanup(repository).delete(identities)
+        self._apply_scene_record_cleanup(result)
 
     def _remove_hist_item(self) -> None:
-        indexes = self._ihda_history_view.selectionModel().selectedRows(0)
+        indexes = self.bindings.views.history.selectionModel().selectedRows(0)
         if not len(indexes):
             log_handler.LogHandler.log_msg(
                 method=logging.info, msg="iHDA history is not selected"
             )
             return
-        msgbox = QtWidgets.QMessageBox(self)
-        msgbox.setFont(self._get_default_font())
+        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
+        msgbox.setFont(self.bindings.presentation._get_default_font())
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
         msgbox.setWindowTitle("Remove iHDA History Node")
         msgbox.setText(
@@ -405,53 +513,59 @@ iHDA note history: {cnt_hda_note_hist}
         reply = msgbox.exec()
         if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             # player가 재생중이거나 일시 정지상태면 정지
-            self._video_player.player_stop()
+            self.bindings.video_player.player_stop()
             selected = [
-                dict(index.data(ihda_history_model.HistoryModel.data_role))
+                index.data(ihda_history_model.HistoryModel.data_role)
                 for index in indexes
                 if index.isValid()
             ]
             for hist_data in sorted(
                 selected,
-                key=lambda item: item[public.Key.History.item_row],
+                key=lambda item: item.item_row,
                 reverse=True,
             ):
                 self._delete_each_hist_ihda_item(hist_data=hist_data, verbose=True)
 
     def _remove_hda_item(self, indexes: Any = None) -> None:
         # player가 재생중이거나 일시 정지상태면 정지
-        team = getattr(self, "_team_library", None)
+        team = self.bindings.team()
         if team is not None and team.active:
             team.actions.remove()
             return
-        self._video_player.player_stop()
+        self.bindings.video_player.player_stop()
         role = (
             ihda_list_model.ListModel.data_role
-            if self._is_icon_mode
+            if self.bindings.presentation._is_icon_mode
             else ihda_table_model.TableModel.data_role
         )
         selected = {
-            index.data(role)[public.Key.hda_id]: dict(index.data(role))
+            index.data(role).hda_id: index.data(role)
             for index in (indexes or ())
             if index.isValid()
         }
         for hda_id, item in selected.items():
-            if hda_id not in self._assets.id_rows:
+            if hda_id not in self.bindings.models.assets.id_rows:
                 continue
             self._delete_ihda_item(
                 hda_id=hda_id,
-                hda_cate=item[public.Key.hda_cate],
-                hda_name=item[public.Key.hda_name],
-                hda_dirpath=item[public.Key.hda_dirpath],
+                hda_cate=item.hda_cate,
+                hda_name=item.hda_name,
+                hda_dirpath=item.hda_dirpath,
             )
 
     def _delete_video_playlist(self, video_filepath_list: Any = None) -> None:
         for video_filepath in video_filepath_list:
             # iHDA video playlist 아이템 삭제 (이것을 삭제하지 않은 시, 파일이 삭제되지 않는다)
-            self._video_player.delete_playlist_item_by_filepath(filepath=video_filepath)
+            self.bindings.video_player.delete_playlist_item_by_filepath(
+                filepath=video_filepath
+            )
 
     def _get_hda_model_row_by_hda_id(self, hda_id: int | None = None) -> int | None:
-        return self._assets.id_rows.get(hda_id)
+        return (
+            self.bindings.models.assets.id_rows.get(hda_id)
+            if hda_id is not None
+            else None
+        )
 
     def _delete_ihda_item(
         self,
@@ -461,10 +575,24 @@ iHDA note history: {cnt_hda_note_hist}
         hda_dirpath: pathlib.Path | None = None,
         item_row: int | None = None,
     ) -> bool:
-        if hda_id is None or hda_dirpath is None:
+        if hda_id is None or hda_dirpath is None or hda_name is None:
             return False
+        from widgets.library_metadata.dependency_warning import (
+            confirm_local_dependencies,
+        )
+
         try:
-            video_paths = self._repository.history_videos(hda_id)
+            if not confirm_local_dependencies(
+                self.bindings.parent,
+                {"asset_id": hda_id},
+                database=self.bindings.session.context.db_filepath
+                if self.bindings.session.context
+                else None,
+            ):
+                return False
+            video_paths = self.bindings.session.require_repository().history_videos(
+                hda_id
+            )
         except Exception as error:
             self.show_command_error(str(error))
             return False
@@ -479,49 +607,58 @@ iHDA note history: {cnt_hda_note_hist}
     def _apply_deleted_asset(
         self, hda_id: int, category: str, name: str, video_paths: list[pathlib.Path]
     ) -> None:
-        self._details.presenter.forget(hda_id)
+        self.bindings.details.presenter.forget(hda_id)
         self._delete_video_playlist(video_filepath_list=video_paths)
-        self._remove_hda_data(item_row=self._assets.id_rows.get(hda_id))
-        histories = self._ihda_history_model.get_hist_data_by_hkey_id_from_model(
-            hkey_id=hda_id
+        self.bindings.models._remove_hda_data(
+            item_row=self.bindings.models.assets.id_rows.get(hda_id)
         )
-        for history in sorted(
-            histories, key=lambda item: item[public.Key.History.item_row], reverse=True
-        ):
-            self._ihda_history_model.remove_item(
-                row=history[public.Key.History.item_row]
+        histories = (
+            self.bindings.models.history_model.get_hist_data_by_hkey_id_from_model(
+                hkey_id=hda_id
             )
-            self._remove_pixmap_hist_thumbnail(
-                hist_id=history[public.Key.History.hist_id]
-            )
+        )
+        for history in sorted(histories, key=lambda item: item.item_row, reverse=True):
+            self.bindings.models.history_model.remove_item(row=history.item_row)
+            self.bindings.models._remove_pixmap_hist_thumbnail(hist_id=history.hist_id)
         self._delete_hist_combobox_ihda_item(hkey_id=hda_id)
-        self._ihda_record_model.remove_record_item_by_hda_id(hda_id=hda_id)
-        self._remove_pixmap_ihda(hkey_id=hda_id)
-        self._remove_pixmap_thumbnail(hkey_id=hda_id)
-        self._remove_category_item(
+        self.bindings.models.record_model.remove_record_item_by_hda_id(hda_id=hda_id)
+        self.bindings.models._remove_pixmap_ihda(hkey_id=hda_id)
+        self.bindings.models._remove_pixmap_thumbnail(hkey_id=hda_id)
+        self.bindings.models._remove_category_item(
             category=category,
-            category_list=self._repository.categories(owner=self._user),
+            category_list=self.bindings.session.require_repository().categories(
+                owner=self.bindings.session.user
+            ),
         )
-        if self._selection.asset.id == hda_id:
-            self._initialize_current_attribs()
-            self._clear_parms()
-        if self._selection.history.id == hda_id:
-            self._initialize_hist_current_attribs()
-            self._set_hda_hist_info_to_parms()
-        selected_row = self._assets.id_rows.get(self._selection.asset.id)
+        if self.bindings.selection.state.asset.id == hda_id:
+            self.bindings.selection._initialize_current_attribs()
+            self.bindings.notes._clear_parms()
+        if self.bindings.selection.state.history.id == hda_id:
+            self.bindings.selection._initialize_hist_current_attribs()
+            self.bindings.notes._set_hda_hist_info_to_parms()
+        selected_id = self.bindings.selection.state.asset.id
+        selected_row = (
+            self.bindings.models.assets.id_rows.get(selected_id)
+            if selected_id is not None
+            else None
+        )
         if selected_row is not None:
-            self._selection.select_asset(
-                self._assets.rows[selected_row],
+            self.bindings.selection.state.select_asset(
+                self.bindings.models.assets.rows[selected_row],
                 selected_row,
-                self._selection.asset.field,
+                self.bindings.selection.state.asset.field,
             )
         self._restore_history_selection_data()
-        self._clear_hist_parms()
-        self._refresh_asset_search()
-        self.label__hda_count.setText(str(self._ihda_list_proxy_model.rowCount()))
-        self.label__cate_count.setText(str(self._get_category_count()))
-        self.label__loc_record_count.setText(
-            str(self._ihda_record_proxy_model.get_row_count())
+        self.bindings.notes._clear_hist_parms()
+        self.bindings.models._refresh_asset_search()
+        self.bindings.ui.label__hda_count.setText(
+            str(self.bindings.models.list_proxy_model.rowCount())
+        )
+        self.bindings.ui.label__cate_count.setText(
+            str(self.bindings.models._get_category_count())
+        )
+        self.bindings.ui.label__loc_record_count.setText(
+            str(self.bindings.models.record_proxy_model.get_row_count())
         )
         log_handler.LogHandler.log_msg(
             method=logging.info, msg=f'"{name}" moved to Trash'
@@ -529,45 +666,66 @@ iHDA note history: {cnt_hda_note_hist}
 
     def _delete_each_hist_ihda_item(
         self,
-        hist_data: Any = None,
+        hist_data: HistoryData,
         verbose: bool = True,
     ) -> bool:
-        history = dict(hist_data)
+        history = hist_data
+        from widgets.library_metadata.dependency_warning import (
+            confirm_local_dependencies,
+        )
+
+        try:
+            if not confirm_local_dependencies(
+                self.bindings.parent,
+                {
+                    "asset_id": history.hda_id,
+                    "history_id": history.hist_id,
+                },
+                database=self.bindings.session.context.db_filepath
+                if self.bindings.session.context
+                else None,
+            ):
+                return False
+        except Exception as error:
+            self.show_command_error(str(error))
+            return False
         return self._asset_commands().delete_history(
-            history[public.Key.History.hda_id],
-            history[public.Key.History.hist_id],
+            history.hda_id,
+            history.hist_id,
             [],
             lambda _: self._apply_deleted_history(history, verbose),
         )
 
-    def _apply_deleted_history(self, history: Any, verbose: bool) -> None:
+    def _apply_deleted_history(self, history: HistoryData, verbose: bool) -> None:
         hda_id, hist_id = (
-            history[public.Key.History.hda_id],
-            history[public.Key.History.hist_id],
+            history.hda_id,
+            history.hist_id,
         )
         # Resolve the row after commit: earlier batch items may have shifted it.
-        for row in range(self._ihda_history_model.rowCount()):
-            index = self._ihda_history_model.index(row, 0)
+        for row in range(self.bindings.models.history_model.rowCount()):
+            index = self.bindings.models.history_model.index(row, 0)
             if index.data(ihda_history_model.HistoryModel.hist_id_role) == hist_id:
-                self._ihda_history_model.remove_item(row=row)
+                self.bindings.models.history_model.remove_item(row=row)
                 break
         self._delete_hist_combobox_ihda_item(hkey_id=hda_id)
-        self._remove_pixmap_hist_thumbnail(hist_id=hist_id)
-        if self._selection.history.hist_id == hist_id:
-            self._initialize_hist_current_attribs()
-            self._set_hda_hist_info_to_parms()
+        self.bindings.models._remove_pixmap_hist_thumbnail(hist_id=hist_id)
+        if self.bindings.selection.state.history.hist_id == hist_id:
+            self.bindings.selection._initialize_hist_current_attribs()
+            self.bindings.notes._set_hda_hist_info_to_parms()
         self._restore_history_selection_data()
-        self._clear_hist_parms()
+        self.bindings.notes._clear_hist_parms()
         if verbose:
             log_handler.LogHandler.log_msg(
                 method=logging.info,
-                msg=f"Version {history[public.Key.History.version]} moved to Trash",
+                msg=f"Version {history.version} moved to Trash",
             )
 
     def _delete_hist_combobox_ihda_item(self, hkey_id: int | None = None) -> None:
         # history가 존재하지 않는다면
-        if not self._ihda_history_model.is_exist_ihda_item_from_model(hkey_id=hkey_id):
-            for idx in range(self.comboBox__hist_ihda_node.count()):
-                hid = self.comboBox__hist_ihda_node.itemData(idx)
+        if not self.bindings.models.history_model.is_exist_ihda_item_from_model(
+            hkey_id=hkey_id
+        ):
+            for idx in range(self.bindings.ui.comboBox__hist_ihda_node.count()):
+                hid = self.bindings.ui.comboBox__hist_ihda_node.itemData(idx)
                 if hkey_id == hid:
-                    self.comboBox__hist_ihda_node.removeItem(idx)
+                    self.bindings.ui.comboBox__hist_ihda_node.removeItem(idx)

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import contextlib
-from bisect import bisect_right
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
@@ -10,10 +9,11 @@ from bisect import bisect_right
 # modify date       :
 # description       :
 from operator import itemgetter
-from typing import Any
+from typing import Any, overload
 
 from PySide6 import QtCore, QtGui
 
+from libs.model_columns import InsideColumn
 from model.model_style import ModelStyleMixin
 from model.tree_nodes import Node
 
@@ -22,9 +22,7 @@ with contextlib.suppress(ImportError):
 
 import contextlib
 
-import public
-from libs import houdini_api
-from libs.drag_payload import encode_payload
+from libs import houdini_api, keys
 
 
 class NodeData(Node):
@@ -124,33 +122,24 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         )
         self.__inst_ihda_icon = inst_ihda_icon
         self._font_size = (
-            font_size if font_size is not None else public.UISetting.view_font_size
+            font_size if font_size is not None else keys.UISetting.view_font_size
         )
         self._font_style = (
-            font_style if font_style is not None else public.UISetting.view_font_style
+            font_style if font_style is not None else keys.UISetting.view_font_style
         )
         self.__icon_size = (
             icon_size
             if icon_size is not None
-            else public.UISetting.treeview_node_icon_size
+            else keys.UISetting.treeview_node_icon_size
         )
         self._padding = padding if padding is not None else 0
-        self.__root = None
+        self.__root: NodeData
         self.__generic_pixmap = QtGui.QPixmap(":/main/icons/generic.png")
-        self.__headers = (
-            "Name",
-            "Type",
-            "Category",
-            "Version",
-            "Descript",
-            "Created",
-            "Modified",
-        )
         self.__init_set_data()
 
     def __init_set_data(self) -> None:
-        self.__root = NodeData(node_name=public.Type.root, node_depth=0, parent=None)
-        root_pixmap = self.__pixmap_cate_data.get(public.Type.root)
+        self.__root = NodeData(node_name=keys.Type.root, node_depth=0, parent=None)
+        root_pixmap = self.__pixmap_cate_data.get(keys.Type.root)
 
         if self.__data is not None:
             for root_key, root_val in sorted(
@@ -158,7 +147,7 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             ):
                 parent_node = NodeData(
                     node_name=root_key,
-                    node_type=public.Type.root,
+                    node_type=keys.Type.root,
                     node_depth=0,
                     icon=root_pixmap,
                     parent=self.__root,
@@ -177,7 +166,7 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         data: Any = None,
         root_type: Any = None,
         depth: int = 1,
-        parent: QtCore.QModelIndex = None,
+        parent: NodeData | None = None,
     ) -> None:
         if isinstance(data, dict):
             for key, val in data.items():
@@ -191,21 +180,25 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
                 created_time, modified_time = houdini_api.HoudiniAPI.get_node_datetime(
                     key
                 )
-                created_time = created_time.strftime(public.Value.datetime_fmt_str)
-                modified_time = modified_time.strftime(public.Value.datetime_fmt_str)
+                created_time = created_time.strftime(keys.Value.datetime_fmt_str)
+                modified_time = modified_time.strftime(keys.Value.datetime_fmt_str)
                 if hda_info is not None:
-                    hda_id = hda_info.get(public.Key.Comment.ihda_id)
-                    hda_ver = hda_info.get(public.Key.Comment.ihda_version)
-                    hda_org_name = hda_info.get(public.Key.Comment.ihda_name)
+                    hda_id = hda_info.get(keys.Key.Comment.ihda_id)
+                    hda_ver = hda_info.get(keys.Key.Comment.ihda_version)
+                    hda_org_name = hda_info.get(keys.Key.Comment.ihda_name)
                     node_name = f"{node_name} (v{hda_ver})"
-                    node_type = public.Type.ihda
-                    icon = self.__pixmap_ihda_data.get(hda_id)
+                    node_type = keys.Type.ihda
+                    icon = (
+                        self.__pixmap_ihda_data.get(hda_id)
+                        if hda_id is not None
+                        else None
+                    )
                     if icon is None:
                         icon = self.__inst_ihda_icon.get_houdini_icon(
                             icon_lst=houdini_api.HoudiniAPI.node_icon_path_lst(key)
                         )
                     # pixmap 공유 데이터 변수에 존재하지 않는다면 직접 가공해서 넣어준다.
-                    icon_cate = self.__pixmap_cate_data.get(node_cate)
+                    icon_cate = self.__pixmap_cate_data.get(node_cate or "")
                     if icon_cate is None:
                         icon_cate = self.__inst_ihda_icon.get_category_icon(
                             category=node_cate
@@ -214,19 +207,21 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
                     hda_id = None
                     hda_ver = None
                     hda_org_name = None
-                    if node_cate == public.Type.manager:
+                    if node_cate == keys.Type.manager:
                         node_type = "manager"
                         icon_cate = self.__generic_pixmap
                     else:
-                        node_type = houdini_api.HoudiniAPI.node_type_name(key)
+                        node_type = houdini_api.HoudiniAPI.node_type_name(key) or ""
                         # pixmap 공유 데이터 변수에 존재하지 않는다면 직접 가공해서 넣어준다.
-                        icon_cate = self.__pixmap_cate_data.get(node_cate)
+                        icon_cate = self.__pixmap_cate_data.get(node_cate or "")
                         if icon_cate is None:
                             icon_cate = self.__inst_ihda_icon.get_category_icon(
                                 category=node_cate
                             )
                     icon_lst = houdini_api.HoudiniAPI.node_icon_path_lst(key)
-                    icon = self.__pixmap_cate_data.get(icon_lst[1])
+                    icon = (
+                        self.__pixmap_cate_data.get(icon_lst[1]) if icon_lst else None
+                    )
                     if icon is None:
                         icon = self.__inst_ihda_icon.get_houdini_icon(icon_lst=icon_lst)
                 node = NodeData(
@@ -254,7 +249,7 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             for val in sorted(data, key=itemgetter(2)):
                 node = NodeData(
                     node_name=val,
-                    node_type=public.Type.ihda,
+                    node_type=keys.Type.ihda,
                     category="",
                     parent=parent,
                 )
@@ -271,7 +266,7 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
 
     @property
     def __default_data(self) -> dict[str, Any]:
-        return {public.Type.root: {}}
+        return {keys.Type.root: {}}
 
     def __update_data(self, data: Any = None) -> None:
         if data is None:
@@ -279,67 +274,7 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         assert isinstance(data, dict)
         if (data is None) or (not len(data)):
             return
-        self.__data.get(public.Type.root).update(data)
-
-    def __insert_item_to_inside_data(
-        self, data: Any = None, insert_data: dict[str, Any] | None = None
-    ) -> None:
-        if isinstance(insert_data, dict):
-            for key, val in insert_data.items():
-                get_data = data.get(key)
-                if get_data is None:
-                    data.update(insert_data)
-                else:
-                    if isinstance(get_data, list):
-                        if len(get_data):
-                            val = val[0]
-                            filtering_data = [
-                                x
-                                for x in get_data
-                                if (x[1] == val[1]) and (x[5] == val[5])
-                            ]
-                            if len(filtering_data):
-                                # 만약 같은 version이 이미 존재한다면
-                                # filtering data unpack
-                                filtering_data = filtering_data[0]
-                                filtering_data[2] = val[2]
-                                filtering_data[7] = val[7]
-                                # index 12~18
-                                filtering_data[12 : 18 + 1] = val[12 : 18 + 1]
-                            else:
-                                # node 이름으로 정렬하여 삽입
-                                node_name_keys = [x[2] for x in get_data]
-                                node_name = val[2]
-                                insert_idx = bisect_right(node_name_keys, node_name)
-                                get_data.insert(insert_idx, val)
-                        else:
-                            get_data.append(val[0])
-                    else:
-                        self.__insert_item_to_inside_data(
-                            data=get_data, insert_data=val
-                        )
-
-    def __one_dimension_keys_array_to_data(
-        self, key_lst: list[str] | None = None, add_item: Any = None, depth: int = 0
-    ) -> Any:
-        if isinstance(key_lst, list):
-            try:
-                key = key_lst[depth]
-                if isinstance(key, dict):
-                    return key
-                val = [
-                    self.__one_dimension_keys_array_to_data(
-                        key_lst=key_lst, add_item=add_item, depth=depth + 1
-                    )
-                ]
-                if val[0] is None:
-                    if add_item is not None:
-                        val = [add_item] if isinstance(add_item, list) else [[add_item]]
-                    else:
-                        val = [None]
-                return dict(zip([key], val, strict=False))
-            except IndexError:
-                pass
+        self.__data[keys.Type.root].update(data)
 
     def make_node_tree(self, node_data: Any = None) -> None:
         self.beginResetModel()
@@ -353,44 +288,24 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
     # 그래서 선택한 노드를 재귀적으로 돌려 찾은 index로 삭제하는 방식으로 돌아간다.
     # 유효한 데이터가 남아 있지 않은 껍데기 뿐인 inside 데이터/모델 삭제하는 함수
     # 인자로 들어 온 key_data로 inside data가져오는 함수
-    def __get_inside_data_from_key_data(
-        self, data: Any = None, key_data: Any = None
-    ) -> Any:
-        if key_data is None:
-            return data
-        if isinstance(key_data, dict):
-            for key, val in key_data.items():
-                if val is None and isinstance(data, list):
-                    return [x for x in data if x[2] == key]
-                get_data = data.get(key)
-                return self.__get_inside_data_from_key_data(data=get_data, key_data=val)
 
     # 선택한 부모에 존재하는 모든 inside data의 id를 찾아 반환하는 함수
     # 이렇게 찾은 id를 DB에서 제거하기 위함.
-    def __find_inside_id_from_selected_inside_data(self, data: Any = None) -> list[Any]:
-        inside_id_lst = []
-        if isinstance(data, list):
-            return [x[0] for x in data]
-        if isinstance(data, dict):
-            for _key, val in data.items():
-                if isinstance(val, dict):
-                    inside_id_lst += self.__find_inside_id_from_selected_inside_data(
-                        data=val
-                    )
-                else:
-                    inside_id_lst += [x[0] for x in val]
-        return inside_id_lst
 
     # hda_id를 가진 노드의 [[이름/hda_id/노드경로],]를 반환하는 함수
     def get_ihda_node_list(self) -> Any:
         root_index = self.index(0, 0, QtCore.QModelIndex())
-        tmp_id_lst = []
+        tmp_id_lst: list[int] = []
         return self.__find_inside_ihda_node(index=root_index, tmp_id_lst=tmp_id_lst)
 
     # tmp_id_lst는 데이터가 중복 저장되는 것을 방지하는 위한 임시 변수이다.
     def __find_inside_ihda_node(
-        self, index: QtCore.QModelIndex = None, tmp_id_lst: Any = None
+        self,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex | None = None,
+        tmp_id_lst: Any = None,
     ) -> list[Any]:
+        if index is None:
+            index = QtCore.QModelIndex()
         find_lst = []
         for row in range(0, self.rowCount(index)):
             child_index = self.index(row, 0, index)
@@ -406,143 +321,24 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         return find_lst
 
     # key_date를 기준으로 아이템을 찾아들어가서 find_item을 찾고 리스트 반환
-    def __find_selected_inside_data(
-        self,
-        index: QtCore.QModelIndex = None,
-        key_data: Any = None,
-        find_item: Any = None,
-    ) -> list[Any]:
-        find_lst = []
-        for row in range(0, self.rowCount(index)):
-            child_index = self.index(row, 0, index)
-            key = child_index.data(QtCore.Qt.ItemDataRole.DisplayRole)
-            get_data = key_data.get(key)
-            if get_data is None:
-                if key in find_item:
-                    find_lst.append([child_index.row(), index])
-            else:
-                find_lst += self.__find_selected_inside_data(
-                    index=child_index, key_data=get_data, find_item=find_item
-                )
-        return find_lst
 
     # 유효하지 않는 데이터를 반환하는 함수. 껍데기만 존재하는 데이터
     # 이 함수로 반환된 데이터를 삭제한다. 선택하여 삭제하는 함수를 쓰면, 유효한 데이터가 하나도 존재 하지 않을 때
     # 그 껍데기를 삭제하는 용도이다.
-    def __find_invalid_hull_inside_item_model(
-        self, index: QtCore.QModelIndex = None
-    ) -> list[Any]:
-        find_invalid_lst = []
-        for row in range(0, self.rowCount(index)):
-            child_index = self.index(row, 0, index)
-            is_invalid_data = self.__is_exist_invalid_inside_data(index=child_index)
-            if is_invalid_data:
-                pkey_list = self.__get_all_inside_parent_by_index(child_index)
-                find_invalid_lst.append([row, index, pkey_list])
-                continue
-            find_invalid_lst += self.__find_invalid_hull_inside_item_model(
-                index=child_index
-            )
-        return find_invalid_lst
 
     # 유효하지 않는 데이터가 존재하는지 확인하는 함수. 존재하지 않는다면 껍데기만 있는 데이터라 그 껍데기를 지우도록 확인한다.
     # 즉, 유효한 데이터가 존재하지 않는 최상위 부모를 찾는다.
-    def __is_exist_invalid_inside_data(self, index: QtCore.QModelIndex = None) -> bool:
-        is_found = True
-        if self.rowCount(index) == 0:
-            return index.data(InsideModel.inside_id_role) is None
-        else:
-            for row in range(0, self.rowCount(index)):
-                child_index = self.index(row, 0, index)
-                is_found &= self.__is_exist_invalid_inside_data(index=child_index)
-        return is_found
-
-    def __remove_item_from_inside_data(
-        self, data: Any = None, remove_key_data: Any = None
-    ) -> None:
-        if isinstance(data, dict) and isinstance(remove_key_data, dict):
-            remove_data_key = list(remove_key_data.keys())[0]
-            remove_data_val = remove_key_data.get(remove_data_key)
-            if remove_data_val is not None:
-                self.__remove_item_from_inside_data(
-                    data=data.get(remove_data_key), remove_key_data=remove_data_val
-                )
-            else:
-                with contextlib.suppress(KeyError):
-                    del data[remove_data_key]
-        else:
-            if isinstance(data, list):
-                if isinstance(remove_key_data, dict):
-                    rkey = list(remove_key_data.keys())[0]
-                # inside data 이름만 가져옴
-                inside_name_lst = [x[2] for x in data]
-                # 삭제하려는 key가 이름 리스트에 존재한다면
-                if rkey in inside_name_lst:
-                    rindex = inside_name_lst.index(rkey)
-                    del data[rindex]
 
     # 인자로 들어온 index의 부모들 이름을 구하는 함수. inside data를 현재는 이름을 가져오지만 차후에는 inside_id로
     # 변환해 이것으로 지워야 정확함. 현재 노드 이름과 버전이 공존하여 이것을 기반으로 삭제한다. 이름과 버전은 unique하기 때문.
     # ex) ['root', 'c:/users/scii', aaa.hip', '/obj/cam', 'bakeoedtest']
-    def __get_all_inside_parent_by_index(self, index: QtCore.QModelIndex) -> Any:
-        plist = []
-        if not index.isValid():
-            return []
-        plist.append(index.data(QtCore.Qt.ItemDataRole.DisplayRole))
-        return self.__get_all_inside_parent_by_index(index.parent()) + plist
 
     # 모델 데이터와 inside 데이터를 제거하는 함수
     # 유효하지 않는 레코드 데이터, 모델 데이터 취합하는 함수의 랩퍼 함수
-    def __find_invalid_inside_data(self) -> None | list[Any]:
-        find_model_lst = []
-        parent_key_lst = []
-        self.__find_invalid_item_from_inside_data(
-            index=self.index(0, 0, QtCore.QModelIndex()),
-            collect_model_lst=find_model_lst,
-            collect_pkey_lst=parent_key_lst,
-        )
-        if not len(find_model_lst):
-            return None
-        return [find_model_lst, parent_key_lst]
 
     # 유효하지 않는 레코드 데이터를 재귀적으로 찾는 함수
-    def __find_invalid_item_from_inside_data(
-        self,
-        index: QtCore.QModelIndex = None,
-        collect_model_lst: Any = None,
-        collect_pkey_lst: Any = None,
-    ) -> None:
-        for row in range(0, self.rowCount(index)):
-            child_index = self.index(row, 0, index)
-            is_can_remove = self.__is_can_remove_data(parent=child_index)
-            if is_can_remove:
-                pkey_list = self.__get_all_inside_parent_by_index(child_index)
-                collect_pkey_lst.append(pkey_list)
-                # [삭제할 row, 부모 인덱스]
-                collect_model_lst.append([row, index])
-                continue
-            self.__find_invalid_item_from_inside_data(
-                child_index,
-                collect_model_lst=collect_model_lst,
-                collect_pkey_lst=collect_pkey_lst,
-            )
 
     # 해당 부모를 지워도 되는지 확인하는 함수. 자식 중 하나라도 유효한 데이터가 있다면 부모를 지울 수 없다.
-    def __is_can_remove_data(self, parent: QtCore.QModelIndex = None) -> Any:
-        flag_lst = []
-        if self.rowCount(parent) == 0:
-            hda_filepath = parent.data(InsideModel.hda_filepath_role)
-            if hda_filepath is not None:
-                return not hda_filepath.exists()
-        else:
-            for row in range(0, self.rowCount(parent)):
-                child = self.index(row, 0, parent)
-                hip_hipfile = child.data(InsideModel.hip_filepath_role)
-                if hip_hipfile.exists():
-                    flag_lst.append(self.__is_can_remove_data(parent=child))
-                else:
-                    flag_lst.append(True)
-        return all(flag_lst)
 
     # hda_id와 같은 inside data 삭제 함수
     # iHDA 삭제 시, inside 데이터 삭제되도록 DB에서 Constraint 걸어 놓아서 여기서만 삭제하면 된다.
@@ -551,120 +347,15 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
     # iHDA 이름 변경 시, inside 데이터도 함께 변경되어야 한다. DB는 트리거로 자동화 시켜 놓았다.
     # 정확하게 해당 데이터를 찾아가야해서 is_find_parent를 False로 주었다.
     # 여러 개의 inside data (중첩 된 딕셔너리&리스트 데이터)를 하나의 데이터로 만드는 함수
-    def __collect_inside_data(
-        self, data: Any = None, insert_data: dict[str, Any] | None = None
-    ) -> None:
-        if isinstance(insert_data, dict):
-            if not len(data):
-                data.update(insert_data)
-                return
-            for key, val in insert_data.items():
-                get_data = data.get(key)
-                if get_data is None:
-                    data.update(insert_data)
-                else:
-                    if isinstance(get_data, list):
-                        pass
-                    else:
-                        self.__collect_inside_data(data=get_data, insert_data=val)
-
-    def __rename_inside_data(
-        self,
-        data: Any = None,
-        update_key_data: Any = None,
-        update_data: dict[str, Any] | None = None,
-    ) -> None:
-        if isinstance(update_key_data, dict):
-            for key, val in update_key_data.items():
-                get_data = data.get(key)
-                if isinstance(get_data, list):
-                    hda_id, new_name, hda_dirpath, hda_version = update_data
-                    for row in range(len(get_data)):
-                        # hda_id가 같은 지
-                        if get_data[row][1] == hda_id:
-                            hda_ver = get_data[row][5]
-                            new_name_with_ver = f"{new_name} (v{hda_ver})"
-                            # 새로운 이름으로 변경
-                            get_data[row][2] = new_name_with_ver
-                            # 오리지날 이름도 새로운 이름으로 변경
-                            get_data[row][18] = new_name
-                            # hda dirpath 변경
-                            get_data[row][10] = hda_dirpath
-                            # hda filename 변경
-                            # 파일 이름은 버전이 같은 것만 변경 해야 함.
-                            if get_data[row][5] == hda_version:
-                                hda_filename = houdini_api.HoudiniAPI.make_hda_filename(
-                                    name=new_name, version=hda_version
-                                )
-                                get_data[row][11] = hda_filename
-                else:
-                    self.__rename_inside_data(
-                        data=get_data, update_key_data=val, update_data=update_data
-                    )
-
-    def __find_item_from_inside_data(
-        self,
-        index: QtCore.QModelIndex = None,
-        collect_model_lst: Any = None,
-        collect_pkey_lst: Any = None,
-        hda_id: int | None = None,
-        is_find_parent: bool = False,
-    ) -> None:
-        for row in range(0, self.rowCount(index)):
-            child_index = self.index(row, 0, index)
-            is_found_data = self.__is_exist_hda_id(
-                hda_id=hda_id, parent=child_index, is_find_parent=is_find_parent
-            )
-            if is_found_data:
-                pkey_list = self.__get_all_inside_parent_by_index(child_index)
-                collect_pkey_lst.append(pkey_list)
-                # [row, 부모 인덱스]
-                collect_model_lst.append([row, index])
-                continue
-            self.__find_item_from_inside_data(
-                child_index,
-                collect_model_lst=collect_model_lst,
-                collect_pkey_lst=collect_pkey_lst,
-                hda_id=hda_id,
-                is_find_parent=is_find_parent,
-            )
 
     # 인자로 들어온 hda_id를 가진 자식들이 존재하는지
-    def __is_exist_hda_id(
-        self,
-        hda_id: int | None = None,
-        is_find_parent: bool = False,
-        parent: QtCore.QModelIndex = None,
-    ) -> bool:
-        """
-        인자로 들어온 hda_id를 가진 부모/데이터가 존재하는 지 확인하는 함수
-        :param hda_id: 검색 대상의 iHDA ID
-        :param is_find_parent: 정확한 데이터를 찾을 것인지 혹은 찾는 데이터를 하나 밖에 가지고 있지 않는 부모를 찾을 것인지
-                True -> 찾은 hda_id의 부모를 반환한다. 그 부모는 찾는 데이터를 단 하나만 가지고 있다.
-                    불필요하게 껍데기만 존재하는 데이터를 방지하고자 할 때 True로 주면 된다.
-                False -> hda_id를 가진 데이터를 정확하게 찾을 때 False를 주면 된다.
-        :param parent: model index
-        :return: 찾은 데이터 리스트를 반환
-        """
-        is_found = is_find_parent
-        if self.rowCount(parent) == 0:
-            return parent.data(InsideModel.hda_id_role) == hda_id
-        else:
-            for row in range(0, self.rowCount(parent)):
-                child_index = self.index(row, 0, parent)
-                if child_index.data(InsideModel.hda_id_role) == hda_id:
-                    is_found &= True
-                is_found &= self.__is_exist_hda_id(
-                    hda_id=hda_id, is_find_parent=is_find_parent, parent=child_index
-                )
-        return is_found
 
     def add_item(self, data: Any = None) -> None:
         assert isinstance(data, dict)
         self.__update_data(data=data)
 
     def remove_item(self, category: str | None = None) -> None:
-        del self.__data.get(public.Type.root)[category]
+        del self.__data[keys.Type.root][category]
 
     def set_icon_size(self, val: Any) -> None:
         self.beginResetModel()
@@ -678,7 +369,8 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         self.endResetModel()
 
     def flags(
-        self, index: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> QtCore.Qt.ItemFlag:
         if not index.isValid():
             return QtCore.Qt.ItemFlag.ItemIsDropEnabled
@@ -696,10 +388,14 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
 
     @property
     def headers_count(self) -> int:
-        return len(self.__headers)
+        return len(InsideColumn)
 
-    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self.__headers)
+    def columnCount(
+        self,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
+    ) -> int:
+        return len(InsideColumn)
 
     def headerData(
         self,
@@ -709,13 +405,13 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
     ) -> Any:
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
             if orientation == QtCore.Qt.Orientation.Horizontal:
-                return self.__headers[section]
+                return InsideColumn(section).label
         elif role == QtCore.Qt.ItemDataRole.DecorationRole:
             return None
         elif role == QtCore.Qt.ItemDataRole.FontRole:
             font = QtGui.QFont()
             # font.setFamily(self._font_style)
-            font.setPointSize(public.UISetting.view_font_size)
+            font.setPointSize(keys.UISetting.view_font_size)
             return font
         elif role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
             return int(
@@ -725,31 +421,49 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
 
         return None
 
-    def node_from_index(self, index: QtCore.QModelIndex) -> Node:
+    def node_from_index(
+        self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex
+    ) -> NodeData:
         return index.internalPointer() if index.isValid() else self.__root
 
     def insertRow(
-        self, row: int, parent: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        row: int,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> bool:
         return self.insertRows(row, 1, parent)
 
     def insertRows(
-        self, row: int, count: int, parent: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        row: int,
+        count: int,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> bool:
         # Tree rows require domain data; add_item/reload performs real insertion.
         return False
 
-    def delete_node(self, index: QtCore.QModelIndex) -> None:
+    def delete_node(
+        self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex
+    ) -> None:
         if index.isValid() and index.model() is self:
             self.removeRows(index.row(), 1, index.parent())
 
     def removeRow(
-        self, row: int, parent: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        row: int,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> bool:
         return self.removeRows(row, 1, parent)
 
     def removeRows(
-        self, row: int, count: int, parent: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        row: int,
+        count: int,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> bool:
         if parent.isValid() and (parent.model() is not self or parent.column() != 0):
             return False
@@ -763,7 +477,11 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         return True
 
     def index(
-        self, row: int, column: int, parent: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        row: int,
+        column: int,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> QtCore.QModelIndex:
         if not self.hasIndex(row, column, parent):
             return QtCore.QModelIndex()
@@ -771,14 +489,16 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         return self.createIndex(row, column, node.child_at_row(row))
 
     def data(
-        self, index: QtCore.QModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
+        self,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+        role: int = QtCore.Qt.ItemDataRole.DisplayRole,
     ) -> Any:
         if not index.isValid():
             return None
         node = self.node_from_index(index)
         column = index.column()
         if role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
-            if column > 2:
+            if column > InsideColumn.CATEGORY:
                 return int(
                     QtCore.Qt.AlignmentFlag.AlignHCenter
                     | QtCore.Qt.AlignmentFlag.AlignVCenter
@@ -787,47 +507,46 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
                 QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
             )
         elif role == QtCore.Qt.ItemDataRole.DisplayRole:
-            disp_lst = (
-                node.name(),
-                node.node_type(),
-                node.category(),
-                node.version(),
-                node.node_descript(),
-                node.created_time(),
-                node.modified_time(),
-            )
-            return disp_lst[column]
+            return getattr(node, InsideColumn(column).field)()
         elif role == QtCore.Qt.ItemDataRole.ToolTipRole:
-            if column == 0:
+            if column == InsideColumn.NAME:
                 return node.name()
             return None
         elif role == QtCore.Qt.ItemDataRole.DecorationRole:
-            if column == 0:
-                if node.icon() is None:
+            if column == InsideColumn.NAME:
+                icon = node.icon()
+                if icon is None:
                     return None
-                if node.node_type() == public.Type.ihda:
-                    return node.icon().scaled(
-                        QtCore.QSize(self.__icon_size, self.__icon_size),
+                if node.node_type() == keys.Type.ihda:
+                    return icon.scaled(
+                        QtCore.QSize(int(self.__icon_size), int(self.__icon_size)),
                         QtCore.Qt.AspectRatioMode.KeepAspectRatio,
                     )
-                return node.icon().scaled(
-                    QtCore.QSize(self.__icon_size * 0.8, self.__icon_size * 0.8),
+                return icon.scaled(
+                    QtCore.QSize(
+                        int(self.__icon_size * 0.8), int(self.__icon_size * 0.8)
+                    ),
                     QtCore.Qt.AspectRatioMode.KeepAspectRatio,
                 )
-            elif column == 2:
-                if node.icon_cate() is None:
+            elif column == InsideColumn.CATEGORY:
+                icon = node.icon_cate()
+                if icon is None:
                     return None
-                return node.icon_cate().scaled(
-                    QtCore.QSize(self.__icon_size * 0.8, self.__icon_size * 0.8),
+                return icon.scaled(
+                    QtCore.QSize(
+                        int(self.__icon_size * 0.8), int(self.__icon_size * 0.8)
+                    ),
                     QtCore.Qt.AspectRatioMode.KeepAspectRatio,
                 )
-            elif column in [5, 6]:
+            elif column in [InsideColumn.CREATED, InsideColumn.MODIFIED]:
                 if (node.created_time() is None) or (node.modified_time() is None):
                     return None
                 else:
                     pixmap = QtGui.QPixmap(":/main/icons/ic_query_builder_white.png")
                 return pixmap.scaled(
-                    QtCore.QSize(self.__icon_size * 0.7, self.__icon_size * 0.7),
+                    QtCore.QSize(
+                        int(self.__icon_size * 0.7), int(self.__icon_size * 0.7)
+                    ),
                     QtCore.Qt.AspectRatioMode.KeepAspectRatio,
                 )
             return None
@@ -837,7 +556,9 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             font.setPointSize(self._font_size)
             return font
         elif role == QtCore.Qt.ItemDataRole.SizeHintRole:
-            return QtCore.QSize(self.__icon_size, self.__icon_size + self._padding)
+            return QtCore.QSize(
+                int(self.__icon_size), int(self.__icon_size + self._padding)
+            )
         elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
             return None
         # UserRole
@@ -856,7 +577,11 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         elif role == InsideModel.version_role:
             return node.version()
 
-    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+    def rowCount(
+        self,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
+    ) -> int:
         if parent.isValid() and parent.column() != 0:
             return 0
         node = self.node_from_index(parent)
@@ -864,9 +589,20 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             return 0
         return len(node)
 
+    @overload
+    def parent(self) -> QtCore.QObject | None: ...
+
+    @overload
     def parent(
-        self, index: QtCore.QModelIndex = QtCore.QModelIndex()
-    ) -> QtCore.QModelIndex:
+        self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex
+    ) -> QtCore.QModelIndex: ...
+
+    def parent(
+        self,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex | None = None,
+    ) -> QtCore.QModelIndex | QtCore.QObject | None:
+        if index is None:
+            return super().parent()
         if not index.isValid():
             return QtCore.QModelIndex()
         node = self.node_from_index(index)
@@ -881,34 +617,3 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         row = grand_parent.row_of_child(parent)
         assert row != -1
         return self.createIndex(row, 0, parent)
-
-    def mimeTypes(self) -> list[str]:
-        return [public.Type.mime_type]
-
-    def supportedDropActions(self) -> QtCore.Qt.DropAction:
-        return QtCore.Qt.DropAction.CopyAction | QtCore.Qt.DropAction.MoveAction
-
-    def mimeData(self, indexes: list[QtCore.QModelIndex]) -> QtCore.QMimeData | None:
-        if not len(indexes):
-            return None
-        mime_data = super().mimeData(indexes)
-        # 원래 2번째 컬럼만 선택되어지는데 간혹가다가 모든 컬럼이 indexes로 들어올 때가 있어서 명시해주었다.
-        if len(indexes) > 1:
-            indexes = [indexes[public.Value.drag_column_inside_view]]
-        for index in indexes:
-            if index.isValid():
-                data = encode_payload(
-                    self.data(index, role=InsideModel.inside_data_role)
-                )
-                mime_data.setData(public.Type.mime_type, QtCore.QByteArray(data))
-        return mime_data
-
-    def dropMimeData(
-        self,
-        mime_data: QtCore.QMimeData,
-        action: QtCore.Qt.DropAction,
-        row: int,
-        column: int,
-        parent: QtCore.QModelIndex,
-    ) -> bool:
-        return True

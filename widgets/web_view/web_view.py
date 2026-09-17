@@ -12,8 +12,7 @@ from typing import Any
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWebEngineCore import QWebEngineFullScreenRequest, QWebEngineProfile
 
-import public
-from libs import log_handler
+from libs import host, log_handler, paths
 from libs.houdini_api import HoudiniAPI
 from widgets.web_view import web_ui_settings
 from widgets.web_view.layout import WebViewLayout
@@ -29,7 +28,7 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
         super().__init__(parent)
         self.build_ui(self)
         self._presenter = WebPresenter(
-            self, HoudiniAPI.global_scale_factor() if public.IS_HOUDINI else 1.0
+            self, HoudiniAPI.global_scale_factor() if host.IS_HOUDINI else 1.0
         )
         self.__ui_settings = web_ui_settings.WebUISettings(window=self)
         self.__blank_site = "about:blank"
@@ -52,7 +51,7 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
 
     def __init_set(self) -> None:
         self.webEngineView__webview.page().profile().setPersistentCookiesPolicy(
-            QWebEngineProfile.NoPersistentCookies
+            QWebEngineProfile.PersistentCookiesPolicy.NoPersistentCookies
         )
         self.__set_init_load()
         self.__load_config()
@@ -108,7 +107,7 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
         event.accept()
 
     def __load_config(self) -> None:
-        if public.Paths.json_web_filepath.exists():
+        if paths.Paths.json_web_filepath.exists():
             self.__ui_settings.load_main_window_geometry()
             self.__ui_settings.load_splitter_status()
             self.__ui_settings.load_cfg_dict_from_file()
@@ -120,12 +119,11 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
         )
 
     def __load(self, url: str | None = None) -> None:
-        if url is None:
-            url = QtCore.QUrl.fromUserInput(self.lineEdit__address.text())
-        else:
-            url = QtCore.QUrl.fromUserInput(url)
-        if url.isValid():
-            self.webEngineView__webview.load(url)
+        address = QtCore.QUrl.fromUserInput(
+            self.lineEdit__address.text() if url is None else url
+        )
+        if address.isValid():
+            self.webEngineView__webview.load(address)
 
     def __full_screen(self, request: Any) -> None:
         req = QWebEngineFullScreenRequest(request)
@@ -166,11 +164,11 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
     def __stop(self) -> None:
         self.webEngineView__webview.stop()
 
-    def __url_changed(self, url: str) -> None:
+    def __url_changed(self, url: QtCore.QUrl) -> None:
         self.lineEdit__address.setText(url.toString())
 
     def __set_view_by_zoom_factor(self, zoom_factor: Any) -> None:
-        if public.IS_HOUDINI:
+        if host.IS_HOUDINI:
             self.webEngineView__webview.setZoomFactor(
                 zoom_factor * HoudiniAPI.global_scale_factor()
             )
@@ -200,14 +198,14 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
 
     @staticmethod
     def __maximum_zoom_factor() -> float:
-        if public.IS_HOUDINI:
+        if host.IS_HOUDINI:
             return 5 * HoudiniAPI.global_scale_factor()
         else:
             return 5
 
     @staticmethod
     def __minimum_zoom_factor() -> float:
-        if public.IS_HOUDINI:
+        if host.IS_HOUDINI:
             return 0.25 * HoudiniAPI.global_scale_factor()
         else:
             return 0.25

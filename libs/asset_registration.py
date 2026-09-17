@@ -6,7 +6,7 @@ import logging
 import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from libs.repository import (
     LibraryConflict,
@@ -33,6 +33,21 @@ class RegistrationWriter(Protocol):
     ) -> RegistrationResult: ...
 
 
+class RegistrationRecoveryPort(Protocol):
+    def run(
+        self,
+        payload: RegistrationPayload,
+        capture: RegistrationCapture | None,
+        writer: RegistrationWriter,
+        asset_id: int | None = None,
+    ) -> RegistrationResult: ...
+
+
+@runtime_checkable
+class RecoveryProvider(Protocol):
+    def registration_recovery(self) -> RegistrationRecoveryPort: ...
+
+
 class RegistrationService:
     def __init__(self, writer: RegistrationWriter) -> None:
         self._writer = writer
@@ -43,6 +58,10 @@ class RegistrationService:
         capture: RegistrationCapture,
         asset_id: int | None = None,
     ) -> RegistrationResult:
+        if isinstance(self._writer, RecoveryProvider):
+            return self._writer.registration_recovery().run(
+                payload, capture, self._writer, asset_id
+            )
         asset_path = payload.hda_dirpath / payload.hda_filename
         thumbnail_path = payload.thumb_dirpath / payload.thumb_filename
         for filename in (payload.hda_filename, payload.thumb_filename):

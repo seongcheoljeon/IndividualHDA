@@ -8,6 +8,8 @@ from pathlib import Path
 
 from PySide6 import QtCore, QtGui
 
+from libs.resource_policy import ThumbnailPolicy
+
 
 class ImageSignals(QtCore.QObject):
     ready = QtCore.Signal(object, int, QtGui.QImage)
@@ -21,9 +23,12 @@ class ImageRead(QtCore.QRunnable):
         path: Path,
         signals: ImageSignals,
         resolve: Callable[[], Path] | None = None,
+        *,
+        policy: ThumbnailPolicy = ThumbnailPolicy(),
     ) -> None:
         super().__init__()
         self.resolve = resolve
+        self.policy = policy
         self.key, self.generation, self.path, self.signals = (
             key,
             generation,
@@ -37,8 +42,15 @@ class ImageRead(QtCore.QRunnable):
             path = self.resolve() if self.resolve is not None else self.path
             reader = QtGui.QImageReader(str(path))
             size = reader.size()
-            if size.isValid() and max(size.width(), size.height()) > 1024:
-                size.scale(1024, 1024, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+            if (
+                size.isValid()
+                and max(size.width(), size.height()) > self.policy.decode_edge
+            ):
+                size.scale(
+                    self.policy.decode_edge,
+                    self.policy.decode_edge,
+                    QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                )
                 reader.setScaledSize(size)
             image = reader.read()
         except Exception:
@@ -54,12 +66,20 @@ class ThumbnailCache(QtCore.QObject):
     def __init__(
         self,
         fallback: QtGui.QPixmap,
-        capacity: int = 256,
-        byte_limit: int = 64 * 1024 * 1024,
+        capacity: int | None = None,
+        byte_limit: int | None = None,
+        *,
+        policy: ThumbnailPolicy = ThumbnailPolicy(),
     ) -> None:
         super().__init__()
-        if capacity < 1 or byte_limit < 1:
-            raise ValueError("Thumbnail cache limits must be positive")
+        self.policy = ThumbnailPolicy(
+            capacity=policy.capacity if capacity is None else capacity,
+            byte_limit=policy.byte_limit if byte_limit is None else byte_limit,
+            decode_edge=policy.decode_edge,
+            workers=policy.workers,
+            pending=policy.pending,
+        )
+        capacity, byte_limit = self.policy.capacity, self.policy.byte_limit
         self._closed = False
         self.fallback = fallback
         self.capacity = capacity
@@ -72,7 +92,7 @@ class ThumbnailCache(QtCore.QObject):
         self._cache: OrderedDict[int, QtGui.QPixmap] = OrderedDict()
         self._pending: dict[int, int] = {}
         self._pool = QtCore.QThreadPool(self)
-        self._pool.setMaxThreadCount(2)
+        self._pool.setMaxThreadCount(self.policy.workers)
         self._signals = ImageSignals(self)
         self._signals.ready.connect(
             self._receive, QtCore.Qt.ConnectionType.QueuedConnection
@@ -125,13 +145,18 @@ class ThumbnailCache(QtCore.QObject):
             not self._closed
             and path is not None
             and key not in self._pending
-            and len(self._pending) < 32
+            and len(self._pending) < self.policy.pending
         ):
             generation = self._versions[key]
             self._pending[key] = generation
             self._pool.start(
                 ImageRead(
-                    key, generation, path, self._signals, self._resolvers.get(key)
+                    key,
+                    generation,
+                    path,
+                    self._signals,
+                    self._resolvers.get(key),
+                    policy=self.policy,
                 )
             )
         return self.fallback if default is None else default

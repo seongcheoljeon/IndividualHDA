@@ -12,7 +12,7 @@ from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-import public
+from libs import keys
 from model import ihda_record_model
 
 
@@ -58,7 +58,7 @@ class RecordView(QtWidgets.QTreeView):
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         if event.mimeData().hasText():
             event.acceptProposedAction()
-        elif event.mimeData().hasFormat(public.Type.mime_type):
+        elif event.mimeData().hasFormat(keys.Type.mime_type):
             event.setDropAction(QtCore.Qt.DropAction.CopyAction)
             event.acceptProposedAction()
         else:
@@ -72,25 +72,21 @@ class RecordView(QtWidgets.QTreeView):
                 x for x in self.__comp_space.split(event.mimeData().text()) if len(x)
             ]
             self.signal.signal_object.emit(mime_dat)
-        elif event.mimeData().hasFormat(public.Type.mime_type):
+        elif event.mimeData().hasFormat(keys.Type.mime_type):
             event.setDropAction(QtCore.Qt.DropAction.CopyAction)
             event.acceptProposedAction()
-            self.signal.signal_object.emit(
-                [event.mimeData().data(public.Type.mime_type)]
-            )
+            self.signal.signal_object.emit([event.mimeData().data(keys.Type.mime_type)])
         else:
             super().dropEvent(event)
 
     def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         if not (event.buttons() & QtCore.Qt.MouseButton.MiddleButton):
             return
-        indexes = self.selectionModel().selectedRows(
-            public.Value.drag_column_record_view
-        )
+        indexes = self.selectionModel().selectedRows(keys.Value.drag_column_record_view)
         if not len(indexes):
             return
         is_all_ihda_type = all(
-            x.data(ihda_record_model.RecordModel.record_type_role) == public.Type.ihda
+            x.data(ihda_record_model.RecordModel.record_type_role) == keys.Type.ihda
             for x in indexes
         )
         if not is_all_ihda_type:
@@ -102,7 +98,7 @@ class RecordView(QtWidgets.QTreeView):
                 continue
             model = index.model()
             mime_data = model.mimeData([index])
-            model_data = mime_data.data(public.Type.mime_type).data()
+            model_data = mime_data.data(keys.Type.mime_type).data()
             drag.setMimeData(mime_data)
             model_data_lst.append(model_data)
             pixmap = index.data(QtCore.Qt.ItemDataRole.DecorationRole)

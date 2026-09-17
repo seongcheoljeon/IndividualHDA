@@ -28,17 +28,10 @@ follow_imports = "normal"
 explicit_package_bases = true
 ignore_missing_imports = true
 check_untyped_defs = true
-files = ["ihda_server", "libs", "model", "view", "widgets", "main.py", "public.py", "ui_settings.py"]
+files = ["tools", "ihda_server", "libs", "model", "view", "widgets", "main.py", "public.py", "ui_settings.py"]
 exclude = ["_rc\\.py$"]
 
 # Generated resource modules are never type-checked; Python layouts are maintained code.
 [[tool.mypy.overrides]]
 module = ["icons_rc", "libs.darkstyle_rc", "widgets.detail_view.detail_view_rc", "widgets.make_video_info.icons_rc", "widgets.preference.preference_icons_rc", "widgets.rename_ihda.rename_ihda_icons_rc", "widgets.video_player.video_player_icons_rc", "widgets.web_view.web_view_icons_rc"]
-ignore_errors = true
-
-# Panel mixins read attributes the composed IndividualHDA owns, and the Qt item
-# models predate annotations; both are checked for syntax only until they are
-# restructured. Remove a module from this list once mypy passes for it.
-[[tool.mypy.overrides]]
-module = ["widgets.panel.selection", "model.ihda_record_model", "widgets.panel.asset_management", "ui_settings", "model.ihda_inside_model", "widgets.panel.model_binding", "widgets.panel.context_menus", "widgets.panel.presentation", "widgets.preference.preference_ui_settings", "widgets.panel.asset_registration", "widgets.panel.houdini_actions", "model.ihda_category_model", "libs.houdini_api", "model.ihda_history_model", "widgets.panel.notes", "model.ihda_table_model", "widgets.panel.media_actions", "model.ihda_list_model", "widgets.panel.library_queries", "widgets.video_player.video_ui_settings", "libs.loading_indicator", "widgets.video_player.video_player", "widgets.panel.library_tools", "main", "widgets.panel.host_callbacks", "widgets.web_view.web_ui_settings", "widgets.preference.preference", "widgets.web_view.web_view", "widgets.ai_models.dialog", "widgets.make_video_info.make_video_info", "widgets.rename_ihda.rename_ihda", "widgets.video_player.video_widget"]
 ignore_errors = true

@@ -8,6 +8,8 @@ from typing import Any
 
 import pytest
 
+from libs.asset_contracts import HistoryData, LibrarySnapshot, SyncContext
+from libs.scene_contracts import SceneRecord
 from widgets.asset_details.presenter import AssetDetailsPresenter
 from widgets.asset_lifecycle.presenter import AssetCommandPresenter
 from widgets.asset_media.presenter import AssetMediaPresenter, MediaRequest
@@ -213,15 +215,24 @@ def test_media_does_not_update_view_on_storage_failure(kind: str) -> None:
 
 def test_detail_does_not_mutate_record_and_handles_missing_thumbnail() -> None:
     view = View()
-    data = {"sf": 1, "ef": 10, "fps": 24, "name": "<b>literal</b>"}
-    original = dict(data)
+    data = SceneRecord(
+        sf=1,
+        ef=10,
+        fps=24,
+        node_name="<b>literal</b>",
+        record_id=0,
+        hda_id=0,
+        node_ver="",
+    )
+    original = data
     presenter = DetailPresenter(view)
     presenter.show(data, record=True)
     assert data == original
     assert view.content.thumbnail is None
     assert "<b>literal</b>" in view.content.text
-    presenter.show({}, history=True)
-    assert view.content.text == "" and view.content.thumbnail is None
+    presenter.show(HistoryData(hda_id=0, org_hda_name="", version=""), history=True)
+    assert view.content.thumbnail is None
+    assert "None" in view.content.text
 
 
 @pytest.mark.parametrize(
@@ -397,8 +408,8 @@ def test_dialog_validation_controls_accepted_signal(
 
 
 def test_local_lifecycle_uses_transactional_repository(tmp_path: Path) -> None:
-    from test_solid_contracts import Names
-    from test_sqlite_repository import payload
+    from support.names import Names
+    from support.personal import payload
 
     from libs.asset_lifecycle import LocalAssetLifecycle
     from libs.database.sqlite_repository import SqliteLibraryRepository
@@ -412,7 +423,7 @@ def test_local_lifecycle_uses_transactional_repository(tmp_path: Path) -> None:
     repository.ensure_user("tester")
     gateway = LocalAssetLifecycle(repository, Names)
     first = gateway.register(payload(tmp_path, "Water"))
-    asset_id = first.asset["hda_id"]
+    asset_id = first.asset.hda_id
     second = gateway.register(payload(tmp_path, "Water", "1.1"), asset_id)
     with pytest.raises(LibraryConflict, match="recent"):
         gateway.delete_history(asset_id, second.history_id, [])
@@ -421,13 +432,13 @@ def test_local_lifecycle_uses_transactional_repository(tmp_path: Path) -> None:
     renamed = gateway.rename(second.asset, "Fire")
     assert renamed.asset_rows > 0
     assert (renamed.plan.directory / renamed.plan.filename).is_file()
-    assert repository.list_assets()[0]["hda_name"] == "Fire"
+    assert repository.list_assets()[0].hda_name == "Fire"
     gateway.delete(asset_id, renamed.plan.directory)
     assert not repository.list_assets() and renamed.plan.directory.exists()
 
 
 def test_metadata_empty_tags_and_deleted_asset(tmp_path: Path) -> None:
-    from test_sqlite_repository import payload
+    from support.personal import payload
 
     from libs.database.sqlite_repository import SqliteLibraryRepository
     from libs.repository import LibraryError
@@ -439,12 +450,12 @@ def test_metadata_empty_tags_and_deleted_asset(tmp_path: Path) -> None:
     repository = SqliteLibraryRepository(database)
     repository.ensure_user("tester")
     asset = repository.register_asset(payload(tmp_path, "Water")).asset
-    asset_id = asset["hda_id"]
+    asset_id = asset.hda_id
     repository.set_tags(asset_id, [])
     repository.set_tags(asset_id, ["water"])
     repository.set_tags(asset_id, [])
-    assert repository.list_assets()[0]["hda_tags"] == []
-    repository.delete_asset(asset_id, asset["hda_dirpath"])
+    assert repository.list_assets()[0].hda_tags == ()
+    repository.delete_asset(asset_id, asset.hda_dirpath)
     with pytest.raises(LibraryError):
         repository.set_note(asset_id, "late write")
     with pytest.raises(LibraryError):
@@ -470,8 +481,10 @@ def test_reload_discards_snapshot_from_before_write_or_library_switch(
 
     view = SimpleNamespace(
         sync_allowed=lambda: True,
-        sync_context=lambda: (context.repository, context.write_generation),
-        read_snapshot=lambda: lambda: (1,),
+        sync_context=lambda: SyncContext(
+            repository=context.repository, write_generation=context.write_generation
+        ),
+        read_snapshot=lambda: lambda: LibrarySnapshot(revision=1),
         show_snapshot=applied.append,
         show_sync_error=lambda message: pytest.fail(message),
     )
@@ -481,6 +494,6 @@ def test_reload_discards_snapshot_from_before_write_or_library_switch(
         context.write_generation += 1
     elif change == "library_switch":
         context.repository = object()
-    callbacks[0]((1,), None)
-    assert applied == ([(1,)] if change == "none" else [])
+    callbacks[0](LibrarySnapshot(revision=1), None)
+    assert applied == ([LibrarySnapshot(revision=1)] if change == "none" else [])
     assert presenter.pending == (change == "metadata_save")

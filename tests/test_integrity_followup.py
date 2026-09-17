@@ -1,21 +1,25 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 import pytest
 from PySide6 import QtGui
-from test_solid_contracts import Names
+from support.names import Names
 
 from libs.asset_commands import delete_history
+from libs.asset_contracts import AssetData, HistoryData
 from libs.asset_rename import build_rename_plan, rename_asset
 from libs.database.rename_repository import SQLiteRenameRepository
+from libs.operation_journal import durable_operation
+from libs.record_codec import decode_record
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 from libs.thumbnail_cache import ThumbnailCache
 from model.ihda_history_model import HistoryModel
 
 
-def seed(db: SQLite3DatabaseAPI, directory: Path) -> dict[str, Any]:
+def seed(db: SQLite3DatabaseAPI, directory: Path) -> AssetData:
     (directory / "thumbnail").mkdir(parents=True)
     (directory / "video").mkdir()
     for file in (
@@ -35,45 +39,47 @@ def seed(db: SQLite3DatabaseAPI, directory: Path) -> dict[str, Any]:
     for version in ("1", "1", "2"):
         assert (
             db.insert_hda_history(
-                [
-                    1,
-                    "create",
-                    "Old",
-                    version + ".0",
-                    f"v{version}.hda",
-                    directory,
-                    None,
-                    "21.0",
-                    "scene.hip",
-                    directory,
-                    "commercial",
-                    "Linux",
-                    "/obj/Old",
-                    "Box",
-                    "box",
-                    "sop",
-                    "user",
-                    ["SOP", "box"],
-                    f"v{version}.png",
-                    directory / "thumbnail",
-                    "v1.mp4",
-                    directory / "video",
-                ]
+                HistoryData(
+                    hda_id=1,
+                    comment="create",
+                    org_hda_name="Old",
+                    version=version + ".0",
+                    ihda_filename=f"v{version}.hda",
+                    ihda_dirpath=directory,
+                    hou_version="21.0",
+                    hip_filename="scene.hip",
+                    hip_dirpath=directory,
+                    hda_license="commercial",
+                    os="Linux",
+                    node_old_path="/obj/Old",
+                    node_def_desc="Box",
+                    node_type_name="box",
+                    node_category="sop",
+                    userid="user",
+                    icon=["SOP", "box"],
+                    thumb_filename=f"v{version}.png",
+                    thumb_dirpath=directory / "thumbnail",
+                    video_filename="v1.mp4",
+                    video_dirpath=directory / "video",
+                )
             )
             == 1
         )
-    return {
-        "hda_id": 1,
-        "hda_name": "Old",
-        "hda_version": "2.0",
-        "hda_dirpath": directory,
-        "hda_filename": "v2.hda",
-        "node_old_path": "/obj/Old",
-        "thumbnail_dirpath": directory / "thumbnail",
-        "thumbnail_filename": "v2.png",
-        "video_dirpath": directory / "video",
-        "video_filename": "v1.mp4",
-    }
+    return decode_record(
+        AssetData,
+        {
+            "hda_id": 1,
+            "hda_name": "Old",
+            "hda_version": "2.0",
+            "hda_dirpath": directory,
+            "hda_filename": "v2.hda",
+            "node_old_path": "/obj/Old",
+            "thumbnail_dirpath": directory / "thumbnail",
+            "thumbnail_filename": "v2.png",
+            "video_dirpath": directory / "video",
+            "video_filename": "v1.mp4",
+        },
+    )
 
 
 def test_rename_preserves_old_media_versions_in_database_and_model(
@@ -84,7 +90,7 @@ def test_rename_preserves_old_media_versions_in_database_and_model(
         before = db.get_hda_history(user_id="user")
         model = HistoryModel(items=before)
         plan = build_rename_plan(data, "New", Names(), rename_video=False)
-        rename_asset(SQLiteRenameRepository(db), plan)
+        rename_asset(SQLiteRenameRepository(db), plan, operations=durable_operation)
         changed = model.relocate_asset_paths(1, plan.moves)
         after = db.get_hda_history(user_id="user")
         assert plan.video_directory == tmp_path / "New" / "video"
@@ -96,33 +102,35 @@ def test_rename_preserves_old_media_versions_in_database_and_model(
                 ("thumb_dirpath", "thumb_filename"),
                 ("video_dirpath", "video_filename"),
             ):
-                assert (record[directory] / record[filename]).is_file()
+                assert (
+                    getattr(record, directory) / getattr(record, filename)
+                ).is_file()
                 counterpart = next(
-                    row for row in changed if row["hist_id"] == record["hist_id"]
+                    row for row in changed if row.hist_id == record.hist_id
                 )
-                assert counterpart[directory] == record[directory]
-                assert counterpart[filename] == record[filename]
-        assert {row["video_filename"] for row in after} == {"v1.mp4"}
+                assert getattr(counterpart, directory) == getattr(record, directory)
+                assert getattr(counterpart, filename) == getattr(record, filename)
+        assert {row.video_filename for row in after} == {"v1.mp4"}
 
 
 def test_history_deletion_keeps_surviving_file_references(tmp_path: Path) -> None:
     with SQLite3DatabaseAPI(tmp_path / "ihda.db") as db:
         data = seed(db, tmp_path / "Old")
-        folder = data["hda_dirpath"]
+        folder = data.hda_dirpath
         files = [
             folder / "v1.hda",
             folder / "thumbnail" / "v1.png",
             folder / "video" / "v1.mp4",
         ]
-        delete_history(db, 1, 1, files)
+        delete_history(db, 1, 1)
         assert all(path.exists() for path in files)
-        delete_history(db, 1, 2, files)
+        delete_history(db, 1, 2)
         assert (
             files[0].exists() and files[1].exists()
         )  # Trash retains every version file
         assert files[2].exists()  # still used by current video_info and latest history
         with pytest.raises(ValueError, match="most recent"):
-            delete_history(db, 1, 3, [folder / "v2.hda"])
+            delete_history(db, 1, 3)
         assert (folder / "v2.hda").exists()
 
 
@@ -132,11 +140,11 @@ def test_external_media_path_is_not_renamed(tmp_path: Path) -> None:
         external = tmp_path / "shared"
         external.mkdir()
         (external / "v2.png").write_text("shared thumbnail")
-        data["thumbnail_dirpath"] = external
+        data = replace(data, thumbnail_dirpath=external)
         plan = build_rename_plan(data, "New", Names(), rename_video=False)
         assert plan.thumbnail_directory == external
         assert plan.thumbnail_filename == "v2.png"
-        assert all(not source.is_relative_to(external) for source, _ in plan.moves)
+        assert all(not move.source.is_relative_to(external) for move in plan.moves)
 
 
 def test_thumbnail_shutdown_drops_queued_results_and_new_requests(
@@ -194,11 +202,14 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
 
     from libs.asset_store import AssetStore
     from libs.domain import SelectionState
-    from widgets.panel.media_actions import MediaActionsMixin
+    from widgets.panel.media_actions import PanelMediaActions
 
     store = AssetStore()
     store.reset(
-        [{"hda_id": 1, "hda_name": "Encoded"}, {"hda_id": 2, "hda_name": "Selected"}]
+        [
+            decode_record(AssetData, {"hda_id": 1, "hda_name": "Encoded"}),
+            decode_record(AssetData, {"hda_id": 2, "hda_name": "Selected"}),
+        ]
     )
     selection = SelectionState()
     selection.asset.id, selection.asset.row = 2, 1
@@ -208,7 +219,7 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
         set_video=lambda *args: stored.append(args) or "insert",
     )
 
-    class MediaOwner(MediaActionsMixin, SimpleNamespace):
+    class MediaOwner(PanelMediaActions, SimpleNamespace):
         pass
 
     owner = MediaOwner(
@@ -222,7 +233,16 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
         _remove_preview_dir=lambda **kwargs: True,
         _loading_close=lambda: None,
     )
-    MediaActionsMixin._finish_video(
+    owner.bindings = SimpleNamespace(
+        models=SimpleNamespace(assets=store),
+        selection=SimpleNamespace(state=selection),
+        session=SimpleNamespace(
+            repository=repository, require_repository=lambda: repository
+        ),
+        queries=SimpleNamespace(_change_hda_data=owner._change_hda_data),
+        presentation=SimpleNamespace(_loading_close=lambda: None),
+    )
+    PanelMediaActions._finish_video(
         owner, 1, "1.0", tmp_path, "encoded.mp4", tmp_path / "preview"
     )
     assert rows == [0, 0]
@@ -234,10 +254,16 @@ def test_asset_row_lookup_uses_current_index_after_insertion() -> None:
     from types import SimpleNamespace
 
     from libs.asset_store import AssetStore
-    from widgets.panel.library_queries import LibraryQueriesMixin
+    from widgets.panel.library_queries import PanelLibraryQueries
 
     store = AssetStore()
-    store.reset([{"hda_id": 1, "hda_name": "Z", "item_row": 0}])
-    store.insert({"hda_id": 2, "hda_name": "A"})
-    owner = SimpleNamespace(_assets=store, _get_hda_id_row_map=lambda: store.id_rows)
-    assert LibraryQueriesMixin._get_ihda_data_by_id(owner, 1, "item_row") == 1
+    store.reset(
+        [decode_record(AssetData, {"hda_id": 1, "hda_name": "Z", "item_row": 0})]
+    )
+    store.insert(decode_record(AssetData, {"hda_id": 2, "hda_name": "A"}))
+    owner = PanelLibraryQueries()
+    owner.bindings = SimpleNamespace(
+        models=SimpleNamespace(assets=store),
+        management=SimpleNamespace(_get_hda_id_row_map=lambda: store.id_rows),
+    )
+    assert PanelLibraryQueries._get_ihda_data_by_id(owner, 1, "item_row") == 1

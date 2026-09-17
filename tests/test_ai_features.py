@@ -13,25 +13,32 @@ from libs.ai_features import (
     structure_from_asset,
 )
 from libs.ai_provider import Prompt
+from libs.asset_contracts import AssetData, NodeConnection
+from libs.record_codec import decode_record
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 16
 
 
 def test_prompt_contains_metadata_but_never_paths() -> None:
     asset: dict[str, Any] = {
+        "hda_id": 1,
         "hda_name": "smoke_source",
         "hda_cate": "sop",
         "node_type_name": "pyrosource",
         "node_def_desc": "Pyro Source",
         "hda_dirpath": Path("/secret/library/user"),
         "hip_dirpath": Path("/secret/shots"),
-        "node_input_connections": [(0, "a", "b", 0)],
-        "children": {"attribwrangle": 2, "scatter": 1},
-        "parameters": ["Density", "Temperature"],
+        "node_input_connections": [
+            NodeConnection(port=0, node_name="a", node_type="b", peer_port=0)
+        ],
     }
     prompt = build_describe_prompt(
         "smoke_source",
-        structure_from_asset(asset),
+        structure_from_asset(
+            decode_record(AssetData, asset),
+            children={"attribwrangle": 2, "scatter": 1},
+            parameters=["Density", "Temperature"],
+        ),
         existing_tags=["fx"],
         vocabulary=["smoke", "물"],
         language="ko",
@@ -92,13 +99,18 @@ def test_describe_asset_round_trip(tmp_path: Path) -> None:
             return '{"summary": "Scatters points.", "tags": ["points", "scatter"]}'
 
     asset: dict[str, Any] = {
+        "hda_id": 1,
         "hda_name": "scatter_pts",
         "hda_cate": "sop",
         "hda_note": "기존 노트",
         "hda_tags": ["점"],
     }
     result = describe_asset(
-        Fake(), asset, thumbnail=thumb, vocabulary=["점", "smoke"], language="ko"
+        Fake(),
+        decode_record(AssetData, asset),
+        thumbnail=thumb,
+        vocabulary=["점", "smoke"],
+        language="ko",
     )
     assert result == Description("Scatters points.", ("points", "scatter"))
     assert (
@@ -108,5 +120,7 @@ def test_describe_asset_round_trip(tmp_path: Path) -> None:
     )
     assert seen[0].max_tokens == 400
     (tmp_path / "big.png").write_bytes(PNG + b"0" * (3 * 1024 * 1024))
-    describe_asset(Fake(), asset, thumbnail=tmp_path / "big.png")
+    describe_asset(
+        Fake(), decode_record(AssetData, asset), thumbnail=tmp_path / "big.png"
+    )
     assert seen[1].images == ()  # oversized thumbnails are skipped, not sent

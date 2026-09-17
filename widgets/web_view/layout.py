@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 )
 
 from widgets.layout_helpers import make_font
+from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 
 from . import web_view_icons_rc  # noqa: F401 (register bundled icons)
 
@@ -83,7 +84,9 @@ class WebViewLayout:
         self.pushButton__back_page.setIcon(
             QIcon(":/web_view_main/icons/ic_arrow_back_white.png")
         )
-        self.pushButton__back_page.setIconSize(QSize(20, 20))
+        self.pushButton__back_page.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__back_page.setFlat(True)
         self.pushButton__back_page.setToolTip(_translate("Back Page"))
         self.pushButton__back_page.setStatusTip(_translate("back page"))
@@ -97,7 +100,9 @@ class WebViewLayout:
         self.pushButton__forward_page.setIcon(
             QIcon(":/web_view_main/icons/ic_arrow_forward_white.png")
         )
-        self.pushButton__forward_page.setIconSize(QSize(20, 20))
+        self.pushButton__forward_page.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__forward_page.setFlat(True)
         self.pushButton__forward_page.setToolTip(_translate("Forward Page"))
         self.pushButton__forward_page.setStatusTip(_translate("forward page"))
@@ -111,7 +116,9 @@ class WebViewLayout:
         self.pushButton__refresh_page.setIcon(
             QIcon(":/web_view_main/icons/ic_refresh_white.png")
         )
-        self.pushButton__refresh_page.setIconSize(QSize(20, 20))
+        self.pushButton__refresh_page.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__refresh_page.setFlat(True)
         self.pushButton__refresh_page.setToolTip(_translate("Refresh Page"))
         self.pushButton__refresh_page.setStatusTip(_translate("refresh page"))
@@ -125,7 +132,9 @@ class WebViewLayout:
         self.pushButton__close_page.setIcon(
             QIcon(":/web_view_main/icons/ic_close_white.png")
         )
-        self.pushButton__close_page.setIconSize(QSize(20, 20))
+        self.pushButton__close_page.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__close_page.setFlat(True)
         self.pushButton__close_page.setToolTip(_translate("Close Page"))
         self.pushButton__close_page.setStatusTip(_translate("close page"))
@@ -137,7 +146,9 @@ class WebViewLayout:
         self.pushButton__home_page.setIcon(
             QIcon(":/web_view_main/icons/ic_home_white.png")
         )
-        self.pushButton__home_page.setIconSize(QSize(20, 20))
+        self.pushButton__home_page.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__home_page.setFlat(True)
         self.pushButton__home_page.setToolTip(_translate("Home"))
         self.pushButton__home_page.setStatusTip(_translate("home page"))
@@ -153,7 +164,7 @@ class WebViewLayout:
         self.pushButton__zoomin.setIcon(
             QIcon(":/web_view_main/icons/ic_zoom_in_white.png")
         )
-        self.pushButton__zoomin.setIconSize(QSize(20, 20))
+        self.pushButton__zoomin.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
         self.pushButton__zoomin.setFlat(True)
         self.pushButton__zoomin.setToolTip(_translate("zoom in"))
         self.pushButton__zoomin.setStatusTip(_translate("zoom in"))
@@ -165,7 +176,9 @@ class WebViewLayout:
         self.pushButton__zoomout.setIcon(
             QIcon(":/web_view_main/icons/ic_zoom_out_white.png")
         )
-        self.pushButton__zoomout.setIconSize(QSize(20, 20))
+        self.pushButton__zoomout.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__zoomout.setFlat(True)
         self.pushButton__zoomout.setToolTip(_translate("zoom out"))
         self.pushButton__zoomout.setStatusTip(_translate("zoom out"))
@@ -179,7 +192,9 @@ class WebViewLayout:
         self.pushButton__reset_zoom.setIcon(
             QIcon(":/web_view_main/icons/ic_search_white.png")
         )
-        self.pushButton__reset_zoom.setIconSize(QSize(20, 20))
+        self.pushButton__reset_zoom.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__reset_zoom.setFlat(True)
         self.pushButton__reset_zoom.setToolTip(_translate("reset zoom"))
         self.pushButton__reset_zoom.setStatusTip(_translate("reset zoom"))
@@ -203,7 +218,7 @@ class WebViewLayout:
         self.pushButton__help.setObjectName("pushButton__help")
         self.pushButton__help.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.pushButton__help.setIcon(QIcon(":/web_view_main/icons/houdini_logo.png"))
-        self.pushButton__help.setIconSize(QSize(20, 20))
+        self.pushButton__help.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
         self.pushButton__help.setFlat(True)
         self.pushButton__help.setToolTip(_translate("Help"))
         self.pushButton__help.setStatusTip(_translate("Houdini Help"))
@@ -213,7 +228,7 @@ class WebViewLayout:
         self.pushButton__sidefx.setObjectName("pushButton__sidefx")
         self.pushButton__sidefx.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.pushButton__sidefx.setIcon(QIcon(":/web_view_main/icons/news.png"))
-        self.pushButton__sidefx.setIconSize(QSize(20, 20))
+        self.pushButton__sidefx.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
         self.pushButton__sidefx.setFlat(True)
         self.pushButton__sidefx.setToolTip(_translate("SideFX"))
         self.pushButton__sidefx.setStatusTip(_translate("go to sidefx"))
@@ -223,7 +238,9 @@ class WebViewLayout:
         self.pushButton__odforce.setObjectName("pushButton__odforce")
         self.pushButton__odforce.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.pushButton__odforce.setIcon(QIcon(":/web_view_main/icons/odforce.png"))
-        self.pushButton__odforce.setIconSize(QSize(20, 20))
+        self.pushButton__odforce.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__odforce.setFlat(True)
         self.pushButton__odforce.setToolTip(_translate("ODFORCE"))
         self.pushButton__odforce.setStatusTip(_translate("home page"))
@@ -233,7 +250,7 @@ class WebViewLayout:
         self.pushButton__google.setObjectName("pushButton__google")
         self.pushButton__google.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.pushButton__google.setIcon(QIcon(":/web_view_main/icons/google.png"))
-        self.pushButton__google.setIconSize(QSize(20, 20))
+        self.pushButton__google.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
         self.pushButton__google.setFlat(True)
         self.pushButton__google.setToolTip(_translate("Google"))
         self.pushButton__google.setStatusTip(_translate("go to google"))
@@ -247,7 +264,9 @@ class WebViewLayout:
         self.pushButton__translation.setIcon(
             QIcon(":/web_view_main/icons/ic_g_translate_white.png")
         )
-        self.pushButton__translation.setIconSize(QSize(20, 20))
+        self.pushButton__translation.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__translation.setFlat(True)
         self.pushButton__translation.setToolTip(_translate("Translation"))
         self.pushButton__translation.setStatusTip(_translate("translation"))
@@ -257,7 +276,9 @@ class WebViewLayout:
         self.pushButton__youtube.setObjectName("pushButton__youtube")
         self.pushButton__youtube.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.pushButton__youtube.setIcon(QIcon(":/web_view_main/icons/youtube.png"))
-        self.pushButton__youtube.setIconSize(QSize(20, 20))
+        self.pushButton__youtube.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__youtube.setFlat(True)
         self.pushButton__youtube.setToolTip(_translate("Youtube"))
         self.pushButton__youtube.setStatusTip(_translate("go to youtube"))
@@ -267,7 +288,7 @@ class WebViewLayout:
         self.pushButton__vimeo.setObjectName("pushButton__vimeo")
         self.pushButton__vimeo.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.pushButton__vimeo.setIcon(QIcon(":/web_view_main/icons/vimeo.png"))
-        self.pushButton__vimeo.setIconSize(QSize(20, 20))
+        self.pushButton__vimeo.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
         self.pushButton__vimeo.setFlat(True)
         self.pushButton__vimeo.setToolTip(_translate("Vimeo"))
         self.pushButton__vimeo.setStatusTip(_translate("go to vimeo"))

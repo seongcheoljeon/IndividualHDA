@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from test_sqlite_repository import payload
+from support.personal import payload
 
 
 def wait_idle(app: Any, dialog: Any) -> None:
@@ -33,7 +33,7 @@ def test_metadata_and_trash_use_existing_local_data(app: Any, tmp_path: Path) ->
     asset = repository.register_asset(payload(tmp_path, "Water"))
     gateway = LocalManagement(database)
     parent = QtWidgets.QWidget()
-    dialog = LibraryMetadataDialog(gateway, parent, asset_id=asset.asset["hda_id"])
+    dialog = LibraryMetadataDialog(gateway, parent, asset_id=asset.asset.hda_id)
     dialog.show()
     wait_idle(app, dialog)
     assert dialog.comboBox__version.count() == 1
@@ -42,11 +42,11 @@ def test_metadata_and_trash_use_existing_local_data(app: Any, tmp_path: Path) ->
     wait_idle(app, dialog)
     assert dialog.textEdit__description.toPlainText() == "Improved water surface"
     assert (
-        gateway.details(asset.asset["hda_id"])["versions"][0]["document"]["description"]
+        gateway.details(asset.asset.hda_id)["versions"][0]["document"]["description"]
         == "Improved water surface"
     )
     dialog.close()
-    repository.delete_asset(asset.asset["hda_id"], asset.asset["hda_dirpath"])
+    repository.delete_asset(asset.asset.hda_id, asset.asset.hda_dirpath)
     trash = LibraryMetadataDialog(gateway, parent)
     trash.show()
     wait_idle(app, trash)

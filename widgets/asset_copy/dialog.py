@@ -9,6 +9,7 @@ from typing import Any
 
 from PySide6 import QtCore, QtWidgets
 
+from libs.runtime_settings import RuntimeSettings
 from libs.task_controller import TaskController
 from libs.team.client import HttpCatalog
 from libs.team.contracts import Command
@@ -25,11 +26,14 @@ class CopyAssetDialog(QtWidgets.QDialog):
         source: CopySource,
         config_root: Path,
         parent: QtWidgets.QWidget | None = None,
+        *,
+        runtime: RuntimeSettings = RuntimeSettings(),
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Copy to team")
         self.resize(640, 440)
         self._root = config_root
+        self.runtime = runtime
         self._presenter = CopyPresenter(source, config_root)
         self._tasks = TaskController(self)
         self._tasks.result.connect(self._result)
@@ -107,7 +111,7 @@ class CopyAssetDialog(QtWidgets.QDialog):
         self._idle()
 
     def _choose_project(self) -> None:
-        dialog = ConnectionDialog(self._root, self)
+        dialog = ConnectionDialog(self._root, self, runtime=self.runtime)
         self._connection = dialog
         dialog.setWindowTitle("Choose copy destination")
         dialog.pushButton__open_library.setText("Use project")

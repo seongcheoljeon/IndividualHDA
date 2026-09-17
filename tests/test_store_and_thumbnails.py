@@ -7,24 +7,26 @@ from typing import Any
 import pytest
 from PySide6 import QtCore, QtGui
 
+from libs.asset_contracts import AssetData
 from libs.asset_store import AssetStore
 from libs.domain import SelectionState
+from libs.record_codec import decode_record
 from libs.thumbnail_cache import ThumbnailCache
 
 
 def test_asset_index_stays_consistent_and_ids_are_immutable() -> None:
     store = AssetStore()
-    store.reset([{"hda_id": 3, "hda_name": "C"}])
-    store.insert({"hda_id": 1, "hda_name": "A"})
+    store.reset([decode_record(AssetData, {"hda_id": 3, "hda_name": "C"})])
+    store.insert(decode_record(AssetData, {"hda_id": 1, "hda_name": "A"}))
     assert store.id_rows == {1: 0, 3: 1}
     with pytest.raises(ValueError):
-        store.update(0, {"hda_id": 3})
+        store.update(0, decode_record(AssetData, {"hda_name": "", "hda_id": 3}))
     store.remove(0)
     assert store.id_rows == {3: 0}
     state = SelectionState()
     state.asset.data = store.rows[0]
     state.clear_asset()
-    assert state.asset.data is None and store.rows[0]["hda_id"] == 3
+    assert state.asset.data is None and store.rows[0].hda_id == 3
 
 
 def test_async_thumbnail_cache_is_bounded_and_rejects_stale_images(

@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Protocol
 
+from libs.asset_contracts import AssetData, HistoryData
 from libs.keys import Key
+from libs.scene_contracts import SceneRecord
 
 
 @dataclass(frozen=True)
@@ -25,9 +26,13 @@ class DetailPresenter:
         self._view = view
 
     def show(
-        self, data: Mapping[str, Any], *, history: bool = False, record: bool = False
+        self,
+        data: AssetData | HistoryData | SceneRecord,
+        *,
+        history: bool = False,
+        record: bool = False,
     ) -> None:
-        values = dict(data)
+        values = asdict(data)
         if record:
             excluded = {
                 Key.Record.record_id,
@@ -37,11 +42,11 @@ class DetailPresenter:
                 Key.Record.fps,
             }
             values["FRAME INFO"] = (
-                f"[{data.get(Key.Record.sf)} - {data.get(Key.Record.ef)}], fps: {data.get(Key.Record.fps)}"
+                f"[{values.get(Key.Record.sf)} - {values.get(Key.Record.ef)}], fps: {values.get(Key.Record.fps)}"
             )
             directory, filename = (
-                data.get(Key.Record.thumb_dirpath),
-                data.get(Key.Record.thumb_filename),
+                values.get(Key.Record.thumb_dirpath),
+                values.get(Key.Record.thumb_filename),
             )
         else:
             excluded = {
@@ -52,10 +57,10 @@ class DetailPresenter:
                 Key.History.hist_id,
                 Key.hda_note,
             }
-            directory = data.get(
+            directory = values.get(
                 Key.History.thumb_dirpath if history else Key.thumbnail_dirpath
             )
-            filename = data.get(
+            filename = values.get(
                 Key.History.thumb_filename if history else Key.thumbnail_filename
             )
         content = DetailContent(

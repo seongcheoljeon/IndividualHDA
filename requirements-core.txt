@@ -1,0 +1,5 @@
+# Host-independent tests and static verification tools.
+pytest==9.1.1
+pytest-cov==7.1.0
+ruff==0.16.7
+mypy==2.3.1

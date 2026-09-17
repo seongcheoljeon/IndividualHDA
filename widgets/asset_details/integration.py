@@ -4,17 +4,27 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any
 
-from PySide6 import QtCore
+from PySide6 import QtCore, QtWidgets
 
-from libs.keys import Key
+from libs.tags import normalize_tags
 from libs.task_controller import TaskController
 from widgets.asset_details.presenter import (
     AssetDetailsPresenter,
     Field,
     MetadataGateway,
 )
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class DetailsBindings:
+    note: QtWidgets.QTextEdit
+    tags: QtWidgets.QTextEdit
+    status: QtWidgets.QLabel
+    show_tags: Callable[[list[str]], None]
+    saved: Callable[[int, Field, str | list[str]], None]
 
 
 class MetadataSaveExecutor:
@@ -44,15 +54,15 @@ class MetadataSaveExecutor:
 
 
 class AssetDetailsIntegration:
-    def __init__(self, window: Any, tasks: TaskController) -> None:
-        self._window = window
+    def __init__(self, bindings: DetailsBindings, tasks: TaskController) -> None:
+        self.bindings = bindings
         self._tasks = tasks
         self.presenter = AssetDetailsPresenter(self, MetadataSaveExecutor(tasks))
-        self.label__metadata_status = window.label__metadata_status
+        self.label__metadata_status = bindings.status
         self._save_error = ""
         self._library_identity: object = None
-        window.textEdit__note.textChanged.connect(self._edited)
-        window.textEdit__tag.textChanged.connect(self._edited)
+        bindings.note.textChanged.connect(self._edited)
+        bindings.tags.textChanged.connect(self._edited)
 
     def change_repository(
         self, repository: MetadataGateway | None, identity: object
@@ -65,19 +75,19 @@ class AssetDetailsIntegration:
 
     def _edited(self) -> None:
         self.presenter.edit(
-            self._window.textEdit__note.toPlainText(),
-            self._window.textEdit__tag.toPlainText(),
+            self.bindings.note.toPlainText(),
+            self.bindings.tags.toPlainText(),
         )
 
     def show_draft(self, note: str, tags: str) -> None:
-        window = self._window
+        bindings = self.bindings
         with (
-            QtCore.QSignalBlocker(window.textEdit__note),
-            QtCore.QSignalBlocker(window.textEdit__tag),
+            QtCore.QSignalBlocker(bindings.note),
+            QtCore.QSignalBlocker(bindings.tags),
         ):
-            window.textEdit__note.setPlainText(note)
-            window.textEdit__tag.setPlainText(tags)
-        window._set_label_tags(window._split_tag_string(tags))
+            bindings.note.setPlainText(note)
+            bindings.tags.setPlainText(tags)
+        bindings.show_tags(normalize_tags(tags))
 
     def show_state(self, dirty: bool, saving: bool) -> None:
         if saving:
@@ -98,20 +108,7 @@ class AssetDetailsIntegration:
         self.label__metadata_status.setToolTip(message)
 
     def saved(self, asset_id: int, field: Field, value: str | list[str]) -> None:
-        window = self._window
-        row = window._assets.id_rows.get(asset_id)
-        if row is None:
-            return
-        window._change_hda_data(
-            row=row, key=Key.hda_note if field == "note" else Key.hda_tags, val=value
-        )
-        if field == "tag":
-            window._ihda_history_model.update_item_data_by_hkey_id_from_model(
-                hkey_id=asset_id, key=Key.History.tags, val=value
-            )
-            if window._selection.asset.id == asset_id:
-                window._set_label_tags(value)
-        window._refresh_asset_search()
+        self.bindings.saved(asset_id, field, value)
         logging.info("Asset %s %s saved", asset_id, field)
 
     @property

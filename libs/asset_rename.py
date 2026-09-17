@@ -6,10 +6,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+from libs.asset_contracts import AssetData
 from libs.contracts import OperationFactory, TransactionalRepository
-from libs.domain import AssetData
-from libs.operation_journal import durable_operation
-from libs.path_updates import relocated_path
+from libs.path_updates import PathMove, PathMoves, relocated_path
 
 
 class AssetNames(Protocol):
@@ -27,7 +26,7 @@ class AssetNames(Protocol):
     ) -> str: ...
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, kw_only=True)
 class RenamePlan:
     asset_id: int
     name: str
@@ -39,11 +38,17 @@ class RenamePlan:
     thumbnail_filename: str | None
     video_directory: Path | None
     video_filename: str | None
-    moves: tuple[tuple[Path, Path], ...]
+    moves: PathMoves
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class RenameCounts:
+    assets: int
+    histories: int
 
 
 class RenameRepository(TransactionalRepository, Protocol):
-    def apply_rename(self, plan: RenamePlan) -> tuple[int, int]: ...
+    def apply_rename(self, plan: RenamePlan) -> RenameCounts: ...
 
 
 def build_rename_plan(
@@ -51,7 +56,7 @@ def build_rename_plan(
 ) -> RenamePlan:
     if not name or name in (".", "..") or any(char in name for char in "/\\"):
         raise ValueError("Asset name must be a single directory name")
-    old_directory, old_filename = data.get("hda_dirpath"), data.get("hda_filename")
+    old_directory, old_filename = data.hda_dirpath, data.hda_filename
     if old_directory is None or not old_filename:
         raise ValueError("Asset file location is missing")
     old_file = old_directory / old_filename
@@ -60,16 +65,19 @@ def build_rename_plan(
     directory = old_directory.with_name(name)
     if directory != old_directory and directory.exists():
         raise FileExistsError(directory)
-    version = data["hda_version"]
+    version = data.hda_version
     filename = names.make_hda_filename(name, version)
-    node_path = data["node_old_path"].rsplit("/", 1)[0] + "/" + name
-    moves = [(old_file, old_directory / filename), (old_directory, directory)]
+    node_path = data.node_old_path.rsplit("/", 1)[0] + "/" + name
+    moves = [
+        PathMove(source=old_file, target=old_directory / filename),
+        PathMove(source=old_directory, target=directory),
+    ]
     thumb_directory = None
-    thumb_filename = data.get("thumbnail_filename")
-    old_thumb_directory = data.get("thumbnail_dirpath")
+    thumb_filename = data.thumbnail_filename
+    old_thumb_directory = data.thumbnail_dirpath
     if old_thumb_directory is not None:
         thumb_directory = relocated_path(
-            old_thumb_directory, ((old_directory, directory),)
+            old_thumb_directory, (PathMove(source=old_directory, target=directory),)
         )
         if (
             thumb_filename
@@ -78,17 +86,20 @@ def build_rename_plan(
         ):
             new_filename = names.make_thumbnail_filename(name, version)
             moves.append(
-                (thumb_directory / thumb_filename, thumb_directory / new_filename)
+                PathMove(
+                    source=thumb_directory / thumb_filename,
+                    target=thumb_directory / new_filename,
+                )
             )
             thumb_filename = new_filename
     video_directory = None
     video_filename = None
-    old_video_directory = data.get("video_dirpath")
+    old_video_directory = data.video_dirpath
     if old_video_directory is not None:
         video_directory = relocated_path(
-            old_video_directory, ((old_directory, directory),)
+            old_video_directory, (PathMove(source=old_directory, target=directory),)
         )
-        video_filename = data.get("video_filename")
+        video_filename = data.video_filename
         if (
             rename_video
             and video_filename
@@ -97,21 +108,24 @@ def build_rename_plan(
         ):
             new_filename = names.make_video_filename(name, version)
             moves.append(
-                (video_directory / video_filename, video_directory / new_filename)
+                PathMove(
+                    source=video_directory / video_filename,
+                    target=video_directory / new_filename,
+                )
             )
             video_filename = new_filename
     return RenamePlan(
-        data["hda_id"],
-        name,
-        version,
-        directory,
-        filename,
-        node_path,
-        thumb_directory,
-        thumb_filename,
-        video_directory,
-        video_filename,
-        tuple((source, target) for source, target in moves if source != target),
+        asset_id=data.hda_id,
+        name=name,
+        version=version,
+        directory=directory,
+        filename=filename,
+        node_path=node_path,
+        thumbnail_directory=thumb_directory,
+        thumbnail_filename=thumb_filename,
+        video_directory=video_directory,
+        video_filename=video_filename,
+        moves=tuple(move for move in moves if move.source != move.target),
     )
 
 
@@ -119,12 +133,12 @@ def rename_asset(
     repository: RenameRepository,
     plan: RenamePlan,
     *,
-    operations: OperationFactory = durable_operation,
-) -> tuple[int, int]:
+    operations: OperationFactory,
+) -> RenameCounts:
     with operations(repository.db_filepath.parent, repository) as journal:
-        for source, target in plan.moves:
-            journal.move(source, target)
-        asset_rows, history_rows = repository.apply_rename(plan)
-        if asset_rows <= 0:
+        for move in plan.moves:
+            journal.move(move.source, move.target)
+        counts = repository.apply_rename(plan)
+        if counts.assets <= 0:
             raise RuntimeError("Asset rename did not update the database")
-        return asset_rows, history_rows
+        return counts

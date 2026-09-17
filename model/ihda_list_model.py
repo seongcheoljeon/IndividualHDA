@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import contextlib
+from collections.abc import Sequence
+from dataclasses import replace
 from typing import Any
 
 from PySide6 import QtCore, QtGui
 
-from libs.domain import AssetData
+from libs.asset_contracts import AssetData
+from libs.item_paths import item_path
+from model.item_media import PixmapSource, thumbnail
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
@@ -18,7 +22,7 @@ from model.model_style import ModelStyleMixin
 with contextlib.suppress(ImportError):
     pass
 
-import public
+from libs import keys
 from libs.drag_payload import encode_payload
 
 
@@ -38,7 +42,7 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
         self,
         items: list[AssetData] | None = None,
         pixmap_ihda_data: dict[int, QtGui.QPixmap] | None = None,
-        pixmap_thumb_data: dict[int, QtGui.QPixmap] | None = None,
+        pixmap_thumb_data: PixmapSource | dict[int, QtGui.QPixmap] | None = None,
         font_size: int | None = None,
         font_style: str | None = None,
         icon_size: int | None = None,
@@ -51,19 +55,19 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
         self.__pixmap_ihda_data = (
             pixmap_ihda_data if pixmap_ihda_data is not None else {}
         )
-        self.__pixmap_thumb_data = (
+        self.__pixmap_thumb_data: PixmapSource | dict[int, QtGui.QPixmap] = (
             pixmap_thumb_data if pixmap_thumb_data is not None else {}
         )
         self._font_size = (
-            font_size if font_size is not None else public.UISetting.view_font_size
+            font_size if font_size is not None else keys.UISetting.view_font_size
         )
         self._font_style = (
-            font_style if font_style is not None else public.UISetting.view_font_style
+            font_style if font_style is not None else keys.UISetting.view_font_style
         )
         self.__icon_size = (
             icon_size
             if icon_size is not None
-            else public.UISetting.treeview_node_icon_size
+            else keys.UISetting.treeview_node_icon_size
         )
         self.__thumb_size = (
             thumb_size if thumb_size is not None else 2 * self.__icon_size
@@ -79,23 +83,33 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
     def show_thumbnail(self, val: Any) -> None:
         self.__show_thumbnail = val
 
-    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+    def columnCount(
+        self,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
+    ) -> int:
         return 0 if parent.isValid() else 1
 
-    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+    def rowCount(
+        self,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
+    ) -> int:
         if parent.isValid():
             return 0
         return len(self.__items) if self.__items is not None else 0
 
-    def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
+    def flags(
+        self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex
+    ) -> QtCore.Qt.ItemFlag:
         if not index.isValid():
             return QtCore.Qt.ItemFlag.ItemIsDropEnabled
         flags = super().flags(index)
         if index.isValid():
             hda_filepath = index.data(ListModel.filepath_role)
-            if not hda_filepath.exists() and not index.data(ListModel.data_role).get(
-                "remote", False
-            ):
+            if (hda_filepath is None or not hda_filepath.exists()) and not index.data(
+                ListModel.data_role
+            ).remote:
                 flags = (
                     QtCore.Qt.ItemFlag.ItemIsSelectable
                     | QtCore.Qt.ItemFlag.ItemIsEnabled
@@ -115,19 +129,19 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
         return flags
 
     def mimeTypes(self) -> list[str]:
-        return [public.Type.mime_type]
+        return [keys.Type.mime_type]
 
     def supportedDropActions(self) -> QtCore.Qt.DropAction:
         return QtCore.Qt.DropAction.CopyAction | QtCore.Qt.DropAction.MoveAction
 
-    def mimeData(self, indexes: list[QtCore.QModelIndex]) -> QtCore.QMimeData | None:
+    def mimeData(self, indexes: Sequence[QtCore.QModelIndex]) -> QtCore.QMimeData:
         if not len(indexes):
-            return None
+            return QtCore.QMimeData()
         mime_data = super().mimeData(indexes)
         for index in indexes:
             if index.isValid():
                 data = encode_payload(self.data(index, role=ListModel.data_role))
-                mime_data.setData(public.Type.mime_type, QtCore.QByteArray(data))
+                mime_data.setData(keys.Type.mime_type, QtCore.QByteArray(data))
         return mime_data
 
     def dropMimeData(
@@ -136,55 +150,47 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
         action: QtCore.Qt.DropAction,
         row: int,
         column: int,
-        parent: QtCore.QModelIndex,
+        parent: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> bool:
         # Domain drops are handled by view signals, not raw Qt row insertion.
         return action == QtCore.Qt.DropAction.IgnoreAction
 
     def set_row_col_in_item(self, row: int) -> None:
-        self.__items[row][public.Key.item_row] = row
+        self.__items[row] = replace(self.__items[row], item_row=row)
 
     def data(
-        self, index: QtCore.QModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
+        self,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+        role: int = QtCore.Qt.ItemDataRole.DisplayRole,
     ) -> Any:
         if (index is None) or not (0 <= index.row() < len(self.__items)):
             return None
         row = index.row()
         self.set_row_col_in_item(row)
         index_dat = self.__items[row]
-        hda_name = index_dat.get(public.Key.hda_name)
+        hda_name = index_dat.hda_name
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
             return hda_name
         # elif role == QtCore.Qt.ItemDataRole.EditRole:
         #     return hda_name
         elif role == QtCore.Qt.ItemDataRole.DecorationRole:
-            hda_id = index_dat.get(public.Key.hda_id)
+            hda_id = index_dat.hda_id
             if self.show_thumbnail:
-                thumb_pixmap = self.__pixmap_thumb_data.get(hda_id)
-                if thumb_pixmap is None:
-                    return QtGui.QPixmap(":/main/icons/no_img_available.png")
-                if thumb_pixmap.isNull():
-                    thumb_filename = index_dat.get(public.Key.thumbnail_filename)
-                    thumb_filepath = (
-                        index_dat.get(public.Key.thumbnail_dirpath) / thumb_filename
-                    )
-                    if (thumb_filepath is None) or (not thumb_filepath.exists()):
-                        thumb_pixmap = QtGui.QPixmap(
-                            ":/main/icons/no_img_available.png"
-                        )
-                    else:
-                        thumb_pixmap = QtGui.QPixmap(thumb_filepath.as_posix())
-                        self.__pixmap_thumb_data.update({hda_id: thumb_pixmap})
-                return thumb_pixmap.scaled(
-                    QtCore.QSize(self.__thumb_size, self.__thumb_size),
-                    QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                return thumbnail(
+                    self.__pixmap_thumb_data,
+                    hda_id,
+                    index_dat.thumbnail_dirpath,
+                    index_dat.thumbnail_filename,
+                    self.__thumb_size,
                 )
             else:
-                icon_pixmap = self.__pixmap_ihda_data.get(hda_id)
+                icon_pixmap = (
+                    self.__pixmap_ihda_data.get(hda_id) if hda_id is not None else None
+                )
                 if icon_pixmap is None:
                     return None
                 return icon_pixmap.scaled(
-                    QtCore.QSize(self.__icon_size, self.__icon_size),
+                    QtCore.QSize(int(self.__icon_size), int(self.__icon_size)),
                     QtCore.Qt.AspectRatioMode.KeepAspectRatio,
                 )
         elif role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
@@ -193,7 +199,7 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
                 | QtCore.Qt.AlignmentFlag.AlignVCenter
             )
         elif role == QtCore.Qt.ItemDataRole.ToolTipRole:
-            hda_ver = index_dat.get(public.Key.hda_version)
+            hda_ver = index_dat.hda_version
             if hda_ver is not None:
                 return f"{hda_name} (v{hda_ver})"
             return hda_name
@@ -203,47 +209,49 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
             font = QtGui.QFont()
             font.setFamily(self._font_style)
             font.setPointSize(self._font_size)
-            hda_filepath = index_dat.get(public.Key.hda_dirpath) / index_dat.get(
-                public.Key.hda_filename
+            hda_filepath = item_path(
+                index_dat.hda_dirpath,
+                index_dat.hda_filename,
             )
-            if not hda_filepath.exists() and not index.data(ListModel.data_role).get(
-                "remote", False
-            ):
+            if (hda_filepath is None or not hda_filepath.exists()) and not index.data(
+                ListModel.data_role
+            ).remote:
                 font.setItalic(True)
                 font.setStrikeOut(True)
             return font
         elif role == QtCore.Qt.ItemDataRole.SizeHintRole:
             if self.show_thumbnail:
                 return QtCore.QSize(
-                    self.__thumb_size + self._font_size + self._padding,
-                    self.__thumb_size + self._font_size + self._padding,
+                    int(self.__thumb_size + self._font_size + self._padding),
+                    int(self.__thumb_size + self._font_size + self._padding),
                 )
             return QtCore.QSize(
-                self.__icon_size + self._font_size + self._padding,
-                self.__icon_size + self._font_size + self._padding,
+                int(self.__icon_size + self._font_size + self._padding),
+                int(self.__icon_size + self._font_size + self._padding),
             )
         elif role == ListModel.data_role:
             return index_dat
         elif role == ListModel.row_role:
             return row
         elif role == ListModel.id_role:
-            return index_dat.get(public.Key.hda_id)
+            return index_dat.hda_id
         elif role == ListModel.filepath_role:
-            return index_dat.get(public.Key.hda_dirpath) / index_dat.get(
-                public.Key.hda_filename
+            return item_path(
+                index_dat.hda_dirpath,
+                index_dat.hda_filename,
             )
         elif role == ListModel.name_role:
             return hda_name
         elif role == ListModel.cate_role:
-            return index_dat.get(public.Key.hda_cate)
+            return index_dat.hda_cate
         elif role == ListModel.version_role:
-            return index_dat.get(public.Key.hda_version)
+            return index_dat.hda_version
         elif role == ListModel.favorite_role:
-            return index_dat.get(public.Key.is_favorite_hda)
+            return index_dat.is_favorite_hda
         elif role == ListModel.tag_role:
-            return index_dat.get(public.Key.hda_tags)
+            return index_dat.hda_tags
         elif role == ListModel.type_role:
-            return index_dat.get(public.Key.node_type_name)
+            return index_dat.node_type_name
 
     # def setData(self, index, value, role=QtCore.Qt.ItemDataRole.EditRole):
     #     if not index.isValid() or not (0 <= index.row() < len(self.__items)) or not value or (not len(value)):
@@ -252,10 +260,10 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
     #         row = index.row()
     #         value = str(value.strip()).replace(' ', '_')
     #         index_data = self.__items[row]
-    #         hda_name = index_data.get(public.Key.hda_name)
+    #         hda_name = index_data.get(keys.Key.hda_name)
     #         if (hda_name == value) or (not len(value)):
     #             return False
-    #         self.__items[row][public.Key.hda_name] = value
+    #         self.__items[row][keys.Key.hda_name] = value
     #         self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
     #         return True
     #     return False
@@ -267,7 +275,7 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
         self.__icon_size = (
             icon_size
             if icon_size is not None
-            else public.UISetting.treeview_node_icon_size
+            else keys.UISetting.treeview_node_icon_size
         )
         self.__thumb_size = (
             thumb_size if thumb_size is not None else 2 * self.__icon_size

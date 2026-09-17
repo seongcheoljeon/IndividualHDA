@@ -9,7 +9,9 @@ from typing import Any
 import pytest
 from test_team_workspace import Executor, workspace
 
+from libs.asset_contracts import AssetData, HistoryData, LibrarySnapshot, SyncContext
 from libs.domain import SelectionState
+from libs.record_codec import decode_record
 from widgets.panel.library_session import PersonalPanelSession, TeamPanelSession
 from widgets.panel.selection_presenter import PanelSelectionPresenter
 from widgets.panel.sync_presenter import LibrarySyncPresenter
@@ -19,8 +21,17 @@ def test_reload_rebuilds_all_selection_fields_and_preserves_historical_version()
     None
 ):
     state = SelectionState()
-    state.select_asset({"hda_id": 7, "hda_name": "Old", "hda_version": "1"}, 4)
-    state.select_history({"hda_id": 7, "hist_id": 42, "version": "1"}, 8)
+    state.select_asset(
+        decode_record(AssetData, {"hda_id": 7, "hda_name": "Old", "hda_version": "1"}),
+        4,
+    )
+    state.select_history(
+        decode_record(
+            HistoryData,
+            {"org_hda_name": "", "hda_id": 7, "hist_id": 42, "version": "1"},
+        ),
+        8,
+    )
     displayed: list[str] = []
     view = SimpleNamespace(
         show_asset_selection=lambda: displayed.append("asset"),
@@ -33,26 +44,32 @@ def test_reload_rebuilds_all_selection_fields_and_preserves_historical_version()
     assert displayed == ["asset", "dependents", "history", "dependents"]
     presenter.restore(
         [
-            {"hda_id": 9},
-            {
-                "hda_id": 7,
-                "hda_name": "Renamed",
-                "hda_cate": "sop",
-                "hda_version": "2",
-                "hda_dirpath": Path("/assets"),
-                "hda_filename": "renamed.hda",
-            },
+            decode_record(AssetData, {"hda_name": "", "hda_id": 9}),
+            decode_record(
+                AssetData,
+                {
+                    "hda_id": 7,
+                    "hda_name": "Renamed",
+                    "hda_cate": "sop",
+                    "hda_version": "2",
+                    "hda_dirpath": Path("/assets"),
+                    "hda_filename": "renamed.hda",
+                },
+            ),
         ],
         [
-            {
-                "hda_id": 7,
-                "hist_id": 42,
-                "version": "1",
-                "org_hda_name": "Original",
-                "node_category": "sop",
-                "ihda_dirpath": Path("/history"),
-                "ihda_filename": "original.hda",
-            }
+            decode_record(
+                HistoryData,
+                {
+                    "hda_id": 7,
+                    "hist_id": 42,
+                    "version": "1",
+                    "org_hda_name": "Original",
+                    "node_category": "sop",
+                    "ihda_dirpath": Path("/history"),
+                    "ihda_filename": "original.hda",
+                },
+            )
         ],
     )
     assert (state.asset.id, state.asset.row, state.asset.name, state.asset.version) == (
@@ -120,8 +137,10 @@ def test_sync_waits_for_idle_and_retries_snapshot_invalidated_by_save() -> None:
     context = SimpleNamespace(repository=object(), generation=0, allowed=True)
     view = SimpleNamespace(
         sync_allowed=lambda: context.allowed,
-        sync_context=lambda: (context.repository, context.generation),
-        read_snapshot=lambda: lambda: (2,),
+        sync_context=lambda: SyncContext(
+            repository=context.repository, write_generation=context.generation
+        ),
+        read_snapshot=lambda: lambda: LibrarySnapshot(revision=2),
         show_snapshot=applied.append,
         show_sync_error=lambda message: pytest.fail(message),
     )
@@ -140,11 +159,11 @@ def test_sync_waits_for_idle_and_retries_snapshot_invalidated_by_save() -> None:
     context.allowed = True
     presenter.idle()
     executor.complete()
-    assert applied == [(2,)] and not presenter.pending
+    assert applied == [LibrarySnapshot(revision=2)] and not presenter.pending
     presenter.refresh()
     presenter.close()
     executor.complete()
-    assert applied == [(2,)]
+    assert applied == [LibrarySnapshot(revision=2)]
 
 
 def test_sync_rejected_submission_is_retried_after_idle() -> None:
@@ -160,8 +179,8 @@ def test_sync_rejected_submission_is_retried_after_idle() -> None:
     identity = object()
     view = SimpleNamespace(
         sync_allowed=lambda: True,
-        sync_context=lambda: (identity, 0),
-        read_snapshot=lambda: lambda: (3,),
+        sync_context=lambda: SyncContext(repository=identity, write_generation=0),
+        read_snapshot=lambda: lambda: LibrarySnapshot(revision=3),
         show_snapshot=shown.append,
         show_sync_error=lambda message: pytest.fail(message),
     )
@@ -170,8 +189,8 @@ def test_sync_rejected_submission_is_retried_after_idle() -> None:
     assert presenter.pending
     executor.accept = True
     presenter.idle()
-    executor.callback((3,), None)
-    assert shown == [(3,)] and presenter.known_revision == 3
+    executor.callback(LibrarySnapshot(revision=3), None)
+    assert shown == [LibrarySnapshot(revision=3)] and presenter.known_revision == 3
 
 
 def test_library_capabilities_and_dispatch_are_explicit() -> None:
@@ -187,11 +206,19 @@ def test_library_capabilities_and_dispatch_are_explicit() -> None:
             refresh=lambda: calls.append("local refresh")
         ),
     )
-    personal = PersonalPanelSession(local)
-    personal.select(3, {"hda_note": "draft", "hda_tags": ["water"]})
+    from widgets.panel.state import PanelSessionState
+
+    personal = PersonalPanelSession(
+        PanelSessionState(repository=local._repository),
+        local._details.presenter,
+        local._library_sync_presenter.refresh,
+    )
+    personal.select(
+        3, AssetData(hda_note="draft", hda_tags=("water",), hda_id=0, hda_name="")
+    )
     personal.save("note")
     personal.refresh()
-    assert calls == [(3, "draft", ["water"]), "note", "local refresh"]
+    assert calls == [(3, "draft", ("water",)), "note", "local refresh"]
     assert (
         personal.capabilities.local_files
         and personal.capabilities.confirm_metadata_save
@@ -212,3 +239,55 @@ def test_library_capabilities_and_dispatch_are_explicit() -> None:
     remote.project["role"] = "owner"
     remote.writable = True
     assert team.capabilities.edit_metadata and team.capabilities.manage_members
+
+
+def test_ai_result_cannot_cross_a_library_session(app: Any) -> None:
+    from PySide6 import QtWidgets
+
+    from libs.ai_features import Description
+    from widgets.panel.ai_actions import PanelAIActions
+    from widgets.panel.state import PanelSessionState
+
+    state = SelectionState()
+    state.select_asset(decode_record(AssetData, {"hda_id": 7, "hda_name": "Current"}))
+    session = PanelSessionState(user="tester")
+    note, tags = QtWidgets.QTextEdit(), QtWidgets.QTextEdit()
+    note.setPlainText("Current draft")
+    feature = PanelAIActions()
+    feature.target_id = 7
+    feature._target_repository = session.repository
+    feature._target_generation = session.generation
+    feature.bindings = SimpleNamespace(
+        selection=SimpleNamespace(state=state),
+        session=session,
+        ui=SimpleNamespace(textEdit__note=note, textEdit__tag=tags),
+    )
+    # IDs can be identical across two libraries, even when both are disconnected.
+    session.replace(None, None)
+    feature.describe_done(Description(summary="Stale answer", tags=["stale"]))
+    assert note.toPlainText() == "Current draft"
+    assert tags.toPlainText() == ""
+
+
+def test_registration_capture_accepts_a_host_adapter(tmp_path: Path) -> None:
+    from libs.repository import LibraryError
+    from widgets.asset_lifecycle.capture import HoudiniRegistrationCapture
+
+    calls: list[dict[str, Any]] = []
+
+    class Host:
+        def create_hda_file(self, **values: Any) -> bool:
+            calls.append(values)
+            return False
+
+        def create_thumbnail(self, output_filepath: Path) -> bool:
+            output_filepath.write_bytes(b"partial")
+            return False
+
+    capture = HoudiniRegistrationCapture(object(), "1.2", Host())
+    with pytest.raises(LibraryError, match="capture failed"):
+        capture.asset(tmp_path / "Asset.hda")
+    assert calls[0]["hda_version"] == "1.2"
+    thumbnail = tmp_path / "preview.jpg"
+    capture.thumbnail(thumbnail)
+    assert not thumbnail.exists()

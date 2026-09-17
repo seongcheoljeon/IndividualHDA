@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from logging import warning
 
@@ -17,18 +17,19 @@ from zipfile import ZipFile, is_zipfile
 
 from PySide6 import QtGui
 
-import public
-
 # third-party modules
-from libs import log_handler
-from libs.domain import AssetData, HistoryData
+from libs import host, keys, log_handler, paths
+from libs.asset_contracts import AssetData, HistoryData, HistoryThumbnail
 from libs.houdini_api import HoudiniAPI
+from libs.resource_policy import ThumbnailPolicy
 from libs.thumbnail_cache import ThumbnailCache
 
 
 class IHDAIcons:
-    def __init__(self) -> None:
-        self.__zip_filepath = public.Paths.hh_dirpath / "help" / "icons.zip"
+    def __init__(
+        self, *, thumbnail_policy: ThumbnailPolicy = ThumbnailPolicy()
+    ) -> None:
+        self.__zip_filepath = paths.Paths.hh_dirpath / "help" / "icons.zip"
         if not self.__zip_filepath.exists():
             log_handler.LogHandler.log_msg(
                 method=logging.error, msg="icon zip file does not exist"
@@ -37,8 +38,12 @@ class IHDAIcons:
         self.__default_pixmap = QtGui.QPixmap(":/main/icons/no_img_available.png")
         self.__pixmap_ihda_data: dict[int, QtGui.QPixmap] = {}
         self.__pixmap_cate_data: dict[str, QtGui.QPixmap] = {}
-        self.__pixmap_thumbnail_data = ThumbnailCache(self.__default_pixmap)
-        self.__pixmap_hist_thumbnail_data = ThumbnailCache(self.__default_pixmap)
+        self.__pixmap_thumbnail_data = ThumbnailCache(
+            self.__default_pixmap, policy=thumbnail_policy
+        )
+        self.__pixmap_hist_thumbnail_data = ThumbnailCache(
+            self.__default_pixmap, policy=thumbnail_policy
+        )
         self.__icons_map = self.__icons_mapping_from_file() or {}
 
     def __del__(self) -> None:
@@ -95,7 +100,7 @@ class IHDAIcons:
     def add_pixmap_cate_data(self, category: str | None = None) -> None:
         if category is not None and category not in self.__pixmap_cate_data:
             with self._icon_archive() as zip_fp:
-                net_dirname = public.Name.Icons.networks
+                net_dirname = keys.Name.Icons.networks
                 icon_lst = [net_dirname, category]
                 self.__pixmap_cate_data[category] = self.__get_icon_from_zipfile(
                     zip_fp=zip_fp, icon_lst=icon_lst
@@ -130,7 +135,7 @@ class IHDAIcons:
             return
         with self._icon_archive() as zip_fp:
             for info in icon_info:
-                hkey_id, icon_lst = info
+                hkey_id, icon_lst = info.asset_id, list(info.icon)
                 self.__pixmap_ihda_data[hkey_id] = self.__get_icon_from_zipfile(
                     zip_fp=zip_fp, icon_lst=icon_lst
                 )
@@ -138,8 +143,8 @@ class IHDAIcons:
     def make_pixmap_cate_data(self, cate_lst: Any = None) -> None:
         if cate_lst is None:
             return
-        net_dirname = public.Name.Icons.networks
-        root_name = public.Name.Icons.root
+        net_dirname = keys.Name.Icons.networks
+        root_name = keys.Name.Icons.root
         with self._icon_archive() as zip_fp:
             self.__pixmap_cate_data[root_name] = self.__get_icon_from_zipfile(
                 zip_fp=zip_fp, icon_lst=[net_dirname, root_name]
@@ -155,20 +160,20 @@ class IHDAIcons:
     ) -> None:
         for data in all_data or []:
             directory, filename = (
-                data.get("thumbnail_dirpath"),
-                data.get("thumbnail_filename"),
+                data.thumbnail_dirpath,
+                data.thumbnail_filename,
             )
             self.__pixmap_thumbnail_data.set_path(
-                data["hda_id"], directory / filename if directory and filename else None
+                data.hda_id, directory / filename if directory and filename else None
             )
 
     def make_pixmap_hist_thumbnail_data(
-        self, all_data: list[HistoryData] | None = None
+        self, all_data: Sequence[HistoryThumbnail | HistoryData] | None = None
     ) -> None:
         for data in all_data or []:
-            directory, filename = data.get("thumb_dirpath"), data.get("thumb_filename")
+            directory, filename = data.thumb_dirpath, data.thumb_filename
             self.__pixmap_hist_thumbnail_data.set_path(
-                data["hist_id"],
+                data.hist_id,
                 directory / filename if directory and filename else None,
             )
 
@@ -178,7 +183,7 @@ class IHDAIcons:
 
     def get_category_icon(self, category: str | None = None) -> QtGui.QPixmap:
         with self._icon_archive() as zip_fp:
-            icon_lst = [public.Name.Icons.networks, category or ""]
+            icon_lst = [keys.Name.Icons.networks, category or ""]
             return self.__get_icon_from_zipfile(zip_fp=zip_fp, icon_lst=icon_lst)
 
     @contextmanager
@@ -194,7 +199,7 @@ class IHDAIcons:
     ) -> QtGui.QPixmap:
         if not icon_lst:
             return QtGui.QPixmap(":/main/icons/blank.png")
-        if public.IS_HOUDINI:
+        if host.IS_HOUDINI:
             try:
                 pixmap = HoudiniAPI.host_icon("_".join(icon_lst))
                 if pixmap is not None:
@@ -203,7 +208,7 @@ class IHDAIcons:
                 pass
         if zip_fp is None:
             return QtGui.QPixmap(":/main/icons/blank.png")
-        icon_file_ext = public.Extensions.houdini_icons
+        icon_file_ext = keys.Extensions.houdini_icons
         icon_filepath = "/".join([str(icon_lst[0]), str(icon_lst[1]) + icon_file_ext])
         try:
             contents = zip_fp.read(icon_filepath)
@@ -214,7 +219,7 @@ class IHDAIcons:
             icon_map = self.__icons_map.get("_".join(icon_lst))
             if icon_map is None:
                 icon_filepath = "/".join(
-                    [public.Name.Icons.desktop, public.Name.Icons.blank + icon_file_ext]
+                    [keys.Name.Icons.desktop, keys.Name.Icons.blank + icon_file_ext]
                 )
             else:
                 matched = self.__pattern_icon_map.match(icon_map)
@@ -230,7 +235,7 @@ class IHDAIcons:
                 pixmap = QtGui.QPixmap.fromImage(img)
                 return pixmap
             except (KeyError, RuntimeError):
-                if icon_lst[0].lower() == public.Type.chop:
+                if icon_lst[0].lower() == keys.Type.chop:
                     return QtGui.QPixmap(":/main/icons/chan.png")
                 return QtGui.QPixmap(":/main/icons/blank.png")
 
@@ -255,7 +260,7 @@ class IHDAIcons:
         icons_dict = {}
         with (
             self._icon_archive() as zip_fp,
-            zip_fp.open(public.Name.Icons.filename, "r") as fp,
+            zip_fp.open(keys.Name.Icons.filename, "r") as fp,
         ):
             for line in fp:
                 line = line.decode("utf-8")

@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from widgets.video_player.video_player import VideoPlayer
+
 import copy
 
 # author:           seongcheol jeon
@@ -10,49 +15,52 @@ import copy
 import os
 from typing import Any
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore
 
-import public
+from libs import keys as app_keys
+from libs import paths
 from libs.qt_helpers import center_on_screen
 from libs.settings_store import apply_settings, load_json, save_json
 
 
 class VideoUISettings:
-    def __init__(self, window: QtWidgets.QWidget | None = None) -> None:
+    def __init__(self, window: VideoPlayer) -> None:
         self.__window = window
         self.__setting_ini = QtCore.QSettings(
-            public.Paths.ini_video_filepath.as_posix(),
+            paths.Paths.ini_video_filepath.as_posix(),
             QtCore.QSettings.Format.IniFormat,
         )
-        self.__setting_json = public.Paths.json_video_filepath
-        self.__cfg_dict = {}
+        self.__setting_json = paths.Paths.json_video_filepath
+        self.__cfg_dict: dict[str, Any] = {}
 
     def save_cfg_dict_to_file(self) -> None:
         # button
-        self.__cfg_dict[public.Name.VideoUI.btn_volume] = (
+        self.__cfg_dict[app_keys.Name.VideoUI.btn_volume] = (
             self.__window.pushButton__volume.isChecked()
         )
         # slider
-        self.__cfg_dict[public.Name.VideoUI.slider_volume] = (
+        self.__cfg_dict[app_keys.Name.VideoUI.slider_volume] = (
             self.__window.horizontalSlider__volume.value()
         )
         # playback index
-        self.__cfg_dict[public.Name.VideoUI.playback_idx] = self.__window.playback_idx
+        self.__cfg_dict[app_keys.Name.VideoUI.playback_idx] = self.__window.playback_idx
         # playlist
         playlist = [x.as_posix() for x in self.__window.get_all_playlist_path()]
-        self.__cfg_dict[public.Name.VideoUI.playlist] = playlist
+        self.__cfg_dict[app_keys.Name.VideoUI.playlist] = playlist
         # last dirpath
         last_dirpath = self.__window.last_dirpath
         if last_dirpath is not None:
-            self.__cfg_dict[public.Name.VideoUI.last_dirpath] = last_dirpath.as_posix()
+            self.__cfg_dict[app_keys.Name.VideoUI.last_dirpath] = (
+                last_dirpath.as_posix()
+            )
         #
-        if not public.Paths.config_dirpath.exists():
-            os.makedirs(public.Paths.config_dirpath.as_posix())
+        if not paths.Paths.config_dirpath.exists():
+            os.makedirs(paths.Paths.config_dirpath.as_posix())
         save_json(self.__setting_json, self.__cfg_dict)
 
     def save_main_window_geometry(self) -> None:
         self.__setting_ini.setValue(
-            public.Name.VideoUI.main_window_geometry, self.__window.saveGeometry()
+            app_keys.Name.VideoUI.main_window_geometry, self.__window.saveGeometry()
         )
 
     def save_splitter_status(self) -> None:
@@ -60,14 +68,16 @@ class VideoUISettings:
         vertical = self.__window.splitter__vertical.saveState()
         if horizon:
             self.__setting_ini.setValue(
-                public.Name.VideoUI.splitter_horizontal, horizon
+                app_keys.Name.VideoUI.splitter_horizontal, horizon
             )
         if vertical:
-            self.__setting_ini.setValue(public.Name.VideoUI.splitter_vertical, vertical)
+            self.__setting_ini.setValue(
+                app_keys.Name.VideoUI.splitter_vertical, vertical
+            )
 
     def load_main_window_geometry(self) -> None:
         main_window_geo = self.__setting_ini.value(
-            public.Name.VideoUI.main_window_geometry
+            app_keys.Name.VideoUI.main_window_geometry
         )
         if main_window_geo:
             self.__window.restoreGeometry(main_window_geo)
@@ -75,8 +85,8 @@ class VideoUISettings:
             center_on_screen(self.__window)
 
     def load_splitter_status(self) -> None:
-        horizon = self.__setting_ini.value(public.Name.VideoUI.splitter_horizontal)
-        vertical = self.__setting_ini.value(public.Name.VideoUI.splitter_vertical)
+        horizon = self.__setting_ini.value(app_keys.Name.VideoUI.splitter_horizontal)
+        vertical = self.__setting_ini.value(app_keys.Name.VideoUI.splitter_vertical)
         if horizon:
             self.__window.splitter__horizontal.restoreState(horizon)
         if vertical:
@@ -87,7 +97,7 @@ class VideoUISettings:
         if not self.__cfg_dict:
             return
         window = self.__window
-        keys = public.Name.VideoUI
+        keys = app_keys.Name.VideoUI
 
         def playlist(value: Any) -> None:
             if value:

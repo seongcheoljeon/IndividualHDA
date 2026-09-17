@@ -149,3 +149,30 @@ failed. Use committed callbacks and resolve model rows from stable asset/history
 Register a resource as soon as it is acquired. Stop timers before draining workers,
 then dispose of dependent views. Keep `main.py` focused on Qt entry points and
 explicit delegation; do not add new feature Mixins or inject methods dynamically.
+
+## Data fields, pages and operational values
+
+- Give multi-column SQL results explicit, unique aliases. Read by field name and
+  convert at the repository boundary; do not pair query results with a separate
+  positional key list. Preserve old integrations through `libs/row_contracts.py`.
+- Add model rows using named payloads. Never insert fields into a caller's list.
+- Switch pages with `setCurrentWidget`; use `AssetViewMode` for browser button IDs.
+  Preserve existing widget names and default page order for saved settings.
+- Change presentation defaults in `widgets/ui_tokens.py`. Keep values with
+  different visual purposes separate, even when their numbers happen to match.
+- Inject `PanelPolicy`/`SearchPolicy`, `SQLitePolicy`, or `ArchiveLimits` when a
+  deployment needs different resource limits. Existing preference and Team/server
+  policy systems remain authoritative for settings they already own. No extra
+  preferences screen or database migration is required.
+
+## Version tracking and recovery
+
+- Manual check form and usage/dependent lists: `widgets/library_metadata/tracking.py`.
+- Registration retry/discard: `widgets/library_metadata/recovery.py`.
+- Shared deletion warning wording: `widgets/library_metadata/dependency_warning.py`.
+- Menu wiring: `widgets/panel/library_tools.py`; host observation:
+  `widgets/panel/scene_usage.py`. Worker lifetime belongs to composition/shutdown.
+- Keep manual checks explicit and environment-specific. Imported reports show their
+  source and do not claim destination validation. Hide tracking for older servers.
+- Do not perform HTTP calls on the GUI thread or recapture Houdini nodes from a
+  recovery worker. Workers retry captured files through the stored request ID.

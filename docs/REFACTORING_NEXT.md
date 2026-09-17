@@ -8,7 +8,7 @@
 - Staged capture, exclusive publication, SQL rollback/retry, preservation after an
   uncertain commit, flag restoration and overlay cleanup have regression tests in
   `tests/test_registration_workflow.py`.
-- Schema and Team API/pending-command formats are unchanged.
+- This earlier slice kept the schema unchanged; version tracking below adds v6/v3.
 
 ## Completed in the rename / Trash slice
 
@@ -35,24 +35,47 @@
 - The four extracted modules are no longer excluded from mypy checking. Remaining
   shared window references are an explicit adapter boundary, not fully typed ports.
 
+## Completed in the version tracking slice
+
+- Personal schema v6 and Team schema v3, retaining Team API v2.
+- Stable version dependencies, manual check/correction audit, scene outbox, and
+  current-version validation; unique-only migration of legacy scene links.
+- Durable registration capture/publication/receipt recovery, existing-menu dialogs,
+  dependency warnings, and copy/backup preservation with source provenance.
+- Remaining host validation: import Personal/Team/history assets, save an untitled
+  scene, retry after disconnection, and close with recovery work in progress.
+
 ## Next bounded slice
 
-Scene-record cleanup still performs legacy UI/DB work together and needs
-commit-before-display treatment. Extract its application operation and then
-continue with model binding and Houdini-action adapters one responsibility at a
-time. The other 12 Mixins have not all been removed.
+Named-data/constants follow-up completed: runtime catalog/history/scene queries
+and lifecycle/management reads use names; positional compatibility lives in one
+adapter module. Internal registration and scene UI payloads are named. Page
+selection and presentation widths have explicit owners, and panel/search/SQLite/
+archive policies can be injected. Schema, Team wire formats and defaults are
+unchanged. Scalar queries, historical migrations and published legacy tuple/list
+returns intentionally retain positional contracts.
 
-Later: asynchronous executor lifecycle; Qt model/data conversion duplication;
-remaining direct repository/public facade dependencies and type-check exclusions.
-These remain after the registration, rename/Trash and composition slices.
+Scene-record cleanup now uses a Qt/HOM-free application operation and applies
+only committed IDs to the view. Stable source-tree ID collection handles filtered
+and sorted parent selections; inaccessible paths are retained. Runtime settings
+and constant ownership are documented in `RUNTIME_SETTINGS.md`.
+
+Contributor refactoring removes the remaining 12 Mixins and replaces them with
+composed features and explicit bindings. Repository scene operations, injectable
+host ports, isolated suites and a sample developer panel are now implemented.
+See `CONTRIBUTING.md` and `ARCHITECTURE.md` for the current extension points.
+
+Future work can further split the screen integration adapters as their UI grows.
+Do not reintroduce shared Mixins, runtime public-facade imports or maintained-module
+type-check exclusions. A plugin system is not needed for ordinary contributions.
 
 ## Operational limits
 
 Native Houdini validation is still needed for this slice: drop a new node, add a
 version, cancel an update, and verify node display/render flags and preview capture.
 The agent tests use fake host adapters plus actual SQLite; they do not replace HOM
-execution. Ordinary rollback supports retry; crash-resumable local registration
-receipts were not introduced. Existing inspection/cleanup handles orphan detection.
+execution. Durable local/Team registration retry is now implemented; incomplete
+captures and uncertain file ownership still require review in Library Tools.
 
 Keep `widgetType__purpose` names, Python-only layouts, small focused dialogs and
 SOLID boundaries. Do not create a new standalone Personal/Team workspace screen.

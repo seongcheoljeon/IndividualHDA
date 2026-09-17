@@ -12,6 +12,7 @@ from os import access as os_access
 from os import getenv as os_getenv
 from tempfile import gettempdir
 
+from libs.app_metadata import LEGACY_HOUDINI_PREF_FOLDER
 from libs.keys import Extensions, Name
 
 
@@ -21,7 +22,8 @@ class Paths:
     hb_dirpath = pathlib.Path(os_getenv("HB") or hfs_dirpath / "bin")
     hh_dirpath = pathlib.Path(os_getenv("HH") or hfs_dirpath / "houdini")
     houdini_user_pref_dirpath = pathlib.Path(
-        os_getenv("HOUDINI_USER_PREF_DIR") or pathlib.Path.home() / "houdini21.0"
+        os_getenv("HOUDINI_USER_PREF_DIR")
+        or pathlib.Path.home() / LEGACY_HOUDINI_PREF_FOLDER
     )
     user_home_dirpath = pathlib.Path.home()
     tmp_dirpath = pathlib.Path(os_getenv("HOUDINI_TEMP_DIR") or gettempdir())

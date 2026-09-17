@@ -440,3 +440,149 @@ previous Houdini check predates this refactoring.
 - Native Houdini validation remains outstanding for this slice. Reopen panels,
   close during archive work, reload libraries, use AI and close with tool dialogs
   open as listed in `docs/REFACTORING_NEXT.md`.
+
+## Named data and operational policies — 2026-09-16
+
+- Final full offscreen suite: **383 passed, 1 skipped**, **72.57%** coverage
+  (`/tmp/ihda-named-full-final.log`). The optional PostgreSQL backup test is
+  skipped without its configured DB; two existing TestClient warnings remain.
+- Focused named-data/browser/optional-media/repository/schema/registration suite:
+  **59 passed** (`/tmp/ihda-named-targeted-final.log`).
+- Ruff check/format: **280 files**; mypy: **229 source files**; diff checks passed.
+- New tests reverse SQL result projections for assets/history/scene records, check
+  duplicate aliases and missing fields, preserve connection cursor behavior,
+  validate legacy row lengths, and ensure UI insertion does not mutate input.
+- Nullable paths/icons/tags, Unicode paths, reordered mapping inputs, custom
+  SQLite/search/polling/archive limits, rejected policy values, and page selection
+  after reordering are covered. Existing defaults and schema/wire formats remain.
+- Native Houdini execution was not available. Verify asset/history/detail page
+  switching, registration/version addition, scene-record display, archive import
+  and Personal/Team reload in Houdini before deployment.
+
+## Version tracking and registration recovery (2026-09-16)
+
+- Full offscreen suite: **399 passed, 2 skipped**, coverage **72.52%** (60% gate).
+  The skips require the PostgreSQL backup fixture and are exercised separately.
+- Actual PostgreSQL 16 suite: **69 passed**. Coverage includes v1/v2 → v3 migration, project/role isolation,
+  idempotent checks and scene reports, concurrent catalog commands, copy provenance,
+  and real `pg_dump`/`pg_restore` plus legacy-v2 inventory compatibility.
+- Regression tests cover unique-only v5 scene backfill, ambiguous preservation,
+  cross-asset current-pointer rejection, activity/current-version separation,
+  dependency rename/purge retention, independent scene-version updates, durable
+  outbox retries, imported check provenance, local/Team lost-response recovery,
+  publication conflicts and preservation of replaced symlinks.
+- Additional focused checks after the full run cover copied-check validation,
+  recovery labels, and older-server copy payloads. Qt details/recovery actions use
+  offscreen widgets; no native Houdini execution was performed.
+- Ruff check/format: **294 files**. Mypy: **242 source files**. No new type-ignore
+  exclusions were added. `git diff --check` passed.
+
+Logs: `/tmp/ihda-tracking-all-verified.log`, `/tmp/ihda-tracking-pg-last.log`,
+`/tmp/ihda-tracking-copy-validation.log`, `/tmp/ihda-tracking-recovery-labels.log`,
+`/tmp/ihda-tracking-copy-compat.log`, `/tmp/ihda-tracking-types-final-result.log`.
+
+Native Houdini follow-up: register/add a version; import Personal/Team/history
+assets; save an untitled scene and allow the next sync pass; disconnect/reconnect
+and retry scene delivery; exercise Pending registrations after an interrupted
+capture/upload; close a panel while recovery is running. External deployment and
+production database migration were not performed.
+
+## Runtime preferences and committed scene-record cleanup — 2026-09-16
+
+- Baseline: **402 passed, 2 skipped** on Python 3.11.15 / PySide6 6.11.2.
+- Final full offscreen suite with an isolated PostgreSQL 16.15 server and real
+  `pg_dump`/`pg_restore`: **416 passed, no skips**, **73.96% coverage** (60% gate).
+  The two existing upstream Starlette/TestClient deprecation warnings remain.
+- Ruff check and format verification passed for **304 Python files**; mypy passed
+  for **250 source files**, and `git diff --check` passed. No type-check exclusion
+  was added. The direct panel DB-call ratchet shrank to the Houdini-actions module.
+- New regression checks cover malformed/legacy runtime settings, atomic save
+  failure, Cancel/reset, snapshot application after reopening, explicit dependency
+  overrides, real Qt timer values, request limits/offsets/labels, custom media
+  timeout and image decode size, and node-batch confirmation limits.
+- Scene-record checks exercise actual SQLite deletion, sorted/filtered parent ID
+  collection, partial failures, inaccessible files, original-file preservation,
+  post-commit display recovery and model reset during the confirmation dialog.
+- Expanded Preferences was rendered and inspected offscreen. Content now scrolls
+  while confirmation buttons remain visible; the small-screen behavior has a Qt
+  regression test. Runtime defaults and retained constants are documented in
+  [RUNTIME_SETTINGS.md](RUNTIME_SETTINGS.md).
+- PostgreSQL CI now includes the version-tracking regression module. Deployment
+  images include root license and third-party notices; images were not built in
+  this environment because the Docker daemon was unavailable.
+- Native Houdini 21.0.559 startup was attempted through the installed Windows
+  `hython.exe`. It exited with code 3 because all usable licenses were in use,
+  before the smoke script could run. Interactive HOM/drag/drop and native window
+  acceptance remain pending; no production library or active Houdini scene was
+  used. The isolated PostgreSQL test server was stopped after verification.
+
+Logs: `/tmp/ihda-baseline.log`, `/tmp/ihda-final-targeted.log`,
+`/tmp/ihda-record-confirmation.log`, `/tmp/ihda-runtime-verified.log`.
+
+## Contributor-oriented composition — 2026-09-16
+
+- Final full offscreen suite with isolated PostgreSQL 16.15 and actual
+  `pg_dump`/`pg_restore`: **422 passed, no skips**, **74.76% coverage** (60% gate).
+  Two upstream Starlette/TestClient deprecation warnings remain. The initial
+  PostgreSQL-only run needed `IHDA_PG_BIN`; the final run supplied it and passed
+  the actual snapshot/restore test. `git diff --check` also passed.
+
+- Removed the remaining 12 panel feature Mixins; explicit frozen bindings wire
+  composed features. Session, selection, models and shutdown state have named
+  owners. Repository scene operations and injectable callback/capture/scene ports
+  keep storage and host work at their boundaries.
+- Production imports no longer use `public`; it remains available for external
+  compatibility. All maintained application and developer-tool modules participate
+  in mypy. Only generated resource modules retain exclusions.
+- Added isolated core/server collection, shared test support, a disposable sample
+  panel, the local/CI check command, contributor guide and PR template.
+- Minimal core environment without PySide6: **38 passed**. Minimal server
+  environment without PySide6: **28 passed, 2 PostgreSQL cases skipped**; three
+  personal contract cases are assigned to Qt. PostgreSQL coverage is verified in
+  the full environment separately.
+- Contributor entry point, generation-based stale AI result rejection, injected
+  capture failure cleanup and architecture checks: **21 passed**. Adapted feature,
+  host, media, named-data, registration and runtime-settings checks: **57 passed**.
+- Ruff check/format: **320 files**; mypy: **260 source files**, all passed.
+- Native Houdini 21.0.559 `hython.exe` was attempted. It exited with code 3 before
+  running the smoke script because all usable licenses were in use. Interactive
+  capture/import, callbacks and native host UI acceptance remain unverified in
+  this run. No production library or active Houdini scene was used.
+
+Logs: `/tmp/ihda-core-isolated-final.log`, `/tmp/ihda-server-isolated.log`,
+`/tmp/ihda-contributor-specific.log`, `/tmp/ihda-adapted-tests.log`,
+`/tmp/ihda-lint-final2.log`, `/tmp/ihda-contributor-houdini.log`.
+
+Final full-suite log: `/tmp/ihda-contributors-final.log`. The temporary PostgreSQL
+server was stopped after verification. Windows/macOS CI and interactive Houdini
+acceptance were configured/documented but were not executed locally.
+
+## Named records and explicit dependencies — 2026-09-16
+
+- Final full offscreen suite with isolated PostgreSQL 16.15 and actual
+  `pg_dump`/`pg_restore`: **434 passed, no skips**, **75.75% coverage** (60% gate).
+  Two upstream Starlette/TestClient deprecation warnings remain.
+- Minimal core environment without PySide6: **47 passed**. Minimal server
+  environment: **28 passed, 2 PostgreSQL cases skipped, 3 personal cases
+  deselected**. PostgreSQL behavior is covered by the full run above.
+- Ruff check and format verification passed for **323 Python files**; mypy passed
+  for **262 source files**, without new exclusions. `git diff --check` passed.
+- Regression checks cover reordered SQL projections, named connection endpoints,
+  strict immutable record decoding, drag payload round trips, added registration
+  job columns, scene renaming across versions, and idempotent local scene delivery.
+- Recovery checks cover historical version 1 registration receipts and move
+  journals, version 2 named documents, unchanged retry fingerprints, and rollback
+  after capture/file-operation failures. Existing database and HTTP versions
+  remain unchanged; internal Python record APIs intentionally changed.
+- Architecture checks enforce explicit integration bindings, Qt/storage-free
+  domain contracts, centralized model column definitions, and removal of the
+  positional row facade. Developer-panel smoke coverage passes in the full suite.
+- Native Houdini 21.0.559 `hython.exe` exited with code 3 before running the smoke
+  script because all usable licenses were in use. Interactive capture/import,
+  native callbacks and host UI acceptance remain unverified. No production
+  library or active Houdini scene was used. The temporary PostgreSQL server was
+  stopped after verification.
+
+Logs: `/tmp/ihda-dependency-final.log`, `/tmp/ihda-core-dependency-final.log`,
+`/tmp/ihda-server-boundaries.log`, `/tmp/ihda-validation-static.log`,
+`/tmp/ihda-houdini-boundaries.log`.

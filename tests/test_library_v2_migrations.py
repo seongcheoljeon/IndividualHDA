@@ -7,8 +7,8 @@ from typing import Any
 from uuid import UUID
 
 import pytest
-from test_team_library import create_asset
-from test_team_library import server as server  # noqa: F401
+from support.team import create_asset
+from support.team import server as server  # noqa: F401
 
 from libs.database_migrations import migrate
 from libs.database_migrations_v4 import migrate as migrate_v4
@@ -47,7 +47,7 @@ def test_personal_v4_upgrade_is_additive_and_retryable(tmp_path: Path) -> None:
             ).fetchone()[0]
             == identity
         )
-        assert len(list(tmp_path.glob("*.pre-v5-*.bak"))) == 1
+        assert len(list(tmp_path.glob("*.pre-v6-*.bak"))) == 1
 
 
 def test_personal_failed_upgrade_rolls_back(
@@ -58,29 +58,29 @@ def test_personal_failed_upgrade_rolls_back(
     database = tmp_path / "old.db"
     with sqlite3.connect(database) as connection:
         migrate_v4(connection, database)
-        original = migrations.install
+        original = migrations.install_v5
 
         def fail(connection: sqlite3.Connection) -> None:
             original(connection)
             raise RuntimeError("injected")
 
-        monkeypatch.setattr(migrations, "install", fail)
+        monkeypatch.setattr(migrations, "install_v5", fail)
         with pytest.raises(RuntimeError, match="injected"):
             migrate(connection, database)
         assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
         assert not connection.execute(
             "SELECT 1 FROM sqlite_master WHERE name='asset_identity'"
         ).fetchone()
-        monkeypatch.setattr(migrations, "install", original)
+        monkeypatch.setattr(migrations, "install_v5", original)
         migrate(connection, database)
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
 
 
 def test_server_v1_upgrade_preserves_documents_and_seeds_members(
     server: Any, tmp_path: Path
 ) -> None:
     from sqlalchemy import select, update
-    from test_team_library import TestTransport
+    from support.team import TestTransport
 
     from ihda_server import lifecycle_schema as state
     from ihda_server import schema as tables
@@ -95,7 +95,18 @@ def test_server_v1_upgrade_preserves_documents_and_seeds_members(
     viewer = identity.create_user("member")
     catalog.set_member(project, owner, viewer, "viewer")
     with catalog._engine.begin() as connection:
-        # The old six lifecycle tables did not exist in schema v1.
+        # The old lifecycle/tracking tables did not exist in schema v1.
+        if connection.dialect.name == "postgresql":
+            from ihda_server.tracking import ServerTrackingConnection
+
+            ServerTrackingConnection(connection)
+            connection.exec_driver_sql(
+                "ALTER TABLE team_asset_state DROP CONSTRAINT fk_current_version"
+            )
+        from ihda_server.tracking_schema import TABLES
+
+        for table in reversed(TABLES):
+            table.drop(connection)
         for table in (
             state.file_refs,
             state.preferences,
@@ -135,7 +146,7 @@ def test_server_v1_upgrade_preserves_documents_and_seeds_members(
     upgrade(catalog._engine)
     assert backend.get_asset(asset["id"]) == upgraded
     with catalog._engine.connect() as connection:
-        assert connection.execute(select(tables.versions.c.version)).scalar_one() == 2
+        assert connection.execute(select(tables.versions.c.version)).scalar_one() == 3
 
 
 def test_legacy_pending_requires_review_and_keeps_file(tmp_path: Path) -> None:
@@ -155,7 +166,7 @@ def test_legacy_pending_requires_review_and_keeps_file(tmp_path: Path) -> None:
 
 
 def test_trash_is_retained_and_relocatable_in_backup(tmp_path: Path) -> None:
-    from test_sqlite_repository import payload
+    from support.personal import payload
 
     from libs.database.sqlite_repository import SqliteLibraryRepository
     from libs.library_backups import create_backup, validate_backup
@@ -168,12 +179,12 @@ def test_trash_is_retained_and_relocatable_in_backup(tmp_path: Path) -> None:
     repository = SqliteLibraryRepository(database)
     repository.ensure_user("tester")
     first = repository.register_asset(payload(tmp_path, "Water"))
-    repository.add_version(first.asset["hda_id"], payload(tmp_path, "Water", "1.1"))
+    repository.add_version(first.asset.hda_id, payload(tmp_path, "Water", "1.1"))
     management = LocalManagement(database)
     management.change(
-        {"asset_id": first.asset["hda_id"], "history_id": first.history_id}, "delete"
+        {"asset_id": first.asset.hda_id, "history_id": first.history_id}, "delete"
     )
-    management.change({"asset_id": first.asset["hda_id"], "history_id": None}, "delete")
+    management.change({"asset_id": first.asset.hda_id, "history_id": None}, "delete")
     backup = create_backup(database, tmp_path / "sop", "Trash retained")
     assert "verified" in validate_backup(backup)
     assert first.thumb_filepath.exists()
@@ -181,7 +192,7 @@ def test_trash_is_retained_and_relocatable_in_backup(tmp_path: Path) -> None:
 
 
 def test_file_integrity_survives_description_changes(tmp_path: Path) -> None:
-    from test_sqlite_repository import payload
+    from support.personal import payload
 
     from libs.database.lifecycle import PersonalLifecycle, inspect_files
     from libs.database.sqlite_repository import SqliteLibraryRepository
@@ -208,9 +219,7 @@ def test_file_integrity_survives_description_changes(tmp_path: Path) -> None:
             ).fetchone()[0]
             == digest
         )
-        (first.asset["hda_dirpath"] / first.asset["hda_filename"]).write_bytes(
-            b"corruption"
-        )
+        (first.asset.hda_dirpath / first.asset.hda_filename).write_bytes(b"corruption")
         inspect_files(db._connect)
         assert (
             db._connect.execute(

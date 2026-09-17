@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -10,6 +11,8 @@ from typing import Any
 import pytest
 from PySide6 import QtCore, QtGui, QtTest, QtWidgets
 
+from libs.asset_contracts import AssetData
+from libs.record_codec import decode_record
 from model.ihda_category_proxy_model import CategoryProxyModel
 from model.ihda_history_model import HistoryModel
 from model.ihda_history_proxy_model import HistoryProxyModel
@@ -153,9 +156,9 @@ def test_dark_resources_and_host_theme_roundtrip(
     window.actionDark_blue = QtGui.QAction(window)
     window.actionDark_blue.setCheckable(True)
     settings = ui_settings.UISettings(window)
-    from libs import houdini_api
+    from libs import host, houdini_api
 
-    monkeypatch.setattr(public, "IS_HOUDINI", True)
+    monkeypatch.setattr(host, "IS_HOUDINI", True)
     monkeypatch.setattr(houdini_api, "IS_HOUDINI", True)
     monkeypatch.setattr(
         houdini_api,
@@ -246,31 +249,40 @@ def test_every_source_model_and_proxy_obeys_qt_contract(app: Any, kind: str) -> 
 
 def test_sorted_filtered_selection_maps_source_id(app: Any, tmp_path: Path) -> None:
     import public
-    from main import IndividualHDA
     from model.ihda_list_model import ListModel
+    from widgets.panel.library_queries import PanelLibraryQueries
 
     items = [
-        {public.Key.hda_id: 10, public.Key.hda_name: "Zulu"},
-        {public.Key.hda_id: 20, public.Key.hda_name: "Alpha"},
+        decode_record(AssetData, {public.Key.hda_id: 10, public.Key.hda_name: "Zulu"}),
+        decode_record(AssetData, {public.Key.hda_id: 20, public.Key.hda_name: "Alpha"}),
     ]
     model = ListModel(items=items)
     proxy = ListProxyModel()
     proxy.setSourceModel(model)
     proxy.sort(0)
-    owner = SimpleNamespace(_get_hda_id_row_map=lambda: {10: 0, 20: 1})
-    index = IndividualHDA._find_hda_id_by_model_item(owner, proxy, 10)
+    owner = SimpleNamespace(
+        bindings=SimpleNamespace(
+            management=SimpleNamespace(_get_hda_id_row_map=lambda: {10: 0, 20: 1})
+        )
+    )
+    index = PanelLibraryQueries._find_hda_id_by_model_item(owner, proxy, 10)
     assert index.data(ListModel.id_role) == 10 and index.row() == 1
     proxy.setFilterRegularExpression("Alpha")
-    assert IndividualHDA._find_hda_id_by_model_item(owner, proxy, 10) is None
+    assert PanelLibraryQueries._find_hda_id_by_model_item(owner, proxy, 10) is None
 
 
 def test_source_change_rechecks_active_filter(app: Any) -> None:
     import public
     from model.ihda_list_model import ListModel
     from model.ihda_table_model import TableModel
-    from widgets.panel.model_binding import ModelBindingMixin
+    from widgets.panel.model_binding import PanelModelBinding
 
-    rows = [{public.Key.hda_id: 1, public.Key.hda_name: "Old", public.Key.hda_tags: []}]
+    rows = [
+        decode_record(
+            AssetData,
+            {public.Key.hda_id: 1, public.Key.hda_name: "Old", public.Key.hda_tags: []},
+        )
+    ]
     first, second = ListModel(items=rows), TableModel(items=rows)
     proxies = [ListProxyModel(), TableProxyModel()]
     for proxy, source in zip(proxies, (first, second), strict=False):
@@ -282,25 +294,26 @@ def test_source_change_rechecks_active_filter(app: Any) -> None:
     store = AssetStore()
     store.reset(rows)
     store.rows = rows
-    owner = SimpleNamespace(
-        _assets=store, _ihda_list_model=first, _ihda_table_model=second
-    )
-    ModelBindingMixin._update_item_row_data(owner, 0, {public.Key.hda_name: "New"})
+    owner = SimpleNamespace(assets=store, list_model=first, table_model=second)
+    PanelModelBinding._update_item_row_data(owner, 0, replace(rows[0], hda_name="New"))
     assert all(proxy.rowCount() == 1 for proxy in proxies)
 
 
 def test_multi_delete_keeps_ids_after_proxy_reorders(app: Any, tmp_path: Path) -> None:
     import public
     from model.ihda_list_model import ListModel
-    from widgets.panel.asset_management import AssetManagementMixin
+    from widgets.panel.asset_management import PanelAssetManagement
 
     rows = [
-        {
-            public.Key.hda_id: key,
-            public.Key.hda_name: name,
-            public.Key.hda_dirpath: tmp_path,
-            public.Key.hda_cate: "sop",
-        }
+        decode_record(
+            AssetData,
+            {
+                public.Key.hda_id: key,
+                public.Key.hda_name: name,
+                public.Key.hda_dirpath: tmp_path,
+                public.Key.hda_cate: "sop",
+            },
+        )
         for key, name in [(1, "Zulu"), (2, "Alpha"), (3, "Beta")]
     ]
     source = ListModel(items=rows)
@@ -313,34 +326,38 @@ def test_multi_delete_keeps_ids_after_proxy_reorders(app: Any, tmp_path: Path) -
     def remove(**values: Any) -> None:
         deleted.append(values["hda_id"])
         current_row = next(
-            row
-            for row, item in enumerate(rows)
-            if item[public.Key.hda_id] == values["hda_id"]
+            row for row, item in enumerate(rows) if item.hda_id == values["hda_id"]
         )
         source.remove_item(current_row)
 
     owner = SimpleNamespace(
-        _assets=SimpleNamespace(
-            id_rows={item[public.Key.hda_id]: row for row, item in enumerate(rows)}
+        bindings=SimpleNamespace(
+            team=lambda: None,
+            video_player=SimpleNamespace(player_stop=lambda: None),
+            presentation=SimpleNamespace(_is_icon_mode=True),
+            models=SimpleNamespace(
+                assets=SimpleNamespace(
+                    id_rows={item.hda_id: row for row, item in enumerate(rows)}
+                ),
+                history_model=SimpleNamespace(
+                    get_hist_data_by_hkey_id_from_model=lambda **kw: []
+                ),
+                record_proxy_model=SimpleNamespace(get_row_count=lambda: 0),
+            ),
+            selection=SimpleNamespace(
+                _initialize_current_attribs=lambda: None,
+                _initialize_hist_current_attribs=lambda: None,
+            ),
+            notes=SimpleNamespace(
+                _clear_parms=lambda: None, _clear_hist_parms=lambda: None
+            ),
+            ui=SimpleNamespace(
+                label__loc_record_count=SimpleNamespace(setText=lambda text: None)
+            ),
         ),
-        _db_filepath=tmp_path / "unused.db",
-        _db_api_wrap=lambda path: object(),
-        _video_player=SimpleNamespace(player_stop=lambda: None),
-        _is_icon_mode=True,
-        _get_hda_id_row_map=lambda: {
-            item[public.Key.hda_id]: row for row, item in enumerate(rows)
-        },
+        _get_hda_id_row_map=lambda: {item.hda_id: row for row, item in enumerate(rows)},
         _delete_ihda_item=remove,
-        _ihda_history_model=SimpleNamespace(
-            get_hist_data_by_hkey_id_from_model=lambda **kw: []
-        ),
-        _initialize_current_attribs=lambda: None,
-        _initialize_hist_current_attribs=lambda: None,
-        _clear_parms=lambda: None,
-        _clear_hist_parms=lambda: None,
-        label__loc_record_count=SimpleNamespace(setText=lambda text: None),
-        _ihda_record_proxy_model=SimpleNamespace(get_row_count=lambda: 0),
     )
-    AssetManagementMixin._remove_hda_item(owner, selected)
+    PanelAssetManagement._remove_hda_item(owner, selected)
     assert deleted == [2, 1]
-    assert [item[public.Key.hda_id] for item in rows] == [3]
+    assert [item.hda_id for item in rows] == [3]

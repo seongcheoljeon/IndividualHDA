@@ -14,14 +14,16 @@ def upgrade(engine: Engine) -> None:
         installed = connection.execute(
             select(tables.versions.c.version).with_for_update()
         ).scalar_one()
+        if installed == 3:
+            return
         if installed == 2:
+            from ihda_server.tracking import install
+
+            install(connection)
+            connection.execute(update(tables.versions).values(version=3))
             return
         if installed != 1:
             raise RuntimeError(f"Unsupported schema {installed}")
-        if connection.dialect.name == "postgresql":
-            connection.exec_driver_sql(
-                "LOCK TABLE team_schema IN ACCESS EXCLUSIVE MODE"
-            )
         tables.metadata.create_all(connection)
         for row in connection.execute(select(tables.assets)).mappings().all():
             document = deepcopy(row["document"])
@@ -91,4 +93,7 @@ def upgrade(engine: Engine) -> None:
                 .where(tables.assets.c.id == row["id"])
                 .values(document=document)
             )
-        connection.execute(update(tables.versions).values(version=2))
+        from ihda_server.tracking import install
+
+        install(connection)
+        connection.execute(update(tables.versions).values(version=3))

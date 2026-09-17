@@ -1,5 +1,10 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from main import IndividualHDA
+
 import copy
 
 # author:           seongcheol jeon
@@ -10,26 +15,26 @@ import copy
 import os
 from typing import Any
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore
 
-import public
+from libs import host, keys, paths
 from libs.houdini_api import HoudiniAPI
 from libs.qt_helpers import center_on_screen, dark_stylesheet
 from libs.settings_store import apply_settings, load_json, save_json
 
 
 class UISettings:
-    def __init__(self, window: QtWidgets.QWidget | None = None) -> None:
+    def __init__(self, window: IndividualHDA) -> None:
         self.__window = window
         self.__setting_ini = QtCore.QSettings(
-            public.Paths.ini_filepath.as_posix(), QtCore.QSettings.Format.IniFormat
+            paths.Paths.ini_filepath.as_posix(), QtCore.QSettings.Format.IniFormat
         )
-        self.__setting_json = public.Paths.json_filepath
+        self.__setting_json = paths.Paths.json_filepath
         self.__zoom_val = 1.0
-        self.__cfg_dict = {}
+        self.__cfg_dict: dict[str, Any] = {}
 
     @property
-    def zoom_val(self) -> int:
+    def zoom_val(self) -> float:
         return self.__zoom_val
 
     @zoom_val.setter
@@ -38,18 +43,18 @@ class UISettings:
 
     @property
     def get_theme(self) -> str:
-        is_default = self.__cfg_dict.get(public.Name.chk_action_default)
+        is_default = self.__cfg_dict.get(keys.Name.chk_action_default)
         if is_default is None:
-            return public.Name.default_theme
+            return keys.Name.default_theme
         if is_default:
-            return public.Name.default_theme
-        return public.Name.darkblue_theme
+            return keys.Name.default_theme
+        return keys.Name.darkblue_theme
 
     def set_theme(self, theme: str = "Default") -> None:
-        if theme == public.Name.default_theme:
+        if theme == keys.Name.default_theme:
             self.__window.actionDefault.setChecked(True)
             self.__window.actionDark_blue.setChecked(False)
-            if public.IS_HOUDINI:
+            if host.IS_HOUDINI:
                 self.__window.setProperty("houdiniStyle", True)
                 add_style = """
 QToolButton:pressed {
@@ -93,103 +98,103 @@ QMenuBar {
 
     def save_cfg_dict_to_file(self) -> None:
         # checkbox
-        self.__cfg_dict[public.Name.chk_casesensitive_hda] = (
+        self.__cfg_dict[keys.Name.chk_casesensitive_hda] = (
             self.__window.checkBox__casesensitive_hda.isChecked()
         )
-        self.__cfg_dict[public.Name.chk_casesensitive_cate] = (
+        self.__cfg_dict[keys.Name.chk_casesensitive_cate] = (
             self.__window.checkBox__casesensitive_cate.isChecked()
         )
-        self.__cfg_dict[public.Name.chk_unpack_subnet] = (
+        self.__cfg_dict[keys.Name.chk_unpack_subnet] = (
             self.__window.actionUnpack_Subnet.isChecked()
         )
-        self.__cfg_dict[public.Name.chk_auto_rename] = (
+        self.__cfg_dict[keys.Name.chk_auto_rename] = (
             self.__window.actionAutomatic_Name_Change.isChecked()
         )
         # network sync와 node sync는 항상 False가 저장되도록 변경
-        # self.__cfg_dict[public.Name.chk_sync_network_cate] = self.__window.actionCategory_Synchronization.isChecked()
-        # self.__cfg_dict[public.Name.chk_sync_node] = self.__window.actionNode_Synchronization.isChecked()
-        self.__cfg_dict[public.Name.chk_sync_network_cate] = False
-        self.__cfg_dict[public.Name.chk_sync_node] = False
+        # self.__cfg_dict[keys.Name.chk_sync_network_cate] = self.__window.actionCategory_Synchronization.isChecked()
+        # self.__cfg_dict[keys.Name.chk_sync_node] = self.__window.actionNode_Synchronization.isChecked()
+        self.__cfg_dict[keys.Name.chk_sync_network_cate] = False
+        self.__cfg_dict[keys.Name.chk_sync_node] = False
         #
-        self.__cfg_dict[public.Name.chk_note_to_sticky] = (
+        self.__cfg_dict[keys.Name.chk_note_to_sticky] = (
             self.__window.actionSticky_Note.isChecked()
         )
-        self.__cfg_dict[public.Name.chk_action_default] = (
+        self.__cfg_dict[keys.Name.chk_action_default] = (
             self.__window.actionDefault.isChecked()
         )
-        self.__cfg_dict[public.Name.chk_action_darkblue] = (
+        self.__cfg_dict[keys.Name.chk_action_darkblue] = (
             self.__window.actionDark_blue.isChecked()
         )
-        self.__cfg_dict[public.Name.chk_action_comment] = (
+        self.__cfg_dict[keys.Name.chk_action_comment] = (
             self.__window.actionComment.isChecked()
         )
-        self.__cfg_dict[public.Name.chk_action_null] = (
+        self.__cfg_dict[keys.Name.chk_action_null] = (
             self.__window.actionNull.isChecked()
         )
-        self.__cfg_dict[public.Name.chk_action_input] = (
+        self.__cfg_dict[keys.Name.chk_action_input] = (
             self.__window.actionInput.isChecked()
         )
-        self.__cfg_dict[public.Name.chk_action_output] = (
+        self.__cfg_dict[keys.Name.chk_action_output] = (
             self.__window.actionOuput.isChecked()
         )
-        self.__cfg_dict[public.Name.chk_action_both] = (
+        self.__cfg_dict[keys.Name.chk_action_both] = (
             self.__window.actionBoth.isChecked()
         )
         # button
-        self.__cfg_dict[public.Name.btn_icon_mode] = (
+        self.__cfg_dict[keys.Name.btn_icon_mode] = (
             self.__window.pushButton__icon_mode.isChecked()
         )
-        self.__cfg_dict[public.Name.btn_table_mode] = (
+        self.__cfg_dict[keys.Name.btn_table_mode] = (
             self.__window.pushButton__table_mode.isChecked()
         )
-        self.__cfg_dict[public.Name.btn_hda_info] = (
+        self.__cfg_dict[keys.Name.btn_hda_info] = (
             self.__window.pushButton__hda_info.isChecked()
         )
-        self.__cfg_dict[public.Name.btn_hda_loc_record] = (
+        self.__cfg_dict[keys.Name.btn_hda_loc_record] = (
             self.__window.pushButton__hda_loc_record.isChecked()
         )
-        self.__cfg_dict[public.Name.btn_hda_inside_node] = (
+        self.__cfg_dict[keys.Name.btn_hda_inside_node] = (
             self.__window.pushButton__hda_inside_node_view.isChecked()
         )
-        self.__cfg_dict[public.Name.btn_show_thumbnail] = (
+        self.__cfg_dict[keys.Name.btn_show_thumbnail] = (
             self.__window.pushButton__thumbnail.isChecked()
         )
         # record checkbox
-        self.__cfg_dict[public.Name.chk_record_only_curt_hipfile] = (
+        self.__cfg_dict[keys.Name.chk_record_only_curt_hipfile] = (
             self.__window.checkBox__record_only_current_hipfile.isChecked()
         )
-        self.__cfg_dict[public.Name.chk_record_only_curt_ihda] = (
+        self.__cfg_dict[keys.Name.chk_record_only_curt_ihda] = (
             self.__window.checkBox__record_only_current_ihda.isChecked()
         )
         # inside checkbox
-        self.__cfg_dict[public.Name.chk_inside_connect_to_view] = (
+        self.__cfg_dict[keys.Name.chk_inside_connect_to_view] = (
             self.__window.checkBox__hda_inside_connect_to_view.isChecked()
         )
         # combobox
-        self.__cfg_dict[public.Name.cmb_search_type] = (
+        self.__cfg_dict[keys.Name.cmb_search_type] = (
             self.__window.comboBox__search_type.currentIndex()
         )
         # zoom value
-        self.__cfg_dict[public.Name.zoom_value] = self.__zoom_val
+        self.__cfg_dict[keys.Name.zoom_value] = self.__zoom_val
         # spinbox
-        self.__cfg_dict[public.Name.spinbox_zoom] = (
+        self.__cfg_dict[keys.Name.spinbox_zoom] = (
             self.__window.doubleSpinBox__zoom.value()
         )
         # stacked widget whole
-        self.__cfg_dict[public.Name.stacked_widget_whole] = (
+        self.__cfg_dict[keys.Name.stacked_widget_whole] = (
             self.__window.stackedWidget__whole.currentIndex()
         )
 
-        if not public.Paths.config_dirpath.exists():
-            os.makedirs(public.Paths.config_dirpath.as_posix())
+        if not paths.Paths.config_dirpath.exists():
+            os.makedirs(paths.Paths.config_dirpath.as_posix())
         save_json(self.__setting_json, self.__cfg_dict)
 
     def save_main_window_geometry(self) -> None:
         self.__setting_ini.setValue(
-            public.Name.main_window_geometry, self.__window.saveGeometry()
+            keys.Name.main_window_geometry, self.__window.saveGeometry()
         )
         self.__setting_ini.setValue(
-            public.Name.main_window_state, self.__window.saveState()
+            keys.Name.main_window_state, self.__window.saveState()
         )
 
     def save_splitter_status(self) -> None:
@@ -207,34 +212,32 @@ QMenuBar {
         )
         #
         if whole_horizon:
-            self.__setting_ini.setValue(public.Name.whole_horizontal, whole_horizon)
+            self.__setting_ini.setValue(keys.Name.whole_horizontal, whole_horizon)
         if whole_vertical:
-            self.__setting_ini.setValue(public.Name.whole_vertical, whole_vertical)
+            self.__setting_ini.setValue(keys.Name.whole_vertical, whole_vertical)
         if hda_info_vertical:
-            self.__setting_ini.setValue(
-                public.Name.hda_info_vertical, hda_info_vertical
-            )
+            self.__setting_ini.setValue(keys.Name.hda_info_vertical, hda_info_vertical)
         #
         if hda_info_whole_vertical:
             self.__setting_ini.setValue(
-                public.Name.hda_info_whole_vertical, hda_info_whole_vertical
+                keys.Name.hda_info_whole_vertical, hda_info_whole_vertical
             )
         if ihda_whole_vertical:
             self.__setting_ini.setValue(
-                public.Name.ihda_whole_vertical, ihda_whole_vertical
+                keys.Name.ihda_whole_vertical, ihda_whole_vertical
             )
         if cate_whole_vertical:
             self.__setting_ini.setValue(
-                public.Name.cate_whole_vertical, cate_whole_vertical
+                keys.Name.cate_whole_vertical, cate_whole_vertical
             )
         if ihda_hist_whole_vertical:
             self.__setting_ini.setValue(
-                public.Name.ihda_hist_whole_vertical, ihda_hist_whole_vertical
+                keys.Name.ihda_hist_whole_vertical, ihda_hist_whole_vertical
             )
 
     def load_main_window_geometry(self) -> None:
-        main_window_geo = self.__setting_ini.value(public.Name.main_window_geometry)
-        main_window_ste = self.__setting_ini.value(public.Name.main_window_state)
+        main_window_geo = self.__setting_ini.value(keys.Name.main_window_geometry)
+        main_window_ste = self.__setting_ini.value(keys.Name.main_window_state)
         if main_window_geo:
             self.__window.restoreGeometry(main_window_geo)
         else:
@@ -243,17 +246,17 @@ QMenuBar {
             self.__window.restoreState(main_window_ste)
 
     def load_splitter_status(self) -> None:
-        whole_horizon = self.__setting_ini.value(public.Name.whole_horizontal)
-        whole_vertical = self.__setting_ini.value(public.Name.whole_vertical)
-        hda_info_vertical = self.__setting_ini.value(public.Name.hda_info_vertical)
+        whole_horizon = self.__setting_ini.value(keys.Name.whole_horizontal)
+        whole_vertical = self.__setting_ini.value(keys.Name.whole_vertical)
+        hda_info_vertical = self.__setting_ini.value(keys.Name.hda_info_vertical)
         #
         hda_info_whole_vertical = self.__setting_ini.value(
-            public.Name.hda_info_whole_vertical
+            keys.Name.hda_info_whole_vertical
         )
-        ihda_whole_vertical = self.__setting_ini.value(public.Name.ihda_whole_vertical)
-        cate_whole_vertical = self.__setting_ini.value(public.Name.cate_whole_vertical)
+        ihda_whole_vertical = self.__setting_ini.value(keys.Name.ihda_whole_vertical)
+        cate_whole_vertical = self.__setting_ini.value(keys.Name.cate_whole_vertical)
         ihda_hist_whole_vertical = self.__setting_ini.value(
-            public.Name.ihda_hist_whole_vertical
+            keys.Name.ihda_hist_whole_vertical
         )
         #
         if whole_horizon:
@@ -285,7 +288,7 @@ QMenuBar {
         if not self.__cfg_dict:
             return
         w = self.__window
-        names = public.Name
+        names = keys.Name
 
         def zoom(value: Any) -> None:
             self.__zoom_val = float(value)

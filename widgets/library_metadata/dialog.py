@@ -8,6 +8,7 @@ from typing import Any
 from PySide6 import QtCore, QtWidgets
 
 from libs.library_management import ManagementGateway
+from libs.resource_policy import CallbackPolicy
 from libs.task_controller import TaskController
 
 
@@ -22,9 +23,11 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
         asset_id: int | None = None,
         writable: bool = True,
         owner: bool = True,
+        callbacks: CallbackPolicy = CallbackPolicy(),
     ) -> None:
         super().__init__(parent)
         self.gateway, self.asset_id, self.writable = gateway, asset_id, writable
+        self.callbacks = callbacks
         self.setWindowTitle("Trash" if asset_id is None else "Version details")
         self.resize(720, 480)
         self._tasks = TaskController(self)
@@ -88,6 +91,15 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
         self.tabWidget__details.addTab(self.textEdit__activity, "Activity and files")
         layout.addWidget(self.tableWidget__items)
         layout.addWidget(self.comboBox__version)
+        from widgets.library_metadata.tracking import TrackingDetails
+
+        self._tracking = TrackingDetails(writable, self)
+        self._tracking_index = self.tabWidget__details.addTab(
+            self._tracking, "Verification and usage"
+        )
+        self._tracking.check_requested.connect(self._record_check)
+        self._tracking.page_requested.connect(self._tracking_page)
+        self._asset_uuid = ""
         layout.addWidget(self.tabWidget__details)
         buttons = QtWidgets.QHBoxLayout()
         self.pushButton__restore = QtWidgets.QPushButton("Restore")
@@ -173,6 +185,13 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
                     )
         else:
             self._items = result["versions"]
+            self._asset_uuid = result.get("asset_uuid", "")
+            tracking = result.get("tracking")
+            self.tabWidget__details.setTabVisible(
+                self._tracking_index, tracking is not None
+            )
+            for kind, rows in (tracking or {}).items():
+                self._tracking.show_page(kind, rows)
             self.comboBox__version.blockSignals(True)
             self.comboBox__version.clear()
             self.comboBox__version.addItems([item["version"] for item in self._items])
@@ -232,6 +251,10 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
 
     def _version(self, index: int) -> None:
         self.tableWidget__dependencies.setRowCount(0)
+        item = self._items[index] if 0 <= index < len(self._items) else {}
+        self._tracking.select_version(
+            item.get("version_uuid") or item.get("document", {}).get("version_uuid")
+        )
         self.textEdit__description.clear()
         if 0 <= index < len(self._items):
             document = self._items[index]["document"]
@@ -303,17 +326,32 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
         if not 0 <= row < len(self._items):
             return
         item = self._items[row]
-        if (
-            operation == "purge"
-            and QtWidgets.QMessageBox.question(
-                self,
-                "Delete permanently",
-                f"Permanently delete {item['name']} ({item.get('version', 'all versions')})? This cannot be restored from Trash.",
-            )
-            != QtWidgets.QMessageBox.StandardButton.Yes
-        ):
+        if operation != "purge":
+            self._run(lambda: self.gateway.change(item, operation), self._saved)
             return
-        self._run(lambda: self.gateway.change(item, operation), self._saved)
+        from widgets.library_metadata.dependency_warning import dependency_message
+
+        def confirm(rows: list[dict[str, Any]]) -> None:
+            def apply() -> None:
+                if self._closing:
+                    return
+                if self._tasks.busy:
+                    QtCore.QTimer.singleShot(self.callbacks.retry_delay_ms, apply)
+                    return
+                if (
+                    QtWidgets.QMessageBox.question(
+                        self,
+                        "Delete permanently",
+                        f"Permanently delete {item['name']} ({item.get('version', 'all versions')})? This cannot be restored from Trash."
+                        + dependency_message(rows),
+                    )
+                    == QtWidgets.QMessageBox.StandardButton.Yes
+                ):
+                    self._run(lambda: self.gateway.change(item, operation), self._saved)
+
+            QtCore.QTimer.singleShot(0, apply)
+
+        self._run(lambda: self.gateway.dependents(item), confirm)
 
     def _saved(self, result: Any) -> None:
         self.changed.emit()
@@ -343,3 +381,20 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
             return
         self._tasks.drain()
         super().closeEvent(event)
+
+    def _record_check(self, body: dict[str, Any]) -> None:
+        asset_id = self.asset_id
+        if asset_id is None:
+            return
+
+        def recorded(result: Any) -> None:
+            self._tracking.pending = None
+            self._saved(result)
+
+        self._run(lambda: self.gateway.record_check(asset_id, body), recorded)
+
+    def _tracking_page(self, kind: str, offset: int) -> None:
+        self._run(
+            lambda: self.gateway.tracking_read(kind, self._asset_uuid, offset),
+            lambda rows: self._tracking.show_page(kind, rows, True),
+        )

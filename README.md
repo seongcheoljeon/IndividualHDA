@@ -63,6 +63,11 @@ For video features, select the FFmpeg installation or its `bin` directory. Both 
 
 Settings are stored under `$HOUDINI_USER_PREF_DIR/IndividualHDA/.config`. Set `IHDA_CONFIG_DIR` to override that location.
 
+**Preferences → Performance and connections** adjusts search delays, refresh, team
+request timeout/page size, Explorer pages and node batches. Save and reopen the
+panel to apply changes. See [runtime settings](docs/RUNTIME_SETTINGS.md) for defaults,
+ranges and compatibility.
+
 Assets are registered under your OS login name. Set `IHDA_USER` to use a pipeline-assigned name instead. An existing local library keeps the single user it already has, so older libraries created as `anonymous` open unchanged.
 
 ## Use
@@ -118,11 +123,25 @@ the answer so you can see what the model returned.
 
 ## Data safety
 
-The database uses SQLite schema v5 with foreign keys, validation checks, normalized tags, indexes, and transactional migrations. Existing databases are backed up before an upgrade.
+The database uses SQLite schema v6 with foreign keys, validation checks, normalized tags, indexes, and transactional migrations. Existing databases are backed up before an upgrade.
 
 File operations use a persistent journal. Imports, renames, deletions, path repairs, and restores can be recovered after an interrupted operation. Recovery copies are retained until you remove them through **Library Tools**.
 
-Local mode is designed for a single writer. Several panels on the same machine may open one library; changes made elsewhere appear within about ten seconds or on Reload. Network filesystems and simultaneous writers from multiple machines are not supported in local mode; a server mode is planned for shared studios.
+Local mode is designed for a single writer. Several panels on the same machine may open one library; changes made elsewhere appear within about ten seconds or on Reload. Network filesystems and simultaneous writers from multiple machines are not supported in local mode; Team mode uses FastAPI/PostgreSQL for shared studios.
+
+### Version tracking and registration recovery
+
+**Library Tools → Version details** includes manual compatibility reports,
+dependencies and scene usage. Reports describe only the environment and operation
+you checked; Houdini is never executed automatically. Team scene paths and node
+locations are shared with project members. Imports queue observations locally when
+the server is unavailable; **Retry scene reporting** resends them.
+
+**Pending registrations** resumes completed captures/publication or interrupted
+Team uploads using the original request. Incomplete Houdini captures need recapture.
+Discard only removes files whose ownership can be established. Submitted Team
+commands must be retried before cleanup. Server schema v3 requires the administrator's
+explicit migration; API v2 is retained and older servers hide the new tracking tab.
 
 ## Development
 
@@ -131,11 +150,13 @@ Use a separate environment; do not install development dependencies into Houdini
 ```sh
 python -m venv .venv
 python -m pip install -r requirements-dev.txt
-python -m pytest -q --cov=libs --cov=model --cov=widgets --cov-fail-under=60
-python -m ruff check .
-python -m ruff format --check .
-python -m mypy
+python -m tools.dev_app
+python -m tools.check lint
+python -m tools.check all --coverage
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for a Houdini-free sample panel, minimal
+core/server environments, feature boundaries and PostgreSQL verification.
 
 Optional: `pip install pre-commit && pre-commit install` runs the same lint and
 format checks before each commit. All UI layouts are maintained Python code;
@@ -165,6 +186,6 @@ MIT License. Copyright (c) 2020 Seongcheol Jeon. Third-party notices are in [`TH
 
 `Library Tools → Trash…` restores deleted assets/versions; files remain until explicit permanent
 cleanup. `Version details…` edits version descriptions and dependencies. Favorites and successful
-import counts are per user. Existing personal libraries upgrade to SQLite schema 5 with a backup.
+import counts are per user. Existing personal libraries upgrade to SQLite schema 6 with a backup.
 Existing team servers require a coordinated app/server upgrade and the explicit `upgrade-db`
 command; see [migration and file maintenance](docs/TEAM_LIBRARY.md#데이터-기반-v2-업그레이드).

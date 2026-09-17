@@ -1,68 +1,115 @@
 """Houdini actions on the panel GUI thread.
 
-Uses the shared panel protected state; no independent QObject ownership.
+Explicit bindings connect this feature to its view and collaborators.
 """
 
 from __future__ import annotations
 
 import logging
 import pathlib
+from dataclasses import replace
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore, QtWidgets
 
-import public
-from libs import houdini_api, log_handler, sqlite3_db_api
-from libs.drag_payload import decode_payload
+from libs import host, houdini_api, keys, log_handler, platform_info
+from libs.asset_contracts import AssetData, HistoryData
+from libs.drag_payload import DragRecord, decode_drag_record
+from libs.record_codec import decode_record
+from libs.repository import LibraryError
+from libs.scene_contracts import SceneRecord, SceneRecordInput
 
 if TYPE_CHECKING:
     import hou
 
 
-class HoudiniActionsMixin:
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from widgets.panel.asset_management import PanelAssetManagement
+    from widgets.panel.host_callbacks import PanelHostCallbacks
+    from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.library_queries import PanelLibraryQueries
+    from widgets.panel.model_binding import PanelModelBinding
+    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.scene_usage import SceneUsageIntegration
+    from widgets.panel.selection import PanelSelection
+    from widgets.panel.services import PanelServices
+    from widgets.panel.state import PanelSessionState
+    from widgets.team_library.integration import MainLibraryIntegration
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ImportedNode:
+    node: hou.Node
+    version_uuid: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class PanelHoudiniActionsBindings:
+    callbacks: PanelHostCallbacks
+    management: PanelAssetManagement
+    models: PanelModelBinding
+    parent: QtWidgets.QWidget
+    presentation: PanelPresentation
+    queries: PanelLibraryQueries
+    scene_usage: Callable[[], SceneUsageIntegration]
+    selection: PanelSelection
+    services: PanelServices
+    session: PanelSessionState
+    team: Callable[[], MainLibraryIntegration]
+    ui: MainWindowLayout
+
+
+class PanelHoudiniActions:
+    bindings: PanelHoudiniActionsBindings
+
     @QtCore.Slot(object)
     def _slot_mouse_move_event_on_houdini(self, drop_data: Any) -> None:
         # [[id, name, category, filename, dirpath, icon_lst, tag_lst], [...], ...]
-        team = getattr(self, "_team_library", None)
+        if not self.bindings.services.host_actions_enabled:
+            return
+        team = self.bindings.team()
         if team is not None and team.active:
             team.actions.import_drop(drop_data)
             return
-        if not public.IS_HOUDINI:
+        if not host.IS_HOUDINI:
             log_handler.LogHandler.log_msg(
                 method=logging.warning, msg="please drag from houdini"
             )
-            self._dragdrop_overlay_close()
+            self.bindings.presentation._dragdrop_overlay_close()
             return
         drop_action, model_data_lst = drop_data
         assert isinstance(model_data_lst, list)
         if drop_action != QtCore.Qt.DropAction.IgnoreAction:
-            self._dragdrop_overlay_close()
+            self.bindings.presentation._dragdrop_overlay_close()
             return
         network_editor = houdini_api.HoudiniAPI.find_network_editor_by_cursor()
         if network_editor is None:
             log_handler.LogHandler.log_msg(
                 method=logging.error, msg="houdini network not found"
             )
-            self._dragdrop_overlay_close()
+            self.bindings.presentation._dragdrop_overlay_close()
             return
         total_node_cnt = len(model_data_lst)
         if not total_node_cnt:
             log_handler.LogHandler.log_msg(
                 method=logging.error, msg="imported iHDA data is empty"
             )
-            self._dragdrop_overlay_close()
+            self.bindings.presentation._dragdrop_overlay_close()
             return
-        # 노드 개수가 30개를 초과하면 종료
-        if total_node_cnt > self._MAX_NUM_OF_NODE_REGIST:
-            msgbox = QtWidgets.QMessageBox(self)
-            msgbox.setFont(self._get_default_font())
+        if total_node_cnt > self.bindings.services.policy.maximum_node_batch:
+            msgbox = QtWidgets.QMessageBox(self.bindings.parent)
+            msgbox.setFont(self.bindings.presentation._get_default_font())
             msgbox.setWindowTitle("Import iHDA Node")
             msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setText("Too many nodes to import")
             msgbox.setDetailedText(
                 f"""
-            Please bring no more than {self._MAX_NUM_OF_NODE_REGIST} items.
+            Please bring no more than {self.bindings.services.policy.maximum_node_batch} items.
             Total Nodes: {total_node_cnt}
             """
             )
@@ -70,15 +117,14 @@ class HoudiniActionsMixin:
             msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
             _ = msgbox.exec()
             return
-        # 만약 등록하려는 노드 개수가 10개를 초과하면 등록할 것인지 메시지박스를 띄운다.
-        if total_node_cnt > public.Value.warning_num_of_node_regist:
-            msgbox = QtWidgets.QMessageBox(self)
-            msgbox.setFont(self._get_default_font())
+        if total_node_cnt > self.bindings.services.policy.warn_node_batch:
+            msgbox = QtWidgets.QMessageBox(self.bindings.parent)
+            msgbox.setFont(self.bindings.presentation._get_default_font())
             msgbox.setWindowTitle("Import iHDA Node")
             msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setText(
                 f"""
-            The number of iHDA nodes you are trying to import exceeds {public.Value.warning_num_of_node_regist}.
+            The number of iHDA nodes you are trying to import exceeds {self.bindings.services.policy.warn_node_batch}.
             Should I bring it though?
 
             NOTE: Registering a large number of nodes at a time may make the Houdini appear to be stationary.
@@ -96,7 +142,7 @@ class HoudiniActionsMixin:
                 log_handler.LogHandler.log_msg(
                     method=logging.info, msg="importing iHDA nodes was canceled"
                 )
-                self._dragdrop_overlay_close()
+                self.bindings.presentation._dragdrop_overlay_close()
                 return
         # 기존에 선택된 노드가 존재한다면 모두 선택 해제
         old_selected_nodes = houdini_api.HoudiniAPI.get_selected_nodes()
@@ -108,7 +154,7 @@ class HoudiniActionsMixin:
         cursor_pos = houdini_api.HoudiniAPI.get_cursor_pos(
             network_editor=network_editor
         )
-        self._wrapper_execute_deferred(
+        self.bindings.callbacks._wrapper_execute_deferred(
             lambda: self._create_ihda_node_in_houdini(
                 model_data_lst=model_data_lst,
                 network_editor=network_editor,
@@ -126,71 +172,73 @@ class HoudiniActionsMixin:
         offset_pos: Any = None,
         total_node_cnt: int | None = None,
     ) -> None:
-        db_api = self._db_api_wrap(self._db_filepath)
-        if db_api is None:
+        if network_editor is None:
+            return
+        repository = self.bindings.session.repository
+        if repository is None:
             return
         num_count = 0
-        for node_cnt, model_data in enumerate(model_data_lst):
-            model_data = decode_payload(model_data)
+        for node_cnt, encoded_data in enumerate(model_data_lst):
+            model_data = decode_drag_record(encoded_data)
             # record data 인지 확인하는 변수
-            is_record_data = model_data.get(public.Key.Record.record_id)
-            # 만약 히스토리에서 드래그&드롭 하는 것이라면
-            if self._is_ihda_history_view:
-                hda_cate = model_data.get(public.Key.History.node_category)
-                hda_id = model_data.get(public.Key.History.hda_id)
-                hda_name = model_data.get(public.Key.History.org_hda_name)
-                hda_ver = model_data.get(public.Key.History.version)
-                hda_dirpath = model_data.get(public.Key.History.ihda_dirpath)
-                hda_filename = model_data.get(public.Key.History.ihda_filename)
-                hda_license = model_data.get(public.Key.History.hda_license)
-                hda_note = db_api.get_hda_note_history_most_recent_by_ver(
-                    hda_key_id=hda_id, version=hda_ver
+            if isinstance(model_data, SceneRecord):
+                record = self.bindings.session.require_repository().record_detail(
+                    model_data.record_id
                 )
-                item_row = model_data.get(public.Key.History.item_row)
+                if record:
+                    model_data = replace(model_data, version_uuid=record.version_uuid)
+            # 만약 히스토리에서 드래그&드롭 하는 것이라면
+            if isinstance(model_data, HistoryData):
+                hda_cate = model_data.node_category
+                hda_id = model_data.hda_id
+                hda_name = model_data.org_hda_name
+                hda_ver = model_data.version
+                hda_dirpath = model_data.ihda_dirpath
+                hda_filename = model_data.ihda_filename
+                hda_license: str | None = model_data.hda_license
+                hda_note = repository.import_note(hda_id, hda_ver)
+                item_row = model_data.item_row
             else:
                 # record data가 아니라면
-                if is_record_data is None:
-                    hda_cate = model_data.get(public.Key.hda_cate)
-                    hda_id = model_data.get(public.Key.hda_id)
-                    hda_name = model_data.get(public.Key.hda_name)
-                    hda_ver = model_data.get(public.Key.hda_version)
-                    hda_dirpath = model_data.get(public.Key.hda_dirpath)
-                    hda_filename = model_data.get(public.Key.hda_filename)
-                    hda_license = model_data.get(public.Key.hda_license)
-                    hda_note = db_api.get_note_info(hda_key_id=hda_id)
-                    item_row = model_data.get(public.Key.item_row)
+                if isinstance(model_data, AssetData):
+                    hda_cate = model_data.hda_cate
+                    hda_id = model_data.hda_id
+                    hda_name = model_data.hda_name
+                    hda_ver = model_data.hda_version
+                    hda_dirpath = model_data.hda_dirpath
+                    hda_filename = model_data.hda_filename
+                    hda_license = model_data.hda_license
+                    hda_note = repository.import_note(hda_id)
+                    item_row = model_data.item_row
                 # record data라면
                 else:
-                    hda_cate = model_data.get(public.Key.Record.node_cate)
-                    hda_id = model_data.get(public.Key.Record.hda_id)
-                    hda_name = model_data.get(public.Key.Record.org_node_name)
-                    hda_ver = model_data.get(public.Key.Record.node_ver)
-                    hda_dirpath = model_data.get(public.Key.Record.hda_dirpath)
-                    hda_filename = model_data.get(public.Key.Record.hda_filename)
+                    hda_cate = model_data.node_cate
+                    hda_id = model_data.hda_id
+                    hda_name = model_data.node_name
+                    hda_ver = model_data.node_ver
+                    hda_dirpath = model_data.hda_dirpath
+                    hda_filename = model_data.hda_filename
                     # 라이센스는 hda data 의 것을 가져와야 함. 왜냐면, loc data의 라이센스는 ihda노드를 후디니로
                     # 내보낼때 그 당시의 후디니 라이센스이기 때문이다. 허나 hda 데이터나 hda history 데이터는
                     # 후디니 노드를 hda로 만들 때의 후디니 라이센스라서 hda도 논커머셜인지 커머셜인지 결정 됨.
-                    hda_license = db_api.get_hist_hda_license(
-                        hda_key_id=hda_id, version=hda_ver, user_id=self._user
+                    hda_license = repository.import_license(
+                        hda_id, hda_ver, self.bindings.session.user
                     )
-                    hda_note = db_api.get_hda_note_history_most_recent_by_ver(
-                        hda_key_id=hda_id, version=hda_ver
+                    hda_note = repository.import_note(hda_id, hda_ver)
+                    item_row = self.bindings.queries._get_ihda_data_by_id(
+                        hda_id=hda_id, key=keys.Key.item_row
                     )
-                    item_row = self._get_ihda_data_by_id(
-                        hda_id=hda_id, key=public.Key.item_row
-                    )
-            if not db_api.asset_available(
+            if not repository.asset_available(
                 hda_id,
-                model_data.get(public.Key.History.hist_id)
-                if self._is_ihda_history_view
-                else None,
+                model_data.hist_id if isinstance(model_data, HistoryData) else None,
             ):
-                self.show_command_error(
+                self.bindings.management.show_command_error(
                     "This asset or version is in Trash. Refresh the library."
                 )
                 continue
+            if not isinstance(hda_dirpath, pathlib.Path) or not hda_filename:
+                continue
             hda_filepath = hda_dirpath / hda_filename
-            assert isinstance(hda_dirpath, pathlib.Path)
             # DB에는 존재하지만 지정된 곳에 파일이 존재하지 않는다면
             if not hda_filepath.exists():
                 log_handler.LogHandler.log_msg(
@@ -199,20 +247,29 @@ class HoudiniActionsMixin:
                 )
                 continue
             # item의 row (model에서 셋팅해 놓았음)
-            if self._is_ihda_history_view:
-                self._selection.select_history(model_data, item_row)
+            if isinstance(model_data, HistoryData):
+                self.bindings.selection.state.select_history(model_data, item_row)
             else:
-                self._selection.select_asset(model_data, item_row)
+                self.bindings.selection.state.select_asset(
+                    (
+                        self.bindings.queries._get_ihda_data_by_id(hda_id=hda_id)
+                        if isinstance(model_data, SceneRecord)
+                        else model_data
+                    ),
+                    item_row,
+                )
             # 현재 Houdini 라이센스
             curt_houdini_license = houdini_api.HoudiniAPI.current_houdini_license()
             # 후디니는 commercial라이센스인데 iHDA는 아니라면
-            if not self._ihda_license_check(hda_license=hda_license):
+            if not self.bindings.management._ihda_license_check(
+                hda_license=hda_license
+            ):
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
                     msg=f'[{node_cnt + 1}/{total_node_cnt}] houdini license and "{hda_name} (v{hda_ver})" iHDA license are different',
                 )
-                msgbox = QtWidgets.QMessageBox(self)
-                msgbox.setFont(self._get_default_font())
+                msgbox = QtWidgets.QMessageBox(self.bindings.parent)
+                msgbox.setFont(self.bindings.presentation._get_default_font())
                 msgbox.setWindowTitle("Import iHDA Node")
                 msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
                 msgbox.setText(
@@ -239,7 +296,7 @@ class HoudiniActionsMixin:
                         msg=f'[{node_cnt + 1}/{total_node_cnt}] importing "{hda_name} (v{hda_ver})" iHDA nodes was canceled',
                     )
                     continue
-            if not self._is_valid_network_category(
+            if not self.bindings.callbacks._is_valid_network_category(
                 network_editor=network_editor, category=hda_cate, hda_name=hda_name
             ):
                 log_handler.LogHandler.log_msg(
@@ -247,47 +304,42 @@ class HoudiniActionsMixin:
                     msg=f'[{node_cnt + 1}/{total_node_cnt}] "{hda_name} (v{hda_ver})" iHDA node\'s category and current network category are different',
                 )
                 continue
-            node = self._import_hda_into_houdini(
+            imported = self._import_hda_into_houdini(
                 parent_node=network_editor.pwd(),
                 position=cursor_pos + (offset_pos * num_count),
                 data=model_data,
             )
-            if node is None:
+            if imported is None:
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
                     msg=f'[{node_cnt + 1}/{total_node_cnt}] failed to get "{hda_name} (v{hda_ver})" iHDA node',
                 )
                 continue
-            db_api.update_load_count(hda_key_id=hda_id)
+            node = imported.node
+            repository.record_use(hda_id)
             # 서브넷인 경우 unpack할 수 있기때문에 unpack 함수 위에 둬야 한다.
             pnode_path = node.parent().path()
-            node_type = houdini_api.HoudiniAPI.node_type_name(node)
-            node_cate = houdini_api.HoudiniAPI.node_category_type_name(node)
-            show_comments = self.actionComment.isChecked()
+            node_type = houdini_api.HoudiniAPI.node_type_name(node) or ""
+            node_cate = houdini_api.HoudiniAPI.node_category_type_name(node) or ""
+            show_comments = self.bindings.ui.actionComment.isChecked()
             self._hda_info_to_node_comment(
                 node=node,
                 hda_name=hda_name,
                 hda_ver=hda_ver,
                 hda_id=hda_id,
                 show_comments=show_comments,
-                is_unpack_subnet=self.actionUnpack_Subnet.isChecked(),
+                is_unpack_subnet=self.bindings.ui.actionUnpack_Subnet.isChecked(),
             )
             # node connections
-            info_id = db_api.get_hou_node_info_id(hda_key_id=hda_id)
-            node_input_connections = db_api.get_houdini_node_input_connect_info(
-                info_id=info_id
-            )
-            node_output_connections = db_api.get_houdini_node_output_connect_info(
-                info_id=info_id
-            )
+            connections = repository.node_connections(hda_id)
             self._set_node_connections(
                 node=node,
-                input_connectors=node_input_connections,
-                output_connectors=node_output_connections,
+                input_connectors=connections.inputs,
+                output_connectors=connections.outputs,
             )
             node.setSelected(True, clear_all_selected=False)
             if (
-                self.actionUnpack_Subnet.isChecked()
+                self.bindings.ui.actionUnpack_Subnet.isChecked()
                 and houdini_api.HoudiniAPI.is_subnet_nodetype(node)
             ):
                 self._extract_subnet(
@@ -306,10 +358,11 @@ class HoudiniActionsMixin:
             hip_dirpath = hip_filepath.parent
             hip_filename = hip_filepath.name
             hou_version = houdini_api.HoudiniAPI.current_houdini_version()
-            declare_os = public.platform_system()
+            declare_os = platform_info.platform_system()
             frinfo = houdini_api.HoudiniAPI.frame_info()
-            is_hda_node_loc_record = db_api.insert_hda_node_location_record(
+            usage = SceneRecordInput(
                 hda_key_id=hda_id,
+                version_uuid=imported.version_uuid,
                 hip_filename=hip_filename,
                 hip_dirpath=hip_dirpath,
                 hda_filename=hda_filename,
@@ -326,105 +379,47 @@ class HoudiniActionsMixin:
                 ef=frinfo[1],
                 fps=frinfo[2],
             )
-            if is_hda_node_loc_record is None:
-                log_handler.LogHandler.log_msg(
-                    method=logging.error,
-                    msg=f'[{node_cnt + 1}/{total_node_cnt}] cannot enter "{hda_name} (v{hda_ver})" iHDA node information',
-                )
-                self._dragdrop_overlay_close()
+            try:
+                last_hda_record_id = repository.record_scene_usage(usage)
+            except LibraryError:
+                logging.exception("Imported node, but scene usage could not be saved")
+                self.bindings.presentation._dragdrop_overlay_close()
                 return
-            last_hda_record_id = db_api.get_last_insert_id
-            val_datetime = datetime.today().strftime(public.Value.datetime_fmt_str)
-            record_data = [
-                last_hda_record_id,
-                hda_id,
-                hip_filename,
-                hip_dirpath,
-                hda_filename,
-                hda_dirpath,
-                pnode_path,
-                node_type,
-                node_cate,
-                hda_name,
-                hda_ver,
-                hou_version,
-                curt_houdini_license,
-                declare_os,
-                frinfo[0],
-                frinfo[1],
-                frinfo[2],
-                val_datetime,
-                val_datetime,
-            ]
+            val_datetime = datetime.today().strftime(keys.Value.datetime_fmt_str)
+            record_data = decode_record(
+                SceneRecord,
+                {
+                    "record_id": last_hda_record_id,
+                    "hda_id": hda_id,
+                    "hip_filename": hip_filename,
+                    "hip_dirpath": hip_dirpath,
+                    "hda_filename": hda_filename,
+                    "hda_dirpath": hda_dirpath,
+                    "parent_node_path": pnode_path,
+                    "node_type": node_type,
+                    "node_cate": node_cate,
+                    "node_name": hda_name,
+                    "node_ver": hda_ver,
+                    "houdini_version": hou_version,
+                    "houdini_license": curt_houdini_license,
+                    "operating_system": declare_os,
+                    "sf": frinfo[0],
+                    "ef": frinfo[1],
+                    "fps": frinfo[2],
+                    "ctime": val_datetime,
+                    "mtime": val_datetime,
+                },
+            )
             self._insert_hda_node_loc_record(record_data=record_data)
             log_handler.LogHandler.log_msg(
                 method=logging.debug,
                 msg=f'[{node_cnt + 1}/{total_node_cnt}] imported "{hda_name} (v{hda_ver})" iHDA node',
             )
             num_count += 1
-        self._dragdrop_overlay_close()
+        self.bindings.presentation._dragdrop_overlay_close()
 
-    def _insert_hda_node_loc_record(self, record_data: Any = None) -> None:
-        key_lst = sqlite3_db_api.SQLite3DatabaseAPI.hda_record_key_lst()
-        assert len(key_lst) == len(record_data)
-        rdata = dict(zip(key_lst, record_data, strict=False))
-        hip_dpath = rdata.get(public.Key.Record.hip_dirpath).as_posix()
-        hip_fname = rdata.get(public.Key.Record.hip_filename)
-        hda_dpath = rdata.get(public.Key.Record.hda_dirpath)
-        hda_fname = rdata.get(public.Key.Record.hda_filename)
-        pnode_path = rdata.get(public.Key.Record.parent_node_path)
-        node_name = rdata.get(public.Key.Record.node_name)
-        node_ver = rdata.get(public.Key.Record.node_ver)
-        node_type = rdata.get(public.Key.Record.node_type)
-        node_cate = rdata.get(public.Key.Record.node_cate)
-        record_id = rdata.get(public.Key.Record.record_id)
-        hda_id = rdata.get(public.Key.Record.hda_id)
-        hou_ver = rdata.get(public.Key.Record.houdini_version)
-        hou_lic = rdata.get(public.Key.Record.houdini_license)
-        curt_os = rdata.get(public.Key.Record.operating_system)
-        sf = rdata.get(public.Key.Record.sf)
-        ef = rdata.get(public.Key.Record.ef)
-        fps = rdata.get(public.Key.Record.fps)
-        ctime = rdata.get(public.Key.Record.ctime)
-        mtime = rdata.get(public.Key.Record.mtime)
-        # db_api 함수와 동일해야 한다. 그래서 노드 이름 변경함.
-        node_name_with_ver = f"{node_name} (v{node_ver})"
-        new_data = {
-            public.Type.root: {
-                hip_dpath: {
-                    hip_fname: {
-                        # 2차원 배열이라는 것에 주의
-                        pnode_path: [
-                            [
-                                record_id,
-                                hda_id,
-                                node_name_with_ver,
-                                node_type,
-                                node_cate,
-                                node_ver,
-                                ctime,
-                                mtime,
-                                pathlib.Path(hip_dpath),
-                                hip_fname,
-                                hda_dpath,
-                                hda_fname,
-                                hou_ver,
-                                hou_lic,
-                                curt_os,
-                                sf,
-                                ef,
-                                fps,
-                                node_name,
-                            ]
-                        ]
-                    }
-                }
-            }
-        }
-        self._add_record_item(data=new_data)
-        self.label__loc_record_count.setText(
-            str(self._ihda_record_proxy_model.get_row_count())
-        )
+    def _insert_hda_node_loc_record(self, record_data: SceneRecord) -> None:
+        self.bindings.models._add_record_item(data=record_data)
 
     @staticmethod
     def _hda_note_to_sticky_note(
@@ -446,9 +441,9 @@ class HoudiniActionsMixin:
         show_comments: bool = False,
         is_unpack_subnet: bool = False,
     ) -> None:
-        ihda_name_key = public.Key.Comment.ihda_name
-        ihda_ver_key = public.Key.Comment.ihda_version
-        ihda_id_key = public.Key.Comment.ihda_id
+        ihda_name_key = keys.Key.Comment.ihda_name
+        ihda_ver_key = keys.Key.Comment.ihda_version
+        ihda_id_key = keys.Key.Comment.ihda_id
         contents = f"{ihda_name_key}: {hda_name}\n{ihda_ver_key}: {hda_ver}\n{ihda_id_key}: {hda_id}"
         houdini_api.HoudiniAPI.set_node_comment(
             node=node,
@@ -461,42 +456,44 @@ class HoudiniActionsMixin:
         self,
         parent_node: hou.Node | None = None,
         position: hou.Vector2 | None = None,
-        data: Any = None,
-    ) -> hou.Node | None:
-        is_record_data = data.get(public.Key.Record.record_id)
-        if self._is_ihda_history_view:
-            hda_dirpath = data.get(public.Key.History.ihda_dirpath)
-            hda_filename = data.get(public.Key.History.ihda_filename)
-            hda_filepath = hda_dirpath / hda_filename
-            hda_name = data.get(public.Key.History.org_hda_name)
-            hda_type_name = data.get(public.Key.History.node_type_name)
-            hda_id = data.get(public.Key.hda_id)
+        data: DragRecord | None = None,
+    ) -> ImportedNode | None:
+        if data is None:
+            return None
+        if isinstance(data, HistoryData):
+            hda_dirpath = data.ihda_dirpath
+            hda_filename = data.ihda_filename
+            hda_name = data.org_hda_name
+            hda_type_name = data.node_type_name
+            hda_id = data.hda_id
         else:
             # record 데이터가 아니라면
-            if is_record_data is None:
-                hda_dirpath = data.get(public.Key.hda_dirpath)
-                hda_filename = data.get(public.Key.hda_filename)
-                hda_filepath = hda_dirpath / hda_filename
-                hda_name = data.get(public.Key.hda_name)
-                hda_type_name = data.get(public.Key.node_type_name)
-                hda_id = data.get(public.Key.hda_id)
+            if isinstance(data, AssetData):
+                hda_dirpath = data.hda_dirpath
+                hda_filename = data.hda_filename
+                hda_name = data.hda_name
+                hda_type_name = data.node_type_name
+                hda_id = data.hda_id
             # record 데이터라면
             else:
-                hda_dirpath = data.get(public.Key.Record.hda_dirpath)
-                hda_filename = data.get(public.Key.Record.hda_filename)
-                hda_filepath = hda_dirpath / hda_filename
+                hda_dirpath = data.hda_dirpath
+                hda_filename = data.hda_filename
                 # model/data에서는 version과 함께 새로운 이름 쓰고 있어서 오리지날 이름으로 가져와야 함.
-                hda_name = data.get(public.Key.Record.org_node_name)
-                hda_type_name = data.get(public.Key.Record.node_type)
-                hda_id = data.get(public.Key.Record.hda_id)
-        assert isinstance(hda_dirpath, pathlib.Path)
+                hda_name = data.node_name
+                hda_type_name = data.node_type
+                hda_id = data.hda_id
+        if hda_dirpath is None or not hda_filename:
+            return None
+        hda_filepath = hda_dirpath / hda_filename
         # 만약 hda 파일이 존재하지 않는다면
         if not hda_filepath.exists():
             log_handler.LogHandler.log_msg(method=logging.error, msg="")
             return None
         # 임포트하려는 노드이름이 현재 네트워크에 존재한다면
-        self._change_org_node_name(parent_node=parent_node, node_name=hda_name)
-        node = houdini_api.HoudiniAPI.import_individual_hda_into_houdini(
+        self.bindings.presentation._change_org_node_name(
+            parent_node=parent_node, node_name=hda_name
+        )
+        node = self.bindings.services.host_scene.import_individual_hda_into_houdini(
             node_filepath=hda_filepath,
             parent_node=parent_node,
             position=position,
@@ -505,23 +502,37 @@ class HoudiniActionsMixin:
         )
         if node is None:
             return None
-        if not self._is_ihda_history_view:
-            if is_record_data:
-                hda_item_row = self._get_hda_id_row_map().get(hda_id)
-                load_count = (
-                    self._assets.rows[hda_item_row].get(public.Key.hda_load_count) + 1
+        if not isinstance(data, HistoryData):
+            row = self.bindings.models.assets.id_rows.get(hda_id)
+            if row is not None:
+                self.bindings.queries._change_hda_data(
+                    row=row,
+                    key=keys.Key.hda_load_count,
+                    val=self.bindings.models.assets.rows[row].hda_load_count + 1,
                 )
-                self._change_hda_data(
-                    row=hda_item_row, key=public.Key.hda_load_count, val=load_count
+        version_uuid = data.version_uuid if isinstance(data, SceneRecord) else None
+        if self.bindings.session.context is not None and (
+            not isinstance(data, SceneRecord) or version_uuid
+        ):
+            try:
+                uuid = self.bindings.session.require_repository().version_identity(
+                    hda_id,
+                    data.hist_id if isinstance(data, HistoryData) else None,
+                    version_uuid,
                 )
-            else:
-                load_count = data.get(public.Key.hda_load_count) + 1
-                self._change_hda_data(
-                    row=self._assets.id_rows.get(self._selection.asset.id),
-                    key=public.Key.hda_load_count,
-                    val=load_count,
+                if uuid:
+                    version_uuid = uuid
+                    self.bindings.scene_usage().observe(
+                        node,
+                        uuid,
+                        "local:"
+                        + str(self.bindings.session.context.db_filepath.resolve()),
+                    )
+            except Exception:
+                logging.exception(
+                    "Imported asset; version tracking could not be recorded"
                 )
-        return node
+        return ImportedNode(node=node, version_uuid=version_uuid)
 
     def _extract_subnet(
         self,
@@ -529,6 +540,8 @@ class HoudiniActionsMixin:
         note_contents: str | None = None,
         hda_name: str = "",
     ) -> None:
+        if node is None:
+            return
         if hasattr(node, "extractAndDelete"):
             self._create_sticky_netbox(
                 node=node, note_contents=note_contents, hda_name=hda_name
@@ -543,7 +556,9 @@ class HoudiniActionsMixin:
         items: Any = (),
     ) -> None:
         # iHDA 노트 내용을 Houdini Sticky Note로
-        if self.actionSticky_Note.isChecked():
+        if node is None:
+            return
+        if self.bindings.ui.actionSticky_Note.isChecked():
             net_item = list(items)
             # hda note의 내용이 있다면, subnet안에 sticky note 생성 후 내용 입력
             sticky = self._hda_note_to_sticky_note(
@@ -575,13 +590,13 @@ class HoudiniActionsMixin:
         input_connectors: Any = None,
         output_connectors: Any = None,
     ) -> None:
-        if self.actionNull.isChecked():
+        if self.bindings.ui.actionNull.isChecked():
             pass
-        elif self.actionInput.isChecked():
+        elif self.bindings.ui.actionInput.isChecked():
             houdini_api.HoudiniAPI.set_node_input_connections(
                 node=node, connection_lst=input_connectors
             )
-        elif self.actionOuput.isChecked():
+        elif self.bindings.ui.actionOuput.isChecked():
             houdini_api.HoudiniAPI.set_node_output_connections(
                 node=node, connection_lst=output_connectors
             )

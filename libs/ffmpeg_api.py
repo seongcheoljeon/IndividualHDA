@@ -12,6 +12,8 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from libs.resource_policy import MediaPolicy
+
 
 class FFmpegAPI:
     @staticmethod
@@ -111,6 +113,8 @@ class FFmpegAPI:
     def video_info(
         ffmpeg_dirpath: pathlib.Path | None = None,
         video_filepath: pathlib.Path | None = None,
+        *,
+        policy: MediaPolicy = MediaPolicy(),
     ) -> dict[str, Any] | None:
         try:
             result = subprocess.run(
@@ -128,7 +132,7 @@ class FFmpegAPI:
                 text=True,
                 encoding="utf-8",
                 errors="replace",
-                timeout=20,
+                timeout=policy.probe_timeout_seconds,
                 check=True,
             )
             return json.loads(result.stdout)

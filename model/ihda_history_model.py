@@ -2,13 +2,18 @@
 from __future__ import annotations
 
 import contextlib
+from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
 from PySide6 import QtCore, QtGui
 
-from libs.domain import HistoryData
+from libs.asset_contracts import HistoryData
+from libs.item_paths import item_path
+from libs.model_columns import HistoryColumn
 from libs.path_updates import PathMoves, relocated_path
+from model.item_media import PixmapSource, thumbnail
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
@@ -20,7 +25,7 @@ from model.model_style import ModelStyleMixin
 with contextlib.suppress(ImportError):
     pass
 
-import public
+from libs import keys
 from libs.drag_payload import encode_payload
 
 
@@ -43,7 +48,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         items: list[HistoryData] | None = None,
         pixmap_ihda_data: dict[int, QtGui.QPixmap] | None = None,
         pixmap_cate_data: dict[str, QtGui.QPixmap] | None = None,
-        pixmap_hist_thumb_data: dict[int, QtGui.QPixmap] | None = None,
+        pixmap_hist_thumb_data: PixmapSource | dict[int, QtGui.QPixmap] | None = None,
         font_size: int | None = None,
         font_style: str | None = None,
         icon_size: int | None = None,
@@ -58,68 +63,35 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         self.__pixmap_cate_data = (
             pixmap_cate_data if pixmap_cate_data is not None else {}
         )
-        self.__pixmap_hist_thumb_data = (
+        self.__pixmap_hist_thumb_data: PixmapSource | dict[int, QtGui.QPixmap] = (
             pixmap_hist_thumb_data if pixmap_hist_thumb_data is not None else {}
         )
         self._font_size = (
-            font_size if font_size is not None else public.UISetting.view_font_size
+            font_size if font_size is not None else keys.UISetting.view_font_size
         )
         self._font_style = (
-            font_style if font_style is not None else public.UISetting.view_font_style
+            font_style if font_style is not None else keys.UISetting.view_font_style
         )
         self.__icon_size = (
             icon_size
             if icon_size is not None
-            else public.UISetting.treeview_node_icon_size
+            else keys.UISetting.treeview_node_icon_size
         )
         self.__thumb_size = (
             thumb_size if thumb_size is not None else 2 * self.__icon_size
         )
-        self.__headers = [
-            "ID",
-            "Name",
-            "Definition",
-            "Category",
-            "Comment",
-            "Version",
-            "Date Time",
-            "Type",
-            "Node Path",
-            "Houdini",
-            "License",
-            "OS",
-            "HIP Folder",
-            "HIP File",
-        ]
-        self.__keys = [
-            public.Key.History.hist_id,
-            public.Key.History.org_hda_name,
-            public.Key.History.node_def_desc,
-            public.Key.History.node_category,
-            public.Key.History.comment,
-            public.Key.History.version,
-            public.Key.History.reg_time,
-            public.Key.History.node_type_name,
-            public.Key.History.node_old_path,
-            public.Key.History.hou_version,
-            public.Key.History.hda_license,
-            public.Key.History.os,
-            public.Key.History.hip_dirpath,
-            public.Key.History.hip_filename,
-        ]
-        assert len(self.__headers) == len(self.__keys)
         # hda name 컬럼 인덱스
-        self.__hda_name_column = 1
+        self.__hda_name_column = HistoryColumn.NAME
         # hda def 컬럼 인덱스
-        self.__hda_def_column = 2
+        self.__hda_def_column = HistoryColumn.DEFINITION
         # hda category 컬럼 인덱스
-        self.__hda_cate_column = 3
+        self.__hda_cate_column = HistoryColumn.CATEGORY
         # hda time 컬럼 인덱스
-        self.__hda_datetime_column = 6
+        self.__hda_datetime_column = HistoryColumn.CREATED
         # hda houdini version 컬럼 인덱스
-        self.__hda_hou_ver_column = 9
+        self.__hda_hou_ver_column = HistoryColumn.HOUDINI
         # hip dirpath 컬럼 인덱스
-        self.__hda_dirpath_column = 12
+        self.__hda_dirpath_column = HistoryColumn.HIP_FOLDER
 
     def headerData(
         self,
@@ -129,28 +101,38 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
     ) -> Any:
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
             if orientation == QtCore.Qt.Orientation.Horizontal:
-                return f"{self.__headers[section]}"
+                return f"{HistoryColumn(section).label}"
             else:
                 return f"Hist {section + 1}"
         if role == QtCore.Qt.ItemDataRole.FontRole:
             font = QtGui.QFont()
-            font.setPointSize(public.UISetting.view_font_size)
+            font.setPointSize(keys.UISetting.view_font_size)
             return font
         return QtCore.QAbstractTableModel.headerData(self, section, orientation, role)
 
-    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+    def rowCount(
+        self,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
+    ) -> int:
         if parent.isValid():
             return 0
         return len(self.__items) if self.__items is not None else 0
 
-    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        return len(self.__headers)
+    def columnCount(
+        self,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
+    ) -> int:
+        return len(HistoryColumn)
 
     def set_row_col_in_item(self, row: int) -> None:
-        self.__items[row][public.Key.History.item_row] = row
+        self.__items[row] = replace(self.__items[row], item_row=row)
 
     def data(
-        self, index: QtCore.QModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
+        self,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+        role: int = QtCore.Qt.ItemDataRole.DisplayRole,
     ) -> Any:
         if not index.isValid() or not (0 <= index.row() < len(self.__items)):
             return None
@@ -159,44 +141,24 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         self.set_row_col_in_item(row)
         data = self.__items[row]
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
-            val = data.get(self.__keys[column])
+            val = getattr(data, HistoryColumn(column).field)
             if column == self.__hda_dirpath_column:
-                return val.as_posix()
+                return str(val) if val is not None else ""
             return val
         # elif role == QtCore.Qt.ItemDataRole.EditRole:
         #     return val
         elif role == QtCore.Qt.ItemDataRole.DecorationRole:
             other_icon_size = self.__icon_size * 0.7
             if column == self.__hda_name_column:
-                hist_id = data.get(public.Key.History.hist_id)
-                thumb_pixmap = self.__pixmap_hist_thumb_data.get(hist_id)
-                if thumb_pixmap is None:
-                    return QtGui.QPixmap(":/main/icons/no_img_available.png")
-                if thumb_pixmap.isNull():
-                    thumb_dirpath = data.get(public.Key.History.thumb_dirpath)
-                    if thumb_dirpath is None:
-                        thumb_pixmap = QtGui.QPixmap(
-                            ":/main/icons/no_img_available.png"
-                        )
-                    else:
-                        thumb_filepath = thumb_dirpath / data.get(
-                            public.Key.History.thumb_filename
-                        )
-                        if not thumb_filepath.exists():
-                            thumb_pixmap = QtGui.QPixmap(
-                                ":/main/icons/no_img_available.png"
-                            )
-                        else:
-                            thumb_pixmap = QtGui.QPixmap(str(thumb_filepath))
-                        self.__pixmap_hist_thumb_data.update({hist_id: thumb_pixmap})
-                return thumb_pixmap.scaled(
-                    QtCore.QSize(self.__thumb_size, self.__thumb_size),
-                    QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                return thumbnail(
+                    self.__pixmap_hist_thumb_data,
+                    data.hist_id,
+                    data.thumb_dirpath,
+                    data.thumb_filename,
+                    self.__thumb_size,
                 )
             elif column == self.__hda_def_column:
-                icon_pixmap = self.__pixmap_ihda_data.get(
-                    data.get(public.Key.History.hda_id)
-                )
+                icon_pixmap = self.__pixmap_ihda_data.get(data.hda_id)
                 if icon_pixmap is None:
                     return None
                 return icon_pixmap.scaled(
@@ -206,7 +168,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
                     QtCore.Qt.AspectRatioMode.KeepAspectRatio,
                 )
             elif column == self.__hda_cate_column:
-                hda_cate = data.get(public.Key.History.node_category)
+                hda_cate = data.node_category
                 icon_pixmap = self.__pixmap_cate_data.get(hda_cate)
                 if icon_pixmap is None:
                     return None
@@ -235,7 +197,15 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
             else:
                 return None
         elif role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
-            if column in [1, 2, 3, 4, 8, 12, 13, 14]:
+            if column in [
+                HistoryColumn.NAME,
+                HistoryColumn.DEFINITION,
+                HistoryColumn.CATEGORY,
+                HistoryColumn.COMMENT,
+                HistoryColumn.NODE_PATH,
+                HistoryColumn.HIP_FOLDER,
+                HistoryColumn.HIP_FILE,
+            ]:
                 return int(
                     QtCore.Qt.AlignmentFlag.AlignLeft
                     | QtCore.Qt.AlignmentFlag.AlignVCenter
@@ -248,15 +218,15 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
             font = QtGui.QFont()
             font.setFamily(self._font_style)
             font.setPointSize(self._font_size)
-            hda_dirpath = data.get(public.Key.History.ihda_dirpath)
+            hda_dirpath = data.ihda_dirpath
             if hda_dirpath is None:
                 font.setItalic(True)
                 font.setStrikeOut(True)
             else:
-                hda_filepath = hda_dirpath / data.get(public.Key.History.ihda_filename)
-                if not hda_filepath.exists() and not index.data(
-                    HistoryModel.data_role
-                ).get("remote", False):
+                hda_filepath = item_path(hda_dirpath, data.ihda_filename)
+                if (
+                    hda_filepath is None or not hda_filepath.exists()
+                ) and not index.data(HistoryModel.data_role).remote:
                     font.setItalic(True)
                     font.setStrikeOut(True)
             return font
@@ -267,24 +237,24 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         elif role == HistoryModel.col_role:
             return column
         elif role == HistoryModel.id_role:
-            return data.get(public.Key.History.hda_id)
+            return data.hda_id
         elif role == HistoryModel.hist_id_role:
-            return data.get(public.Key.History.hist_id)
+            return data.hist_id
         elif role == HistoryModel.filepath_role:
-            hda_dirpath = data.get(public.Key.History.ihda_dirpath)
-            return hda_dirpath / data.get(public.Key.History.ihda_filename)
+            hda_dirpath = data.ihda_dirpath
+            return item_path(hda_dirpath, data.ihda_filename)
         elif role == HistoryModel.name_role:
-            return data.get(public.Key.History.org_hda_name)
+            return data.org_hda_name
         elif role == HistoryModel.cate_role:
-            return data.get(public.Key.History.node_category)
+            return data.node_category
         elif role == HistoryModel.version_role:
-            return data.get(public.Key.History.version)
+            return data.version
         elif role == HistoryModel.tag_role:
-            return data.get(public.Key.History.tags)
+            return data.tags
         elif role == HistoryModel.type_role:
-            return data.get(public.Key.History.node_type_name)
+            return data.node_type_name
         elif role == HistoryModel.datetime_role:
-            return data.get(public.Key.History.reg_time)
+            return data.reg_time
 
     # def setData(self, index, value, role=QtCore.Qt.ItemDataRole.EditRole):
     #     if not index.isValid() or not (0 <= index.row() < len(self.__items)) or not value or (not len(value)):
@@ -295,23 +265,25 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
     #         row = index.row()
     #         value = str(value.strip()).replace(' ', '_')
     #         index_data = self.__items[row]
-    #         hda_name = index_data.get(public.Key.hda_name)
+    #         hda_name = index_data.get(keys.Key.hda_name)
     #         if (hda_name == value) or (not len(value)):
     #             return False
-    #         self.__items[row][public.Key.hda_name] = value
+    #         self.__items[row][keys.Key.hda_name] = value
     #         self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
     #         return True
     #     return False
 
-    def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
+    def flags(
+        self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex
+    ) -> QtCore.Qt.ItemFlag:
         if not index.isValid():
             return QtCore.Qt.ItemFlag.ItemIsDropEnabled
         flags = super().flags(index)
         if index.isValid():
             hda_filepath = index.data(HistoryModel.filepath_role)
-            if not hda_filepath.exists() and not index.data(HistoryModel.data_role).get(
-                "remote", False
-            ):
+            if (hda_filepath is None or not hda_filepath.exists()) and not index.data(
+                HistoryModel.data_role
+            ).remote:
                 flags = (
                     QtCore.Qt.ItemFlag.ItemIsSelectable
                     | QtCore.Qt.ItemFlag.ItemIsEnabled
@@ -350,17 +322,25 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
     ) -> list[HistoryData]:
         changed = []
         for row, item in enumerate(self.__items):
-            if item.get("hda_id") != asset_id:
+            if item.hda_id != asset_id:
                 continue
             for directory_key, filename_key in (
                 ("ihda_dirpath", "ihda_filename"),
                 ("thumb_dirpath", "thumb_filename"),
                 ("video_dirpath", "video_filename"),
             ):
-                directory, filename = item.get(directory_key), item.get(filename_key)
-                if directory is not None and filename is not None:
+                directory, filename = (
+                    getattr(item, directory_key),
+                    getattr(item, filename_key),
+                )
+                if isinstance(directory, Path) and isinstance(filename, str):
                     path = relocated_path(Path(directory) / filename, moves)
-                    item[directory_key], item[filename_key] = path.parent, path.name
+                    changes: dict[str, Any] = {
+                        directory_key: path.parent,
+                        filename_key: path.name,
+                    }
+                    item = replace(item, **changes)
+            self.__items[row] = item
             changed.append(item)
             self.dataChanged.emit(
                 self.index(row, 0), self.index(row, self.columnCount() - 1), []
@@ -372,7 +352,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
     ) -> None:
         if row is None:
             return
-        self.__items[row][key] = val
+        self.__items[row] = replace(self.__items[row], **{key: val})
         self.dataChanged.emit(
             self.index(row, 0), self.index(row, self.columnCount() - 1), []
         )
@@ -392,7 +372,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
                 hist_data = self.__items[row]
             except IndexError:
                 continue
-            data_row = hist_data.get(public.Key.History.item_row)
+            data_row = hist_data.item_row
             if data_row is None:
                 continue
             if row == data_row:
@@ -435,7 +415,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         return hist_data_lst
 
     # hist_id와 item_row의 맵 데이터
-    def get_hist_id_row_map_from_model(self) -> dict[str, Any]:
+    def get_hist_id_row_map_from_model(self) -> dict[int, int]:
         map_lst = []
         for row in range(0, self.rowCount()):
             index = self.index(row, 0, QtCore.QModelIndex())
@@ -476,7 +456,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         self.__icon_size = (
             icon_size
             if icon_size is not None
-            else public.UISetting.treeview_node_icon_size
+            else keys.UISetting.treeview_node_icon_size
         )
         self.__thumb_size = (
             thumb_size if thumb_size is not None else 2 * self.__icon_size
@@ -484,12 +464,19 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         self.endResetModel()
 
     def insertRow(
-        self, row: int, parent: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        row: int,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> bool:
         return self.insertRows(row, 1, parent)
 
     def insertRows(
-        self, row: int, count: int, parent: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        row: int,
+        count: int,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> bool:
         # Asset/history rows need complete domain data. Use append_item or the
         # panel's shared-model insertion coordinator, not empty Qt rows.
@@ -499,7 +486,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         self,
         position: Any,
         rows: int = 1,
-        index: QtCore.QModelIndex = QtCore.QModelIndex(),
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> bool:
         if (
             index.isValid()
@@ -514,22 +501,22 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         return True
 
     def mimeTypes(self) -> list[str]:
-        return [public.Type.mime_type]
+        return [keys.Type.mime_type]
 
     def supportedDropActions(self) -> QtCore.Qt.DropAction:
         return QtCore.Qt.DropAction.CopyAction | QtCore.Qt.DropAction.MoveAction
 
-    def mimeData(self, indexes: list[QtCore.QModelIndex]) -> QtCore.QMimeData | None:
+    def mimeData(self, indexes: Sequence[QtCore.QModelIndex]) -> QtCore.QMimeData:
         if not len(indexes):
-            return None
+            return QtCore.QMimeData()
         mime_data = super().mimeData(indexes)
         # 원래 2번째 컬럼만 선택되어지는데 간혹가다가 모든 컬럼이 indexes로 들어올 때가 있어서 명시해주었다.
         if len(indexes) > 1:
-            indexes = [indexes[public.Value.drag_column_history_view]]
+            indexes = [indexes[keys.Value.drag_column_history_view]]
         for index in indexes:
             if index.isValid():
                 data = encode_payload(self.data(index, role=HistoryModel.data_role))
-                mime_data.setData(public.Type.mime_type, QtCore.QByteArray(data))
+                mime_data.setData(keys.Type.mime_type, QtCore.QByteArray(data))
         return mime_data
 
     def dropMimeData(
@@ -538,7 +525,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         action: QtCore.Qt.DropAction,
         row: int,
         column: int,
-        parent: QtCore.QModelIndex,
+        parent: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> bool:
         # Domain drops are handled by view signals, not raw Qt row insertion.
         return action == QtCore.Qt.DropAction.IgnoreAction

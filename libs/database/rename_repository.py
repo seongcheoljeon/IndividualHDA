@@ -5,7 +5,7 @@ from __future__ import annotations
 from contextlib import AbstractContextManager
 from pathlib import Path
 
-from libs.asset_rename import RenamePlan
+from libs.asset_rename import RenameCounts, RenamePlan
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 
 
@@ -27,7 +27,7 @@ class SQLiteRenameRepository:
     def record_operation_commit(self, operation_id: str) -> None:
         self.database.record_operation_commit(operation_id)
 
-    def apply_rename(self, plan: RenamePlan) -> tuple[int, int]:
+    def apply_rename(self, plan: RenamePlan) -> RenameCounts:
         asset_rows = self.database.update_hda_name(
             hda_key_id=plan.asset_id,
             name=plan.name,
@@ -52,4 +52,4 @@ class SQLiteRenameRepository:
         )
         if asset_rows is None or history_rows is None:
             raise RuntimeError("Database rejected the asset rename")
-        return asset_rows, history_rows
+        return RenameCounts(assets=asset_rows, histories=history_rows)

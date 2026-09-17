@@ -16,20 +16,12 @@ class TransactionalRepository(Protocol):
     def record_operation_commit(self, operation_id: str) -> None: ...
 
 
-class AssetDeletionRepository(TransactionalRepository, Protocol):
-    def delete_hda_key_with_id(self, hda_key_id: int | None = None) -> int | None: ...
+class AssetDeletionRepository(Protocol):
+    def trash_asset(self, asset_id: int) -> None: ...
 
 
-class HistoryDeletionRepository(TransactionalRepository, Protocol):
-    def is_library_file_referenced(
-        self, path: Path, excluding_history_id: int
-    ) -> bool: ...
-    def is_most_recent_ihda_history(
-        self, hda_key_id: int | None = None, hist_id: int | None = None
-    ) -> bool: ...
-    def delete_hda_history(
-        self, hda_key_id: int | None = None, hist_id: int | None = None
-    ) -> int | None: ...
+class HistoryDeletionRepository(Protocol):
+    def trash_history(self, asset_id: int, history_id: int) -> None: ...
 
 
 class FileMoves(Protocol):

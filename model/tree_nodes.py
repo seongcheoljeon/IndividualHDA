@@ -16,7 +16,7 @@ class Node(QtCore.QObject):
     ) -> None:
         super().__init__()
         self.__name = node_name
-        self.__depth = node_depth
+        self.__depth = node_depth if node_depth is not None else 0
         self._parent = parent
         self._children: list[Node] = []
         self.setParent(parent)
@@ -24,7 +24,7 @@ class Node(QtCore.QObject):
     def name(self) -> str | None:
         return self.__name
 
-    def depth(self) -> int | None:
+    def depth(self) -> int:
         return self.__depth
 
     def parent(self) -> Node | None:

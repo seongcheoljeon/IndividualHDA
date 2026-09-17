@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 import threading
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -159,8 +160,8 @@ def test_delayed_response_cannot_overwrite_new_state(app: Any, transition: str) 
 def test_browser_models_filters_selection_and_mode(app: Any, tmp_path: Path) -> None:
     base = asset(tmp_path)
     rows = [
-        {**base, "hda_id": 1, "hda_name": "Water", "is_favorite_hda": True},
-        {**base, "hda_id": 2, "hda_name": "Fire", "is_favorite_hda": False},
+        replace(base, hda_id=1, hda_name="Water", is_favorite_hda=True),
+        replace(base, hda_id=2, hda_name="Fire", is_favorite_hda=False),
     ]
     view = AssetBrowserView()
     first, second = ListModel(items=rows), TableModel(items=rows)
@@ -202,7 +203,10 @@ def test_browser_models_filters_selection_and_mode(app: Any, tmp_path: Path) -> 
 
 
 def test_ui_shell_and_compatibility_preserve_names(app: Any) -> None:
-    from widgets.asset_browser.integration import AssetBrowserIntegration
+    from widgets.asset_browser.integration import (
+        AssetBrowserIntegration,
+        BrowserBindings,
+    )
     from widgets.panel.layout import MainWindowLayout
 
     class Shell(QtWidgets.QMainWindow, MainWindowLayout):
@@ -213,11 +217,27 @@ def test_ui_shell_and_compatibility_preserve_names(app: Any) -> None:
 
     shell = Shell()
     shell.build_ui(shell)
+    from types import SimpleNamespace
+
+    from libs.asset_store import AssetStore
+
+    shell.models = SimpleNamespace(
+        assets=AssetStore(), _asset_search_failed_message=lambda message: None
+    )
     runner = AssetSearch(shell)
-    bridge = AssetBrowserIntegration(shell, runner, RepositoryAssetSearch)
-    assert shell.lineEdit__search_hda is bridge.view.lineEdit__search_hda
-    assert shell.stackedWidget__hda is bridge.view.stackedWidget__hda
-    assert shell.label__hda_count is bridge.view.label__hda_count
+    bridge = AssetBrowserIntegration(
+        BrowserBindings(
+            host=shell.widget__asset_browser_host,
+            counter_host=shell.widget__asset_count_host,
+            row_count=lambda: 0,
+            failed=lambda message: None,
+        ),
+        runner,
+        RepositoryAssetSearch,
+    )
+    assert bridge.view.lineEdit__search_hda.parent() is not None
+    assert bridge.view.stackedWidget__hda.count() == 2
+    assert bridge.view.label__hda_count.parent() is shell.widget__asset_count_host
     assert (
         shell.findChild(QtWidgets.QSplitter, "splitter__ihda_whole_vertical")
         is bridge.view.splitter__ihda_whole_vertical

@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
+from libs.archive_policy import ArchiveLimits
 from libs.archive_service import create_archive, extract_archive, prepare_database
 from libs.contracts import OperationFactory
 from libs.operation_journal import durable_operation, sync_tree
@@ -21,11 +22,13 @@ class ArchiveTransfer:
         directory: Path,
         *,
         operations: OperationFactory = durable_operation,
+        limits: ArchiveLimits = ArchiveLimits(),
     ) -> None:
         self.assets = Path(assets)
         self.directory = Path(directory)
         self.stage: Path | None = None
         self._operations = operations
+        self._limits = limits
 
     def create_backup_file(self) -> Path | None:
         stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
@@ -41,7 +44,7 @@ class ArchiveTransfer:
             raise RuntimeError("An import is already staged")
         self.stage = Path(tempfile.mkdtemp(prefix=".ihda-import-", dir=self.directory))
         try:
-            extract_archive(source, self.stage)
+            extract_archive(source, self.stage, limits=self._limits)
             prepare_database(self.stage, self.assets)
             sync_tree(self.stage)
             backup = self.create_backup_file()

@@ -5,11 +5,11 @@ from __future__ import annotations
 from sqlalchemy import Engine, create_engine, event, insert, select
 from sqlalchemy.engine import make_url
 
-from ihda_server import lifecycle_schema  # noqa: F401
+from ihda_server import lifecycle_schema, tracking_schema  # noqa: F401
 from ihda_server.database_policy import DatabaseTimeouts
 from ihda_server.schema import metadata, versions
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 def make_engine(url: str, *, timeouts: DatabaseTimeouts | None = None) -> Engine:
@@ -46,6 +46,9 @@ def initialize(engine: Engine) -> None:
         metadata.create_all(connection)
         installed = connection.execute(select(versions.c.version)).scalar_one_or_none()
         if installed is None:
+            from ihda_server.tracking import install
+
+            install(connection)
             connection.execute(insert(versions).values(version=SCHEMA_VERSION))
         elif installed != SCHEMA_VERSION:
             raise RuntimeError(

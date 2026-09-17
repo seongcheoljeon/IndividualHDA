@@ -10,13 +10,28 @@ import stat
 import tempfile
 import zipfile
 from contextlib import closing
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
+from libs.archive_policy import ArchiveLimits
+from libs.database.rows import named_query
 from libs.database_migrations import backup_database, migrate
 
+ARCHIVE_FORMAT_VERSION = 1
 
-def extract_archive(archive: Any, destination: str | Path) -> None:
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class ArchivePathChange:
+    table: str
+    column: str
+    directory: str
+    identity: int
+
+
+def extract_archive(
+    archive: Any, destination: str | Path, *, limits: ArchiveLimits = ArchiveLimits()
+) -> None:
     destination = Path(destination).resolve()
     with zipfile.ZipFile(archive) as source:
         seen = set()
@@ -39,7 +54,7 @@ def extract_archive(archive: Any, destination: str | Path) -> None:
                 raise ValueError(f"Duplicate archive entry: {member.filename}")
             seen.add(key)
             total += member.file_size
-            if total > 100 * 1024**3 or len(seen) > 1_000_000:
+            if total > limits.expanded_bytes or len(seen) > limits.entries:
                 raise ValueError("Archive exceeds supported library size")
             target = (destination / member.filename).resolve()
             if not target.is_relative_to(destination):
@@ -86,7 +101,11 @@ def create_archive(
             archive.writestr(
                 "ihda-manifest.json",
                 json.dumps(
-                    {"format": 1, "asset_root": assets.as_posix(), "reason": reason},
+                    {
+                        "format": ARCHIVE_FORMAT_VERSION,
+                        "asset_root": assets.as_posix(),
+                        "reason": reason,
+                    },
                     ensure_ascii=False,
                 ),
             )
@@ -104,7 +123,7 @@ def prepare_database(stage: str | Path, target_assets: str | Path) -> None:
         old_root = None
         if manifest.exists():
             data = json.loads(manifest.read_text(encoding="utf-8"))
-            if data.get("format") != 1:
+            if data.get("format") != ARCHIVE_FORMAT_VERSION:
                 raise ValueError("Unsupported archive format")
             old_root = data.get("asset_root")
         else:
@@ -124,10 +143,12 @@ def prepare_database(stage: str | Path, target_assets: str | Path) -> None:
                 "hda_node_location_record": ("hda_dirpath",),
             }.items():
                 for column in columns:
-                    rows = connection.execute(
-                        f"SELECT id, {column} FROM {table} WHERE {column} IS NOT NULL"
+                    rows = named_query(
+                        connection,
+                        f"SELECT id, {column} AS directory FROM {table} WHERE {column} IS NOT NULL",
                     ).fetchall()
-                    for identifier, value in rows:
+                    for row in rows:
+                        identifier, value = row["id"], row["directory"]
                         path = PurePosixPath(value.replace("\\", "/"))
                         if not path.is_relative_to(root):
                             raise ValueError(
@@ -137,18 +158,21 @@ def prepare_database(stage: str | Path, target_assets: str | Path) -> None:
                         if ".." in relative.parts:
                             raise ValueError("Asset path escapes library root")
                         path_changes.append(
-                            (
-                                table,
-                                column,
-                                str(Path(target_assets).joinpath(*relative.parts)),
-                                identifier,
+                            ArchivePathChange(
+                                table=table,
+                                column=column,
+                                directory=str(
+                                    Path(target_assets).joinpath(*relative.parts)
+                                ),
+                                identity=identifier,
                             )
                         )
             # Snapshot every source path before preview synchronization triggers run.
             connection.execute("UPDATE write_context SET maintenance=1")
-            for table, column, target, identifier in path_changes:
+            for change in path_changes:
                 connection.execute(
-                    f"UPDATE {table} SET {column}=? WHERE id=?", (target, identifier)
+                    f"UPDATE {change.table} SET {change.column}=:target WHERE id=:identifier",
+                    {"target": change.directory, "identifier": change.identity},
                 )
             for (stored,) in connection.execute(
                 "SELECT path FROM file_cleanup"
@@ -157,8 +181,11 @@ def prepare_database(stage: str | Path, target_assets: str | Path) -> None:
                 if path.is_relative_to(root):
                     relative = path.relative_to(root)
                     connection.execute(
-                        "UPDATE file_cleanup SET path=? WHERE path=?",
-                        (str(Path(target_assets).joinpath(*relative.parts)), stored),
+                        "UPDATE file_cleanup SET path=:value WHERE path=:stored",
+                        {
+                            "value": str(Path(target_assets).joinpath(*relative.parts)),
+                            "stored": stored,
+                        },
                     )
             connection.execute("UPDATE write_context SET maintenance=0")
         connection.commit()

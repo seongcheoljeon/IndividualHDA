@@ -5,12 +5,14 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, Protocol
 
+from libs.asset_contracts import LibrarySnapshot, SyncContext
+
 
 class SyncView(Protocol):
     def sync_allowed(self) -> bool: ...
-    def sync_context(self) -> tuple[object, int]: ...
-    def read_snapshot(self) -> Callable[[], tuple[Any, ...]] | None: ...
-    def show_snapshot(self, snapshot: tuple[Any, ...]) -> None: ...
+    def sync_context(self) -> SyncContext: ...
+    def read_snapshot(self) -> Callable[[], LibrarySnapshot] | None: ...
+    def show_snapshot(self, snapshot: LibrarySnapshot) -> None: ...
     def show_sync_error(self, message: str) -> None: ...
 
 
@@ -50,18 +52,18 @@ class LibrarySyncPresenter:
         if operation is None:
             self.pending = False
             return
-        repository, write_generation = self._view.sync_context()
+        context = self._view.sync_context()
 
         def finished(snapshot: Any, error: Exception | None) -> None:
             if self._closed:
                 return
-            current_repository, current_generation = self._view.sync_context()
-            if repository is not current_repository:
+            current = self._view.sync_context()
+            if context.repository is not current.repository:
                 return
             if error is not None:
                 self.pending = False
                 self._view.show_sync_error(str(error))
-            elif write_generation != current_generation:
+            elif context.write_generation != current.write_generation:
                 # Retry after the save completes; never install pre-save metadata.
                 self.pending = True
             else:
@@ -75,9 +77,9 @@ class LibrarySyncPresenter:
         except Exception as error:
             finished(None, error)
 
-    def accept(self, snapshot: tuple[Any, ...]) -> None:
+    def accept(self, snapshot: LibrarySnapshot) -> None:
         self.pending = False
-        self.known_revision = snapshot[0]
+        self.known_revision = snapshot.revision
 
     def close(self) -> None:
         self._closed = True

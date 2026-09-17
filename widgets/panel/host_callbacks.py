@@ -1,6 +1,6 @@
 """Host callbacks for the Houdini panel.
 
-Shares protected panel state; Qt and HOM calls stay on the GUI thread.
+Explicit bindings connect this feature to its view and collaborators.
 """
 
 from __future__ import annotations
@@ -11,53 +11,76 @@ from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore
 
-import public
-from libs import houdini_api, log_handler
+from libs import keys, log_handler
+from libs.host_ports import HostCallbacksPort
 
 if TYPE_CHECKING:
     import hou
 
 
-class HostCallbacksMixin:
-    @staticmethod
-    def _add_event_loop_callback(event_func: Callable[..., Any]) -> None:
-        houdini_api.HoudiniAPI.add_event_loop_callback(event_func)
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-    @staticmethod
-    def _add_selection_callback(event_func: Callable[..., Any]) -> None:
-        houdini_api.HoudiniAPI.add_selection_callback(event_func)
+if TYPE_CHECKING:
+    from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.selection import PanelSelection
+    from widgets.panel.state import PanelStatus
 
-    @staticmethod
-    def _remove_event_loop_callback(event_func: Callable[..., Any]) -> None:
-        houdini_api.HoudiniAPI.remove_event_loop_callback(event_func)
 
-    @staticmethod
-    def _remove_selection_callback(event_func: Callable[..., Any]) -> None:
-        houdini_api.HoudiniAPI.remove_selection_callback(event_func)
+@dataclass(frozen=True, slots=True)
+class PanelHostCallbacksBindings:
+    host: HostCallbacksPort
+    enabled: bool
+    contexts_without_null: list[str]
+    selection: PanelSelection
+    status: PanelStatus
+    ui: MainWindowLayout
 
-    @staticmethod
-    def _is_exist_event_callbacks(event_func: Callable[..., Any]) -> bool:
-        return houdini_api.HoudiniAPI.has_event_loop_callback(event_func)
 
-    @staticmethod
-    def _is_exist_selection_callbacks(event_func: Callable[..., Any]) -> bool:
-        return houdini_api.HoudiniAPI.has_selection_callback(event_func)
+class PanelHostCallbacks:
+    bindings: PanelHostCallbacksBindings
+
+    def _add_event_loop_callback(self, event_func: Callable[..., Any]) -> None:
+        self.bindings.host.add_event_loop_callback(event_func)
+
+    def _add_selection_callback(self, event_func: Callable[..., Any]) -> None:
+        self.bindings.host.add_selection_callback(event_func)
+
+    def _remove_event_loop_callback(self, event_func: Callable[..., Any]) -> None:
+        self.bindings.host.remove_event_loop_callback(event_func)
+
+    def _remove_selection_callback(self, event_func: Callable[..., Any]) -> None:
+        self.bindings.host.remove_selection_callback(event_func)
+
+    def _is_exist_event_callbacks(self, event_func: Callable[..., Any]) -> bool:
+        return self.bindings.host.has_event_loop_callback(event_func)
+
+    def _is_exist_selection_callbacks(self, event_func: Callable[..., Any]) -> bool:
+        return self.bindings.host.has_selection_callback(event_func)
 
     def _slot_stackedwidget_whole_curt_changed(self, index: QtCore.QModelIndex) -> None:
         # 만약 iHDA 뷰가 아닌데 category synchronize가 활성화 상태면, 이벤트 콜백 삭제
-        if (index != self._ihda_view_idx) and (
-            self.actionCategory_Synchronization.isChecked()
-        ):
+        if (
+            index
+            != self.bindings.ui.stackedWidget__whole.indexOf(
+                self.bindings.ui.page__ihda
+            )
+        ) and (self.bindings.ui.actionCategory_Synchronization.isChecked()):
             self._remove_event_loop_callback(self._wrapper_current_panetab)
         else:
-            if self.actionCategory_Synchronization.isChecked():
+            if self.bindings.ui.actionCategory_Synchronization.isChecked():
                 self._add_event_loop_callback(self._wrapper_current_panetab)
 
     def _slot_sync_hou_net_cate(self) -> None:
-        if not public.IS_HOUDINI:
+        if not self.bindings.enabled:
             return
-        if self.actionCategory_Synchronization.isChecked():
-            if self.stackedWidget__whole.currentIndex() == self._ihda_view_idx:
+        if self.bindings.ui.actionCategory_Synchronization.isChecked():
+            if (
+                self.bindings.ui.stackedWidget__whole.currentIndex()
+                == self.bindings.ui.stackedWidget__whole.indexOf(
+                    self.bindings.ui.page__ihda
+                )
+            ):
                 self._add_event_loop_callback(self._wrapper_current_panetab)
             log_handler.LogHandler.log_msg(
                 method=logging.debug, msg="enable category synchronization"
@@ -69,9 +92,9 @@ class HostCallbacksMixin:
             )
 
     def _slot_selection_node_sync(self) -> None:
-        if not public.IS_HOUDINI:
+        if not self.bindings.enabled:
             return
-        if self.actionNode_Synchronization.isChecked():
+        if self.bindings.ui.actionNode_Synchronization.isChecked():
             self._add_selection_callback(self._wrapper_selection_callback_item_by_ihda)
             log_handler.LogHandler.log_msg(
                 method=logging.debug, msg="enable selection node synchronization"
@@ -88,17 +111,17 @@ class HostCallbacksMixin:
         self._wrapper_execute_deferred(self._set_current_panetab)
 
     def _set_current_panetab(self) -> None:
-        panetab = houdini_api.HoudiniAPI.pane_tab_under_cursor()
-        self._current_panetab = panetab
-        if self._current_panetab is None:
+        panetab = self.bindings.host.pane_tab_under_cursor()
+        self.current_panetab = panetab
+        if self.current_panetab is None:
             return
-        net_type_name = houdini_api.HoudiniAPI.current_network_editor_type_name(
-            network_editor=self._current_panetab,
-            not_have_null_node_context_lst=self._not_have_null_node_context_lst,
+        net_type_name = self.bindings.host.current_network_editor_type_name(
+            network_editor=self.current_panetab,
+            not_have_null_node_context_lst=self.bindings.contexts_without_null,
         )
         if net_type_name is None:
             return
-        self._select_category(category=net_type_name)
+        self.bindings.selection._select_category(category=net_type_name)
 
     def _wrapper_selection_callback_item_by_ihda(self, selection: Any) -> None:
         # 굳이 execute deferred함수를 쓸 이유가 없다. 오히려 이 함수를 쓰게되면 딜레이가 생긴다.
@@ -109,11 +132,11 @@ class HostCallbacksMixin:
         if not len(selection):
             return
         node = selection[0]
-        find_hda_info = houdini_api.HoudiniAPI.get_hda_info_by_selection_node(node=node)
+        find_hda_info = self.bindings.host.get_hda_info_by_selection_node(node=node)
         if find_hda_info is None:
             return
-        self._select_model_item_by_hda_id(
-            hda_id=find_hda_info.get(public.Key.Comment.ihda_id)
+        self.bindings.selection._select_model_item_by_hda_id(
+            hda_id=find_hda_info.get(keys.Key.Comment.ihda_id)
         )
 
     def _is_valid_network_category(
@@ -122,8 +145,8 @@ class HostCallbacksMixin:
         category: str | None = None,
         hda_name: str | None = None,
     ) -> bool:
-        net_category = houdini_api.HoudiniAPI.current_network_editor_type_name(
-            network_editor, self._not_have_null_node_context_lst
+        net_category = self.bindings.host.current_network_editor_type_name(
+            network_editor, self.bindings.contexts_without_null
         )
         if net_category == category:
             return True
@@ -139,7 +162,10 @@ class HostCallbacksMixin:
 
     def _wrapper_execute_deferred(self, func: Callable[[], object]) -> None:
         def invoke() -> None:
-            if not self._closing and not self._host_destroying:
+            if (
+                not self.bindings.status.closing
+                and not self.bindings.status.host_destroying
+            ):
                 func()
 
-        houdini_api.HoudiniAPI.execute_deferred(invoke)
+        self.bindings.host.execute_deferred(invoke)

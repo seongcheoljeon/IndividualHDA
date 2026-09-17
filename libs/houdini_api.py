@@ -18,8 +18,8 @@ from collections.abc import Callable
 from contextlib import nullcontext, suppress
 from typing import Any
 
-import public
-from libs import log_handler
+from libs import keys, log_handler, paths
+from libs.asset_contracts import NodeConnection
 from libs.host import IS_HOUDINI
 
 with suppress(ImportError):
@@ -140,13 +140,18 @@ class HoudiniAPI:
     def __init__(
         self,
         hda_version: str = "1.0",
-        node_path: str | None = "/obj/geo1/box",
-        hda_dirpath: pathlib.Path = "/2TB/library/individualHDA/scii/sop",
+        node_path: str | None = None,
+        hda_dirpath: pathlib.Path | None = None,
     ) -> None:
         assert isinstance(hda_dirpath, pathlib.Path)
         self.__hda_version = hda_version
         self.__node_path = node_path
+        if node_path is None:
+            raise ValueError("A node path is required")
         self.__node = hou.node(self.__node_path)
+        self.__hda_dirpath = hda_dirpath
+        self.__hda_filename: str | None = None
+        self.__hda_filepath: pathlib.Path | None = None
         if self.__node is None:
             log_handler.LogHandler.log_msg(
                 method=logging.error, msg="node does not exist"
@@ -185,19 +190,19 @@ class HoudiniAPI:
         self.__hda_filepath = val
 
     @staticmethod
-    def __node_type_path_list(node: hou.Node | None) -> list[str] | None:
+    def __node_type_path_list(node: hou.Node | None) -> list[str]:
         if node is None:
             return []
         node_type_lst = []
-        node_type_lst.append(HoudiniAPI.node_type_name(node))
+        node_type_lst.append(HoudiniAPI.node_type_name(node) or "")
         return HoudiniAPI.__node_type_path_list(node.parent()) + node_type_lst
 
     @staticmethod
-    def __node_category_path_list(node: hou.Node | None) -> list[str] | None:
+    def __node_category_path_list(node: hou.Node | None) -> list[str]:
         if node is None:
             return []
         node_category_lst = []
-        node_category_lst.append(HoudiniAPI.node_category_type_name(node))
+        node_category_lst.append(HoudiniAPI.node_category_type_name(node) or "")
         return HoudiniAPI.__node_category_path_list(node.parent()) + node_category_lst
 
     @staticmethod
@@ -247,12 +252,12 @@ class HoudiniAPI:
             return None
         try:
             if (
-                public.Name.company_initial
-                in HoudiniAPI.node_definition_description(node).lower()
+                keys.Name.company_initial
+                in (HoudiniAPI.node_definition_description(node) or "").lower()
             ):
                 return [
-                    public.Name.company_icon_dirname,
-                    public.Name.company_log_icon_filename,
+                    keys.Name.company_icon_dirname,
+                    keys.Name.company_log_icon_filename,
                 ]
             icon = node.type().definition().icon().strip()
             if icon == "":
@@ -312,7 +317,12 @@ class HoudiniAPI:
             conn_idx = connect.inputItemOutputIndex()
             cur_idx = connect.inputIndex()
             conn_lst.append(
-                [cur_idx, conn_node.name(), conn_node.type().name(), conn_idx]
+                NodeConnection(
+                    port=cur_idx,
+                    node_name=conn_node.name(),
+                    node_type=conn_node.type().name(),
+                    peer_port=conn_idx,
+                )
             )
         return conn_lst
 
@@ -326,7 +336,12 @@ class HoudiniAPI:
             cur_idx = connect.inputItemOutputIndex()
             conn_idx = connect.inputIndex()
             conn_lst.append(
-                [cur_idx, conn_node.name(), conn_node.type().name(), conn_idx]
+                NodeConnection(
+                    port=cur_idx,
+                    node_name=conn_node.name(),
+                    node_type=conn_node.type().name(),
+                    peer_port=conn_idx,
+                )
             )
         return conn_lst
 
@@ -334,6 +349,8 @@ class HoudiniAPI:
     def set_node_input_connections(
         node: hou.Node | None = None, connection_lst: Any = None
     ) -> None:
+        if node is None:
+            return
         if connection_lst is None:
             return
         if not len(connection_lst):
@@ -342,12 +359,15 @@ class HoudiniAPI:
         child_node_name_lst = list(child_type_dict.keys())
         with hou.undos.group(HoudiniAPI.__undo_name_import_ihda):
             for conn_info in connection_lst:
-                node_idx, conn_node_name, conn_node_type, conn_node_idx = conn_info
+                node_idx = conn_info.port
+                conn_node_name = conn_info.node_name
+                conn_node_type = conn_info.node_type
+                conn_node_idx = conn_info.peer_port
                 if conn_node_name in child_node_name_lst:
                     if conn_node_type == child_type_dict.get(conn_node_name):
                         conn_node = hou.node(
                             node.parent().path()
-                            + public.Paths.houdini_path_sep
+                            + paths.Paths.houdini_path_sep
                             + conn_node_name
                         )
                         node.setInput(int(node_idx), conn_node, int(conn_node_idx))
@@ -356,6 +376,8 @@ class HoudiniAPI:
     def set_node_output_connections(
         node: hou.Node | None = None, connection_lst: Any = None
     ) -> None:
+        if node is None:
+            return
         if connection_lst is None:
             return
         if not len(connection_lst):
@@ -364,12 +386,15 @@ class HoudiniAPI:
         child_node_name_lst = list(child_type_dict.keys())
         with hou.undos.group(HoudiniAPI.__undo_name_import_ihda):
             for conn_info in connection_lst:
-                node_idx, conn_node_name, conn_node_type, conn_node_idx = conn_info
+                node_idx = conn_info.port
+                conn_node_name = conn_info.node_name
+                conn_node_type = conn_info.node_type
+                conn_node_idx = conn_info.peer_port
                 if conn_node_name in child_node_name_lst:
                     if conn_node_type == child_type_dict.get(conn_node_name):
                         conn_node = hou.node(
                             node.parent().path()
-                            + public.Paths.houdini_path_sep
+                            + paths.Paths.houdini_path_sep
                             + conn_node_name
                         )
                         conn_node.setInput(int(conn_node_idx), node, int(node_idx))
@@ -388,10 +413,14 @@ class HoudiniAPI:
         return math.sqrt(math.pow(sub.x(), 2) + math.pow(sub.y(), 2))
 
     def get_individual_hda_data(self) -> dict[str, Any]:
-        self.hda_filename = HoudiniAPI.make_hda_filename(
-            name=self.node.name(), version=self.hda_version, with_suffix=True
+        node = self.node
+        if node is None:
+            raise ValueError("Node no longer exists")
+        filename = HoudiniAPI.make_hda_filename(
+            name=node.name(), version=self.hda_version, with_suffix=True
         )
-        self.hda_filepath = self.hda_dirpath / self.hda_filename
+        self.hda_filename = filename
+        self.hda_filepath = self.__hda_dirpath / filename
         return self.__info_dict_individual_node(node=self.node)
 
     @staticmethod
@@ -399,63 +428,69 @@ class HoudiniAPI:
         name: str | None = None, version: str | None = None, with_suffix: bool = True
     ) -> str:
         if with_suffix:
-            _ext = public.Extensions.ihda_file
-            return f"{public.Name.hda_prefix_str}_{name}_v{version}{_ext}"
-        return f"{public.Name.hda_prefix_str}_{name}_v{version}"
+            _ext = keys.Extensions.ihda_file
+            return f"{keys.Name.hda_prefix_str}_{name}_v{version}{_ext}"
+        return f"{keys.Name.hda_prefix_str}_{name}_v{version}"
 
     @staticmethod
     def make_thumbnail_filename(
         name: str | None = None, version: str | None = None
     ) -> str:
-        return f"{public.Name.hda_prefix_str}_{name}_thumb_v{version}{public.Extensions.image}"
+        return (
+            f"{keys.Name.hda_prefix_str}_{name}_thumb_v{version}{keys.Extensions.image}"
+        )
 
     @staticmethod
     def make_thumbnail_dirpath(hda_dirpath: pathlib.Path | None = None) -> pathlib.Path:
         assert isinstance(hda_dirpath, pathlib.Path)
-        return hda_dirpath / public.Name.thumbnail_dirname
+        return hda_dirpath / keys.Name.thumbnail_dirname
 
     @staticmethod
     def make_preview_filename(
         name: str | None = None, version: str | None = None
     ) -> str:
-        return f"{public.Name.hda_prefix_str}_{name}_v{version}.$F4{public.Extensions.image}"
+        return (
+            f"{keys.Name.hda_prefix_str}_{name}_v{version}.$F4{keys.Extensions.image}"
+        )
 
     @staticmethod
     def make_preview_dirpath(
         hda_dirpath: pathlib.Path | None = None, version: str | None = None
     ) -> pathlib.Path:
+        if version is None:
+            raise ValueError("A version is required")
         assert isinstance(hda_dirpath, pathlib.Path)
-        return hda_dirpath / public.Name.preview_dirname / version
+        return hda_dirpath / keys.Name.preview_dirname / version
 
     @staticmethod
     def make_video_filename(name: str | None = None, version: str | None = None) -> str:
-        return (
-            f"{public.Name.hda_prefix_str}_{name}_v{version}{public.Extensions.video}"
-        )
+        return f"{keys.Name.hda_prefix_str}_{name}_v{version}{keys.Extensions.video}"
 
     @staticmethod
     def make_video_dirpath(hda_dirpath: pathlib.Path | None = None) -> pathlib.Path:
         assert isinstance(hda_dirpath, pathlib.Path)
-        return hda_dirpath / public.Name.video_dirname
+        return hda_dirpath / keys.Name.video_dirname
 
     @staticmethod
     def is_root_network(node: hou.Node | None = None) -> bool:
-        return bool(HoudiniAPI.node_type_name(node) == public.Type.root)
+        return bool(HoudiniAPI.node_type_name(node) == keys.Type.root)
 
     @staticmethod
     def __is_shop_network(node: hou.Node | None = None) -> bool:
-        return bool(HoudiniAPI.node_category_type_name(node) == public.Type.shop)
+        return bool(HoudiniAPI.node_category_type_name(node) == keys.Type.shop)
 
     @staticmethod
     def __is_vop_network(node: hou.Node | None = None) -> bool:
-        return bool(HoudiniAPI.node_category_type_name(node) == public.Type.vop)
+        return bool(HoudiniAPI.node_category_type_name(node) == keys.Type.vop)
 
     @staticmethod
     def is_subnet_nodetype(node: hou.Node | None = None) -> bool:
-        return bool(HoudiniAPI.node_type_name(node) == public.Type.subnet_node)
+        return bool(HoudiniAPI.node_type_name(node) == keys.Type.subnet_node)
 
     @staticmethod
     def is_valid_node(node: hou.Node | None = None) -> bool:
+        if node is None:
+            return False
         if HoudiniAPI.__is_shop_network(node=node):
             if HoudiniAPI.__is_sub_network_node(node):
                 log_handler.LogHandler.log_msg(
@@ -465,9 +500,9 @@ class HoudiniAPI:
                 return False
         if HoudiniAPI.__is_vop_network(node=node):
             node_descript = HoudiniAPI.node_definition_description(node)
-            node_type = HoudiniAPI.node_type_name(node)
-            is_descript = node_descript in public.InvalidNode.node_descript_list
-            is_type = node_type in public.InvalidNode.node_type_list
+            node_type = HoudiniAPI.node_type_name(node) or ""
+            is_descript = node_descript in keys.InvalidNode.node_descript_list
+            is_type = node_type in keys.InvalidNode.node_type_list
             if is_descript or is_type:
                 log_handler.LogHandler.log_msg(
                     method=logging.error,
@@ -490,8 +525,10 @@ class HoudiniAPI:
         :param verbose: Display Error Message
         :return: Bool
         """
+        if node is None:
+            return False
         node_name = node.name()
-        node_type = HoudiniAPI.node_type_name(node)
+        node_type = HoudiniAPI.node_type_name(node) or ""
         if node_type.find(":") >= 0:
             node_type = node_type.split(":")[0].strip()
         if node_name == node_type:
@@ -516,8 +553,10 @@ class HoudiniAPI:
         node: hou.Node | None = None,
         hda_dirpath: pathlib.Path | None = None,
         hda_filename: str | None = None,
-        hda_version: str = None,
+        hda_version: str | None = None,
     ) -> bool:
+        if node is None or hda_filename is None:
+            return False
         assert isinstance(hda_dirpath, pathlib.Path)
         hda_filepath = hda_dirpath / hda_filename
         if hda_filepath.exists():
@@ -570,6 +609,8 @@ class HoudiniAPI:
 
     @staticmethod
     def __set_hda_options(hda: hou.Node | None = None) -> bool:
+        if hda is None:
+            return False
         definition = hda.type().definition()
         if definition is None:
             hda.destroy()
@@ -595,19 +636,21 @@ class HoudiniAPI:
         return HoudiniAPI.__flipbook(
             filepath=output_filepath,
             frame_range=(frame, frame),
-            resolution=public.Value.thumbnail_resolution,
+            resolution=keys.Value.thumbnail_resolution,
         )
 
     @staticmethod
     def create_preview(
         output_filepath: pathlib.Path | None = None,
-        frame_info: tuple[float, float, float] | list[float] | None = (),
-        resolution: tuple[int, int] | list[int] | None = (),
+        frame_info: tuple[float, float, float] | list[float] | None = None,
+        resolution: tuple[int, int] | list[int] | None = None,
         is_beautypass_only: bool = False,
         is_init_sim: bool = False,
         is_motionblur: bool = False,
         is_crop_out_mask: bool = True,
     ) -> bool:
+        if frame_info is None or len(frame_info) != 3 or resolution is None:
+            raise ValueError("Frame start, end, FPS and resolution are required")
         assert isinstance(output_filepath, pathlib.Path)
         original_fps = hou.fps()
         original_frame = hou.frame()
@@ -636,8 +679,8 @@ class HoudiniAPI:
     @staticmethod
     def __flipbook(
         filepath: pathlib.Path | None = None,
-        frame_range: tuple[float, float] | None = (),
-        resolution: tuple[int, int] | list[int] | None = (),
+        frame_range: tuple[float, float] | None = None,
+        resolution: tuple[int, int] | list[int] | None = None,
         is_beautypass_only: bool = False,
         is_init_sim: bool = False,
         is_motionblur: bool = False,
@@ -712,7 +755,7 @@ class HoudiniAPI:
 
     @staticmethod
     def __set_frame_range_for_scene(
-        sf: int = 1001, ef: int = 1240, fps: float = 24
+        sf: float = 1001, ef: float = 1240, fps: float = 24
     ) -> None:
         hou.playbar.setFrameRange(sf, ef)
         hou.playbar.setPlaybackRange(sf, ef)
@@ -758,41 +801,43 @@ class HoudiniAPI:
     ) -> dict[str, Any]:
         d = {}
         # houdini node instance
-        d[public.Key.node] = node
+        d[keys.Key.node] = node
         # houdini hda version
-        d[public.Key.hda_version] = self.hda_version
+        d[keys.Key.hda_version] = self.hda_version
         # hda dirpath
-        d[public.Key.hda_dirpath] = self.hda_dirpath
+        d[keys.Key.hda_dirpath] = self.hda_dirpath
         # hda file name
-        d[public.Key.hda_filename] = self.hda_filename
+        d[keys.Key.hda_filename] = self.hda_filename
         # node type path list
-        d[public.Key.node_type_path_list] = HoudiniAPI.__node_type_path_list(node)
+        d[keys.Key.node_type_path_list] = HoudiniAPI.__node_type_path_list(node)
         # node category path list
-        d[public.Key.node_cate_path_list] = HoudiniAPI.__node_category_path_list(node)
+        d[keys.Key.node_cate_path_list] = HoudiniAPI.__node_category_path_list(node)
         # node type name
-        d[public.Key.node_type_name] = HoudiniAPI.node_type_name(node)
+        d[keys.Key.node_type_name] = HoudiniAPI.node_type_name(node)
         # node category type name
-        d[public.Key.node_cate_name] = HoudiniAPI.node_category_type_name(node)
+        d[keys.Key.node_cate_name] = HoudiniAPI.node_category_type_name(node)
         # node definition description
-        d[public.Key.node_def_desc] = HoudiniAPI.node_definition_description(node)
+        d[keys.Key.node_def_desc] = HoudiniAPI.node_definition_description(node)
         # node icon path list
-        d[public.Key.node_icon_path_list] = HoudiniAPI.node_icon_path_lst(node)
+        d[keys.Key.node_icon_path_list] = HoudiniAPI.node_icon_path_lst(node)
         # node is network
-        d[public.Key.is_network] = HoudiniAPI.__is_network_node(node)
+        d[keys.Key.is_network] = HoudiniAPI.__is_network_node(node)
         # node is sub network
-        d[public.Key.is_sub_network] = HoudiniAPI.__is_sub_network_node(node)
+        d[keys.Key.is_sub_network] = HoudiniAPI.__is_sub_network_node(node)
         # node input connections
-        d[public.Key.node_input_connections] = (
+        d[keys.Key.node_input_connections] = (
             HoudiniAPI.__get_node_input_connections_lst(node)
         )
         # node output connections
-        d[public.Key.node_output_connections] = (
+        d[keys.Key.node_output_connections] = (
             HoudiniAPI.__get_node_output_connections_lst(node)
         )
         return d
 
     @staticmethod
     def __hide_parms(node: hou.Node | None = None) -> None:
+        if node is None:
+            return
         group = node.parmTemplateGroup()
         for parm in group.entries():
             group.hideFolder(parm.label(), True)
@@ -823,9 +868,11 @@ class HoudiniAPI:
         node_name: str | None = None,
         node_type_name: str | None = None,
     ) -> hou.Node | None:
+        if parent_node is None:
+            raise ValueError("A parent node is required")
         assert isinstance(node_filepath, pathlib.Path)
         with tempfile.TemporaryDirectory(
-            prefix="ihda-import-", dir=public.Paths.tmp_dirpath
+            prefix="ihda-import-", dir=paths.Paths.tmp_dirpath
         ) as staging:
             staged = pathlib.Path(staging) / node_filepath.name
             shutil.copyfile(node_filepath, staged)
@@ -890,6 +937,8 @@ class HoudiniAPI:
         show_comments: bool = False,
         is_unpack_subnet: bool = False,
     ) -> None:
+        if node is None:
+            return
         if not len(contents):
             return
         with hou.undos.disabler():
@@ -908,10 +957,12 @@ class HoudiniAPI:
     def create_sticky_note(
         node: hou.Node | None = None, contents: str = ""
     ) -> hou.StickyNote | None:
+        if node is None:
+            return None
         if not len(contents):
             return None
         with hou.undos.disabler():
-            sticky = node.createStickyNote(public.Name.hda_prefix_str)
+            sticky = node.createStickyNote(keys.Name.hda_prefix_str)
             sticky.setText(contents)
             sticky.setTextSize(0.35)
             sticky.setTextColor(hou.Color(0.85, 0.85, 0.85))
@@ -937,6 +988,8 @@ class HoudiniAPI:
     def create_network_box(
         node: hou.Node | None = None, comment: str | None = "", items: Any = ()
     ) -> hou.NetworkBox | None:
+        if node is None:
+            return None
         with hou.undos.disabler():
             if len(items):
                 net_box = node.createNetworkBox()
@@ -981,8 +1034,10 @@ class HoudiniAPI:
     @staticmethod
     def slot_confirm_primary_network_editor() -> None:
         network_editor = HoudiniAPI.find_network_editor()
+        if network_editor is None:
+            return
         network_editor.flashMessage(
-            public.Paths.icons_hda_default_filepath.as_posix(),
+            paths.Paths.icons_hda_default_filepath.as_posix(),
             "this is the main network",
             1,
         )
@@ -1039,10 +1094,14 @@ class HoudiniAPI:
 
     @staticmethod
     def all_clear_selected(node: hou.Node | None = None) -> None:
+        if node is None:
+            return
         node.setSelected(False, clear_all_selected=True)
 
     @staticmethod
     def __is_exist_ihda_node(parent_node: hou.Node | None = None) -> bool:
+        if parent_node is None:
+            return False
         is_found = False
         try:
             leaves = parent_node.children()
@@ -1067,7 +1126,9 @@ class HoudiniAPI:
     def get_ihda_node_instance_data(
         parent_node: hou.Node | None = None,
     ) -> dict[str, Any]:
-        node_data = {}
+        if parent_node is None:
+            return {}
+        node_data: dict[str, Any] = {}
         for child_node in parent_node.children():
             hda_info = HoudiniAPI.get_hda_info_by_selection_node(node=child_node)
             is_exist = HoudiniAPI.__is_exist_ihda_node(parent_node=child_node)
@@ -1086,6 +1147,8 @@ class HoudiniAPI:
     def get_ihda_node_instance_nested_list(
         parent_node: hou.Node | None = None,
     ) -> list[Any]:
+        if parent_node is None:
+            return []
         node_data = []
         for child_node in parent_node.children():
             hda_info = HoudiniAPI.get_hda_info_by_selection_node(node=child_node)
@@ -1110,16 +1173,16 @@ class HoudiniAPI:
         comment = HoudiniAPI.get_node_comment(node=node)
         if comment is None:
             return None
-        regex_is_valid = re.compile(rf"{public.Key.Comment.ihda_id}")
+        regex_is_valid = re.compile(rf"{keys.Key.Comment.ihda_id}")
         search_comment = regex_is_valid.search(comment)
         if search_comment is None:
             return None
         hda_info_lst = []
         for info in comment.split("\n"):
             hda_info_lst.append([x.strip() for x in info.split(":")])
-        hda_info_dat = dict(hda_info_lst)
-        hda_info_dat[public.Key.Comment.ihda_id] = int(
-            hda_info_dat.get(public.Key.Comment.ihda_id)
+        hda_info_dat: dict[str, Any] = dict(hda_info_lst)
+        hda_info_dat[keys.Key.Comment.ihda_id] = int(
+            hda_info_dat[keys.Key.Comment.ihda_id]
         )
         return hda_info_dat
 
@@ -1129,10 +1192,14 @@ class HoudiniAPI:
             return
         node.setSelected(True, clear_all_selected=True)
         network_editor = HoudiniAPI.find_network_editor()
+        if network_editor is None:
+            return
         network_editor.setIsCurrentTab()
         network_editor.setPwd(node.parent())
         network_editor.homeToSelection()
 
     @staticmethod
     def get_node_datetime(node: hou.Node | None = None) -> tuple[Any, Any]:
+        if node is None:
+            raise ValueError("A node is required")
         return node.creationTime(), node.modificationTime()

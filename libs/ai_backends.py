@@ -14,6 +14,7 @@ import urllib.request
 from collections.abc import Iterator
 from typing import Any
 
+from libs.ai_defaults import OLLAMA_ENDPOINT
 from libs.ai_provider import AIProvider, AISettings, Prompt
 
 TIMEOUT_SEC = 60.0  # silence between chunks
@@ -143,7 +144,7 @@ class OllamaProvider:
     """
 
     def __init__(self, settings: AISettings) -> None:
-        self.endpoint = normalize_endpoint(settings.endpoint, "http://localhost:11434")
+        self.endpoint = normalize_endpoint(settings.endpoint, OLLAMA_ENDPOINT)
         self.model = settings.model.strip()
         self._no_think_prefill: str | None = None  # resolved on the first call
         # From the final chunk of the last call: "load" and "total" seconds,

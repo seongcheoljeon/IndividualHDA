@@ -16,6 +16,12 @@ def test_version_literals_agree() -> None:
     version = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))[
         "project"
     ]["version"]
+    from unittest.mock import Mock
+
+    from ihda_server.app import make_app
+    from libs.app_metadata import VERSION
+
+    assert make_app(Mock()).version == VERSION == version
     assert public.Value.current_ver == f"v{version}"
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
     assert re.search(rf"^## {re.escape(version)}\b", changelog, re.M), (

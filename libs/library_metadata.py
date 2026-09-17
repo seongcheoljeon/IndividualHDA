@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 
 def utc_now() -> str:
@@ -29,6 +29,10 @@ def validate_version_details(values: dict[str, Any]) -> None:
             "version",
             "required",
             "source",
+            "library_uuid",
+            "asset_uuid",
+            "version_uuid",
+            "resolution",
         }:
             raise ValueError("Invalid dependency fields")
         if item.get("kind") not in {"asset", "plugin", "file", "package"}:
@@ -37,6 +41,11 @@ def validate_version_details(values: dict[str, Any]) -> None:
             raise ValueError("Dependency target is required")
         if any(not isinstance(item.get(key, ""), str) for key in ("version", "source")):
             raise ValueError("Dependency version and source must be text")
+        for key in ("library_uuid", "asset_uuid", "version_uuid"):
+            if item.get(key) is not None:
+                if not isinstance(item[key], str):
+                    raise ValueError("Dependency identity must be text")
+                UUID(item[key])
         if not isinstance(item.get("required", True), bool):
             raise ValueError("Dependency required must be boolean")
     if values.get("dependency_status", "unknown") not in {"unknown", "recorded"}:

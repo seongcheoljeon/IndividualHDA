@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from copy import deepcopy
 from typing import Any
@@ -10,6 +11,8 @@ from sqlalchemy import Connection, and_, or_, select, update
 
 from ihda_server import lifecycle_schema as state
 from ihda_server import schema as tables
+from ihda_server.tracking import team_tracking
+from libs.library_metadata import new_identity, utc_now
 from libs.team.contracts import Command, Conflict
 
 
@@ -78,6 +81,7 @@ def apply_copy(
             "An asset with this name and category already exists (including Trash)"
         )
     document: dict[str, Any] = {}
+    copied_versions = []
     for index, version in enumerate(values["versions"]):
         data = deepcopy(version["values"])
         note = data.pop("note", "")
@@ -98,6 +102,9 @@ def apply_copy(
                 values=data,
             )
         document = apply(inner)
+        copied_versions.append(
+            (version, document["version_uuid"], document["asset_uuid"])
+        )
         # decorate() adds personal preferences only to its returned copy.
         snapshot = connection.execute(
             select(tables.assets.c.document).where(tables.assets.c.id == document["id"])
@@ -131,7 +138,59 @@ def apply_copy(
             .where(state.version_state.c.history_id == history_id)
             .values(details={**details, "provenance": snapshot["provenance"]})
         )
-    snapshot.update(note=values["note"], provenance={"copy_source": values["origin"]})
+    tracking = team_tracking(connection, project_id)
+    version_map = {
+        source["origin"]["version_uuid"]: target
+        for source, target, asset in copied_versions
+    }
+    for source, target, asset in copied_versions:
+        dependencies = deepcopy(source["values"].get("dependencies", []))
+        for dependency in dependencies:
+            if (
+                dependency.get("library_uuid") == values["origin"]["library_uuid"]
+                and dependency.get("version_uuid") in version_map
+            ):
+                dependency.update(
+                    library_uuid=project_id,
+                    asset_uuid=asset,
+                    version_uuid=version_map[dependency["version_uuid"]],
+                )
+        tracking.replace_dependencies(target, dependencies)
+        checks = source.get("checks", [])
+        check_map = {check["id"]: new_identity() for check in checks}
+        for check in checks:
+            report = deepcopy(check["document"])
+            report.update(
+                version_uuid=target,
+                provenance={
+                    "library_uuid": values["origin"]["library_uuid"],
+                    "version_uuid": source["origin"]["version_uuid"],
+                    "check_id": check["id"],
+                    "actor": check["actor"],
+                    "copied_at": utc_now(),
+                    "previous": report.get("provenance"),
+                },
+                method="imported_manual",
+            )
+            report["supersedes"] = check_map.get(report.get("supersedes"))
+            tracking.connection.write(
+                "INSERT INTO version_checks (scope_id,id,version_uuid,asset_uuid,actor,checked_at,created_at,document) VALUES(:scope,:id,:version,:asset,:actor,:checked,:created,:document)",
+                {
+                    "scope": project_id,
+                    "id": check_map[check["id"]],
+                    "version": target,
+                    "asset": asset,
+                    "actor": check["actor"],
+                    "checked": check["checked_at"],
+                    "created": utc_now(),
+                    "document": json.dumps(report),
+                },
+            )
+    snapshot.update(
+        note=values["note"],
+        provenance={"copy_source": values["origin"]},
+        dependencies=tracking.dependencies(snapshot["version_uuid"]),
+    )
     connection.execute(
         update(tables.assets)
         .where(tables.assets.c.id == document["id"])

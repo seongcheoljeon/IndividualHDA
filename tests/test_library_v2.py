@@ -6,9 +6,9 @@ from typing import Any
 from uuid import UUID
 
 import pytest
-from test_team_library import backend as backend  # noqa: F401
-from test_team_library import create_asset
-from test_team_library import server as server  # noqa: F401
+from support.team import backend as backend  # noqa: F401
+from support.team import create_asset
+from support.team import server as server  # noqa: F401
 
 from libs.team.contracts import Command, Conflict, Forbidden, NotFound
 
@@ -122,7 +122,7 @@ def test_team_viewer_has_private_favorites_and_no_purge(
     server: Any, tmp_path: Path
 ) -> None:
     client, identities, catalog, owner, token, project, storage = server
-    from test_team_library import TestTransport
+    from support.team import TestTransport
 
     from libs.team.client import BlobCache, HttpCatalog
 
@@ -157,7 +157,7 @@ def test_team_viewer_has_private_favorites_and_no_purge(
 
 def test_media_preserves_version_snapshot(server: Any, tmp_path: Path) -> None:
     client, _, _, _, token, project, _ = server
-    from test_team_library import TestTransport
+    from support.team import TestTransport
 
     from libs.team.client import BlobCache, HttpCatalog
 
@@ -194,7 +194,7 @@ def test_cleanup_preserves_shared_and_trashed_versions(
     server: Any, tmp_path: Path
 ) -> None:
     client, _, catalog, _, token, project, storage = server
-    from test_team_library import TestTransport
+    from support.team import TestTransport
 
     from ihda_server.file_maintenance import cleanup
     from libs.team.client import BlobCache, HttpCatalog

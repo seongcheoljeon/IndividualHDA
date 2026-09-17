@@ -12,6 +12,7 @@ from libs.qt_helpers import wildcard_expression
 from model.proxy_filters import AssetProxyModel
 from view.ihda_list_view import ListView
 from view.ihda_table_view import TableView
+from widgets.asset_browser.state import AssetViewMode
 from widgets.ui_tokens import (
     COMPACT_MARGIN,
     PANEL_SPACING,
@@ -74,9 +75,7 @@ class AssetBrowserView(QtWidgets.QWidget):
             QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter
         )
         browser_layout.addWidget(self.label__hda_count)
-        self._view_mode_buttons.idClicked.connect(
-            self.stackedWidget__hda.setCurrentIndex
-        )
+        self._view_mode_buttons.idClicked.connect(self.set_view_mode)
         self.lineEdit__search_hda.textChanged.connect(self.text_changed)
         self.comboBox__search_type.currentIndexChanged.connect(self.options_changed)
         self.checkBox__casesensitive_hda.toggled.connect(self.options_changed)
@@ -135,8 +134,12 @@ class AssetBrowserView(QtWidgets.QWidget):
             "table_mode", "ic_format_list_numbered_white.png", "Table View", True
         )
         self._view_mode_buttons = QtWidgets.QButtonGroup(self)
-        self._view_mode_buttons.addButton(self.pushButton__icon_mode, 0)
-        self._view_mode_buttons.addButton(self.pushButton__table_mode, 1)
+        self._view_mode_buttons.addButton(
+            self.pushButton__icon_mode, AssetViewMode.ICON
+        )
+        self._view_mode_buttons.addButton(
+            self.pushButton__table_mode, AssetViewMode.TABLE
+        )
         self.pushButton__icon_mode.setChecked(True)
         toolbar_layout.addWidget(self.pushButton__icon_mode)
         toolbar_layout.addWidget(self.pushButton__table_mode)
@@ -197,6 +200,16 @@ class AssetBrowserView(QtWidgets.QWidget):
         layout.addWidget(widget)
         self.stackedWidget__hda.addWidget(page)
         return layout
+
+    def set_view_mode(self, mode: int) -> None:
+        layout = {
+            AssetViewMode.ICON: self.verticalLayout__listview,
+            AssetViewMode.TABLE: self.verticalLayout__tableview,
+        }[AssetViewMode(mode)]
+        page = layout.parentWidget()
+        if page is None:
+            raise RuntimeError("Asset browser page is no longer attached")
+        self.stackedWidget__hda.setCurrentWidget(page)
 
     def get_search_request(self) -> SearchRequest:
         return SearchRequest(

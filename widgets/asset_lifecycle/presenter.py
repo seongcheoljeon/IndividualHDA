@@ -6,9 +6,9 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Protocol, TypeVar
 
+from libs.asset_contracts import AssetData
 from libs.asset_lifecycle import AssetLifecycleGateway, RenameResult
 from libs.asset_registration import RegistrationCapture, RegistrationService
-from libs.domain import AssetData
 from libs.repository import RegistrationPayload, RegistrationResult
 
 Result = TypeVar("Result")

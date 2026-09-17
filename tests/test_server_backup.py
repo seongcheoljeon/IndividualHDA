@@ -340,3 +340,49 @@ def test_backup_rejects_symlink_blob(bundle: Any, tmp_path: Path) -> None:
         pytest.skip("Symlink creation unavailable on this platform")
     with pytest.raises(ValueError, match="unsafe"):
         verify_bundle(backup)
+
+
+def test_schema_v2_bundle_is_still_verifiable(bundle: Any) -> None:
+    from ihda_server.backup_schema import backup_tables
+
+    backup, _, _ = bundle
+    path = backup / "manifest.json"
+    manifest = json.loads(path.read_text())
+    manifest["inventory"]["schema_version"] = 2
+    names = {table.name for table in backup_tables(2)}
+    manifest["inventory"]["tables"] = {
+        name: row
+        for name, row in manifest["inventory"]["tables"].items()
+        if name in names
+    }
+    path.write_text(json.dumps(manifest))
+    assert verify_bundle(backup)["inventory"]["schema_version"] == 2
+
+
+def test_postgres_v2_inventory_can_restore_then_migrate(
+    postgres_databases: Any,
+) -> None:
+    from sqlalchemy import update
+
+    from ihda_server import schema as tables
+    from ihda_server.backup_postgres import inventory
+    from ihda_server.database import initialize
+    from ihda_server.migrations import upgrade
+    from ihda_server.tracking_schema import TABLES
+
+    source, _, _, _ = postgres_databases
+    initialize(source)
+    with source.begin() as connection:
+        connection.exec_driver_sql(
+            "ALTER TABLE team_asset_state DROP CONSTRAINT fk_current_version"
+        )
+        for table in reversed(TABLES):
+            table.drop(connection)
+        connection.execute(update(tables.versions).values(version=2))
+    with source.connect() as connection:
+        restored_inventory = inventory(connection)
+        assert restored_inventory["schema_version"] == 2
+        assert "version_checks" not in restored_inventory["tables"]
+    upgrade(source)
+    with source.connect() as connection:
+        assert "version_checks" in inventory(connection)["tables"]

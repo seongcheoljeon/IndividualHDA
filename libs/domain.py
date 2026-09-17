@@ -4,106 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Generic, TypedDict, TypeVar
+from typing import Any, Generic, TypeVar
 
+from libs.asset_contracts import AssetData, HistoryData
 from libs.paths import SQLite, hda_base_dirpath
-
-
-class AssetData(TypedDict, total=False):
-    remote: bool
-    library_id: str
-    hda_id: int
-    hda_name: str
-    hda_cate: str
-    hda_icon: list[str]
-    hda_tags: list[str]
-    hda_note: str | None
-    is_favorite_hda: bool
-    hip_filename: str | None
-    hip_dirpath: Path | None
-    hda_load_count: int
-    hda_ctime: str
-    hda_mtime: str
-    hou_version: str
-    node_old_path: str
-    hda_license: str
-    hda_version: str
-    hda_dirpath: Path | None
-    hda_filename: str | None
-    thumbnail_filename: str | None
-    thumbnail_dirpath: Path | None
-    video_filename: str | None
-    video_dirpath: Path | None
-    node_type_path_list: list[str]
-    node_cate_path_list: list[str]
-    node_icon_path_list: list[str]
-    node_type_name: str
-    node_cate_name: str
-    node_def_desc: str
-    node_input_connections: list[tuple[int, str, str, int]]
-    node_output_connections: list[tuple[int, str, str, int]]
-    is_network: bool
-    is_sub_network: bool
-    item_row: int
-
-
-class HistoryData(TypedDict, total=False):
-    remote: bool
-    library_id: str
-    hist_id: int
-    hda_id: int
-    comment: str | None
-    org_hda_name: str
-    version: str
-    ihda_filename: str | None
-    ihda_dirpath: Path | None
-    reg_time: str
-    hou_version: str
-    hip_filename: str | None
-    hip_dirpath: Path | None
-    hda_license: str
-    os: str
-    node_old_path: str
-    node_def_desc: str
-    node_type_name: str
-    node_category: str
-    userid: str
-    icon: list[str]
-    tags: list[str]
-    hda_note: str | None
-    thumb_dirpath: Path | None
-    thumb_filename: str | None
-    video_dirpath: Path | None
-    video_filename: str | None
-    item_row: int
-
-
-class SceneRecord(TypedDict, total=False):
-    record_id: int
-    hda_id: int
-    hip_filename: str | None
-    hip_dirpath: Path | None
-    hda_filename: str | None
-    hda_dirpath: Path | None
-    parent_node_path: str
-    node_type: str
-    node_cate: str
-    node_name: str
-    org_node_name: str
-    node_ver: str
-    houdini_version: str
-    houdini_license: str
-    operating_system: str
-    sf: float
-    ef: float
-    fps: float
-    ctime: str
-    mtime: str
-    thumb_dirpath: Path | None
-    thumb_filename: str | None
-    video_dirpath: Path | None
-    video_filename: str | None
-
 
 Payload = TypeVar("Payload", AssetData, HistoryData)
 
@@ -120,6 +24,11 @@ class ItemSelection(Generic[Payload]):
     version: str | None = None
     hist_id: int | None = None
 
+    def require_data(self) -> Payload:
+        if self.data is None:
+            raise ValueError("Select an asset or version first")
+        return self.data
+
 
 @dataclass(slots=True)
 class SelectionState:
@@ -134,33 +43,33 @@ class SelectionState:
     def select_asset(
         self, data: AssetData | None, row: int | None = None, field: str | None = None
     ) -> None:
-        directory = data.get("hda_dirpath") if data else None
-        filename = data.get("hda_filename") if data else None
+        directory = data.hda_dirpath if data else None
+        filename = data.hda_filename if data else None
         self.asset = ItemSelection(
             data=data,
             row=row,
             field=field,
-            id=data.get("hda_id") if data else None,
-            name=data.get("hda_name") if data else None,
-            cate=data.get("hda_cate") if data else None,
-            version=data.get("hda_version") if data else None,
+            id=data.hda_id if data else None,
+            name=data.hda_name if data else None,
+            cate=data.hda_cate if data else None,
+            version=data.hda_version if data else None,
             filepath=directory / filename if directory and filename else None,
         )
 
     def select_history(
         self, data: HistoryData | None, row: int | None = None, field: str | None = None
     ) -> None:
-        directory = data.get("ihda_dirpath") if data else None
-        filename = data.get("ihda_filename") if data else None
+        directory = data.ihda_dirpath if data else None
+        filename = data.ihda_filename if data else None
         self.history = ItemSelection(
             data=data,
             row=row,
             field=field,
-            id=data.get("hda_id") if data else None,
-            name=data.get("org_hda_name") if data else None,
-            cate=data.get("node_category") if data else None,
-            version=data.get("version") if data else None,
-            hist_id=data.get("hist_id") if data else None,
+            id=data.hda_id if data else None,
+            name=data.org_hda_name if data else None,
+            cate=data.node_category if data else None,
+            version=data.version if data else None,
+            hist_id=data.hist_id if data else None,
             filepath=directory / filename if directory and filename else None,
         )
 

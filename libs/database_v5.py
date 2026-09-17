@@ -47,16 +47,19 @@ def install(connection: sqlite3.Connection) -> None:
     for statement in statements:
         connection.execute(statement)
     connection.execute("INSERT INTO write_context(singleton,request_id) VALUES(1,NULL)")
-    connection.execute("INSERT INTO library_identity VALUES(1,?)", (new_identity(),))
+    connection.execute(
+        "INSERT INTO library_identity (singleton,uuid) VALUES(1,:new_identity)",
+        {"new_identity": new_identity()},
+    )
     for (asset_id,) in connection.execute("SELECT id FROM hda_key").fetchall():
         connection.execute(
-            "INSERT INTO asset_identity(asset_id,uuid,created_at) VALUES(?,?,NULL)",
-            (asset_id, new_identity()),
+            "INSERT INTO asset_identity(asset_id,uuid,created_at) VALUES(:asset_id,:new_identity,NULL)",
+            {"asset_id": asset_id, "new_identity": new_identity()},
         )
     for (history_id,) in connection.execute("SELECT id FROM hda_history").fetchall():
         connection.execute(
-            "INSERT INTO version_identity(history_id,uuid,created_at) VALUES(?,?,NULL)",
-            (history_id, new_identity()),
+            "INSERT INTO version_identity(history_id,uuid,created_at) VALUES(:history_id,:new_identity,NULL)",
+            {"history_id": history_id, "new_identity": new_identity()},
         )
     connection.execute("""UPDATE asset_identity SET current_version_uuid=(
         SELECT v.uuid FROM version_identity v JOIN hda_history h ON h.id=v.history_id
@@ -70,10 +73,8 @@ def install(connection: sqlite3.Connection) -> None:
         ("video", "video_dirpath", "video_filename"),
     ):
         connection.execute(
-            f"""INSERT INTO version_files(history_id,kind,directory,filename,registered_at)
-            SELECT id,?,{directory},{filename},registration_datetime FROM hda_history
-            WHERE {directory} IS NOT NULL AND {filename} IS NOT NULL""",
-            (kind,),
+            f"INSERT INTO version_files(history_id,kind,directory,filename,registered_at)\n            SELECT id,:kind,{directory},{filename},registration_datetime FROM hda_history\n            WHERE {directory} IS NOT NULL AND {filename} IS NOT NULL",
+            {"kind": kind},
         )
         for action in ("INSERT", "UPDATE"):
             condition = (
@@ -152,7 +153,7 @@ def install(connection: sqlite3.Connection) -> None:
     connection.execute("""INSERT INTO migration_reports SELECT 'Asset ' || hda_key_id || ': duplicate version label ' || version || '; history IDs retained'
         FROM hda_history GROUP BY hda_key_id,version HAVING COUNT(*)>1""")
     connection.execute(
-        "INSERT INTO migration_reports VALUES('Legacy timestamps retain their original values; timezone is unknown')"
+        "INSERT INTO migration_reports (message) VALUES('Legacy timestamps retain their original values; timezone is unknown')"
     )
 
     for table in (

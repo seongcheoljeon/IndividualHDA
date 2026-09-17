@@ -1,8 +1,4 @@
-"""Backward-compatible database entry point.
-
-Domain operations share one connection and transaction through DatabaseSession.
-Existing callers retain their method signatures, return values and context manager.
-"""
+"""Personal SQLite adapter. Storage operations share one transaction session."""
 
 from libs.database.assets import AssetsOperations
 from libs.database.catalog import CatalogOperations
@@ -23,3 +19,19 @@ class SQLite3DatabaseAPI(
     DatabaseSession,
 ):
     """Individual HDA library database."""
+
+    def trash_asset(self, asset_id: int) -> None:
+        from libs.database.lifecycle import PersonalLifecycle
+
+        with self.transaction():
+            PersonalLifecycle(self._connect).change(asset_id, "delete")
+
+    def trash_history(self, asset_id: int, history_id: int) -> None:
+        from libs.database.lifecycle import PersonalLifecycle
+        from libs.repository import LibraryConflict
+
+        try:
+            with self.transaction():
+                PersonalLifecycle(self._connect).change(asset_id, "delete", history_id)
+        except LibraryConflict as error:
+            raise ValueError(str(error)) from error

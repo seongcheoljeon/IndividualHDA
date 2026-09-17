@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
 )
 
 from widgets.layout_helpers import make_font, size_policy
+from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 
 from . import video_player_icons_rc  # noqa: F401 (register bundled icons)
 
@@ -105,7 +106,9 @@ class VideoPlayerLayout:
         self.pushButton__add_playlist.setIcon(
             QIcon(":/video_player_main/icons/ic_playlist_add_white.png")
         )
-        self.pushButton__add_playlist.setIconSize(QSize(20, 20))
+        self.pushButton__add_playlist.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__add_playlist.setFlat(True)
         self.pushButton__add_playlist.setToolTip(_translate("Add Video To Playlist"))
         self.pushButton__add_playlist.setStatusTip(_translate("Add video to playlist."))
@@ -123,7 +126,9 @@ class VideoPlayerLayout:
         self.pushButton__del_playlist.setIcon(
             QIcon(":/video_player_main/icons/ic_delete_forever_white.png")
         )
-        self.pushButton__del_playlist.setIconSize(QSize(20, 20))
+        self.pushButton__del_playlist.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__del_playlist.setFlat(True)
         self.pushButton__del_playlist.setToolTip(
             _translate("Delete Video From Playlist")
@@ -175,7 +180,7 @@ class VideoPlayerLayout:
         self.pushButton__volume.setIcon(
             QIcon(":/video_player_main/icons/ic_volume_up_white.png")
         )
-        self.pushButton__volume.setIconSize(QSize(20, 20))
+        self.pushButton__volume.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
         self.pushButton__volume.setCheckable(True)
         self.pushButton__volume.setFlat(True)
         self.pushButton__volume.setToolTip(_translate("Volume"))
@@ -231,7 +236,7 @@ class VideoPlayerLayout:
         self.pushButton__play.setIcon(
             QIcon(":/video_player_main/icons/ic_play_arrow_white.png")
         )
-        self.pushButton__play.setIconSize(QSize(20, 20))
+        self.pushButton__play.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
         self.pushButton__play.setFlat(True)
         self.pushButton__play.setToolTip(_translate("Play"))
         self.pushButton__play.setStatusTip(_translate("Play the video."))
@@ -243,7 +248,7 @@ class VideoPlayerLayout:
         self.pushButton__stop.setIcon(
             QIcon(":/video_player_main/icons/ic_stop_white.png")
         )
-        self.pushButton__stop.setIconSize(QSize(20, 20))
+        self.pushButton__stop.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
         self.pushButton__stop.setFlat(True)
         self.pushButton__stop.setToolTip(_translate("Stop"))
         self.pushButton__stop.setStatusTip(_translate("Stop playing the video."))
@@ -257,7 +262,9 @@ class VideoPlayerLayout:
         self.pushButton__previous_video.setIcon(
             QIcon(":/video_player_main/icons/ic_skip_previous_white.png")
         )
-        self.pushButton__previous_video.setIconSize(QSize(20, 20))
+        self.pushButton__previous_video.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__previous_video.setFlat(True)
         self.pushButton__previous_video.setToolTip(_translate("Previous Video"))
         self.pushButton__previous_video.setStatusTip(
@@ -273,7 +280,9 @@ class VideoPlayerLayout:
         self.pushButton__next_video.setIcon(
             QIcon(":/video_player_main/icons/ic_skip_next_white.png")
         )
-        self.pushButton__next_video.setIconSize(QSize(20, 20))
+        self.pushButton__next_video.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__next_video.setFlat(True)
         self.pushButton__next_video.setToolTip(_translate("Next Video"))
         self.pushButton__next_video.setStatusTip(
@@ -289,7 +298,9 @@ class VideoPlayerLayout:
         self.pushButton__playback_mode.setIcon(
             QIcon(":/video_player_main/icons/ic_repeat_one_white.png")
         )
-        self.pushButton__playback_mode.setIconSize(QSize(20, 20))
+        self.pushButton__playback_mode.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__playback_mode.setChecked(False)
         self.pushButton__playback_mode.setFlat(True)
         self.pushButton__playback_mode.setToolTip(_translate("Playback Mode"))
@@ -311,7 +322,9 @@ class VideoPlayerLayout:
         self.pushButton__full_screen.setIcon(
             QIcon(":/video_player_main/icons/ic_zoom_out_map_white.png")
         )
-        self.pushButton__full_screen.setIconSize(QSize(20, 20))
+        self.pushButton__full_screen.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.pushButton__full_screen.setFlat(True)
         self.pushButton__full_screen.setToolTip(_translate("Full Screen"))
         self.pushButton__full_screen.setStatusTip(

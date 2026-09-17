@@ -2,9 +2,30 @@
 
 ## 2.1.0 (unreleased) — shared-library foundations
 
-Client-only groundwork for a multi-user library; behavior in local mode is
-unchanged apart from the items below.
+Personal and Team library foundations, with additive tracking and recovery.
 
+- **Runtime preferences and policy ownership.** Add restart-applied search, refresh,
+  team request/page and node-batch preferences with validated legacy-compatible
+  loading. Share version, AI defaults, query limits and model column identities;
+  inject callback/media/thumbnail policies without changing data formats.
+- **Committed scene-record cleanup.** Collect stable IDs before deleting, retain
+  failed/inaccessible records, update the view only after database success and
+  reload after display failures. HIP/HDA source files are never removed.
+
+- **Version tracking (Personal v6 / Team v3).** Add normalized dependencies,
+  append-only manual compatibility reports/corrections, and account-scoped scene
+  observations with durable offline delivery. Warn about dependents before Trash
+  or purge; preserve missing references and copied report provenance. Retain API v2
+  with a `version_tracking` capability and include tracking in backups.
+- **Durable registration recovery.** Persist local capture/publication phases and
+  a receipt in the metadata transaction; retain Team captures/uploads and exact
+  commands for retry. Add Pending registrations to Library Tools with safe discard.
+  Existing history activity no longer moves the current-version pointer.
+- **Named data and policies.** Read multi-column SQLite results by explicit names,
+  normalize payloads at the storage boundary, and isolate legacy row ordering in
+  compatibility converters. Registration/history/scene UI paths use named fields
+  without modifying caller lists. Select pages by identity and inject validated
+  search, panel, SQLite and archive limits while retaining existing defaults.
 - **Main-window composition.** Separate construction and retryable shutdown from
   Qt events. Compose bootstrap, AI, archives and library sync instead of inheriting
   their Mixins. Clean acquired resources on startup failure and keep failed closes

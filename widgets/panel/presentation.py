@@ -1,18 +1,19 @@
 """Presentation for the Houdini panel.
 
-Shares protected panel state; Qt and HOM calls stay on the GUI thread.
+Explicit bindings connect this feature to its view and collaborators.
 """
 
 from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-import public
-from libs import houdini_api, ihda_system, log_handler
+from libs import host, houdini_api, ihda_system, keys, log_handler, platform_info
+from libs.app_metadata import FFMPEG_DOWNLOAD_URL, MINIMUM_HOUDINI_MAJOR, SUPPORT_URL
 from libs.domain import LibraryContext
 
 
@@ -20,13 +21,13 @@ def app_info(houdini_ver: Any = None) -> str:
     info = f"""
 <p>Individual HDA (Houdini built-in app)<br><br>
 Release Date: 2026.09.11<br>
-Release Version: {public.Value.current_ver}<br>
-OS Available: {public.platform_system().title()}<br>
+Release Version: {keys.Value.current_ver}<br>
+OS Available: {platform_info.platform_system().title()}<br>
 Recommended Houdini Version: {houdini_ver}<br>
 <br>
 <b><i>Please donate if you like this app.<i><b><br>
 <br>
-<a href="https://buymeacoffee.com/seongcheol" style="color:#ff6f00" target="_blank">Buy Me A Coffee</a><br>
+<a href="{SUPPORT_URL}" style="color:#ff6f00" target="_blank">Buy Me A Coffee</a><br>
 <br>
 <a href="https://vimeo.com/seongcheolzeon" style="color:red"
 target="_blank">Vimeo</a><br>
@@ -64,13 +65,57 @@ SOFTWARE.
     return lic_info
 
 
-class PresentationMixin:
+if TYPE_CHECKING:
+    from libs.dragdrop_overlay import Overlay as DragOverlay
+    from libs.loading_indicator import Overlay
+    from ui_settings import UISettings
+    from widgets.asset_browser.integration import AssetBrowserIntegration
+    from widgets.asset_details.integration import AssetDetailsIntegration
+    from widgets.make_video_info.make_video_info import MakeVideoInfo
+    from widgets.panel.host_callbacks import PanelHostCallbacks
+    from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.library_queries import PanelLibraryQueries
+    from widgets.panel.model_binding import PanelModelBinding
+    from widgets.panel.services import PanelServices
+    from widgets.panel.state import PanelSessionState, PanelStatus, PanelViews
+    from widgets.preference.preference import Preference
+    from widgets.rename_ihda.rename_ihda import RenameIHDA
+    from widgets.video_player import UnavailableVideoPlayer
+    from widgets.video_player.video_player import VideoPlayer
+
+
+@dataclass(frozen=True, slots=True)
+class PanelPresentationBindings:
+    browser: AssetBrowserIntegration
+    callbacks: PanelHostCallbacks
+    details: AssetDetailsIntegration
+    drag_overlay: DragOverlay
+    loading: Overlay
+    models: PanelModelBinding
+    parent: QtWidgets.QWidget
+    preference: Preference
+    queries: PanelLibraryQueries
+    rename_dialog: RenameIHDA
+    services: PanelServices
+    session: PanelSessionState
+    status: PanelStatus
+    ui: MainWindowLayout
+    ui_settings: UISettings
+    video_info: MakeVideoInfo
+    video_player: VideoPlayer | UnavailableVideoPlayer
+    views: PanelViews
+    web_view: QtWidgets.QWidget
+
+
+class PanelPresentation:
+    bindings: PanelPresentationBindings
+
     @staticmethod
     def _get_default_font(font_size: int | None = None) -> QtGui.QFont:
         font = QtGui.QFont()
-        font.setFamily(public.UISetting.dft_font_style)
+        font.setFamily(keys.UISetting.dft_font_style)
         if font_size is None:
-            font.setPointSize(public.UISetting.dft_font_size)
+            font.setPointSize(keys.UISetting.dft_font_size)
         else:
             font.setPointSize(font_size)
         return font
@@ -84,130 +129,137 @@ class PresentationMixin:
         textedit.setFont(font)
 
     def _get_font_properties(self, size_key: Any, style_key: Any) -> list[Any]:
-        font_size = public.UISetting.view_font_size
-        if public.IS_HOUDINI:
+        font_size = keys.UISetting.view_font_size
+        if host.IS_HOUDINI:
             font_size = houdini_api.HoudiniAPI.scaled_size(int(font_size))
-        font_style = public.UISetting.view_font_style
-        properties_data = self._preference.get_properties_data()
+        font_style = keys.UISetting.view_font_style
+        properties_data = self.bindings.preference.get_properties_data()
         if properties_data is not None and size_key in properties_data:
-            font_size = properties_data.get(size_key)
-            font_style = properties_data.get(style_key)
+            font_size = properties_data[size_key]
+            font_style = properties_data.get(style_key, font_style)
         return [font_size, font_style]
 
-    def _get_padding_properties(self, dft_pad: Any, pad_key: Any) -> float:
+    def _get_padding_properties(self, dft_pad: Any, pad_key: Any) -> int:
         padding = dft_pad
-        properties_data = self._preference.get_properties_data()
+        properties_data = self.bindings.preference.get_properties_data()
         if properties_data is not None and pad_key in properties_data:
             padding = properties_data.get(pad_key)
-        return padding
+        return int(padding)
 
     def _get_treeview_properties(self) -> int:
-        icon_size = public.UISetting.treeview_node_icon_size
-        properties_data = self._preference.get_properties_data()
+        icon_size = keys.UISetting.treeview_node_icon_size
+        properties_data = self.bindings.preference.get_properties_data()
         if properties_data is not None:
-            if public.Name.PreferenceUI.spb_treeview_icon_size in properties_data:
-                icon_size = properties_data.get(
-                    public.Name.PreferenceUI.spb_treeview_icon_size
-                )
-                if public.IS_HOUDINI:
+            if keys.Name.PreferenceUI.spb_treeview_icon_size in properties_data:
+                icon_size = properties_data[
+                    keys.Name.PreferenceUI.spb_treeview_icon_size
+                ]
+                if host.IS_HOUDINI:
                     icon_size = houdini_api.HoudiniAPI.scaled_size(int(icon_size))
         return icon_size
 
     def _get_listview_properties(self, zoom_val: float) -> list[Any]:
         size_ratio = self._get_ratio_icon_size(zoom_val)
-        icon_size = public.UISetting.listview_node_icon_size * size_ratio
-        thumb_scale = public.UISetting.listview_thumbnail_scale
-        properties_data = self._preference.get_properties_data()
+        icon_size = keys.UISetting.listview_node_icon_size * size_ratio
+        thumb_scale = keys.UISetting.listview_thumbnail_scale
+        properties_data = self.bindings.preference.get_properties_data()
         if properties_data is not None:
-            if public.Name.PreferenceUI.spb_listview_icon_size in properties_data:
+            if keys.Name.PreferenceUI.spb_listview_icon_size in properties_data:
                 icon_size = (
-                    properties_data.get(public.Name.PreferenceUI.spb_listview_icon_size)
+                    properties_data[keys.Name.PreferenceUI.spb_listview_icon_size]
                     * size_ratio
                 )
-                if public.IS_HOUDINI:
+                if host.IS_HOUDINI:
                     icon_size = houdini_api.HoudiniAPI.scaled_size(int(icon_size))
                 thumb_scale = properties_data.get(
-                    public.Name.PreferenceUI.dspb_listview_thumb_scale
+                    keys.Name.PreferenceUI.dspb_listview_thumb_scale, thumb_scale
                 )
         thumb_size = icon_size * thumb_scale
         return [icon_size, thumb_size]
 
     def _get_tableview_properties(self, zoom_val: float) -> list[Any]:
         size_ratio = self._get_ratio_icon_size(zoom_val)
-        icon_size = public.UISetting.tableview_node_icon_size * size_ratio
-        thumb_scale = public.UISetting.tableview_thumbnail_scale
-        properties_data = self._preference.get_properties_data()
+        icon_size = keys.UISetting.tableview_node_icon_size * size_ratio
+        thumb_scale = keys.UISetting.tableview_thumbnail_scale
+        properties_data = self.bindings.preference.get_properties_data()
         if properties_data is not None:
-            if public.Name.PreferenceUI.spb_tableview_icon_size in properties_data:
+            if keys.Name.PreferenceUI.spb_tableview_icon_size in properties_data:
                 icon_size = (
-                    properties_data.get(
-                        public.Name.PreferenceUI.spb_tableview_icon_size
-                    )
+                    properties_data[keys.Name.PreferenceUI.spb_tableview_icon_size]
                     * size_ratio
                 )
-                if public.IS_HOUDINI:
+                if host.IS_HOUDINI:
                     icon_size = houdini_api.HoudiniAPI.scaled_size(int(icon_size))
                 thumb_scale = properties_data.get(
-                    public.Name.PreferenceUI.dspb_tableview_thumb_scale
+                    keys.Name.PreferenceUI.dspb_tableview_thumb_scale, thumb_scale
                 )
         thumb_size = icon_size * thumb_scale
         return [icon_size, thumb_size]
 
     def _init_set_video_player(self) -> None:
-        self.verticalLayout__video_player.addWidget(self._video_player)
+        self.bindings.ui.verticalLayout__video_player.addWidget(
+            self.bindings.video_player
+        )
 
     def _init_set_web_view(self) -> None:
-        self.verticalLayout__web_view.addWidget(self._web_view)
+        self.bindings.ui.verticalLayout__web_view.addWidget(self.bindings.web_view)
 
     def _hide_parms(self) -> None:
-        self.actionLogin.setVisible(False)
-        self.actionLogout.setVisible(False)
-        self.actionCreate_Account.setVisible(False)
-        self.actionQuit.setVisible(False)
-        self.actionUpdate.setVisible(False)
+        self.bindings.ui.actionLogin.setVisible(False)
+        self.bindings.ui.actionLogout.setVisible(False)
+        self.bindings.ui.actionCreate_Account.setVisible(False)
+        self.bindings.ui.actionQuit.setVisible(False)
+        self.bindings.ui.actionUpdate.setVisible(False)
         # user info hide
-        self.label__logged_id.setHidden(True)
-        self.label__logged_id_pixmap.setHidden(True)
+        self.bindings.ui.label__logged_id.setHidden(True)
+        self.bindings.ui.label__logged_id_pixmap.setHidden(True)
 
     def _dragdrop_overlay_show(
         self, text: str | None = None, fontsize: int | None = None
     ) -> None:
-        self._dragdrop_overlay.text = text
+        self.bindings.drag_overlay.text = text
         if fontsize is not None:
-            self._dragdrop_overlay.fontsize = 30
-        self._dragdrop_overlay.show()
+            self.bindings.drag_overlay.fontsize = 30
+        self.bindings.drag_overlay.show()
 
     def _dragdrop_overlay_close(self) -> None:
-        self._dragdrop_overlay.close()
+        self.bindings.drag_overlay.close()
 
     def _loading_show(self) -> None:
-        if public.IS_HOUDINI:
-            self._add_event_loop_callback(self._loading_counter)
-        self._loading.show()
+        if host.IS_HOUDINI:
+            self.bindings.callbacks._add_event_loop_callback(self._loading_counter)
+        self.bindings.loading.show()
 
     def _loading_close(self) -> None:
-        if public.IS_HOUDINI:
-            self._remove_event_loop_callback(self._loading_counter)
-        self._loading.close()
+        if host.IS_HOUDINI:
+            self.bindings.callbacks._remove_event_loop_callback(self._loading_counter)
+        self.bindings.loading.close()
 
     def _loading_counter(self) -> None:
-        self._loading.counter = 1
-        self._loading.update()
+        self.bindings.loading.counter = 1
+        self.bindings.loading.update()
 
     def _slot_node_connections(self, inst: Any = None) -> None:
         if not inst.isChecked():
             inst.setChecked(True)
-        lst = [self.actionNull, self.actionInput, self.actionOuput, self.actionBoth]
+        lst = [
+            self.bindings.ui.actionNull,
+            self.bindings.ui.actionInput,
+            self.bindings.ui.actionOuput,
+            self.bindings.ui.actionBoth,
+        ]
         for i in lst:
             if i != inst:
                 i.setChecked(False)
 
     def _resizing_listview(self) -> None:
-        self._ihda_list_view.setResizeMode(QtWidgets.QListView.ResizeMode.Adjust)
-        self._ihda_list_view.setSpacing(3)
+        self.bindings.views.assets_list.setResizeMode(
+            QtWidgets.QListView.ResizeMode.Adjust
+        )
+        self.bindings.views.assets_list.setSpacing(3)
 
     def _open_houdini_file(self, hip_filepath: pathlib.Path | None = None) -> None:
-        msgbox = QtWidgets.QMessageBox(self)
+        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
         msgbox.setFont(self._get_default_font())
         msgbox.setWindowTitle("Open Houdini File")
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
@@ -223,34 +275,43 @@ class PresentationMixin:
             ihda_system.IHDASystem.open_hipfile_using_thread(hip_filepath)
 
     def _slot_local_ai_models(self) -> None:
-        self._preference.show()
-        self._preference.open_local_models()
+        self.bindings.preference.show()
+        self.bindings.preference.open_local_models()
 
     def _slot_preference(self) -> None:
-        if self._preference.is_ffmpeg_valid:
-            self._video_player.ffmpeg_dirpath = self._preference.ffmpeg_dirpath
-        self._details.close()
-        self._library = LibraryContext.from_preference(self._preference, self._user)
-        self._repository = self._services.repository(self._library)
-        self._browser.change_repository(self._repository)
-        self._details.change_repository(self._repository, self._library)
-        if self._library is not None:
-            self._library.asset_root.mkdir(parents=True, exist_ok=True)
+        if self.bindings.preference.is_ffmpeg_valid:
+            self.bindings.video_player.ffmpeg_dirpath = (
+                self.bindings.preference.ffmpeg_dirpath
+            )
+        self.bindings.details.close()
+        self.bindings.session.context = LibraryContext.from_preference(
+            self.bindings.preference, self.bindings.session.user
+        )
+        self.bindings.session.repository = self.bindings.services.repository(
+            self.bindings.session.context
+        )
+        self.bindings.browser.change_repository(self.bindings.session.repository)
+        self.bindings.details.change_repository(
+            self.bindings.session.repository, self.bindings.session.context
+        )
+        if self.bindings.session.context is not None:
+            self.bindings.session.context.asset_root.mkdir(parents=True, exist_ok=True)
             # DB 파일이 존재하지 않는다면 생성
-            db_filepath = self._db_filepath
+            db_filepath = self.bindings.queries._db_filepath
             assert isinstance(db_filepath, pathlib.Path)
             if not db_filepath.exists():
-                db_api = self._services.open_database(db_filepath)
+                db_api = self.bindings.services.open_database(db_filepath)
                 db_api.create_tables()
                 is_done = db_api.insert_users(
-                    user_id=self._user, email=f"{self._user}@local"
+                    user_id=self.bindings.session.user,
+                    email=f"{self.bindings.session.user}@local",
                 )
                 if not is_done:
                     log_handler.LogHandler.log_msg(
                         method=logging.error, msg="user creation failed"
                     )
                     return
-                msgbox = QtWidgets.QMessageBox(self)
+                msgbox = QtWidgets.QMessageBox(self.bindings.parent)
                 msgbox.setFont(self._get_default_font())
                 msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
                 msgbox.setWindowTitle("Individual iHDA")
@@ -258,77 +319,82 @@ class PresentationMixin:
                 _ = msgbox.exec()
         # app properties
         font_size, font_style = self._get_font_properties(
-            public.Name.PreferenceUI.spb_view_font_size,
-            public.Name.PreferenceUI.cmb_view_font_style,
+            keys.Name.PreferenceUI.spb_view_font_size,
+            keys.Name.PreferenceUI.cmb_view_font_style,
         )
-        self._ihda_list_model.set_font(style=font_style, size=font_size)
-        self._ihda_table_model.set_font(style=font_style, size=font_size)
-        self._ihda_history_model.set_font(style=font_style, size=font_size)
-        self._ihda_category_model.set_font(style=font_style, size=font_size)
-        self._ihda_record_model.set_font(style=font_style, size=font_size)
-        self._ihda_inside_model.set_font(style=font_style, size=font_size)
+        self.bindings.models.list_model.set_font(style=font_style, size=font_size)
+        self.bindings.models.table_model.set_font(style=font_style, size=font_size)
+        self.bindings.models.history_model.set_font(style=font_style, size=font_size)
+        self.bindings.models.category_model.set_font(style=font_style, size=font_size)
+        self.bindings.models.record_model.set_font(style=font_style, size=font_size)
+        self.bindings.models.inside_model.set_font(style=font_style, size=font_size)
         treeview_icon_size = self._get_treeview_properties()
         self._set_tree_view_item_icon_size(treeview_icon_size)
-        self._set_view_item_icon_size(self.doubleSpinBox__zoom.value())
+        self._set_view_item_icon_size(self.bindings.ui.doubleSpinBox__zoom.value())
         # text view의 font size, style 적용
         self._set_font_properties(
-            self.textEdit__note,
+            self.bindings.ui.textEdit__note,
             self._get_font_properties(
-                public.Name.PreferenceUI.spb_note_font_size,
-                public.Name.PreferenceUI.cmb_note_font_style,
+                keys.Name.PreferenceUI.spb_note_font_size,
+                keys.Name.PreferenceUI.cmb_note_font_style,
             ),
         )
         self._set_font_properties(
-            self.textEdit__tag,
+            self.bindings.ui.textEdit__tag,
             self._get_font_properties(
-                public.Name.PreferenceUI.spb_tags_font_size,
-                public.Name.PreferenceUI.cmb_tags_font_style,
+                keys.Name.PreferenceUI.spb_tags_font_size,
+                keys.Name.PreferenceUI.cmb_tags_font_style,
             ),
         )
         self._set_font_properties(
-            self.textBrowser__debug,
+            self.bindings.ui.textBrowser__debug,
             self._get_font_properties(
-                public.Name.PreferenceUI.spb_debug_font_size,
-                public.Name.PreferenceUI.cmb_debug_font_style,
+                keys.Name.PreferenceUI.spb_debug_font_size,
+                keys.Name.PreferenceUI.cmb_debug_font_style,
             ),
         )
         # padding 적용
-        self._set_view_padding(self.doubleSpinBox__zoom.value())
+        self._set_view_padding(self.bindings.ui.doubleSpinBox__zoom.value())
         # main icon size
         self._set_main_default_icon_size()
-        self._browser.refresh()
+        self.bindings.browser.refresh()
 
     def _set_main_default_icon_size(self) -> None:
-        icon_size = public.UISetting.dft_icon_size
-        properties_data = self._preference.get_properties_data()
+        icon_size = keys.UISetting.dft_icon_size
+        properties_data = self.bindings.preference.get_properties_data()
         if properties_data is not None:
-            if public.Name.PreferenceUI.spb_main_icon_size in properties_data:
+            if keys.Name.PreferenceUI.spb_main_icon_size in properties_data:
                 icon_size = properties_data.get(
-                    public.Name.PreferenceUI.spb_main_icon_size
+                    keys.Name.PreferenceUI.spb_main_icon_size, icon_size
                 )
-        if public.IS_HOUDINI:
+        if host.IS_HOUDINI:
             icon_size = houdini_api.HoudiniAPI.scaled_size(int(icon_size))
-        self.toolBar.setIconSize(QtCore.QSize(icon_size, icon_size))
+        self.bindings.ui.toolBar.setIconSize(QtCore.QSize(icon_size, icon_size))
         for inst in self._icon_variables():
             qsize = QtCore.QSize(icon_size, icon_size)
             inst.setIconSize(qsize)
 
     def _icon_variables(self) -> list[QtWidgets.QAbstractButton]:
-        lst = self.centralwidget.findChildren(QtWidgets.QCheckBox)
-        lst.extend(self.centralwidget.findChildren(QtWidgets.QPushButton))
-        lst.extend(self._video_player.findChildren(QtWidgets.QPushButton))
-        lst.extend(self._web_view.findChildren(QtWidgets.QPushButton))
-        lst.extend(self._preference.findChildren(QtWidgets.QToolButton))
-        lst.extend(self._rename_ihda.findChildren(QtWidgets.QPushButton))
-        lst.extend(self._make_videoinfo.findChildren(QtWidgets.QPushButton))
+        lst: list[QtWidgets.QAbstractButton] = list(
+            self.bindings.ui.centralwidget.findChildren(QtWidgets.QCheckBox)
+        )
+        lst.extend(self.bindings.ui.centralwidget.findChildren(QtWidgets.QPushButton))
+        lst.extend(self.bindings.video_player.findChildren(QtWidgets.QPushButton))
+        lst.extend(self.bindings.web_view.findChildren(QtWidgets.QPushButton))
+        lst.extend(self.bindings.preference.findChildren(QtWidgets.QToolButton))
+        lst.extend(self.bindings.rename_dialog.findChildren(QtWidgets.QPushButton))
+        lst.extend(self.bindings.video_info.findChildren(QtWidgets.QPushButton))
         return lst
 
     def _set_is_ready(self) -> None:
-        self._is_ready = False
-        if self._library is not None and self._library.db_filepath.exists():
-            self._is_ready = True
-            self.centralwidget.setEnabled(True)
-            self.toolBar.setEnabled(True)
+        self.bindings.status.ready = False
+        if (
+            self.bindings.session.context is not None
+            and self.bindings.session.context.db_filepath.exists()
+        ):
+            self.bindings.status.ready = True
+            self.bindings.ui.centralwidget.setEnabled(True)
+            self.bindings.ui.toolBar.setEnabled(True)
 
     @staticmethod
     def _change_org_node_name(parent_node: Any = None, node_name: Any = None) -> None:
@@ -338,19 +404,21 @@ class PresentationMixin:
 
     def _slot_zoomin(self) -> None:
         zoom_val = (
-            self.doubleSpinBox__zoom.value() + public.UISetting.interval_zoom_value
+            self.bindings.ui.doubleSpinBox__zoom.value()
+            + keys.UISetting.interval_zoom_value
         )
-        if zoom_val > public.UISetting.max_zoom_value:
-            zoom_val = public.UISetting.max_zoom_value
-        self.doubleSpinBox__zoom.setValue(zoom_val)
+        if zoom_val > keys.UISetting.max_zoom_value:
+            zoom_val = keys.UISetting.max_zoom_value
+        self.bindings.ui.doubleSpinBox__zoom.setValue(zoom_val)
 
     def _slot_zoomout(self) -> None:
         zoom_val = (
-            self.doubleSpinBox__zoom.value() - public.UISetting.interval_zoom_value
+            self.bindings.ui.doubleSpinBox__zoom.value()
+            - keys.UISetting.interval_zoom_value
         )
-        if zoom_val < public.UISetting.min_zoom_value:
-            zoom_val = public.UISetting.min_zoom_value
-        self.doubleSpinBox__zoom.setValue(zoom_val)
+        if zoom_val < keys.UISetting.min_zoom_value:
+            zoom_val = keys.UISetting.min_zoom_value
+        self.bindings.ui.doubleSpinBox__zoom.setValue(zoom_val)
 
     def _slot_zoom_value(self, zoom_val: float) -> None:
         self._set_view_item_icon_size(zoom_val)
@@ -360,62 +428,62 @@ class PresentationMixin:
 
     def _set_tree_view_item_icon_size(self, val: Any) -> None:
         # treeview는 zoom 영향이 없도록. 이것은 preference에서만 조절 할 수 있다.
-        self._ihda_category_model.set_icon_size(val)
-        self._ihda_record_model.set_icon_size(val)
-        self._ihda_inside_model.set_icon_size(val)
-        self._ihda_category_view.expandAll()
-        self._ihda_record_view.expandAll()
-        self._ihda_inside_view.expandAll()
+        self.bindings.models.category_model.set_icon_size(val)
+        self.bindings.models.record_model.set_icon_size(val)
+        self.bindings.models.inside_model.set_icon_size(val)
+        self.bindings.views.category.expandAll()
+        self.bindings.views.record.expandAll()
+        self.bindings.views.inside.expandAll()
 
     def _set_view_padding(self, val: Any) -> None:
         tableview_icon_size, tableview_thumb_size = self._get_tableview_properties(val)
         # get padding
         pad_listview = self._get_padding_properties(
-            public.UISetting.padding_listview, public.Name.PreferenceUI.pad_listview
+            keys.UISetting.padding_listview, keys.Name.PreferenceUI.pad_listview
         )
         pad_tableview = self._get_padding_properties(
-            public.UISetting.padding_tableview, public.Name.PreferenceUI.pad_tableview
+            keys.UISetting.padding_tableview, keys.Name.PreferenceUI.pad_tableview
         )
         pad_history = self._get_padding_properties(
-            public.UISetting.padding_history, public.Name.PreferenceUI.pad_history
+            keys.UISetting.padding_history, keys.Name.PreferenceUI.pad_history
         )
         pad_category = self._get_padding_properties(
-            public.UISetting.padding_category, public.Name.PreferenceUI.pad_category
+            keys.UISetting.padding_category, keys.Name.PreferenceUI.pad_category
         )
         pad_record = self._get_padding_properties(
-            public.UISetting.padding_record, public.Name.PreferenceUI.pad_record
+            keys.UISetting.padding_record, keys.Name.PreferenceUI.pad_record
         )
         pad_inside = self._get_padding_properties(
-            public.UISetting.padding_inside, public.Name.PreferenceUI.pad_inside
+            keys.UISetting.padding_inside, keys.Name.PreferenceUI.pad_inside
         )
         # set padding
-        self._ihda_list_model.set_padding(pad_listview)
-        self._ihda_category_model.set_padding(pad_category)
-        self._ihda_record_model.set_padding(pad_record)
-        self._ihda_inside_model.set_padding(pad_inside)
+        self.bindings.models.list_model.set_padding(pad_listview)
+        self.bindings.models.category_model.set_padding(pad_category)
+        self.bindings.models.record_model.set_padding(pad_record)
+        self.bindings.models.inside_model.set_padding(pad_inside)
         # inside model 구현 되면 추가
         # tableview
         if self._is_show_thumbnail:
             vertical_cell_size = tableview_thumb_size
         else:
             vertical_cell_size = tableview_icon_size
-        self._ihda_table_view.verticalHeader().setDefaultSectionSize(
+        self.bindings.views.assets_table.verticalHeader().setDefaultSectionSize(
             vertical_cell_size + pad_tableview
         )
-        self._ihda_history_view.verticalHeader().setDefaultSectionSize(
+        self.bindings.views.history.verticalHeader().setDefaultSectionSize(
             tableview_thumb_size + pad_history
         )
 
     def _set_view_item_icon_size(self, val: Any) -> None:
         listview_icon_size, listview_thumb_size = self._get_listview_properties(val)
         tableview_icon_size, tableview_thumb_size = self._get_tableview_properties(val)
-        self._ihda_list_model.set_icon_size(
+        self.bindings.models.list_model.set_icon_size(
             icon_size=listview_icon_size, thumb_size=listview_thumb_size
         )
-        self._ihda_table_model.set_icon_size(
+        self.bindings.models.table_model.set_icon_size(
             icon_size=tableview_icon_size, thumb_size=tableview_thumb_size
         )
-        self._ihda_history_model.set_icon_size(
+        self.bindings.models.history_model.set_icon_size(
             icon_size=tableview_icon_size, thumb_size=tableview_thumb_size
         )
         # tableview
@@ -423,14 +491,16 @@ class PresentationMixin:
             vertical_cell_size = tableview_thumb_size
         else:
             vertical_cell_size = tableview_icon_size
-        self._ihda_table_view.verticalHeader().setDefaultSectionSize(vertical_cell_size)
-        self._ihda_history_view.verticalHeader().setDefaultSectionSize(
+        self.bindings.views.assets_table.verticalHeader().setDefaultSectionSize(
+            vertical_cell_size
+        )
+        self.bindings.views.history.verticalHeader().setDefaultSectionSize(
             tableview_thumb_size
         )
 
     @property
     def _is_show_thumbnail(self) -> bool:
-        return self.pushButton__thumbnail.isChecked()
+        return self.bindings.ui.pushButton__thumbnail.isChecked()
 
     @staticmethod
     def _get_ratio_icon_size(val: Any) -> float:
@@ -438,14 +508,19 @@ class PresentationMixin:
 
     @property
     def _is_icon_mode(self) -> bool:
-        return self.pushButton__icon_mode.isChecked()
+        return self.bindings.ui.pushButton__icon_mode.isChecked()
 
     @property
     def _is_ihda_history_view(self) -> bool:
-        return self.stackedWidget__whole.currentIndex() == self._hist_view_idx
+        return (
+            self.bindings.ui.stackedWidget__whole.currentIndex()
+            == self.bindings.ui.stackedWidget__whole.indexOf(
+                self.bindings.ui.page__history
+            )
+        )
 
     def _slot_cfg_reset(self) -> None:
-        msgbox = QtWidgets.QMessageBox(self)
+        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
         msgbox.setFont(self._get_default_font())
         msgbox.setWindowTitle("iHDA Reset APP Properties")
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
@@ -457,14 +532,14 @@ class PresentationMixin:
         reply = msgbox.exec()
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
-        self._is_reset_app_properties = True
-        self.centralwidget.setDisabled(True)
-        self.toolBar.setDisabled(True)
-        self.menubar.setDisabled(True)
+        self.bindings.status.reset_settings = True
+        self.bindings.ui.centralwidget.setDisabled(True)
+        self.bindings.ui.toolBar.setDisabled(True)
+        self.bindings.ui.menubar.setDisabled(True)
         log_handler.LogHandler.log_msg(
             method=logging.debug, msg="initialized application properties"
         )
-        msgbox = QtWidgets.QMessageBox(self)
+        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
         msgbox.setFont(self._get_default_font())
         msgbox.setWindowTitle("iHDA Reset APP Properties")
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
@@ -473,15 +548,15 @@ class PresentationMixin:
         _ = msgbox.exec()
 
     def _set_theme(self, theme: str = "Default") -> None:
-        self._ui_settings.set_theme(theme=theme)
+        self.bindings.ui_settings.set_theme(theme=theme)
 
     def _slot_about(self) -> None:
-        msgbox = QtWidgets.QMessageBox(self)
+        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
         msgbox.setFont(self._get_default_font(font_size=15))
         msgbox.setWindowTitle("Individual HDA (Houdini built-in app)")
         msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
         msgbox.setIconPixmap(QtGui.QPixmap(":/main/icons/viewport_logo_trans.png"))
-        msgbox.setText(app_info(self._RECOMMENDED_HOUDINI_VERSION))
+        msgbox.setText(app_info(MINIMUM_HOUDINI_MAJOR))
         msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
         msgbox.setDetailedText(license_info())
         msgbox.setStyleSheet("""
@@ -506,7 +581,7 @@ QTextEdit {
         _ = msgbox.exec()
 
     def _slot_help(self) -> None:
-        msgbox = QtWidgets.QMessageBox(self)
+        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
         msgbox.setFont(self._get_default_font(font_size=15))
         msgbox.setWindowTitle("Individual HDA Help")
         msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
@@ -526,7 +601,7 @@ QTextEdit {
         _ = msgbox.exec()
 
     def _slot_submit_bug_report(self) -> None:
-        msgbox = QtWidgets.QMessageBox(self)
+        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
         msgbox.setFont(self._get_default_font(font_size=15))
         msgbox.setWindowTitle("Submit Bug Report")
         msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
@@ -541,7 +616,7 @@ QTextEdit {
         _ = msgbox.exec()
 
     def _slot_submit_feedback(self) -> None:
-        msgbox = QtWidgets.QMessageBox(self)
+        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
         msgbox.setFont(self._get_default_font(font_size=15))
         msgbox.setWindowTitle("Submit Feedback")
         msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
@@ -557,13 +632,11 @@ QTextEdit {
 
     @staticmethod
     def _slot_donate() -> None:
-        ihda_system.IHDASystem.open_browser("https://buymeacoffee.com/seongcheol")
+        ihda_system.IHDASystem.open_browser(SUPPORT_URL)
 
     @staticmethod
     def _slot_download_ffmpeg_site() -> None:
-        is_done = ihda_system.IHDASystem.open_browser(
-            "https://ffmpeg.org/download.html"
-        )
+        is_done = ihda_system.IHDASystem.open_browser(FFMPEG_DOWNLOAD_URL)
         if is_done:
             log_handler.LogHandler.log_msg(
                 method=logging.info, msg="opened ffmpeg download site"

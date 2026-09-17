@@ -9,13 +9,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from libs.file_integrity import FILE_READ_CHUNK_BYTES
+from libs.runtime_settings import DEFAULT_RUNTIME
 
 MAX_COMMAND_BYTES = 256 * 1024
 MAX_METADATA_BODY_BYTES = 300 * 1024
 MAX_COPY_VERSIONS = 500
 DEFAULT_AUDIT_EVENT_LIMIT = 500
 DEFAULT_MAX_UPLOAD_BYTES = 1024**3
-DEFAULT_HTTP_TIMEOUT_SECONDS = 30.0
+DEFAULT_HTTP_TIMEOUT_SECONDS = float(DEFAULT_RUNTIME.team_timeout_seconds)
 
 
 @dataclass(frozen=True, slots=True)

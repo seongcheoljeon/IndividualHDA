@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
+from libs.database.rows import named_query
 from libs.database_migrations import backup_database
 from libs.operation_journal import operation_lock
 
@@ -78,11 +79,13 @@ class Issue:
 
 def references(connection: sqlite3.Connection) -> Iterator[FileReference]:
     for table, directory, filename in FILE_COLUMNS:
-        for row in connection.execute(
-            f"SELECT id, {directory}, {filename} FROM {table}"
+        for row in named_query(
+            connection, f"SELECT id, {directory}, {filename} FROM {table}"
         ):
-            if row[1] is not None and row[2] is not None:
-                yield FileReference(table, row[0], directory, row[1], row[2])
+            if row[directory] is not None and row[filename] is not None:
+                yield FileReference(
+                    table, row["id"], directory, row[directory], row[filename]
+                )
 
 
 def inspect_library(
@@ -94,7 +97,9 @@ def inspect_library(
             if row[0] != "ok":
                 issues.append(Issue("error", "SQLite", row[0]))
         for row in connection.execute("PRAGMA foreign_key_check"):
-            issues.append(Issue("error", str(row[0]), f"Orphaned row {row[1]}"))
+            issues.append(
+                Issue("error", str(row["table"]), f"Orphaned row {row['rowid']}")
+            )
         for row in connection.execute("""SELECT k.id FROM hda_key k LEFT JOIN hda_info i ON i.hda_key_id=k.id
             LEFT JOIN hipfile_info h ON h.hda_key_id=k.id LEFT JOIN houdini_node_info n ON n.hda_key_id=k.id
             WHERE i.id IS NULL OR h.id IS NULL OR n.id IS NULL"""):
@@ -184,38 +189,40 @@ def apply_paths(database: Path, changes: list[PathChange]) -> Path:
             connection.execute("BEGIN IMMEDIATE")
             # Check all preconditions before triggers can change other referenced rows.
             for item in changes:
-                row = connection.execute(
-                    f"SELECT {item.column}, {allowed[(item.table, item.column)]} FROM {item.table} WHERE id=?",
-                    (item.row_id,),
+                row = named_query(
+                    connection,
+                    f"SELECT {item.column} AS directory, {allowed[(item.table, item.column)]} AS filename FROM {item.table} WHERE id=:row_id",
+                    {"row_id": item.row_id},
                 ).fetchone()
                 if (
                     row is None
-                    or row[0] != item.before
-                    or row[1] != item.target_file.name
+                    or row["directory"] != item.before
+                    or row["filename"] != item.target_file.name
                 ):
                     raise RuntimeError(
                         "Library changed since preview; generate a new preview"
                     )
             connection.execute("UPDATE write_context SET maintenance=1")
             # hda_info triggers also update record paths. Preserve unaffected records.
-            records = connection.execute(
-                "SELECT id, hda_dirpath, hda_filename, node_name FROM hda_node_location_record"
+            records = named_query(
+                connection,
+                "SELECT id, hda_dirpath, hda_filename, node_name FROM hda_node_location_record",
             ).fetchall()
             for item in changes:
                 if item.table != "hda_node_location_record":
                     connection.execute(
-                        f"UPDATE {item.table} SET {item.column}=? WHERE id=?",
-                        (item.after, item.row_id),
+                        f"UPDATE {item.table} SET {item.column}=:after WHERE id=:row_id",
+                        {"after": item.after, "row_id": item.row_id},
                     )
             connection.executemany(
-                "UPDATE hda_node_location_record SET hda_dirpath=?,hda_filename=?,node_name=? WHERE id=?",
-                [(r[1], r[2], r[3], r[0]) for r in records],
+                "UPDATE hda_node_location_record SET hda_dirpath=:hda_dirpath,hda_filename=:hda_filename,node_name=:node_name WHERE id=:id",
+                [dict(record) for record in records],
             )
             for item in changes:
                 if item.table == "hda_node_location_record":
                     connection.execute(
-                        f"UPDATE {item.table} SET {item.column}=? WHERE id=?",
-                        (item.after, item.row_id),
+                        f"UPDATE {item.table} SET {item.column}=:after WHERE id=:row_id",
+                        {"after": item.after, "row_id": item.row_id},
                     )
             connection.execute("UPDATE write_context SET maintenance=0")
             if connection.execute("PRAGMA foreign_key_check").fetchone():

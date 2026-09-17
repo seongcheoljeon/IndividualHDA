@@ -142,6 +142,14 @@ class LifecycleStore:
             )
         )
         LifecycleStore.sync_files(connection, history_id, document)
+        from ihda_server.tracking import team_tracking
+
+        project_id = connection.execute(
+            select(tables.history.c.project_id).where(tables.history.c.id == history_id)
+        ).scalar_one()
+        team_tracking(connection, project_id).replace_dependencies(
+            document["version_uuid"], document.get("dependencies", [])
+        )
 
     @staticmethod
     def sync_files(
@@ -204,6 +212,18 @@ class LifecycleStore:
             if deleted != (operation != "delete"):
                 raise Conflict("The asset's trash state changed; reload")
             if operation == "purge":
+                from ihda_server.tracking_schema import dependencies
+
+                connection.execute(
+                    delete(dependencies).where(
+                        dependencies.c.scope_id == project_id,
+                        dependencies.c.source_uuid.in_(
+                            select(state.version_state.c.uuid)
+                            .join(tables.history)
+                            .where(tables.history.c.asset_id == asset_id)
+                        ),
+                    )
+                )
                 connection.execute(
                     delete(tables.assets).where(tables.assets.c.id == asset_id)
                 )
@@ -245,6 +265,14 @@ class LifecycleStore:
         if deleted != (operation != "delete_history"):
             raise Conflict("The version's trash state changed; reload")
         if operation == "purge_history":
+            from ihda_server.tracking_schema import dependencies
+
+            connection.execute(
+                delete(dependencies).where(
+                    dependencies.c.scope_id == project_id,
+                    dependencies.c.source_uuid == row["uuid"],
+                )
+            )
             connection.execute(
                 delete(tables.history).where(tables.history.c.id == row["id"])
             )

@@ -2,13 +2,80 @@
 
 ## Panel
 
+### Named rows and resource policies
+
+Application records live in `libs/asset_contracts.py` and `libs/scene_contracts.py`.
+They are frozen, keyword-only dataclasses with required identity fields. Callers use
+attributes and `dataclasses.replace`; they never interpret list positions or mutate
+shared records. `RegistrationResult.history` is a `HistoryData`, scene reads return
+flat `SceneRecord` collections, and `LibrarySnapshot` and `SyncContext` carry named
+reload results. Connection endpoints, rename counts and path moves also have named
+fields. Ordered collections represent actual sequences, not implicit schemas.
+
+`libs/database/rows.py` creates private SQLite Row cursors and rejects ambiguous
+column names without changing the connection's row factory. SQL aliases name the
+application fields; named parameters bind writes independently of physical column
+order. `record_codec.decode_record` validates required, unknown and incorrectly typed
+fields at storage/JSON boundaries. Nullable paths, flags, icons and tags are normalized
+there. SQLite rows and wire dictionaries stay inside their adapters. Personal storage
+continues to use sqlite3 and team storage SQLAlchemy; database versions and HTTP
+contracts have not changed.
+
+There is no live positional-record API or row-key-list facade. The former
+`row_contracts.py` and `scene_record_input.py` were removed. Historical receipt and
+journal layouts are frozen read adapters in `legacy_documents.py`. New registration
+receipts/capture jobs and file-move journals use version 2 named documents; version 1
+files remain readable. Capture fingerprints preserve the historical number and
+connection representations so retries cannot turn into duplicate operations.
+
+`libs/model_columns.py` is the single definition of asset/history/record/inside-node column
+identity, label and named accessor. Numeric identities retain saved header layouts;
+models no longer maintain parallel header and field arrays. The scene model builds
+its display tree from flat named records; deletion and refresh track record IDs.
+
+`PanelServices.policy` injects polling and node-batch limits, with a nested
+`SearchPolicy` shared by browser/history debounce. Browser integration receives
+only the search policy and can still be constructed independently. `SQLitePolicy`
+is supplied to database construction; `ArchiveLimits` is supplied to archive
+transfer/extraction. These immutable policies validate values and retain previous
+defaults. Existing HTTP and PostgreSQL policies remain in their owning modules;
+schema/protocol identifiers are not user preferences.
+
+Main/detail pages are selected by widget identity. Legacy main-page index accessors
+derive current positions; persisted indices keep the existing default layout order.
+Asset view button IDs use `AssetViewMode`, while its pages use widget identity.
+Column widths belong to `widgets/ui_tokens.py`, not database row definitions.
+
 `main.IndividualHDA` remains the panel entry point and Qt event router.
 `PanelComposition` creates services, session/widgets and models, then connects
 features; `PanelBootstrap` handles initial loading and widget/signal setup.
 `PanelShutdown` owns close policy and `PanelLifetime` orders resource cleanup.
-AI, archive and library-sync integrations are composed objects, with explicit
-forwarding methods for existing panel callers. The 12 remaining feature Mixins
-still share legacy window state; feature presenters use the MVP boundaries below.
+All panel features are composed objects. `IndividualHDA` inherits only its Qt
+window and maintained layout. Frozen `*Bindings` dataclasses declare each
+feature's controls, collaborators and services; construction happens in
+`PanelComposition._bind_features`. Features do not receive the entire window.
+Only panel composition/bootstrap/shutdown retain a typed window reference.
+Browser, metadata, team and scene integrations receive explicit bindings. The
+metadata adapter publishes committed changes through a callback; browser actions
+and scene delivery operations are injected. Qt parent widgets are used only for
+ownership. Add behavior to the owning feature, not another forwarding method on
+`main.py`.
+
+State has explicit owners: `PanelSessionState` holds the current repository and
+session generation, `PanelSelection.state` holds selection, `PanelModelBinding.assets`
+holds rows, and `PanelStatus` holds close/startup status. `PanelViews` contains the
+live views. AI results verify both repository identity and session generation.
+Callbacks, capture and scene operations have injectable protocols in
+`libs/host_ports.py`; their defaults use `HoudiniAPI`. Metadata, search, lifecycle
+and library-session presenters retain their existing Qt-free ports. Host nodes
+stay in adapters and capture runs on the GUI thread.
+
+Scene record reads/writes and import metadata go through `LibraryRepository`.
+Panel features cannot open the SQLite facade directly. The personal sqlite3 and
+team SQLAlchemy storage implementations and server wire formats remain
+unchanged. Python record APIs intentionally changed; contributors should migrate
+callers rather than add list/dict compatibility methods. `public.py` is a compatibility export for external integrations;
+production modules import the owning `libs` module directly.
 Every screen now has a maintained
 Python layout; no Designer sources or generated layout modules remain. Persisted
 control and splitter names retain their existing identities. See
@@ -34,16 +101,11 @@ Feature modules in `widgets/panel/` contain related behavior:
 | `media_actions.py` | Thumbnails, preview capture and asynchronous video encoding completion |
 | `archive_actions.py` | Import/export dialogs, background work and activation at shutdown |
 
-These mixins are parts of one panel, not independently instantiated widgets.
-They use protected (`_name`) panel attributes and methods. The old double-private
-names were internal implementation details; Python name mangling must not be used
-as a cross-module interface. The mixins have no constructors and do not add Qt
-base classes, so the panel owns all QObject initialization and destruction.
-
-Modules do not import `main`; calls to panel helpers dispatch through `self`.
-Do not add UI dependencies to the underlying archive, process or database code.
-If a feature becomes reusable outside the panel, extract a service with explicit
-inputs rather than giving it more access to window state.
+These feature objects are composed inside one panel. Their frozen bindings expose
+only their required controls and collaborators; they do not inherit QObject.
+The panel owns Qt initialization and destruction. Runtime feature modules do not
+import `main`; only the panel lifecycle/composition boundary uses type-only imports.
+Do not add UI dependencies to archive, process or database application services.
 
 All widgets, Qt models and Houdini HOM operations remain on the GUI thread.
 `BackgroundJob` handles archive filesystem work; it receives neither widgets nor
@@ -110,8 +172,7 @@ Presenters import no Qt, HOM, main window or concrete database implementation.
 Views retain widget access, model notification, local file dialogs and host calls.
 Existing library maintenance, AI transport, playlist and settings services remain
 responsible for their operations. This is separation of feature policies and
-coordination; it does not eliminate every panel mixin or convert all Qt event
-handlers into presenters.
+coordination; Qt event decoding remains in the view adapters.
 
 Metadata saves use their own TaskController. Each request captures its repository,
 asset ID and submitted values. Drafts survive selection changes and failed saves;
@@ -240,11 +301,9 @@ annotations on future changes.
 `Any` remains at dynamic boundaries such as Qt item roles, signal payloads and
 heterogeneous legacy asset dictionaries. It does not establish a fully static
 schema for those values. `python -m mypy` runs over the whole tree with
-`follow_imports = "normal"` (`pyproject.toml`). Two override groups keep it green:
-generated resource modules are never checked, and the panel mixins plus
-the item models carry `ignore_errors` because a mixin's `self._x` attributes are
-declared on the composed `IndividualHDA`, which mypy cannot see from the mixin.
-Remove a module from that second list once it passes; do not add to it.
+`follow_imports = "normal"` (`pyproject.toml`). Only generated resource modules
+have an `ignore_errors` override. Panel features, item models and contributor tools
+are checked; do not add exclusions for maintained code.
 
 ## Layers and ratchets
 
@@ -258,13 +317,10 @@ imports included, `TYPE_CHECKING` blocks excluded):
 | Qt libs | the rest of `libs/` | no `hou` |
 | model / view / widgets / app | everything else | no `hou`; nothing imports `main` |
 
-Ratchets are exact sets or counts that may only shrink: `PUBLIC_IMPORTERS`
-(modules still importing the `public` facade; new code imports `libs.keys`,
-`libs.paths`, `libs.platform_info`, `libs.host` directly), `SHARED_PANEL_STATE`
-(panel attributes written by more than one mixin), `LOCAL_DB_SITES` (direct SQLite
-facade uses, see above) and `HOU_IMPORTERS` (empty). Adding a violation fails the
-suite; removing one requires updating the constant, which is the intended review
-point.
+`PUBLIC_IMPORTERS`, `LOCAL_DB_SITES` and `HOU_IMPORTERS` are empty guard sets.
+New production code imports the owning module directly and routes storage and
+Houdini work through their boundaries. Additional checks prohibit panel Mixins,
+whole-window/Any binding fields and maintained-module mypy exclusions.
 
 Module homes after the split: constants in `libs/keys.py`, paths and the SQLite
 file layout in `libs/paths.py`, OS predicates in `libs/platform_info.py`,
@@ -321,10 +377,8 @@ and the journaled file commands; registration bodies live there. Rules:
   writes (`set_thumbnail`, `set_video`, `add_history_row`, `delete_note_history`,
   `delete_scene_record`) are repository methods too; the adapter turns the facade's
   `None` results into `LibraryError`.
-- Three direct facade uses (`_db_api_wrap`) remain and are pinned by the
-  `LOCAL_DB_SITES` ratchet: the two database-cleanup passes in `asset_management`
-  (unused records, missing files) and the scene-record placement in
-  `houdini_actions`. They are local-only maintenance and are disabled in server mode.
+- No panel feature uses `_db_api_wrap`. Scene placement, metadata and cleanup use
+  repository/application operations; SQL stays in storage adapters.
 - Errors surface as `LibraryError` subclasses; `LibraryConflict` means reload and retry.
 
 ## Identity and LibraryContext
@@ -334,7 +388,7 @@ adopts the single user row it already has (`resolve_local_user`), so libraries
 created as `anonymous` open unchanged. `LibraryContext` (`libs/domain.py`) is an
 immutable snapshot of user, data directory, database path, asset root and per-user
 HDA root, rebuilt only when Preferences change (which already requires a restart).
-Mixins read `self._library`; the Preference dialog is not a settings service.
+Features read `bindings.session.context`; the Preference dialog is not a settings service.
 
 ## Search
 
@@ -380,7 +434,7 @@ Rules for adding a real backend or feature:
   `os.environ[settings.api_key_env]` at call time; never persist the key.
 - Features (asset description/tags, natural-language search, effect generation
   from text or images) are functions layered on `complete`: build a `Prompt`
-  from plain data, parse the returned text. They live in `libs/`, not in mixins.
+  from plain data, parse the returned text. They live in `libs/` and expose plain-data interfaces.
 - The panel obtains a provider with `self._services.ai(self._preference.ai_settings)`
   and runs the call on `self._ai_tasks` (a second `TaskController`), never on the
   archive/encoder controller, so network latency does not block imports or
@@ -428,7 +482,7 @@ models; `DocumentSearch` searches an immutable snapshot with the existing token 
 
 A team connection is applied only after its initial read succeeds. The personal
 repository/context and draft state are kept for switching back. During team use,
-`window._repository` and `window._library` are `None`; local-only maintenance and
+`window.session.repository` and `window.session.context` are `None`; local-only maintenance and
 scene-record actions are disabled. Existing feature boundaries route remote intentions
 to the injected presenter. File downloads happen before GUI-thread Houdini imports.
 Project identity in drag payloads prevents cross-library ID collisions.
@@ -555,7 +609,7 @@ does not introduce a numeric ordering rule for existing labels.
 
 The main panel keeps its Python layouts and named controls. Selection updates now
 use `SelectionState.select_asset/select_history/select_category` rather than
-assigning individual fields across mixins. `PanelSelectionPresenter` sequences
+assigning individual fields across features. `PanelSelectionPresenter` sequences
 selection, detail display and dependent-view refresh through `SelectionView`;
 Qt slots only decode model roles and forward input. Its `restore` method
 rebuilds names, paths, versions and row positions from asset/history IDs after a
@@ -588,40 +642,72 @@ rebase edits and bypass revision checks.
 Shared toolbar icons, compact margins, spacing, tag color and asset/history column
 widths live in `widgets/ui_tokens.py`. Values use Qt logical pixels; font and zoom
 preferences continue to take priority. Keep feature-specific geometry in its layout.
-This removes selection from the shared-panel-state ratchet without pretending that
-all host and model mixins have been eliminated.
+Selection, host and model behavior now have separate composed owners and explicit bindings.
 
-### Local registration capture and commit
+### Registration capture, publication and recovery
 
-`libs/asset_registration.py` contains `RegistrationService`. Its small ports are
-`RegistrationCapture` (write HDA/optional thumbnail to supplied temporary paths)
-and `RegistrationWriter` (commit prepared metadata, with reference-aware cleanup
-on failure). `HoudiniRegistrationCapture` is the GUI-thread adapter in
-`widgets/asset_lifecycle/capture.py`. `PanelServices.registration` selects the
-service; the existing `AssetCommandPresenter` executes it before updating views.
+`RegistrationService` depends on capture/writer ports. The local writer provides
+`RegistrationRecovery`; it writes `registration_jobs` before capture and records
+`prepared → captured → published → committed` (or explicit `discarded`). Capture
+stays on the GUI thread through `HoudiniRegistrationCapture`. Completed files are
+hashed and synced before publication. Exclusive creation and persisted inode/device
+ownership prevent cleanup of competing files. The metadata transaction stores the
+completed result; replay returns that receipt without another history row.
 
-The panel collects metadata and confirms new versions before capture. Both new
-assets and added versions follow the same sequence:
+Failures retain staged files. Library Tools offers Retry and Discard, and shows the
+pending count at startup/menu opening. Retry never recaptures a Houdini node.
+Discard checks both ownership and live DB references before removing files. Jobs
+restored to another database location cannot retry/delete original-library files.
+An interruption before capture completion requires a fresh capture. A crash between
+exclusive creation and persisting ownership deliberately leaves an uncertain file
+for review. Render/display flags and overlays are restored in `finally`.
 
-1. Reject existing destination files, including dangling symlinks.
-2. Capture into a private `.ihda-registration-*` directory. Require a nonempty HDA;
-   thumbnail absence remains supported when a viewport is unavailable.
-3. Publish using exclusive file creation. On a pre-commit publication failure,
-   remove only files this attempt created, preserving a competing destination.
-4. Delegate metadata commit to the existing local lifecycle/repository. Its SQL
-   transaction and reference-aware cleanup remain authoritative once invoked.
-5. Update views only after success. A view update failure reports that the asset
-   was saved and requests a reload; it is not reported as a rolled-back save.
+Team uses `libs/team/registration_recovery.py` in the account/library namespace.
+Client journals retain captures, input hashes, upload inputs and the exact existing
+API v2 command/request ID. The server's existing command transaction/receipt remains
+authoritative. Lost responses replay the command. External selected files are never
+owned by the journal; a submitted request must be resolved before discard. Client
+journals and the scene outbox are local state, separate from server backups.
 
-Display/render flags and the batch overlay are restored with `finally`, including
-cancelled and failed operations. A failure to inspect DB references retains files
-and logs the cleanup issue without replacing the original registration error.
+### Version tracking storage and application boundaries
 
-This provides retry after a proven rollback, not a durable registration receipt.
-An abrupt process exit can leave temporary/unreferenced files; existing library
-inspection/cleanup can identify them. Do not automatically delete files when DB
-commit status cannot be verified. Team registration continues using its existing
-upload, command and pending-request receipt path, rather than local file cleanup.
+Personal schema v6 adds `version_dependencies`, `version_checks`, `scene_usages`,
+`tracking_requests`, `registration_jobs`, and UUID/link-status fields on legacy
+scene records. Migration backs up first; only unique asset/version/file matches
+are linked. Ambiguous observations remain unresolved. Current-version triggers
+validate ownership and active state; ordinary same-version activity cannot advance
+that pointer. Deleted dependency targets retain their UUID and original text.
+
+Team schema v3 adds the first four tracking tables to SQLAlchemy metadata, so
+PostgreSQL dumps and inventory verification include them. Explicit migration seeds
+normalized dependencies and logs/clears invalid current pointers. PostgreSQL adds a
+deferred current-version FK; authorized catalog transactions also check ownership
+and active state before commit. API v2 gains a `version_tracking` capability and
+scoped GET/POST tracking routes. Older servers retain the old details UI.
+
+`libs/version_tracking.py` owns portable validation, resolution, append-only checks,
+correction links, bounded pages, scene upsert and request receipts. SQLite/server
+adapters own SQL connections and audit integration. Editors/owners record checks;
+viewers can submit their own observed scene usage. Actor comes from authentication.
+Queries and receipts are scoped to the library/project. Dependencies remain a JSON
+API projection of normalized rows; unchanged older-client text preserves resolved
+UUIDs, including after renames. Manual checks never imply untested environments.
+
+`SceneUsageIntegration` captures host facts after import and queues them locally.
+The timer observes later scene-path changes for still-live imported nodes; it is
+not a complete scan of pre-existing HIP content. Saved/unsaved observations merge
+without losing first-seen time. Workers deliver at most 100 queued records per pass,
+with stable request IDs and account namespaces. Host import success is independent
+of reporting success. Version lookups use indexed UUIDs; no server-side Houdini cook
+or automatic dependency extraction is introduced.
+
+Details and Library Tools own the Qt views; domain code imports neither Qt nor HOM.
+Deletion warnings list dependent versions and never forbid an explicit deletion.
+Personal → Team copy remaps dependencies between copied versions and marks copied
+checks as imported, retaining source report/actor/version provenance. It does not
+certify the destination environment. Existing backup snapshots preserve tracking;
+local unfinished job paths require review after relocation. Schema-v2 Team bundles
+remain restorable into an empty database; run the explicit migration afterward.
 
 ### Rename and Trash presentation boundaries
 
@@ -648,3 +734,34 @@ retained. Deleting a version no longer constructs physical file-removal requests
 
 The separate scene-record cleanup paths are outside this slice; they remain a
 candidate for the remaining main-window/application-service refactoring.
+
+
+## Runtime configuration and scene-record cleanup
+
+`RuntimeSettings` is an immutable, Qt/HOM-free representation of the optional
+`runtime` preference object. The default composition loads it once into
+`PanelServices`; explicit services bypass disk loading. Preferences only save the
+next session's values. Team connection/copy dialogs and Library Manager consume
+the same snapshot. Internal callback, media and thumbnail policies are injectable
+separately; protocol caps are shared definitions, not user preferences.
+
+`SceneRecordCleanup` depends on a small repository protocol and a strict path
+probe. It returns committed IDs and per-record failures. The panel confirms and
+presents; RecordModel collects source-tree IDs without mutation and removes only
+committed IDs. See [runtime settings and audit decisions](RUNTIME_SETTINGS.md).
+
+
+## Contributor verification boundaries
+
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for setup and the three change paths.
+`tools/test_suites.py` owns collection membership; `tests/conftest.py` excludes
+other suites before imports. Core and server suites run without PySide6; shared
+personal-storage contract cases belong to Qt because they use the journal's Qt
+file lock. PostgreSQL tests require an explicit disposable database URL.
+`python -m tools.check` is the shared local/CI entry point. All maintained Python
+modules participate in mypy; only generated resource modules are excluded.
+
+`python -m tools.dev_app` creates a new temporary settings directory and three
+sample assets using the real repository. Closing deletes the sample data. Host
+registration/import/capture require Houdini; sample `.ihda` files are placeholders.
+The smoke option opens and closes the real panel, including its normal cleanup.

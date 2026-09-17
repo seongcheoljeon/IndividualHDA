@@ -10,6 +10,7 @@ from typing import Any, Literal, Protocol
 from uuid import UUID, uuid4
 
 from libs.file_integrity import FileContent
+from libs.search_limits import TEAM_PAGE_DEFAULT
 from libs.team.limits import MAX_COMMAND_BYTES
 
 API_VERSION = 2
@@ -286,7 +287,7 @@ class Page:
 
 class AssetCatalog(Protocol):
     def list_assets(
-        self, query: str = "", offset: int = 0, limit: int = 100
+        self, query: str = "", offset: int = 0, limit: int = TEAM_PAGE_DEFAULT
     ) -> Page: ...
     def get_asset(self, asset_id: int) -> dict[str, Any]: ...
     def histories(self, asset_id: int) -> list[dict[str, Any]]: ...

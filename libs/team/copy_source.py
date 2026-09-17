@@ -9,6 +9,7 @@ from typing import Any, Protocol
 
 from libs.file_integrity import measure_file
 from libs.library_maintenance import check_cancel, read_database
+from libs.search_limits import TEAM_PAGE_MAX
 from libs.team.contracts import Command, TeamError
 
 
@@ -35,8 +36,8 @@ class PersonalCopySource:
     def identity(self) -> dict[str, str]:
         with read_database(self.database, None) as connection:
             row = connection.execute(
-                "SELECT uuid FROM asset_identity WHERE asset_id=? AND deleted_at IS NULL",
-                (self.asset_id,),
+                "SELECT uuid FROM asset_identity WHERE asset_id=:asset_id AND deleted_at IS NULL",
+                {"asset_id": self.asset_id},
             ).fetchone()
             if row is None:
                 raise TeamError("The personal asset is no longer available")
@@ -44,7 +45,7 @@ class PersonalCopySource:
                 "library_uuid": connection.execute(
                     "SELECT uuid FROM library_identity"
                 ).fetchone()[0],
-                "asset_uuid": row[0],
+                "asset_uuid": row["uuid"],
             }
 
     def preview(
@@ -58,8 +59,8 @@ class PersonalCopySource:
             asset = connection.execute(
                 """SELECT k.name,k.category,a.uuid,a.current_version_uuid,
                 COALESCE(n.note,'') AS note FROM hda_key k JOIN asset_identity a ON a.asset_id=k.id
-                LEFT JOIN note_info n ON n.hda_key_id=k.id WHERE k.id=? AND a.deleted_at IS NULL""",
-                (self.asset_id,),
+                LEFT JOIN note_info n ON n.hda_key_id=k.id WHERE k.id=:asset_id AND a.deleted_at IS NULL""",
+                {"asset_id": self.asset_id},
             ).fetchone()
             if asset is None:
                 raise TeamError("The personal asset is no longer available")
@@ -70,10 +71,10 @@ class PersonalCopySource:
                 "asset_uuid": asset["uuid"],
             }
             tags = [
-                row[0]
+                row["tag"]
                 for row in connection.execute(
-                    "SELECT tag FROM asset_tags WHERE hda_key_id=? ORDER BY tag",
-                    (self.asset_id,),
+                    "SELECT tag FROM asset_tags WHERE hda_key_id=:asset_id ORDER BY tag",
+                    {"asset_id": self.asset_id},
                 )
             ]
             histories = [
@@ -84,8 +85,8 @@ class PersonalCopySource:
                   AND n.hda_version=h.version AND n.registration_datetime<=h.registration_datetime
                   ORDER BY n.registration_datetime DESC,n.id DESC LIMIT 1),'') AS version_note
                 FROM hda_history h JOIN version_identity v ON v.history_id=h.id
-                WHERE h.hda_key_id=? AND v.deleted_at IS NULL ORDER BY h.id""",
-                    (self.asset_id,),
+                WHERE h.hda_key_id=:asset_id AND v.deleted_at IS NULL ORDER BY h.id""",
+                    {"asset_id": self.asset_id},
                 )
             ]
             current = next(
@@ -105,6 +106,22 @@ class PersonalCopySource:
                 if all_versions
                 else [current]
             )
+            from libs.database.tracking import local_tracking
+
+            tracking = local_tracking(connection)
+            for row in histories:
+                details = json.loads(row["details"])
+                details["dependencies"] = tracking.dependencies(row["uuid"])
+                row["details"] = json.dumps(details)
+                checks: list[dict[str, Any]] = []
+                while True:
+                    page = tracking.read(
+                        "checks", asset["uuid"], row["uuid"], len(checks), TEAM_PAGE_MAX
+                    )
+                    checks.extend(page)
+                    if len(page) < TEAM_PAGE_MAX:
+                        break
+                row["checks"] = checks
             values = {
                 "name": asset["name"],
                 "category": asset["category"],
@@ -165,6 +182,7 @@ class PersonalCopySource:
             metadata["hda_icon"] = (row["icon"] or "").split(",")
             versions.append(
                 {
+                    "checks": row["checks"],
                     "origin": {
                         "version_uuid": row["uuid"],
                         "version": row["version"],

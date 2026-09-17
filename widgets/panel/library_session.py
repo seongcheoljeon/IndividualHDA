@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from libs.domain import AssetData
+from libs.asset_contracts import AssetData
 from widgets.asset_details.presenter import Field
+from widgets.panel.state import PanelSessionState
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,26 +28,49 @@ class PanelLibrarySession(Protocol):
     def history(self) -> None: ...
 
 
+class MetadataEditor(Protocol):
+    def select(
+        self, asset_id: int | None, note: str = "", tags: Sequence[str] = ()
+    ) -> None: ...
+    def save(self, field: Field) -> None: ...
+
+
+class TeamSessionPort(Protocol):
+    @property
+    def writable(self) -> bool: ...
+    @property
+    def project(self) -> dict[str, Any]: ...
+    def select(self, asset_id: int | None) -> None: ...
+    def save(self, field: Field) -> None: ...
+    def refresh(self) -> None: ...
+    def request_history(self) -> None: ...
+
+
 class PersonalPanelSession:
-    def __init__(self, window: Any) -> None:
-        self._window = window
+    def __init__(
+        self,
+        state: PanelSessionState,
+        details: MetadataEditor,
+        refresh: Callable[[], None],
+    ) -> None:
+        self._state, self._details, self._refresh = state, details, refresh
 
     @property
     def capabilities(self) -> LibraryCapabilities:
-        return LibraryCapabilities(edit_metadata=self._window._repository is not None)
+        return LibraryCapabilities(edit_metadata=self._state.repository is not None)
 
     def select(self, asset_id: int | None, data: AssetData | None) -> None:
-        self._window._details.presenter.select(
+        self._details.select(
             asset_id,
-            (data or {}).get("hda_note") or "",
-            (data or {}).get("hda_tags") or [],
+            (data.hda_note or "") if data is not None else "",
+            data.hda_tags if data is not None else (),
         )
 
     def save(self, field: Field) -> None:
-        self._window._details.presenter.save(field)
+        self._details.save(field)
 
     def refresh(self) -> None:
-        self._window._library_sync_presenter.refresh()
+        self._refresh()
 
     def history(self) -> None:
         # Personal history is loaded with the library snapshot.
@@ -53,7 +78,7 @@ class PersonalPanelSession:
 
 
 class TeamPanelSession:
-    def __init__(self, integration: Any) -> None:
+    def __init__(self, integration: TeamSessionPort) -> None:
         self._integration = integration
 
     @property

@@ -1,53 +1,77 @@
 """Notes for the Houdini panel.
 
-Shares protected panel state; Qt and HOM calls stay on the GUI thread.
+Explicit bindings connect this feature to its view and collaborators.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from collections.abc import Sequence
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-import public
-from libs import log_handler, note_syntax
+from libs import keys, log_handler, note_syntax
 from libs.tags import normalize_tags
+from widgets.asset_details.presenter import Field
 from widgets.detail_view import detail_view
 from widgets.ui_tokens import COMPACT_MARGIN, TAG_TEXT_COLOR
 
+if TYPE_CHECKING:
+    from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.model_binding import PanelModelBinding
+    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.selection import PanelSelection
+    from widgets.panel.state import PanelSessionState
 
-class NotesMixin:
+
+@dataclass(frozen=True, slots=True)
+class PanelNotesBindings:
+    models: PanelModelBinding
+    parent: QtWidgets.QWidget
+    presentation: PanelPresentation
+    selection: PanelSelection
+    session: PanelSessionState
+    ui: MainWindowLayout
+
+
+class PanelNotes:
+    bindings: PanelNotesBindings
+
     def _set_hda_info_to_parms(self) -> None:
-        self._panel_library.select(self._selection.asset.id, self._selection.asset.data)
+        self.bindings.session.actions.select(
+            self.bindings.selection.state.asset.id,
+            self.bindings.selection.state.asset.data,
+        )
 
     def _set_hda_hist_info_to_parms(self) -> None:
-        if self._selection.history.data is None:
-            self.label__hist_tags.clear()
+        if self.bindings.selection.state.history.data is None:
+            self.bindings.ui.label__hist_tags.clear()
             return
-        tags = self._selection.history.data.get(public.Key.History.tags)
+        tags = self.bindings.selection.state.history.require_data().tags
         if tags is not None:
             if len(tags):
                 self._set_label_hist_tags(tags)
             else:
-                self.label__hist_tags.clear()
+                self.bindings.ui.label__hist_tags.clear()
         else:
-            self.label__hist_tags.clear()
+            self.bindings.ui.label__hist_tags.clear()
 
-    def _set_label_tags(self, tags: list[str]) -> None:
-        self.label__tags.setText(
+    def _set_label_tags(self, tags: Sequence[str]) -> None:
+        self.bindings.ui.label__tags.setText(
             f"<font color={TAG_TEXT_COLOR}>{self._set_tag_string(tags)}</font>"
         )
 
-    def _set_label_hist_tags(self, tags: list[str]) -> None:
-        self.label__hist_tags.setText(
+    def _set_label_hist_tags(self, tags: Sequence[str]) -> None:
+        self.bindings.ui.label__hist_tags.setText(
             f"<font color={TAG_TEXT_COLOR}>{self._set_tag_string(tags)}</font>"
         )
 
     def _slot_hda_note_history(
         self, hist_note_data: Any = None, hda_name: str | None = None
     ) -> None:
-        dialog = QtWidgets.QDialog(self)
+        dialog = QtWidgets.QDialog(self.bindings.parent)
         dialog.setWindowTitle("iHDA note history")
         dialog.resize(840, 700)
         icon = QtGui.QIcon(QtGui.QPixmap(":/main/icons/viewport_logo_trans.png"))
@@ -62,9 +86,9 @@ class NotesMixin:
         plain_textedit = QtWidgets.QPlainTextEdit(dialog)
         note_syntax.NoteHighLighter(plain_textedit)
         plain_textedit.setReadOnly(True)
-        font_size, font_style = self._get_font_properties(
-            public.Name.PreferenceUI.spb_note_font_size,
-            public.Name.PreferenceUI.cmb_note_font_style,
+        font_size, font_style = self.bindings.presentation._get_font_properties(
+            keys.Name.PreferenceUI.spb_note_font_size,
+            keys.Name.PreferenceUI.cmb_note_font_style,
         )
         font = QtGui.QFont()
         font.setFamily(font_style)
@@ -79,7 +103,7 @@ class NotesMixin:
             return
         plain_textedit.appendPlainText(f"iHDA: {hda_name}")
         for data in hist_note_data:
-            ctime, ver, note = data
+            ctime, ver, note = data.registered_at, data.version, data.note
             res_contents = f"""
                     ***** Save Time: {ctime}, iHDA Version: {ver} *****
 {note}
@@ -89,31 +113,37 @@ class NotesMixin:
         dialog.show()
 
     def _clear_hist_parms(self) -> None:
-        self.label__hist_cnt.setText(str(self._ihda_history_proxy_model.rowCount()))
+        self.bindings.ui.label__hist_cnt.setText(
+            str(self.bindings.models.history_proxy_model.rowCount())
+        )
 
     def _clear_parms(self) -> None:
-        self.label__hda_count.setText(str(self._ihda_list_proxy_model.rowCount()))
-        self.label__cate_count.setText(str(self._get_category_count()))
-        self._panel_library.select(None, None)
+        self.bindings.ui.label__hda_count.setText(
+            str(self.bindings.models.list_proxy_model.rowCount())
+        )
+        self.bindings.ui.label__cate_count.setText(
+            str(self.bindings.models._get_category_count())
+        )
+        self.bindings.session.actions.select(None, None)
 
     def _detail_view_ihda_data(self, data: Any = None) -> None:
-        detailview = detail_view.DetailView(parent=self)
+        detailview = detail_view.DetailView(parent=self.bindings.parent)
         detailview.show_detail_ihda_data(
-            data=data, is_histview=self._is_ihda_history_view
+            data=data, is_histview=self.bindings.presentation._is_ihda_history_view
         )
 
     def _detail_view_record_data(self, record_data: Any = None) -> None:
         if record_data is None:
             return
-        detailview = detail_view.DetailView(parent=self)
+        detailview = detail_view.DetailView(parent=self.bindings.parent)
         detailview.show_detail_record_data(data=record_data)
 
     @property
     def _hda_note(self) -> str:
         try:
-            return self.textEdit__note.toPlainText()
+            return self.bindings.ui.textEdit__note.toPlainText()
         except TypeError:
-            return self.textEdit__note.toPlainText()
+            return self.bindings.ui.textEdit__note.toPlainText()
 
     @staticmethod
     def _set_move_cursor_textedit(inst: Any) -> None:
@@ -130,7 +160,7 @@ class NotesMixin:
         except AttributeError:
             inst_date = inst_datetime.toDate()
             inst_time = inst_datetime.toTime()
-        created_date = inst_date.toString(public.Value.qt_date_fmt_str)
+        created_date = inst_date.toString(keys.Value.qt_date_fmt_str)
         inst_week = inst_date.dayOfWeek()
         created_week = QtCore.QLocale().dayName(inst_week)
         created_time = inst_time.toString("hh:mm:ss AP")
@@ -142,29 +172,29 @@ class NotesMixin:
         return sorted(normalize_tags(tag_str))
 
     @staticmethod
-    def _set_tag_string(tag_lst: list[str]) -> str:
+    def _set_tag_string(tag_lst: Sequence[str]) -> str:
         return " ".join(["#" + x for x in sorted(tag_lst)])
 
-    def _slot_save_note_tags(self, choice: str = "note") -> None:
+    def _slot_save_note_tags(self, choice: Field = "note") -> None:
         if (
             choice not in ("note", "tag")
-            or not self._panel_library.capabilities.edit_metadata
+            or not self.bindings.session.actions.capabilities.edit_metadata
         ):
             return
-        if not self._panel_library.capabilities.confirm_metadata_save:
-            self._panel_library.save(choice)
+        if not self.bindings.session.actions.capabilities.confirm_metadata_save:
+            self.bindings.session.actions.save(choice)
             return
-        if self._selection.asset.data is None:
+        if self.bindings.selection.state.asset.data is None:
             log_handler.LogHandler.log_msg(
                 method=logging.warning, msg="iHDA node not clicked"
             )
             return
-        msgbox = QtWidgets.QMessageBox(self)
-        msgbox.setFont(self._get_default_font())
+        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
+        msgbox.setFont(self.bindings.presentation._get_default_font())
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setWindowTitle(f"Save iHDA {choice}s")
         msgbox.setText(
-            f'Save {choice}s to "{self._selection.asset.name} ({self._selection.asset.cate})" path iHDA node?'
+            f'Save {choice}s to "{self.bindings.selection.state.asset.name} ({self.bindings.selection.state.asset.cate})" path iHDA node?'
         )
         msgbox.setStandardButtons(
             QtWidgets.QMessageBox.StandardButton.Yes
@@ -173,8 +203,8 @@ class NotesMixin:
         reply = msgbox.exec()
         if reply == QtWidgets.QMessageBox.StandardButton.Yes:
             if choice in ("note", "tag"):
-                self._panel_library.save(choice)
+                self.bindings.session.actions.save(choice)
 
     @property
     def _hda_tags(self) -> str:
-        return self.textEdit__tag.toPlainText().strip()
+        return self.bindings.ui.textEdit__tag.toPlainText().strip()

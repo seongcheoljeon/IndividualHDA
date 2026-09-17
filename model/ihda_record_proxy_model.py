@@ -16,7 +16,9 @@ class RecordProxyModel(TreeProxyModel):
         self._hip_filepath: Path | None = None
         self._hda_id: int | None = None
 
-    def row_matches(self, index: QtCore.QModelIndex) -> bool:
+    def row_matches(
+        self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex
+    ) -> bool:
         if (
             self._hda_id is not None
             and index.data(RecordModel.hda_id_role) != self._hda_id

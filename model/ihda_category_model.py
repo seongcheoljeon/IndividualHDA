@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import Any
+from typing import Any, overload
 
 from PySide6 import QtCore, QtGui
 
@@ -18,7 +18,7 @@ from model.tree_nodes import Node
 with contextlib.suppress(ImportError):
     pass
 
-import public
+from libs import keys
 
 
 class NodeData(Node):
@@ -64,26 +64,30 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             pixmap_cate_data if pixmap_cate_data is not None else {}
         )
         self._font_size = (
-            font_size if font_size is not None else public.UISetting.view_font_size
+            font_size if font_size is not None else keys.UISetting.view_font_size
         )
         self._font_style = (
-            font_style if font_style is not None else public.UISetting.view_font_style
+            font_style if font_style is not None else keys.UISetting.view_font_style
         )
         self.__icon_size = (
             icon_size
             if icon_size is not None
-            else public.UISetting.treeview_node_icon_size
+            else keys.UISetting.treeview_node_icon_size
         )
         self._padding = padding if padding is not None else 0
         self.__update_data(data=data)
         self.__headers = ("Network",)
-        self.__root = None
+        self.__root: NodeData
         self.__init_set_data()
 
     def add_pixmap_cate_data(
         self, category: str | None = None, pixmap: QtGui.QPixmap | None = None
     ) -> None:
-        if category not in self.__pixmap_cate_data:
+        if (
+            category is not None
+            and pixmap is not None
+            and category not in self.__pixmap_cate_data
+        ):
             self.__pixmap_cate_data.update({category: pixmap})
 
     def remove_pixmap_cate_data(self, category: str | None = None) -> None:
@@ -92,13 +96,15 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
 
     def __init_set_data(self) -> None:
         self.__root = NodeData(
-            node_name=public.Type.root, node_type="", node_depth=0, parent=None
+            node_name=keys.Type.root, node_type="", node_depth=0, parent=None
         )
         if self.__data is not None:
             self.__set_treemodel_data(data=self.__data, parent=self.__root)
 
     def __set_treemodel_data(
-        self, data: Any = None, parent: QtCore.QModelIndex = None
+        self,
+        data: Any = None,
+        parent: NodeData | None = None,
     ) -> None:
         pixmap_cate_dat = self.__pixmap_cate_data
 
@@ -113,7 +119,7 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
                     _pixmap = pixmap_cate_dat.get(key.lower())
                     node = NodeData(
                         node_name=key,
-                        node_type=public.Type.network,
+                        node_type=keys.Type.network,
                         icon=_pixmap,
                         node_depth=_depth,
                         parent=_parent,
@@ -139,7 +145,7 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             pixmap = pixmap_cate_dat.get(root_key)
             parent_node = NodeData(
                 node_name=root_key,
-                node_type=public.Type.root,
+                node_type=keys.Type.root,
                 node_depth=0,
                 icon=pixmap,
                 parent=parent,
@@ -153,7 +159,7 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
 
     @property
     def __default_data(self) -> dict[str, Any]:
-        return {public.Type.root: {}}
+        return {keys.Type.root: {}}
 
     def __update_data(self, data: Any = None) -> None:
         if data is None:
@@ -161,14 +167,14 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         assert isinstance(data, dict)
         if (data is None) or (not len(data)):
             return
-        self.__data.get(public.Type.root).update(data)
+        self.__data[keys.Type.root].update(data)
 
     def add_item(self, data: Any = None) -> None:
         assert isinstance(data, dict)
         self.__update_data(data=data)
 
     def remove_item(self, category: str | None = None) -> None:
-        del self.__data.get(public.Type.root)[category]
+        del self.__data[keys.Type.root][category]
 
     def set_icon_size(self, val: Any) -> None:
         self.beginResetModel()
@@ -182,7 +188,8 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         self.endResetModel()
 
     def flags(
-        self, index: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> QtCore.Qt.ItemFlag:
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
@@ -192,7 +199,11 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
     def headers_count(self) -> int:
         return len(self.__headers)
 
-    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+    def columnCount(
+        self,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
+    ) -> int:
         return len(self.__headers)
 
     def headerData(
@@ -208,35 +219,53 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             return None
         elif role == QtCore.Qt.ItemDataRole.FontRole:
             font = QtGui.QFont()
-            font.setPointSize(public.UISetting.view_font_size)
+            font.setPointSize(keys.UISetting.view_font_size)
             return font
         return None
 
-    def node_from_index(self, index: QtCore.QModelIndex) -> Node:
+    def node_from_index(
+        self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex
+    ) -> NodeData:
         return index.internalPointer() if index.isValid() else self.__root
 
     def insertRow(
-        self, row: int, parent: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        row: int,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> bool:
         return self.insertRows(row, 1, parent)
 
     def insertRows(
-        self, row: int, count: int, parent: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        row: int,
+        count: int,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> bool:
         # Tree rows require domain data; add_item/reload performs real insertion.
         return False
 
-    def delete_node(self, index: QtCore.QModelIndex) -> None:
+    def delete_node(
+        self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex
+    ) -> None:
         if index.isValid() and index.model() is self:
             self.removeRows(index.row(), 1, index.parent())
 
     def removeRow(
-        self, row: int, parent: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        row: int,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> bool:
         return self.removeRows(row, 1, parent)
 
     def removeRows(
-        self, row: int, count: int, parent: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        row: int,
+        count: int,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> bool:
         if parent.isValid() and (parent.model() is not self or parent.column() != 0):
             return False
@@ -250,7 +279,11 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         return True
 
     def index(
-        self, row: int, column: int, parent: QtCore.QModelIndex = QtCore.QModelIndex()
+        self,
+        row: int,
+        column: int,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
     ) -> QtCore.QModelIndex:
         if not self.hasIndex(row, column, parent):
             return QtCore.QModelIndex()
@@ -258,7 +291,9 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         return self.createIndex(row, column, node.child_at_row(row))
 
     def data(
-        self, index: QtCore.QModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
+        self,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+        role: int = QtCore.Qt.ItemDataRole.DisplayRole,
     ) -> Any:
         if not index.isValid():
             return None
@@ -273,7 +308,7 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
                 if node.icon is None:
                     return None
                 return node.icon.scaled(
-                    QtCore.QSize(self.__icon_size, self.__icon_size),
+                    QtCore.QSize(int(self.__icon_size), int(self.__icon_size)),
                     QtCore.Qt.AspectRatioMode.KeepAspectRatio,
                 )
         elif role == QtCore.Qt.ItemDataRole.DisplayRole:
@@ -287,7 +322,9 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             font.setPointSize(self._font_size)
             return font
         elif role == QtCore.Qt.ItemDataRole.SizeHintRole:
-            return QtCore.QSize(self.__icon_size, self.__icon_size + self._padding)
+            return QtCore.QSize(
+                int(self.__icon_size), int(self.__icon_size + self._padding)
+            )
         # UserRole
         elif role == CategoryModel.category_role:
             return node.name()
@@ -296,7 +333,11 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         elif role == CategoryModel.depth_role:
             return node.depth()
 
-    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+    def rowCount(
+        self,
+        parent: QtCore.QModelIndex
+        | QtCore.QPersistentModelIndex = QtCore.QModelIndex(),
+    ) -> int:
         if parent.isValid() and parent.column() != 0:
             return 0
         node = self.node_from_index(parent)
@@ -304,9 +345,20 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             return 0
         return len(node)
 
+    @overload
+    def parent(self) -> QtCore.QObject | None: ...
+
+    @overload
     def parent(
-        self, index: QtCore.QModelIndex = QtCore.QModelIndex()
-    ) -> QtCore.QModelIndex:
+        self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex
+    ) -> QtCore.QModelIndex: ...
+
+    def parent(
+        self,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex | None = None,
+    ) -> QtCore.QModelIndex | QtCore.QObject | None:
+        if index is None:
+            return super().parent()
         if not index.isValid():
             return QtCore.QModelIndex()
         node = self.node_from_index(index)

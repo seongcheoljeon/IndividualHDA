@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QSpacerItem,
     QSpinBox,
@@ -38,6 +39,7 @@ from PySide6.QtWidgets import (
 )
 
 from widgets.layout_helpers import make_font, size_policy
+from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 
 from . import preference_icons_rc  # noqa: F401 (register bundled icons)
 
@@ -69,7 +71,19 @@ class PreferenceLayout:
             QLocale(QLocale.Language.English, QLocale.Country.UnitedStates)
         )
         window.setWindowTitle(_translate("iHDA Preference"))
-        self.verticalLayout__preferences = QVBoxLayout(window)
+        self.verticalLayout__preference_shell = QVBoxLayout(window)
+        self.verticalLayout__preference_shell.setObjectName(
+            "verticalLayout__preference_shell"
+        )
+        self.scrollArea__preferences = QScrollArea(window)
+        self.scrollArea__preferences.setObjectName("scrollArea__preferences")
+        self.scrollArea__preferences.setWidgetResizable(True)
+        self.scrollArea__preferences.setFrameShape(QFrame.Shape.NoFrame)
+        content = QWidget(self.scrollArea__preferences)
+        content.setObjectName("widget__preference_content")
+        self.scrollArea__preferences.setWidget(content)
+        self.verticalLayout__preference_shell.addWidget(self.scrollArea__preferences)
+        self.verticalLayout__preferences = QVBoxLayout(content)
         self.verticalLayout__preferences.setSpacing(5)
         self.verticalLayout__preferences.setObjectName("verticalLayout__preferences")
         self.verticalLayout__preferences.setContentsMargins(6, 6, 6, 6)
@@ -102,7 +116,9 @@ class PreferenceLayout:
         self.lineEdit__data_dirpath = QLineEdit(self.groupBox__data)
         self.lineEdit__data_dirpath.setObjectName("lineEdit__data_dirpath")
         self.lineEdit__data_dirpath.setToolTip(_translate("Data storage directory"))
-        self.lineEdit__data_dirpath.setPlaceholderText(_translate("d:/library"))
+        self.lineEdit__data_dirpath.setPlaceholderText(
+            _translate("Choose a library directory")
+        )
         self.horizontalLayout__data_dirpath.addWidget(self.lineEdit__data_dirpath)
         self.toolButton__select_data_dirpath = QToolButton(self.groupBox__data)
         self.toolButton__select_data_dirpath.setObjectName(
@@ -114,7 +130,9 @@ class PreferenceLayout:
         self.toolButton__select_data_dirpath.setIcon(
             QIcon(":/main/icons/ic_folder_white.png")
         )
-        self.toolButton__select_data_dirpath.setIconSize(QSize(20, 20))
+        self.toolButton__select_data_dirpath.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.toolButton__select_data_dirpath.setToolTip(
             _translate("Select the directory where data will be saved")
         )
@@ -212,7 +230,9 @@ class PreferenceLayout:
         self.lineEdit__ffmpeg_dirpath.setToolTip(
             _translate("Installed FFmpeg directory")
         )
-        self.lineEdit__ffmpeg_dirpath.setPlaceholderText(_translate("c:/ffmpeg"))
+        self.lineEdit__ffmpeg_dirpath.setPlaceholderText(
+            _translate("Optional FFmpeg directory")
+        )
         self.horizontalLayout__ffmpeg_dirpath.addWidget(self.lineEdit__ffmpeg_dirpath)
         self.toolButton__select_ffmpeg_dirpath = QToolButton(self.groupBox__ffmpeg)
         self.toolButton__select_ffmpeg_dirpath.setObjectName(
@@ -224,7 +244,9 @@ class PreferenceLayout:
         self.toolButton__select_ffmpeg_dirpath.setIcon(
             QIcon(":/main/icons/ic_folder_white.png")
         )
-        self.toolButton__select_ffmpeg_dirpath.setIconSize(QSize(20, 20))
+        self.toolButton__select_ffmpeg_dirpath.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
         self.toolButton__select_ffmpeg_dirpath.setToolTip(
             _translate("Select the directory where FFmpeg is installed")
         )
@@ -438,7 +460,9 @@ class PreferenceLayout:
         self.verticalLayout__view_settings.addWidget(self.line__view_settings)
         self.tabWidget__view_settings = QTabWidget(self.groupBox__default_icon)
         self.tabWidget__view_settings.setObjectName("tabWidget__view_settings")
-        self.tabWidget__view_settings.setIconSize(QSize(20, 20))
+        self.tabWidget__view_settings.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
 
     def _build_icon_sizes(self, window: QDialog) -> None:
         self.tab__icon = QWidget()
@@ -1182,7 +1206,7 @@ class PreferenceLayout:
         self.buttonBox__confirm.setStandardButtons(
             QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Ok
         )
-        self.verticalLayout__preferences.addWidget(self.buttonBox__confirm)
+        self.verticalLayout__preference_shell.addWidget(self.buttonBox__confirm)
         self.buttonBox__confirm.accepted.connect(window.accept)
         self.buttonBox__confirm.rejected.connect(window.reject)
         self.tabWidget__view_settings.setCurrentIndex(0)

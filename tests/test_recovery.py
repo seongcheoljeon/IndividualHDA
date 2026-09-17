@@ -123,14 +123,14 @@ def test_delete_asset_rolls_back_files_when_database_write_fails(
         db._connect.execute("""CREATE TRIGGER reject_trash BEFORE UPDATE OF deleted_at ON asset_identity
             BEGIN SELECT RAISE(ABORT,'simulated write failure'); END""")
         with pytest.raises(sqlite3.DatabaseError):
-            delete_asset(db, 1, assets)
+            delete_asset(db, 1)
         assert (assets / "water.hda").read_text() == "asset"
         assert (
             db._connect.execute("SELECT deleted_at FROM asset_identity").fetchone()[0]
             is None
         )
         db._connect.execute("DROP TRIGGER reject_trash")
-        delete_asset(db, 1, assets)
+        delete_asset(db, 1)
         assert assets.exists()
         assert db._connect.execute("SELECT deleted_at FROM asset_identity").fetchone()[
             0
@@ -166,3 +166,35 @@ def test_durable_operation_requires_outermost_database_transaction(
     ):
         pytest.fail("must reject before any file work")
     assert not list(tmp_path.glob(".ihda-operation-*.json"))
+
+
+def test_v1_journal_recovers_and_new_journals_write_named_moves(tmp_path: Path) -> None:
+    import json
+
+    from libs.operation_journal import MoveJournal
+
+    source, destination = tmp_path / "old", tmp_path / "new"
+    destination.write_text("original")
+    journal_path = tmp_path / ".ihda-operation-historical.json"
+    journal_path.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "id": "historical",
+                "database": None,
+                "committed": False,
+                "moves": [[str(source), str(destination)]],
+            }
+        )
+    )
+    assert recover_operations(tmp_path) == [journal_path]
+    assert source.read_text() == "original" and not destination.exists()
+    journal = MoveJournal(tmp_path)
+    journal.move(source, destination)
+    document = json.loads(journal.path.read_text())
+    assert document["version"] == 2
+    assert document["moves"] == [
+        {"source": str(source), "destination": str(destination)}
+    ]
+    journal.rollback()
+    assert source.read_text() == "original"

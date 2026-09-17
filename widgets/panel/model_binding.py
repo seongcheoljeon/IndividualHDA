@@ -1,19 +1,22 @@
 """Model binding on the panel GUI thread.
 
-Uses the shared panel protected state; no independent QObject ownership.
+Explicit bindings connect this feature to its view and collaborators.
 """
 
 from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Any
+from collections.abc import Sequence
+from dataclasses import dataclass, replace
+from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore
 
-import public
-from libs import log_handler, sqlite3_db_api
-from libs.domain import AssetData
+from libs import keys, log_handler
+from libs.asset_contracts import AssetData, HistoryData
+from libs.asset_store import AssetStore
+from libs.model_columns import AssetColumn, HistoryColumn
 from libs.qt_helpers import wildcard_expression
 from model import (
     ihda_category_model,
@@ -30,15 +33,59 @@ from model import (
     ihda_table_proxy_model,
 )
 from model.asset_notifications import QtAssetNotifications
-from widgets.ui_tokens import ASSET_TABLE_COLUMN_WIDTHS, HISTORY_TABLE_COLUMN_WIDTHS
+from widgets.ui_tokens import (
+    ASSET_TABLE_COLUMN_WIDTHS,
+    HISTORY_TABLE_COLUMN_WIDTHS,
+    INSIDE_TREE_COLUMN_WIDTHS,
+    RECORD_TREE_COLUMN_WIDTHS,
+)
+
+if TYPE_CHECKING:
+    from libs.ihda_icons import IHDAIcons
+    from widgets.asset_browser.integration import AssetBrowserIntegration
+    from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.library_queries import PanelLibraryQueries
+    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.selection import PanelSelection
+    from widgets.panel.state import PanelSessionState, PanelViews
 
 
-class ModelBindingMixin:
+@dataclass(frozen=True, slots=True)
+class PanelModelBindingBindings:
+    browser: AssetBrowserIntegration
+    icons: IHDAIcons
+    presentation: PanelPresentation
+    queries: PanelLibraryQueries
+    selection: PanelSelection
+    session: PanelSessionState
+    ui: MainWindowLayout
+    views: PanelViews
+
+
+class PanelModelBinding:
+    bindings: PanelModelBindingBindings
+
+    category_model: ihda_category_model.CategoryModel
+    category_proxy_model: ihda_category_proxy_model.CategoryProxyModel
+    history_model: ihda_history_model.HistoryModel
+    history_proxy_model: ihda_history_proxy_model.HistoryProxyModel
+    inside_model: ihda_inside_model.InsideModel
+    inside_proxy_model: ihda_inside_proxy_model.InsideProxyModel
+    record_model: ihda_record_model.RecordModel
+    record_proxy_model: ihda_record_proxy_model.RecordProxyModel
+    list_model: ihda_list_model.ListModel
+    list_proxy_model: ihda_list_proxy_model.ListProxyModel
+    table_model: ihda_table_model.TableModel
+    table_proxy_model: ihda_table_proxy_model.TableProxyModel
+
+    def __init__(self) -> None:
+        self.assets = AssetStore()
+
     @QtCore.Slot(int)
     def _thumbnail_ready(self, asset_id: int) -> None:
-        row = self._assets.id_rows.get(asset_id)
+        row = self.assets.id_rows.get(asset_id)
         if row is not None:
-            for model in (self._ihda_list_model, self._ihda_table_model):
+            for model in (self.list_model, self.table_model):
                 model.dataChanged.emit(
                     model.index(row, 0),
                     model.index(row, model.columnCount() - 1),
@@ -48,50 +95,51 @@ class ModelBindingMixin:
     @QtCore.Slot(int)
     def _history_thumbnail_ready(self, history_id: int) -> None:
         # Repaint visible cells only; avoid rebuilding filters on image completion.
-        self._ihda_history_view.viewport().update()
+        self.bindings.views.history.viewport().update()
 
     def _init_set_ihda_category_model(self) -> None:
-        font_size, font_style = self._get_font_properties(
-            public.Name.PreferenceUI.spb_view_font_size,
-            public.Name.PreferenceUI.cmb_view_font_style,
+        font_size, font_style = self.bindings.presentation._get_font_properties(
+            keys.Name.PreferenceUI.spb_view_font_size,
+            keys.Name.PreferenceUI.cmb_view_font_style,
         )
-        icon_size = self._get_treeview_properties()
-        padding = self._get_padding_properties(
-            public.UISetting.padding_category, public.Name.PreferenceUI.pad_category
+        icon_size = self.bindings.presentation._get_treeview_properties()
+        padding = self.bindings.presentation._get_padding_properties(
+            keys.UISetting.padding_category, keys.Name.PreferenceUI.pad_category
         )
-        self.stackedWidget__category.setCurrentIndex(0)
+        self.bindings.ui.stackedWidget__category.setCurrentIndex(0)
         # tree model
-        self._ihda_category_model = ihda_category_model.CategoryModel(
-            data=self._get_hda_category(
-                user_id=self._user, db_filepath=self._db_filepath
+        self.category_model = ihda_category_model.CategoryModel(
+            data=self.bindings.queries._get_hda_category(
+                user_id=self.bindings.session.user,
+                db_filepath=self.bindings.queries._db_filepath,
             ),
-            pixmap_cate_data=self._ihda_icons.pixmap_cate_data,
+            pixmap_cate_data=self.bindings.icons.pixmap_cate_data,
             font_size=font_size,
             font_style=font_style,
             icon_size=icon_size,
             padding=padding,
         )
-        self._ihda_category_proxy_model = ihda_category_proxy_model.CategoryProxyModel()
-        self._ihda_category_proxy_model.setSourceModel(self._ihda_category_model)
-        self._ihda_category_view.setModel(self._ihda_category_proxy_model)
-        self._ihda_category_view.expandAll()
+        self.category_proxy_model = ihda_category_proxy_model.CategoryProxyModel()
+        self.category_proxy_model.setSourceModel(self.category_model)
+        self.bindings.views.category.setModel(self.category_proxy_model)
+        self.bindings.views.category.expandAll()
 
     def _init_set_ihda_list_model(self) -> None:
-        font_size, font_style = self._get_font_properties(
-            public.Name.PreferenceUI.spb_view_font_size,
-            public.Name.PreferenceUI.cmb_view_font_style,
+        font_size, font_style = self.bindings.presentation._get_font_properties(
+            keys.Name.PreferenceUI.spb_view_font_size,
+            keys.Name.PreferenceUI.cmb_view_font_style,
         )
-        icon_size, thumb_size = self._get_listview_properties(
-            self.doubleSpinBox__zoom.value()
+        icon_size, thumb_size = self.bindings.presentation._get_listview_properties(
+            self.bindings.ui.doubleSpinBox__zoom.value()
         )
-        padding = self._get_padding_properties(
-            public.UISetting.padding_listview, public.Name.PreferenceUI.pad_listview
+        padding = self.bindings.presentation._get_padding_properties(
+            keys.UISetting.padding_listview, keys.Name.PreferenceUI.pad_listview
         )
         # ihda list model
-        self._ihda_list_model = ihda_list_model.ListModel(
-            items=self._assets.rows,
-            pixmap_ihda_data=self._ihda_icons.pixmap_ihda_data,
-            pixmap_thumb_data=self._ihda_icons.pixmap_thumbnail_data,
+        self.list_model = ihda_list_model.ListModel(
+            items=self.assets.rows,
+            pixmap_ihda_data=self.bindings.icons.pixmap_ihda_data,
+            pixmap_thumb_data=self.bindings.icons.pixmap_thumbnail_data,
             font_size=font_size,
             font_style=font_style,
             icon_size=icon_size,
@@ -99,335 +147,335 @@ class ModelBindingMixin:
             padding=padding,
         )
         # proxy ihda list model
-        self._ihda_list_proxy_model = ihda_list_proxy_model.ListProxyModel(
-            search_target_idx=self.comboBox__search_type.currentIndex()
+        self.list_proxy_model = ihda_list_proxy_model.ListProxyModel(
+            search_target_idx=self.bindings.ui.comboBox__search_type.currentIndex()
         )
-        self._ihda_list_proxy_model.setSourceModel(self._ihda_list_model)
-        self._ihda_list_view.setModel(self._ihda_list_proxy_model)
-        self._resizing_listview()
+        self.list_proxy_model.setSourceModel(self.list_model)
+        self.bindings.views.assets_list.setModel(self.list_proxy_model)
+        self.bindings.presentation._resizing_listview()
 
     def _init_set_ihda_table_model(self) -> None:
-        font_size, font_style = self._get_font_properties(
-            public.Name.PreferenceUI.spb_view_font_size,
-            public.Name.PreferenceUI.cmb_view_font_style,
+        font_size, font_style = self.bindings.presentation._get_font_properties(
+            keys.Name.PreferenceUI.spb_view_font_size,
+            keys.Name.PreferenceUI.cmb_view_font_style,
         )
-        icon_size, thumb_size = self._get_tableview_properties(
-            self.doubleSpinBox__zoom.value()
+        icon_size, thumb_size = self.bindings.presentation._get_tableview_properties(
+            self.bindings.ui.doubleSpinBox__zoom.value()
         )
-        padding = self._get_padding_properties(
-            public.UISetting.padding_tableview, public.Name.PreferenceUI.pad_tableview
+        padding = self.bindings.presentation._get_padding_properties(
+            keys.UISetting.padding_tableview, keys.Name.PreferenceUI.pad_tableview
         )
         # table model
-        self._ihda_table_model = ihda_table_model.TableModel(
-            items=self._assets.rows,
-            pixmap_ihda_data=self._ihda_icons.pixmap_ihda_data,
-            pixmap_thumb_data=self._ihda_icons.pixmap_thumbnail_data,
+        self.table_model = ihda_table_model.TableModel(
+            items=self.assets.rows,
+            pixmap_ihda_data=self.bindings.icons.pixmap_ihda_data,
+            pixmap_thumb_data=self.bindings.icons.pixmap_thumbnail_data,
             font_size=font_size,
             font_style=font_style,
             icon_size=icon_size,
             thumb_size=thumb_size,
         )
         # proxy table model
-        self._ihda_table_proxy_model = ihda_table_proxy_model.TableProxyModel(
-            search_target_idx=self.comboBox__search_type.currentIndex()
+        self.table_proxy_model = ihda_table_proxy_model.TableProxyModel(
+            search_target_idx=self.bindings.ui.comboBox__search_type.currentIndex()
         )
-        self._ihda_table_proxy_model.setSourceModel(self._ihda_table_model)
-        self._ihda_table_view.setModel(self._ihda_table_proxy_model)
+        self.table_proxy_model.setSourceModel(self.table_model)
+        self.bindings.views.assets_table.setModel(self.table_proxy_model)
         for column, width in ASSET_TABLE_COLUMN_WIDTHS:
-            self._ihda_table_view.setColumnWidth(column, width)
-        self._ihda_table_view.resizeColumnToContents(5)
-        self._ihda_table_view.resizeColumnToContents(6)
-        self._ihda_table_view.resizeColumnToContents(7)
-        self._ihda_table_view.resizeColumnToContents(8)
-        if self._is_show_thumbnail:
-            self._ihda_table_view.verticalHeader().setDefaultSectionSize(
+            self.bindings.views.assets_table.setColumnWidth(column, width)
+        self.bindings.views.assets_table.resizeColumnToContents(AssetColumn.CREATED)
+        self.bindings.views.assets_table.resizeColumnToContents(AssetColumn.MODIFIED)
+        self.bindings.views.assets_table.resizeColumnToContents(AssetColumn.HOUDINI)
+        self.bindings.views.assets_table.resizeColumnToContents(AssetColumn.LICENSE)
+        if self.bindings.presentation._is_show_thumbnail:
+            self.bindings.views.assets_table.verticalHeader().setDefaultSectionSize(
                 thumb_size + padding
             )
         else:
-            self._ihda_table_view.verticalHeader().setDefaultSectionSize(
+            self.bindings.views.assets_table.verticalHeader().setDefaultSectionSize(
                 icon_size + padding
             )
 
     def _init_set_ihda_history_model(self) -> None:
-        font_size, font_style = self._get_font_properties(
-            public.Name.PreferenceUI.spb_view_font_size,
-            public.Name.PreferenceUI.cmb_view_font_style,
+        font_size, font_style = self.bindings.presentation._get_font_properties(
+            keys.Name.PreferenceUI.spb_view_font_size,
+            keys.Name.PreferenceUI.cmb_view_font_style,
         )
-        icon_size, thumb_size = self._get_tableview_properties(
-            self.doubleSpinBox__zoom.value()
+        icon_size, thumb_size = self.bindings.presentation._get_tableview_properties(
+            self.bindings.ui.doubleSpinBox__zoom.value()
         )
-        padding = self._get_padding_properties(
-            public.UISetting.padding_history, public.Name.PreferenceUI.pad_history
+        padding = self.bindings.presentation._get_padding_properties(
+            keys.UISetting.padding_history, keys.Name.PreferenceUI.pad_history
         )
         # ihda history model
-        get_data = self._get_hda_hist_data(
-            user_id=self._user, db_filepath=self._db_filepath
+        get_data = self.bindings.queries._get_hda_hist_data(
+            user_id=self.bindings.session.user,
+            db_filepath=self.bindings.queries._db_filepath,
         )
-        self._ihda_history_model = ihda_history_model.HistoryModel(
+        self.history_model = ihda_history_model.HistoryModel(
             items=get_data,
-            pixmap_ihda_data=self._ihda_icons.pixmap_ihda_data,
-            pixmap_cate_data=self._ihda_icons.pixmap_cate_data,
-            pixmap_hist_thumb_data=self._ihda_icons.pixmap_hist_thumbnail_data,
+            pixmap_ihda_data=self.bindings.icons.pixmap_ihda_data,
+            pixmap_cate_data=self.bindings.icons.pixmap_cate_data,
+            pixmap_hist_thumb_data=self.bindings.icons.pixmap_hist_thumbnail_data,
             font_size=font_size,
             font_style=font_style,
             icon_size=icon_size,
             thumb_size=thumb_size,
         )
         # proxy history model
-        self._ihda_history_proxy_model = ihda_history_proxy_model.HistoryProxyModel(
-            search_target_idx=self.comboBox__search_field_hist.currentIndex()
+        self.history_proxy_model = ihda_history_proxy_model.HistoryProxyModel(
+            search_target_idx=self.bindings.ui.comboBox__search_field_hist.currentIndex()
         )
-        self._ihda_history_proxy_model.setSourceModel(self._ihda_history_model)
-        self._ihda_history_view.setModel(self._ihda_history_proxy_model)
-        self._init_set_hist_ihda_combobox()
-        self.label__hist_cnt.setText(str(self._ihda_history_proxy_model.rowCount()))
+        self.history_proxy_model.setSourceModel(self.history_model)
+        self.bindings.views.history.setModel(self.history_proxy_model)
+        self.bindings.selection._init_set_hist_ihda_combobox()
+        self.bindings.ui.label__hist_cnt.setText(
+            str(self.history_proxy_model.rowCount())
+        )
         for column, width in HISTORY_TABLE_COLUMN_WIDTHS:
-            self._ihda_history_view.setColumnWidth(column, width)
-        self._ihda_history_view.resizeColumnToContents(3)
-        self._ihda_history_view.resizeColumnToContents(4)
-        self._ihda_history_view.resizeColumnToContents(9)
-        self._ihda_history_view.resizeColumnToContents(10)
-        self._ihda_history_view.resizeColumnToContents(11)
-        self._ihda_history_view.verticalHeader().setDefaultSectionSize(
+            self.bindings.views.history.setColumnWidth(column, width)
+        self.bindings.views.history.resizeColumnToContents(HistoryColumn.CATEGORY)
+        self.bindings.views.history.resizeColumnToContents(HistoryColumn.COMMENT)
+        self.bindings.views.history.resizeColumnToContents(HistoryColumn.HOUDINI)
+        self.bindings.views.history.resizeColumnToContents(10)
+        self.bindings.views.history.resizeColumnToContents(11)
+        self.bindings.views.history.verticalHeader().setDefaultSectionSize(
             thumb_size + padding
         )
 
     def _init_set_ihda_record_model(self) -> None:
-        font_size, font_style = self._get_font_properties(
-            public.Name.PreferenceUI.spb_view_font_size,
-            public.Name.PreferenceUI.cmb_view_font_style,
+        font_size, font_style = self.bindings.presentation._get_font_properties(
+            keys.Name.PreferenceUI.spb_view_font_size,
+            keys.Name.PreferenceUI.cmb_view_font_style,
         )
-        icon_size = self._get_treeview_properties()
-        padding = self._get_padding_properties(
-            public.UISetting.padding_record, public.Name.PreferenceUI.pad_record
+        icon_size = self.bindings.presentation._get_treeview_properties()
+        padding = self.bindings.presentation._get_padding_properties(
+            keys.UISetting.padding_record, keys.Name.PreferenceUI.pad_record
         )
         # tree model
-        self._ihda_record_model = ihda_record_model.RecordModel(
-            data=self._get_hda_loc_record_data(self._db_filepath),
-            pixmap_cate_data=self._ihda_icons.pixmap_cate_data,
-            pixmap_ihda_data=self._ihda_icons.pixmap_ihda_data,
+        self.record_model = ihda_record_model.RecordModel(
+            data=self.bindings.queries._get_hda_loc_record_data(
+                self.bindings.queries._db_filepath
+            ),
+            pixmap_cate_data=self.bindings.icons.pixmap_cate_data,
+            pixmap_ihda_data=self.bindings.icons.pixmap_ihda_data,
             font_size=font_size,
             font_style=font_style,
             icon_size=icon_size,
             padding=padding,
         )
-        self._ihda_record_proxy_model = ihda_record_proxy_model.RecordProxyModel()
-        self._ihda_record_proxy_model.setSourceModel(self._ihda_record_model)
-        self._ihda_record_view.setModel(self._ihda_record_proxy_model)
-        self._ihda_record_view.expandAll()
+        self.record_proxy_model = ihda_record_proxy_model.RecordProxyModel()
+        self.record_proxy_model.setSourceModel(self.record_model)
+        self.bindings.views.record.setModel(self.record_proxy_model)
+        self.bindings.views.record.expandAll()
         # self._ihda_record_view.setColumnWidth(0, 100)
-        self._ihda_record_view.header().resizeSection(0, 350)
-        self._ihda_record_view.header().resizeSection(1, 100)
-        self._ihda_record_view.header().resizeSection(2, 100)
-        self._ihda_record_view.header().resizeSection(3, 50)
-        self._ihda_record_view.header().resizeSection(6, 100)
-        self._ihda_record_view.header().resizeSection(7, 100)
-        self._ihda_record_view.header().resizeSection(8, 100)
-        self._ihda_record_view.header().resizeSection(9, 100)
-        self._ihda_record_view.header().resizeSection(10, 100)
-        self._ihda_record_view.header().resizeSection(11, 50)
-        self.label__loc_record_count.setText(
-            str(self._ihda_record_proxy_model.get_row_count())
+        for column, width in RECORD_TREE_COLUMN_WIDTHS:
+            self.bindings.views.record.header().resizeSection(column, width)
+        self.bindings.ui.label__loc_record_count.setText(
+            str(self.record_proxy_model.get_row_count())
         )
 
     def _init_set_ihda_inside_model(self) -> None:
-        font_size, font_style = self._get_font_properties(
-            public.Name.PreferenceUI.spb_view_font_size,
-            public.Name.PreferenceUI.cmb_view_font_style,
+        font_size, font_style = self.bindings.presentation._get_font_properties(
+            keys.Name.PreferenceUI.spb_view_font_size,
+            keys.Name.PreferenceUI.cmb_view_font_style,
         )
-        icon_size = self._get_treeview_properties()
-        padding = self._get_padding_properties(
-            public.UISetting.padding_inside, public.Name.PreferenceUI.pad_inside
+        icon_size = self.bindings.presentation._get_treeview_properties()
+        padding = self.bindings.presentation._get_padding_properties(
+            keys.UISetting.padding_inside, keys.Name.PreferenceUI.pad_inside
         )
-        self._ihda_inside_model = ihda_inside_model.InsideModel(
+        self.inside_model = ihda_inside_model.InsideModel(
             data={},
-            pixmap_cate_data=self._ihda_icons.pixmap_cate_data,
-            pixmap_ihda_data=self._ihda_icons.pixmap_ihda_data,
-            inst_ihda_icon=self._ihda_icons,
+            pixmap_cate_data=self.bindings.icons.pixmap_cate_data,
+            pixmap_ihda_data=self.bindings.icons.pixmap_ihda_data,
+            inst_ihda_icon=self.bindings.icons,
             font_size=font_size,
             font_style=font_style,
             icon_size=icon_size,
             padding=padding,
         )
-        self._ihda_inside_proxy_model = ihda_inside_proxy_model.InsideProxyModel()
-        self._ihda_inside_proxy_model.setSourceModel(self._ihda_inside_model)
-        self._ihda_inside_view.setModel(self._ihda_inside_proxy_model)
-        self._ihda_inside_view.expandAll()
-        self._ihda_inside_view.header().resizeSection(0, 350)
-        self._ihda_inside_view.header().resizeSection(1, 100)
-        self._ihda_inside_view.header().resizeSection(2, 120)
-        self._ihda_inside_view.header().resizeSection(3, 50)
+        self.inside_proxy_model = ihda_inside_proxy_model.InsideProxyModel()
+        self.inside_proxy_model.setSourceModel(self.inside_model)
+        self.bindings.views.inside.setModel(self.inside_proxy_model)
+        self.bindings.views.inside.expandAll()
+        for column, width in INSIDE_TREE_COLUMN_WIDTHS:
+            self.bindings.views.inside.header().resizeSection(column, width)
 
     def _insert_ihda_history_data_model(
         self,
-        data: Any = None,
+        data: HistoryData,
         hist_id: int | None = None,
-        tags: list[str] | None = None,
+        tags: Sequence[str] | None = None,
         comment: str | None = None,
     ) -> None:
-        key_lst = sqlite3_db_api.SQLite3DatabaseAPI.hda_history_key_lst()
-        index_hist_id = key_lst.index(public.Key.History.hist_id)
-        index_tags = key_lst.index(public.Key.History.tags)
-        data.insert(index_hist_id, hist_id)
-        data.insert(index_tags, tags)
-        assert len(key_lst) == len(data)
-        dat = dict(zip(key_lst, data, strict=False))
-        if comment is not None:
-            dat[public.Key.History.comment] = comment
-        self._ihda_history_model.append_item(dat)
-        self.label__hist_cnt.setText(str(self._ihda_history_proxy_model.rowCount()))
+        if hist_id is None:
+            raise ValueError("A history ID is required")
+        dat = replace(
+            data,
+            hist_id=hist_id,
+            tags=tuple(tags or ()),
+            comment=comment if comment is not None else data.comment,
+        )
+        self.history_model.append_item(dat)
+        self.bindings.ui.label__hist_cnt.setText(
+            str(self.history_proxy_model.rowCount())
+        )
 
     def _insert_ihda_data_model(self, data: AssetData) -> None:
-        self._assets.observe(
-            QtAssetNotifications(self._ihda_list_model, self._ihda_table_model)
-        )
-        self._assets.insert(data)
+        self.assets.observe(QtAssetNotifications(self.list_model, self.table_model))
+        self.assets.insert(data)
 
     def _update_item_row_data(
         self, row: int | None = None, row_data: AssetData | None = None
     ) -> None:
         if row is not None and row_data is not None:
-            self._assets.observe(
-                QtAssetNotifications(self._ihda_list_model, self._ihda_table_model)
-            )
-            self._assets.update(row, row_data)
+            self.assets.observe(QtAssetNotifications(self.list_model, self.table_model))
+            self.assets.update(row, row_data)
 
     @QtCore.Slot(str)
     def _search_filter_regexp_hist_hda_item(self, text: str) -> None:
-        if self.checkBox__casesensitive_hda_hist.isChecked():
+        if self.bindings.ui.checkBox__casesensitive_hda_hist.isChecked():
             casesensitivity = QtCore.Qt.CaseSensitivity.CaseSensitive
         else:
             casesensitivity = QtCore.Qt.CaseSensitivity.CaseInsensitive
         regexp = wildcard_expression(text.strip(), casesensitivity)
-        self._ihda_history_proxy_model.setFilterRegularExpression(regexp)
-        self.label__hist_cnt.setText(str(self._ihda_history_proxy_model.rowCount()))
+        self.history_proxy_model.setFilterRegularExpression(regexp)
+        self.bindings.ui.label__hist_cnt.setText(
+            str(self.history_proxy_model.rowCount())
+        )
 
     def _asset_search_failed_message(self, message: str) -> None:
         log_handler.LogHandler.log_msg(method=logging.error, msg=message)
 
     def _refresh_asset_search(self) -> None:
         """Re-run the current query after edits so the ID filter is not stale."""
-        if self.lineEdit__search_hda.text().strip():
-            self._browser.refresh()
+        if self.bindings.ui.lineEdit__search_hda.text().strip():
+            self.bindings.browser.refresh()
 
     @QtCore.Slot(str)
     def _search_filter_regexp_hda_cate(self, text: str) -> None:
-        if self.checkBox__casesensitive_cate.isChecked():
+        if self.bindings.ui.checkBox__casesensitive_cate.isChecked():
             casesensitivity = QtCore.Qt.CaseSensitivity.CaseSensitive
         else:
             casesensitivity = QtCore.Qt.CaseSensitivity.CaseInsensitive
         regexp = wildcard_expression(text.strip(), casesensitivity)
-        self._ihda_category_proxy_model.setFilterRegularExpression(regexp)
-        self.label__cate_count.setText(str(self._get_category_count()))
-        self._ihda_category_view.expandAll()
+        self.category_proxy_model.setFilterRegularExpression(regexp)
+        self.bindings.ui.label__cate_count.setText(str(self._get_category_count()))
+        self.bindings.views.category.expandAll()
 
     @QtCore.Slot(str)
     def _search_filter_regexp_hda_record(self, text: str) -> None:
         # 대소문자 구별하지 않음.
         casesensitivity = QtCore.Qt.CaseSensitivity.CaseInsensitive
         regexp = wildcard_expression(text.strip(), casesensitivity)
-        self._ihda_record_proxy_model.setFilterRegularExpression(regexp)
-        self.label__loc_record_count.setText(
-            str(self._ihda_record_proxy_model.get_row_count())
+        self.record_proxy_model.setFilterRegularExpression(regexp)
+        self.bindings.ui.label__loc_record_count.setText(
+            str(self.record_proxy_model.get_row_count())
         )
-        self._ihda_record_view.expandAll()
+        self.bindings.views.record.expandAll()
 
     @QtCore.Slot(str)
     def _search_filter_regexp_hda_inside(self, text: str) -> None:
         # 대소문자 구별하지 않음.
         casesensitivity = QtCore.Qt.CaseSensitivity.CaseInsensitive
         regexp = wildcard_expression(text.strip(), casesensitivity)
-        self._ihda_inside_proxy_model.setFilterRegularExpression(regexp)
-        self.label__found_hda_inside_hipfile_count.setText(
-            str(self._ihda_inside_proxy_model.get_row_count())
+        self.inside_proxy_model.setFilterRegularExpression(regexp)
+        self.bindings.ui.label__found_hda_inside_hipfile_count.setText(
+            str(self.inside_proxy_model.get_row_count())
         )
-        self._ihda_inside_view.expandAll()
+        self.bindings.views.inside.expandAll()
 
     def _add_pixmap_category(self, category: str | None = None) -> None:
-        self._ihda_icons.add_pixmap_cate_data(category=category)
+        self.bindings.icons.add_pixmap_cate_data(category=category)
 
     def _add_pixmap_ihda(
         self, hkey_id: int | None = None, icon_lst: list[str] | None = None
     ) -> None:
-        self._ihda_icons.add_pixmap_ihda_data(hkey_id=hkey_id, icon_lst=icon_lst)
+        self.bindings.icons.add_pixmap_ihda_data(hkey_id=hkey_id, icon_lst=icon_lst)
 
     def _add_pixmap_thumbnail(
         self, hkey_id: int | None = None, thumb_filepath: pathlib.Path | None = None
     ) -> None:
+        if hkey_id is None or thumb_filepath is None:
+            return
         assert isinstance(thumb_filepath, pathlib.Path)
-        self._ihda_icons.add_pixmap_thumbnail_data(
+        self.bindings.icons.add_pixmap_thumbnail_data(
             hkey_id=hkey_id, thumb_filepath=thumb_filepath
         )
 
     def _add_pixmap_hist_thumbnail(
         self, hist_id: int | None = None, thumb_filepath: pathlib.Path | None = None
     ) -> None:
+        if hist_id is None or thumb_filepath is None:
+            return
         assert isinstance(thumb_filepath, pathlib.Path)
-        self._ihda_icons.add_pixmap_hist_thumbnail_data(
+        self.bindings.icons.add_pixmap_hist_thumbnail_data(
             hist_id=hist_id, thumb_filepath=thumb_filepath
         )
 
     def _update_pixmap_thumbnail(
         self, hkey_id: int | None = None, thumb_filepath: pathlib.Path | None = None
     ) -> None:
+        if hkey_id is None or thumb_filepath is None:
+            return
         assert isinstance(thumb_filepath, pathlib.Path)
-        self._ihda_icons.update_pixmap_thumbnail_data(
+        self.bindings.icons.update_pixmap_thumbnail_data(
             hkey_id=hkey_id, thumb_filepath=thumb_filepath
         )
 
     def _update_pixmap_hist_thumbnail(
         self, hist_id: int | None = None, thumb_filepath: pathlib.Path | None = None
     ) -> None:
+        if hist_id is None or thumb_filepath is None:
+            return
         assert isinstance(thumb_filepath, pathlib.Path)
-        self._ihda_icons.update_pixmap_hist_thumbnail_data(
+        self.bindings.icons.update_pixmap_hist_thumbnail_data(
             hist_id=hist_id, thumb_filepath=thumb_filepath
         )
 
     def _remove_pixmap_category(self, category: str | None = None) -> None:
-        self._ihda_icons.remove_pixmap_cate_data(category=category)
+        self.bindings.icons.remove_pixmap_cate_data(category=category)
 
     def _remove_pixmap_ihda(self, hkey_id: int | None = None) -> None:
-        self._ihda_icons.remove_pixmap_ihda_data(hkey_id=hkey_id)
+        self.bindings.icons.remove_pixmap_ihda_data(hkey_id=hkey_id)
 
     def _remove_pixmap_thumbnail(self, hkey_id: int | None = None) -> None:
-        self._ihda_icons.remove_pixmap_thumbnail_data(hkey_id=hkey_id)
+        self.bindings.icons.remove_pixmap_thumbnail_data(hkey_id=hkey_id)
 
     def _remove_pixmap_hist_thumbnail(self, hist_id: int | None = None) -> None:
-        self._ihda_icons.remove_pixmap_hist_thumbnail_data(hist_id=hist_id)
+        self.bindings.icons.remove_pixmap_hist_thumbnail_data(hist_id=hist_id)
 
     def _add_record_item(self, data: Any = None) -> None:
-        self._ihda_record_model.insert_record_data(data=data)
-        self._ihda_record_model.reload()
-        self._ihda_record_view.expandAll()
+        self.record_model.insert_record_data(data=data)
+        self.record_model.reload()
+        self.bindings.views.record.expandAll()
 
     def _add_category_item(self, category: str | None = None) -> None:
         self._add_pixmap_category(category=category)
-        self._ihda_category_model.add_item(data={category: None})
-        self._ihda_category_model.reload()
-        self._ihda_category_view.expandAll()
+        self.category_model.add_item(data={category: None})
+        self.category_model.reload()
+        self.bindings.views.category.expandAll()
 
     def _remove_category_item(
         self, category: str | None = None, category_list: Any = None
     ) -> None:
         if category_list is None:
-            self._ihda_category_model.remove_item(category=category)
+            self.category_model.remove_item(category=category)
             self._remove_pixmap_category(category=category)
-            self._ihda_category_model.reload()
+            self.category_model.reload()
         else:
             if category not in category_list:
-                self._ihda_category_model.remove_item(category=category)
+                self.category_model.remove_item(category=category)
                 self._remove_pixmap_category(category=category)
-                self._ihda_category_model.reload()
-                self._ihda_category_view.expandAll()
+                self.category_model.reload()
+                self.bindings.views.category.expandAll()
 
     def _get_category_count(self) -> int:
-        return self._ihda_category_proxy_model.rowCount(
-            self._ihda_category_proxy_model.index(0, 0, QtCore.QModelIndex())
+        return self.category_proxy_model.rowCount(
+            self.category_proxy_model.index(0, 0, QtCore.QModelIndex())
         )
 
     def _remove_hda_data(self, item_row: int | None = None) -> None:
         if item_row is not None:
-            self._assets.observe(
-                QtAssetNotifications(self._ihda_list_model, self._ihda_table_model)
-            )
-            self._assets.remove(item_row)
+            self.assets.observe(QtAssetNotifications(self.list_model, self.table_model))
+            self.assets.remove(item_row)

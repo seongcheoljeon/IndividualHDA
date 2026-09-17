@@ -2,28 +2,81 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore, QtWidgets
 
 from widgets.library_manager.dialog import LibraryManager
 
+if TYPE_CHECKING:
+    from libs.task_controller import TaskController
+    from widgets.asset_copy.dialog import CopyAssetDialog
+    from widgets.library_manager.dialog import LibraryManager
+    from widgets.library_metadata.dialog import LibraryMetadataDialog
+    from widgets.library_metadata.recovery import RegistrationRecoveryDialog
+    from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.library_queries import PanelLibraryQueries
+    from widgets.panel.model_binding import PanelModelBinding
+    from widgets.panel.scene_usage import SceneUsageIntegration
+    from widgets.panel.selection import PanelSelection
+    from widgets.panel.services import PanelServices
+    from widgets.panel.state import PanelSessionState, PanelStatus, PanelViews
+    from widgets.team_library.integration import MainLibraryIntegration
 
-class LibraryToolsMixin:
+
+@dataclass(frozen=True, slots=True)
+class PanelLibraryToolsBindings:
+    imported: Callable[[], bool]
+    models: PanelModelBinding
+    parent: QtWidgets.QWidget
+    queries: PanelLibraryQueries
+    reload_library: Callable[[], None]
+    scene_usage: Callable[[], SceneUsageIntegration]
+    selection: PanelSelection
+    services: PanelServices
+    session: PanelSessionState
+    stage_import: Callable[[Any], None]
+    status: PanelStatus
+    tasks: TaskController
+    team: Callable[[], MainLibraryIntegration]
+    ui: MainWindowLayout
+    views: PanelViews
+
+
+class PanelLibraryTools:
+    library_manager: LibraryManager | None = None
+    recovery_dialog: RegistrationRecoveryDialog | None = None
+    copy_dialog: CopyAssetDialog | None = None
+    metadata_dialog: LibraryMetadataDialog | None = None
+    bindings: PanelLibraryToolsBindings
+
     def _setup_library_tools(self) -> None:
-        self._library_manager = None
-        self._tools_require_restart = False
-        menu = self.menubar.addMenu("Library Tools")
+        self.library_manager = None
+        self.tools_require_restart = False
+        menu = self.bindings.ui.menubar.addMenu("Library Tools")
         action = menu.addAction("Team connection…")
-        action.triggered.connect(lambda: self._team_library.open_connection())
+        action.triggered.connect(lambda: self.bindings.team().open_connection())
         self.actionProject_Members = menu.addAction("Project members…")
         self.actionProject_Members.setVisible(False)
         self.actionProject_Members.triggered.connect(
-            lambda: self._team_library.open_members()
+            lambda: self.bindings.team().open_members()
         )
         menu.addSeparator()
         menu.addAction("Copy to team…", self._open_copy_to_team)
+        self.actionRegistration_Recovery = menu.addAction(
+            "Pending registrations…", self._open_registration_recovery
+        )
+        self.registration_status_tasks = self.bindings.services.tasks(
+            self.bindings.parent
+        )
+        menu.aboutToShow.connect(self._refresh_registration_status)
+        QtCore.QTimer.singleShot(0, self._refresh_registration_status)
+        menu.addAction(
+            "Retry scene reporting", lambda: self.bindings.scene_usage().flush()
+        )
         menu.addAction("Trash…", lambda: self._open_metadata_tools())
         menu.addAction(
             "Version details…",
@@ -44,37 +97,127 @@ class LibraryToolsMixin:
                 lambda checked=False, tab=index: self._open_library_tools(tab)
             )
 
+    def _refresh_registration_status(self) -> None:
+        if self.bindings.status.closing or self.registration_status_tasks.busy:
+            return
+        from libs.paths import Paths
+        from libs.registration_recovery import RegistrationRecovery
+        from libs.team.registration_recovery import TeamRegistrationRecovery
+
+        recovery: RegistrationRecovery | TeamRegistrationRecovery
+        team = self.bindings.team()
+        if team.active:
+            assert team.catalog is not None
+            recovery = TeamRegistrationRecovery(
+                Paths.config_dirpath / "workspace" / "registrations",
+                team.catalog.namespace,
+            )
+        else:
+            if (
+                self.bindings.queries._db_filepath is None
+                or not self.bindings.queries._db_filepath.is_file()
+            ):
+                return
+            recovery = RegistrationRecovery(self.bindings.queries._db_filepath)
+
+        def loaded(rows: list[dict[str, Any]]) -> None:
+            count = sum(row["phase"] not in {"committed", "discarded"} for row in rows)
+            self.actionRegistration_Recovery.setText(
+                f"Pending registrations ({count})…"
+                if count
+                else "Pending registrations…"
+            )
+
+        self.registration_status_tasks.start(recovery.jobs, loaded)
+
+    def _open_registration_recovery(self) -> None:
+        from libs.paths import Paths
+        from libs.registration_recovery import RegistrationRecovery
+        from libs.team.registration_recovery import TeamRegistrationRecovery
+        from widgets.library_metadata.recovery import RegistrationRecoveryDialog
+
+        recovery: RegistrationRecovery | TeamRegistrationRecovery
+        team = self.bindings.team()
+        if self.bindings.tasks.busy or team._tasks.busy:
+            return
+        if team.active:
+            assert team.catalog is not None
+            if not team.writable:
+                return
+            team_recovery = TeamRegistrationRecovery(
+                Paths.config_dirpath / "workspace" / "registrations",
+                team.catalog.namespace,
+            )
+
+            def retry(identity: str) -> Any:
+                return team_recovery.retry(identity, team.catalog, team._pending)
+
+            recovery = team_recovery
+        else:
+            if self.bindings.queries._db_filepath is None:
+                return
+            local_recovery = RegistrationRecovery(self.bindings.queries._db_filepath)
+            writer = self.bindings.services.lifecycle(
+                self.bindings.session.require_repository(), self.bindings.services.names
+            )
+
+            def retry(identity: str) -> Any:
+                return local_recovery.retry(identity, writer)
+
+            recovery = local_recovery
+        dialog = RegistrationRecoveryDialog(
+            recovery.jobs, retry, recovery.discard, self.bindings.parent
+        )
+        self.recovery_dialog = dialog
+        try:
+            dialog.exec()
+        finally:
+            dialog.shutdown()
+            self.recovery_dialog = None
+            dialog.deleteLater()
+        if team.active and team.presenter:
+            team.presenter.refresh()
+        elif not team.active:
+            self.bindings.reload_library()
+
     def _open_copy_to_team(self) -> None:
         from libs.paths import Paths
         from libs.team.copy_source import PersonalCopySource
         from widgets.asset_copy.dialog import CopyAssetDialog
 
-        if self._tasks.busy or self._team_library._tasks.busy:
+        if self.bindings.tasks.busy or self.bindings.team()._tasks.busy:
             return
-        asset_id = self._selection.asset.id
-        if self._team_library.active or asset_id is None or self._db_filepath is None:
+        asset_id = self.bindings.selection.state.asset.id
+        if (
+            self.bindings.team().active
+            or asset_id is None
+            or self.bindings.queries._db_filepath is None
+        ):
             QtWidgets.QMessageBox.information(
-                self, "Copy to team", "Select an asset in your personal library first."
+                self.bindings.parent,
+                "Copy to team",
+                "Select an asset in your personal library first.",
             )
             return
         dialog = CopyAssetDialog(
-            PersonalCopySource(self._db_filepath, asset_id),
+            PersonalCopySource(self.bindings.queries._db_filepath, asset_id),
             Paths.config_dirpath / "workspace",
-            self,
+            self.bindings.parent,
+            runtime=self.bindings.services.runtime,
         )
-        self._copy_dialog = dialog
+        self.copy_dialog = dialog
         try:
             dialog.exec()
         finally:
             dialog.shutdown()
-            self._copy_dialog = None
+            self.copy_dialog = None
             dialog.deleteLater()
 
     def _open_selected_version_details(self) -> None:
-        asset_id = self._selection.asset.id
+        asset_id = self.bindings.selection.state.asset.id
         if asset_id is None:
             QtWidgets.QMessageBox.information(
-                self, "Version details", "Select an asset first."
+                self.bindings.parent, "Version details", "Select an asset first."
             )
             return
         self._open_metadata_tools(asset_id)
@@ -83,21 +226,32 @@ class LibraryToolsMixin:
         from libs.library_management import LocalManagement, RemoteManagement
         from widgets.library_metadata.dialog import LibraryMetadataDialog
 
-        team = self._team_library
-        if self._tasks.busy or team._tasks.busy:
+        team = self.bindings.team()
+        if self.bindings.tasks.busy or team._tasks.busy:
             return
         if team.active:
-            gateway = RemoteManagement(team.catalog, team._pending)
+            assert team.catalog is not None
+            gateway: RemoteManagement | LocalManagement = RemoteManagement(
+                team.catalog, team._pending
+            )
             writable, owner = team.writable, team.project.get("role") == "owner"
         else:
-            if self._db_filepath is None or not self._db_filepath.is_file():
+            if (
+                self.bindings.queries._db_filepath is None
+                or not self.bindings.queries._db_filepath.is_file()
+            ):
                 return
-            gateway = LocalManagement(self._db_filepath)
+            gateway = LocalManagement(self.bindings.queries._db_filepath)
             writable = owner = True
         dialog = LibraryMetadataDialog(
-            gateway, self, asset_id=asset_id, writable=writable, owner=owner
+            gateway,
+            self.bindings.parent,
+            asset_id=asset_id,
+            writable=writable,
+            owner=owner,
+            callbacks=self.bindings.services.callbacks,
         )
-        self._metadata_dialog = dialog
+        self.metadata_dialog = dialog
         dialog.changed.connect(
             lambda: (
                 team.presenter.refresh()
@@ -109,62 +263,73 @@ class LibraryToolsMixin:
             dialog.exec()
         finally:
             dialog.shutdown()
-            self._metadata_dialog = None
+            self.metadata_dialog = None
             dialog.deleteLater()
         if team.active:
+            assert team.catalog is not None
             team.show_status("")
         if not team.active:
-            self._tools_require_restart = False
-            self.reload_library()
+            self.tools_require_restart = False
+            self.bindings.reload_library()
 
     def _open_library_tools(self, tab: int = 0) -> None:
-        if self._tasks.busy or self._is_imported_data:
+        if self.bindings.tasks.busy or self.bindings.imported():
             return
-        database, assets = self._db_filepath, self._hda_base_dirpath
+        database, assets = (
+            self.bindings.queries._db_filepath,
+            self.bindings.queries._hda_base_dirpath,
+        )
         if database is None or assets is None or not database.is_file():
             QtWidgets.QMessageBox.information(
-                self, "Library Tools", "Configure a library in Preferences first."
+                self.bindings.parent,
+                "Library Tools",
+                "Configure a library in Preferences first.",
             )
             return
-        if self._library_manager is None:
+        if self.library_manager is None:
             dialog = LibraryManager(
-                database, assets, self._user, self._selection.asset.id, self
+                database,
+                assets,
+                self.bindings.session.user,
+                self.bindings.selection.state.asset.id,
+                self.bindings.parent,
+                runtime=self.bindings.services.runtime,
             )
-            self._library_manager = dialog
+            self.library_manager = dialog
             dialog.restoreReady.connect(self._tools_restore_ready)
             dialog.pathsChanged.connect(self._tools_paths_changed)
             dialog.importVersion.connect(self._tools_import_version)
             dialog.assetSelected.connect(self._tools_select_asset)
             dialog.finished.connect(self._tools_finished)
-        self._library_manager.tabs.setCurrentIndex(tab)
-        self._library_manager.show()
-        self._library_manager.raise_()
+        self.library_manager.tabs.setCurrentIndex(tab)
+        self.library_manager.show()
+        self.library_manager.raise_()
 
     def _tools_restore_ready(self, stream: Any) -> None:
-        self._stage_import(stream)
-        self._tools_require_restart = True
+        self.bindings.stage_import(stream)
+        self.tools_require_restart = True
 
     def _tools_paths_changed(self) -> None:
-        self._tools_require_restart = True
+        self.tools_require_restart = True
 
     def _tools_finished(self, result: int) -> None:
-        dialog, self._library_manager = self._library_manager, None
+        dialog, self.library_manager = self.library_manager, None
         if dialog is not None:
             dialog.deleteLater()
-        if self._tools_require_restart:
-            QtCore.QTimer.singleShot(0, self.close)
+        if self.tools_require_restart:
+            QtCore.QTimer.singleShot(0, self.bindings.parent.close)
 
     def _tools_select_asset(self, asset_id: int) -> None:
         for model, view in (
-            (self._ihda_list_proxy_model, self._ihda_list_view),
-            (self._ihda_table_proxy_model, self._ihda_table_view),
+            (self.bindings.models.list_proxy_model, self.bindings.views.assets_list),
+            (self.bindings.models.table_proxy_model, self.bindings.views.assets_table),
         ):
-            index = self._find_hda_id_by_model_item(model, asset_id)
+            index = self.bindings.queries._find_hda_id_by_model_item(model, asset_id)
             if index is not None and index.isValid():
                 view.setCurrentIndex(index)
                 view.scrollTo(index)
-        if self._library_manager is not None:
-            self._library_manager.status.setText(
+        if self.library_manager is not None:
+            self.library_manager.status.setText(
                 "Selected in the main panel where visible. Existing category/search filters still apply."
             )
 
@@ -181,7 +346,7 @@ class LibraryToolsMixin:
                 != snapshot["node_category"].casefold()
             ):
                 raise ValueError("Open a network matching the asset category first")
-            if not self._repository.asset_available(
+            if not self.bindings.session.require_repository().asset_available(
                 snapshot["hda_key_id"], snapshot["id"]
             ):
                 raise ValueError(
@@ -189,7 +354,7 @@ class LibraryToolsMixin:
                 )
             path = Path(snapshot["hda_dirpath"]) / snapshot["hda_filename"]
             with HoudiniAPI.undo_group("Import iHDA history version"):
-                node = HoudiniAPI.import_individual_hda_into_houdini(
+                node = self.bindings.services.host_scene.import_individual_hda_into_houdini(
                     path,
                     parent,
                     editor.cursorPosition(),
@@ -198,19 +363,34 @@ class LibraryToolsMixin:
                 )
             if node is None:
                 raise RuntimeError("Could not import this history file")
-            self._repository.record_use(snapshot["hda_key_id"])
-            if self._library_manager is not None:
-                self._library_manager.status.setText(
+            self.bindings.session.require_repository().record_use(
+                snapshot["hda_key_id"]
+            )
+            uuid = self.bindings.session.require_repository().version_identity(
+                snapshot["hda_key_id"], snapshot["id"]
+            )
+            if uuid:
+                self.bindings.scene_usage().observe(
+                    node,
+                    uuid,
+                    "local:"
+                    + str(
+                        self.bindings.session.require_context().db_filepath.resolve()
+                    ),
+                )
+            if self.library_manager is not None:
+                self.library_manager.status.setText(
                     f"Imported {snapshot['version']}: {node.path()}"
                 )
         except Exception as error:
-            QtWidgets.QMessageBox.warning(self, "Import version", str(error))
+            QtWidgets.QMessageBox.warning(
+                self.bindings.parent, "Import version", str(error)
+            )
 
     def _capture_team_node(
         self, selected_node: Any = None
     ) -> tuple[Path, dict[str, Any], Path | None]:
         import json
-        import tempfile
 
         from libs.houdini_api import HoudiniAPI
         from libs.paths import Paths
@@ -229,18 +409,24 @@ class LibraryToolsMixin:
         node = nodes[0]
         if not HoudiniAPI.is_valid_node(node):
             raise RuntimeError("Selected node cannot be registered")
-        staging = Paths.config_dirpath / "workspace" / "staging"
-        staging.mkdir(parents=True, exist_ok=True)
-        directory = Path(tempfile.mkdtemp(prefix="capture-", dir=staging))
+        from libs.team.registration_recovery import TeamRegistrationRecovery
+
+        recovery = TeamRegistrationRecovery(
+            Paths.config_dirpath / "workspace" / "registrations",
+            self.bindings.team().require_catalog().namespace,
+        )
+        job_id, directory = recovery.begin_capture(node.path())
         version = "1.0"
         data = HoudiniAPI(
             hda_version=version, node_path=node.path(), hda_dirpath=directory
         ).get_individual_hda_data()
         filename = data["hda_filename"]
-        if not HoudiniAPI.create_hda_file(node, directory, filename, version):
+        if not self.bindings.services.host_capture.create_hda_file(
+            node, directory, filename, version
+        ):
             raise RuntimeError("Houdini asset capture failed")
         thumbnail = directory / "thumbnail.png"
-        has_thumbnail = HoudiniAPI.create_thumbnail(thumbnail)
+        has_thumbnail = self.bindings.services.host_capture.create_thumbnail(thumbnail)
         metadata = {key: value for key, value in data.items() if key != "node"}
         metadata = json.loads(json.dumps(metadata, default=str))
         metadata.update(
@@ -248,6 +434,10 @@ class LibraryToolsMixin:
             hda_cate=HoudiniAPI.node_category_type_name(node),
             hda_version=version,
         )
+        recovery.captured(
+            job_id, directory / filename, metadata, thumbnail if has_thumbnail else None
+        )
+        metadata["_registration_job_id"] = job_id
         return directory / filename, metadata, thumbnail if has_thumbnail else None
 
     def _import_team_asset(
@@ -264,7 +454,7 @@ class LibraryToolsMixin:
         if parent.childTypeCategory().name().casefold() != asset["category"].casefold():
             raise RuntimeError("Open a Network Editor matching the asset category")
         with HoudiniAPI.undo_group("Import library asset"):
-            node = HoudiniAPI.import_individual_hda_into_houdini(
+            node = self.bindings.services.host_scene.import_individual_hda_into_houdini(
                 path,
                 parent,
                 position,
@@ -273,3 +463,9 @@ class LibraryToolsMixin:
             )
         if node is None:
             raise RuntimeError("Could not instantiate the asset")
+        if asset.get("version_uuid") and self.bindings.team().catalog:
+            self.bindings.scene_usage().observe(
+                node,
+                asset["version_uuid"],
+                self.bindings.team().require_catalog().namespace,
+            )

@@ -10,6 +10,22 @@ from dataclasses import dataclass
 from threading import Event
 from typing import Protocol
 
+from libs.runtime_settings import DEFAULT_RUNTIME
+from libs.search_limits import SEARCH_RESULT_LIMIT
+
+
+@dataclass(frozen=True, slots=True)
+class SearchPolicy:
+    delay_ms: int = DEFAULT_RUNTIME.search_delay_ms
+    immediate_rows: int = 1000
+
+    def __post_init__(self) -> None:
+        if any(
+            type(value) is not int or not 0 < value <= 2_147_483_647
+            for value in (self.delay_ms, self.immediate_rows)
+        ):
+            raise ValueError("Search limits must be positive Qt-compatible integers")
+
 
 @dataclass(frozen=True, slots=True)
 class SearchRequest:
@@ -29,7 +45,7 @@ class SearchRepository(Protocol):
         *,
         field: str = "All",
         case_sensitive: bool = False,
-        limit: int = 5000,
+        limit: int = SEARCH_RESULT_LIMIT,
         cancel: Event | None = None,
     ) -> list[int]: ...
 

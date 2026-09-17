@@ -287,6 +287,8 @@ class LocalModelsDialog(QtWidgets.QDialog):
         recommended = self.client.choose_recommended(vram)
         for row in range(self.tree.topLevelItemCount()):
             item = self.tree.topLevelItem(row)
+            if item is None:
+                continue
             installed = _installed_name(
                 str(item.data(0, QtCore.Qt.ItemDataRole.UserRole))
             )

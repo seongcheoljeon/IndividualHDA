@@ -13,9 +13,10 @@ from widgets.video_player import video_widget_overlay
 
 
 class VideoWidget(QtMultimediaWidgets.QVideoWidget):
+    play_toggle_requested = QtCore.Signal()
+
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self.__parent = parent
         self.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Ignored, QtWidgets.QSizePolicy.Policy.Ignored
         )
@@ -39,7 +40,7 @@ class VideoWidget(QtMultimediaWidgets.QVideoWidget):
             self.setFullScreen(not self.isFullScreen())
             event.accept()
         elif event.key() == QtCore.Qt.Key.Key_Space:
-            self.__parent.slot_play_toggle()
+            self.play_toggle_requested.emit()
             event.accept()
         else:
             super().keyPressEvent(event)

@@ -27,7 +27,7 @@ class Overlay(QtWidgets.QWidget):
         painter.begin(self)
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         painter.fillRect(
-            event.rect(), QtGui.QBrush(QtGui.QColor(255, 255, 255, 127 * 0.5))
+            event.rect(), QtGui.QBrush(QtGui.QColor(255, 255, 255, int(127 * 0.5)))
         )
         painter.setPen(QtGui.QPen(QtCore.Qt.PenStyle.NoPen))
         range_num = 5
@@ -42,17 +42,21 @@ class Overlay(QtWidgets.QWidget):
                 )
             else:
                 painter.setBrush(
-                    QtGui.QBrush(QtGui.QColor(127 * 0.5, 127 * 0.5, 127 * 0.5))
+                    QtGui.QBrush(
+                        QtGui.QColor(int(127 * 0.5), int(127 * 0.5), int(127 * 0.5))
+                    )
                 )
             painter.drawEllipse(
-                self.width() / 2
-                + 30 * math.cos(2 * math.pi * i / float(range_num))
-                - 10,
-                self.height() / 2
-                + 30 * math.sin(2 * math.pi * i / float(range_num))
-                - 10,
-                20,
-                20,
+                QtCore.QRectF(
+                    self.width() / 2
+                    + 30 * math.cos(2 * math.pi * i / float(range_num))
+                    - 10,
+                    self.height() / 2
+                    + 30 * math.sin(2 * math.pi * i / float(range_num))
+                    - 10,
+                    20,
+                    20,
+                )
             )
         painter.end()
 

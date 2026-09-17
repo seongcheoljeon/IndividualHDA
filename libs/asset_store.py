@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from types import MappingProxyType
 
+from libs.asset_contracts import AssetData
 from libs.contracts import RowNotifications, SilentRows
-from libs.domain import AssetData
 
 
 class AssetStore:
@@ -26,13 +26,11 @@ class AssetStore:
 
     def _reindex(self) -> None:
         self._id_rows.clear()
-        self._id_rows.update(
-            (item["hda_id"], row) for row, item in enumerate(self.rows)
-        )
+        self._id_rows.update((item.hda_id, row) for row, item in enumerate(self.rows))
 
     def reset(self, rows: Iterable[AssetData]) -> None:
         replacement = list(rows)
-        ids = [item["hda_id"] for item in replacement]
+        ids = [item.hda_id for item in replacement]
         if len(set(ids)) != len(ids):
             raise ValueError("Duplicate asset IDs")
         self._observer.begin_reset()
@@ -41,14 +39,10 @@ class AssetStore:
         self._observer.end_reset()
 
     def insert(self, data: AssetData) -> int:
-        if data["hda_id"] in self._id_rows:
+        if data.hda_id in self._id_rows:
             raise ValueError("Duplicate asset ID")
         row = next(
-            (
-                i
-                for i, item in enumerate(self.rows)
-                if item["hda_name"] > data["hda_name"]
-            ),
+            (i for i, item in enumerate(self.rows) if item.hda_name > data.hda_name),
             len(self.rows),
         )
         self._observer.begin_insert(row)
@@ -61,9 +55,9 @@ class AssetStore:
         if not 0 <= row < len(self.rows):
             raise IndexError(row)
         item = self.rows[row]
-        if "hda_id" in data and data["hda_id"] != item["hda_id"]:
+        if data.hda_id != item.hda_id:
             raise ValueError("Asset IDs are immutable")
-        item.update(data)
+        self.rows[row] = data
         self._observer.changed(row)
 
     def remove(self, row: int) -> None:

@@ -7,6 +7,7 @@ from unittest.mock import Mock
 import pytest
 
 from widgets.panel.lifetime import PanelLifetime
+from widgets.panel.state import PanelStatus
 
 
 def test_lifetime_stops_at_failed_worker_and_retries_remaining_resources() -> None:
@@ -32,14 +33,14 @@ def test_lifetime_rejects_duplicate_ownership() -> None:
         lifetime.add("worker", Mock(), 1)
 
 
-@pytest.mark.parametrize("failed_phase", [1, 2, 3])
+@pytest.mark.parametrize("failed_phase", [1, 2, 3, 4])
 def test_startup_failure_closes_only_acquired_resources(
     monkeypatch: pytest.MonkeyPatch, failed_phase: int
 ) -> None:
     from widgets.panel.composition import PanelComposition
     from widgets.panel.services import PanelServices
 
-    window = SimpleNamespace(_closing=False)
+    window = SimpleNamespace(status=PanelStatus())
     composition = PanelComposition(window, PanelServices(), False)
     closed: list[int] = []
     failure = RuntimeError("startup failure")
@@ -57,6 +58,7 @@ def test_startup_failure_closes_only_acquired_resources(
             "_create_features",
             "_create_session_and_widgets",
             "_initialize_models_and_state",
+            "_bind_features",
             "_connect_features",
         )
     ):
@@ -64,7 +66,7 @@ def test_startup_failure_closes_only_acquired_resources(
     with pytest.raises(RuntimeError) as caught:
         composition.build()
     assert caught.value is failure
-    assert window._closing
+    assert window.status.closing
     assert closed == list(range(failed_phase))
 
 
@@ -85,9 +87,9 @@ def test_import_close_retry_does_not_restart_or_redrain_services(
     panel._archives.stream = stream
     panel._archives.imported = True
     assert not panel.close()
-    assert panel._closing
+    assert panel.status.closing
     assert not panel.centralwidget.isEnabled()
-    assert not panel._sync_timer.isActive()
+    assert not panel._library_sync.timer.isActive()
     assert shutdown.call_count == 1
     assert panel.close()
     assert panel.close()
@@ -123,11 +125,14 @@ def test_dialog_cleanup_does_not_revisit_a_deleted_dialog(app: Any) -> None:
     metadata = MetadataDialog()
     metadata.show()
     window = SimpleNamespace(
-        _library_sync_presenter=SimpleNamespace(close=Mock()),
+        status=PanelStatus(),
+        _library_sync=SimpleNamespace(presenter=SimpleNamespace(close=Mock())),
         _history_search_debounce=SimpleNamespace(timer=QtCore.QTimer()),
-        _copy_dialog=ClosingDialog(),
-        _metadata_dialog=metadata,
-        _library_manager=ClosingDialog(),
+        tools=SimpleNamespace(
+            copy_dialog=ClosingDialog(),
+            metadata_dialog=metadata,
+            library_manager=ClosingDialog(),
+        ),
     )
     lifetime = PanelLifetime()
     shutdown = PanelShutdown(window, lifetime)

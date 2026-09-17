@@ -8,9 +8,10 @@ from pathlib import Path
 
 from libs.database_migrations_v4 import backup_database
 from libs.database_migrations_v4 import migrate as migrate_v4
-from libs.database_v5 import install
+from libs.database_v5 import install as install_v5
+from libs.database_v6 import install as install_v6
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 
 
 def migrate(connection: sqlite3.Connection, filepath: Path) -> None:
@@ -25,21 +26,25 @@ def migrate(connection: sqlite3.Connection, filepath: Path) -> None:
         raise sqlite3.ProgrammingError(
             "Migration requires a connection without an active transaction"
         )
+    original_version = version
     if version < 4:
         migrate_v4(connection, filepath)
+        version = 4
     if connection.execute("PRAGMA quick_check").fetchone()[0] != "ok":
         raise sqlite3.DatabaseError("Library integrity check failed")
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
-    if version >= 4:
+    if original_version >= 4:
         backup_database(
-            connection, filepath.with_name(f"{filepath.name}.pre-v5-{stamp}.bak")
+            connection, filepath.with_name(f"{filepath.name}.pre-v6-{stamp}.bak")
         )
     try:
         connection.execute("BEGIN IMMEDIATE")
-        install(connection)
+        if version < 5:
+            install_v5(connection)
+        install_v6(connection)
         if connection.execute("PRAGMA foreign_key_check").fetchone():
             raise sqlite3.IntegrityError("Library contains orphaned records")
-        connection.execute("PRAGMA user_version=5")
+        connection.execute("PRAGMA user_version=6")
         connection.commit()
     except BaseException:
         connection.rollback()

@@ -1,10 +1,7 @@
 # Development tools only. Never install these into Houdini's Python.
 # PySide6 mirrors Houdini 21's Qt 6 binding for headless tests.
 PySide6==6.11.2
-pytest==9.1.1
-pytest-cov==7.1.0
-ruff==0.16.7
-mypy==2.3.1
+-r requirements-core.txt
 
 # Exercise the optional API and shared contracts in development/CI.
 -r requirements-server.txt

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import gc
 import os
+import sys
 import tempfile
 from typing import Any
 
@@ -11,6 +12,53 @@ os.environ["IHDA_CONFIG_DIR"] = _test_config.name
 os.environ.setdefault("IHDA_USER", "tester")
 
 import pytest  # noqa: E402  (env vars above must be set before Qt/app imports)
+
+from tools.test_suites import includes, suite_for  # noqa: E402
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    parser.addoption(
+        "--suite", choices=("all", "core", "qt", "server", "postgres"), default="all"
+    )
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    for name in ("core", "qt", "server", "postgres"):
+        config.addinivalue_line("markers", f"{name}: {name} verification boundary")
+    if config.getoption("--suite") == "postgres" and not os.getenv(
+        "IHDA_TEST_POSTGRES_URL"
+    ):
+        raise pytest.UsageError(
+            "postgres suite requires IHDA_TEST_POSTGRES_URL pointing to a disposable test database"
+        )
+
+
+def pytest_ignore_collect(collection_path: Any, config: pytest.Config) -> bool | None:
+    if collection_path.name.startswith("test_") and collection_path.suffix == ".py":
+        return not includes(config.getoption("--suite"), collection_path.name)
+    return None
+
+
+def pytest_collection_modifyitems(
+    config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    selected, deselected = [], []
+    suite = config.getoption("--suite")
+    for item in items:
+        group = suite_for(item.path.name)
+        if (
+            item.path.name == "test_team_library.py"
+            and getattr(item, "callspec", None) is not None
+        ):
+            if item.callspec.params.get("backend") == "personal":
+                group = "qt"
+        if item.name == "test_personal_revision_observes_original_ui_writes":
+            group = "qt"
+        item.add_marker(getattr(pytest.mark, group))
+        (selected if suite in ("all", "postgres", group) else deselected).append(item)
+    items[:] = selected
+    if deselected:
+        config.hook.pytest_deselected(items=deselected)
 
 
 @pytest.fixture(scope="session")
@@ -46,6 +94,8 @@ def collect_qt_objects_on_gui_thread() -> Any:
     wrappers. The session QApplication remains alive.
     """
     yield
+    if "PySide6.QtWidgets" not in sys.modules:
+        return
     from PySide6.QtCore import QCoreApplication, QEvent, QThread
 
     application = QCoreApplication.instance()

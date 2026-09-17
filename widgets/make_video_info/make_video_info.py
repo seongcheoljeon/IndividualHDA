@@ -4,7 +4,7 @@ from typing import Any
 
 from PySide6 import QtWidgets
 
-import public
+from libs import keys
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
@@ -26,16 +26,16 @@ class MakeVideoInfo(QtWidgets.QDialog, VideoInfoLayout):
         self.__res_dat = dict(
             zip(
                 [
-                    public.Key.Resolution.sd,
-                    public.Key.Resolution.hd,
-                    public.Key.Resolution.fhd,
-                    public.Key.Resolution.qhd,
+                    keys.Key.Resolution.sd,
+                    keys.Key.Resolution.hd,
+                    keys.Key.Resolution.fhd,
+                    keys.Key.Resolution.qhd,
                 ],
                 [
-                    public.Value.SD_res,
-                    public.Value.HD_res,
-                    public.Value.FHD_res,
-                    public.Value.QHD_res,
+                    keys.Value.SD_res,
+                    keys.Value.HD_res,
+                    keys.Value.FHD_res,
+                    keys.Value.QHD_res,
                 ],
                 strict=False,
             )
@@ -43,11 +43,11 @@ class MakeVideoInfo(QtWidgets.QDialog, VideoInfoLayout):
         self.__res_dat_share = dict(
             zip(
                 [
-                    public.Key.Resolution.sd,
-                    public.Key.Resolution.hd,
-                    public.Key.Resolution.fhd,
+                    keys.Key.Resolution.sd,
+                    keys.Key.Resolution.hd,
+                    keys.Key.Resolution.fhd,
                 ],
-                [public.Value.SD_res, public.Value.HD_res, public.Value.FHD_res],
+                [keys.Value.SD_res, keys.Value.HD_res, keys.Value.FHD_res],
                 strict=False,
             )
         )
@@ -71,11 +71,11 @@ class MakeVideoInfo(QtWidgets.QDialog, VideoInfoLayout):
         ).setStatusTip("Cancel Make Video")
         self.spinBox__sf.setValue(self.sf)
         self.spinBox__ef.setValue(self.ef)
-        self.spinBox__fps.setValue(self.fps)
+        self.spinBox__fps.setValue(int(self.fps))
         self.comboBox__resolution.addItems(list(self.__res_dat.keys()))
-        self.comboBox__resolution.setCurrentText(public.Key.Resolution.hd)
+        self.comboBox__resolution.setCurrentText(keys.Key.Resolution.hd)
         self.comboBox__resolution_share.addItems(list(self.__res_dat_share.keys()))
-        self.comboBox__resolution_share.setCurrentText(public.Key.Resolution.sd)
+        self.comboBox__resolution_share.setCurrentText(keys.Key.Resolution.sd)
         self.__slot_confirm_resolution()
         self.__slot_confirm_resolution_share()
 
@@ -100,11 +100,11 @@ class MakeVideoInfo(QtWidgets.QDialog, VideoInfoLayout):
             " x ".join([str(x) for x in self.get_resolution_share()])
         )
 
-    def get_resolution(self) -> list[int] | None:
-        return self.__res_dat.get(self.comboBox__resolution.currentText())
+    def get_resolution(self) -> tuple[int, int]:
+        return self.__res_dat[self.comboBox__resolution.currentText()]
 
-    def get_resolution_share(self) -> list[int] | None:
-        return self.__res_dat_share.get(self.comboBox__resolution_share.currentText())
+    def get_resolution_share(self) -> tuple[int, int]:
+        return self.__res_dat_share[self.comboBox__resolution_share.currentText()]
 
     def __slot_sf(self, *args: Any) -> None:
         self.sf = args[0]

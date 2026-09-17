@@ -7,6 +7,10 @@ from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore, QtWidgets
 
+from libs.asset_contracts import HistoryData
+from libs.drag_payload import decode_drag_record
+from libs.scene_contracts import SceneRecord
+
 if TYPE_CHECKING:
     from widgets.team_library.integration import MainLibraryIntegration
 
@@ -14,30 +18,30 @@ if TYPE_CHECKING:
 class MainAssetActions:
     def __init__(self, library: MainLibraryIntegration) -> None:
         self.library = library
-        self.window = library.window
+        self.bindings = library.bindings
         self._nodes: list[Any] = []
         self._imports: list[dict[str, Any]] = []
         self._drop_target: tuple[Any, Any] | None = None
 
     def context_menu(self, point: QtCore.QPoint) -> None:
         view = (
-            self.window._ihda_list_view
-            if self.window._is_icon_mode
-            else self.window._ihda_table_view
+            self.bindings.views.assets_list
+            if self.bindings.presentation._is_icon_mode
+            else self.bindings.views.assets_table
         )
         index = view.indexAt(point)
-        menu = QtWidgets.QMenu(self.window)
+        menu = QtWidgets.QMenu(self.bindings.parent)
         if index.isValid():
             view.setCurrentIndex(index)
-            self.window._selected_ihda_item(index)
+            self.bindings.selection._selected_ihda_item(index)
             menu.addAction("Import", lambda: self.library.download())
             menu.addAction("Play video", lambda: self.library.download("video"))
             assert self.library.presenter is not None
             menu.addAction("History", self.library.presenter.history)
             menu.addAction(
                 "Details",
-                lambda: self.window._detail_view_ihda_data(
-                    self.window._selection.asset.data
+                lambda: self.bindings.notes._detail_view_ihda_data(
+                    self.bindings.selection.state.asset.data
                 ),
             )
             menu.addSeparator()
@@ -60,16 +64,16 @@ class MainAssetActions:
         if self.library.presenter is None or not self.library.writable:
             return
         name, accepted = QtWidgets.QInputDialog.getText(
-            self.window,
+            self.bindings.parent,
             "Rename asset",
             "Name",
-            text=self.window._selection.asset.name or "",
+            text=self.bindings.selection.state.asset.name or "",
         )
         if accepted:
             self.library.presenter.mutate("rename", {"name": name})
 
     def favorite(self) -> None:
-        selected_id = self.window._selection.asset.id
+        selected_id = self.bindings.selection.state.asset.id
         asset = (
             self.library._documents.get(selected_id)
             if selected_id is not None
@@ -81,17 +85,44 @@ class MainAssetActions:
             )
 
     def remove(self) -> None:
-        if (
-            self.library.presenter
-            and self.library.writable
-            and QtWidgets.QMessageBox.question(
-                self.window,
-                "Delete asset",
-                "Move the selected asset to Trash? Files and history will be retained.",
+        asset_id = self.bindings.selection.state.asset.id
+        if asset_id is not None and self.library.presenter and self.library.writable:
+            self._confirm_removal(
+                {"asset_id": asset_id},
+                lambda: self.library.presenter.mutate("delete", {}),
             )
-            == QtWidgets.QMessageBox.StandardButton.Yes
-        ):
-            self.library.presenter.mutate("delete", {})
+
+    def _confirm_removal(self, item: dict[str, Any], operation: Any) -> None:
+        from libs.library_management import RemoteManagement
+        from widgets.library_metadata.dependency_warning import dependency_message
+
+        if self.library._tasks.busy:
+            return
+        gateway = RemoteManagement(self.library.catalog)
+
+        def ready(rows: list[dict[str, Any]]) -> None:
+            def confirm() -> None:
+                if self.bindings.status.closing:
+                    return
+                if self.library._tasks.busy:
+                    QtCore.QTimer.singleShot(
+                        self.library.callbacks.retry_delay_ms, confirm
+                    )
+                    return
+                if (
+                    QtWidgets.QMessageBox.question(
+                        self.bindings.parent,
+                        "Move to Trash",
+                        "Move this item to Trash? Files and history will be retained."
+                        + dependency_message(rows),
+                    )
+                    == QtWidgets.QMessageBox.StandardButton.Yes
+                ):
+                    operation()
+
+            QtCore.QTimer.singleShot(0, confirm)
+
+        self.library._tasks.start(lambda: gateway.dependents(item), ready)
 
     def register_file(self, new_version: bool = False) -> None:
         if (
@@ -101,31 +132,31 @@ class MainAssetActions:
         ):
             return
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self.window,
+            self.bindings.parent,
             "Select HDA",
             filter="Houdini assets (*.hda *.hdalc *.hdanc *.ihda)",
         )
         if not path:
             return
-        name = self.window._selection.asset.name or Path(path).stem
-        category = self.window._selection.asset.cate or "sop"
+        name = self.bindings.selection.state.asset.name or Path(path).stem
+        category = self.bindings.selection.state.asset.cate or "sop"
         if not new_version:
             name, accepted = QtWidgets.QInputDialog.getText(
-                self.window, "Register asset", "Name", text=Path(path).stem
+                self.bindings.parent, "Register asset", "Name", text=Path(path).stem
             )
             if not accepted:
                 return
             category, accepted = QtWidgets.QInputDialog.getText(
-                self.window, "Register asset", "Category", text="sop"
+                self.bindings.parent, "Register asset", "Category", text="sop"
             )
             if not accepted:
                 return
         version, accepted = QtWidgets.QInputDialog.getText(
-            self.window, "Asset version", "Version", text="1.0"
+            self.bindings.parent, "Asset version", "Version", text="1.0"
         )
         if accepted:
             description, accepted = QtWidgets.QInputDialog.getMultiLineText(
-                self.window, "Asset version", "Change description (optional)"
+                self.bindings.parent, "Asset version", "Change description (optional)"
             )
             if accepted:
                 self.library.presenter.register(
@@ -141,15 +172,17 @@ class MainAssetActions:
     def attach(self, kind: str) -> None:
         if self.library.presenter is None or not self.library.writable:
             return
-        path, _ = QtWidgets.QFileDialog.getOpenFileName(self.window, "Attach " + kind)
+        path, _ = QtWidgets.QFileDialog.getOpenFileName(
+            self.bindings.parent, "Attach " + kind
+        )
         if path:
             self.library.presenter.attach_media(Path(path), kind)
 
     def play_video(self) -> None:
-        if self.window._is_ihda_history_view:
+        if self.bindings.presentation._is_ihda_history_view:
             from model.ihda_history_model import HistoryModel
 
-            index = self.window._ihda_history_view.currentIndex()
+            index = self.bindings.views.history.currentIndex()
             item = self.library._histories.get(index.data(HistoryModel.hist_id_role))
             if item is not None:
                 self.library.download("video", item["document"])
@@ -159,12 +192,12 @@ class MainAssetActions:
     def history_menu(self, point: QtCore.QPoint) -> None:
         from model.ihda_history_model import HistoryModel
 
-        view = self.window._ihda_history_view
+        view = self.bindings.views.history
         index = view.indexAt(point)
         item = self.library._histories.get(index.data(HistoryModel.hist_id_role))
         if item is None:
             return
-        menu = QtWidgets.QMenu(self.window)
+        menu = QtWidgets.QMenu(self.bindings.parent)
         menu.addAction(
             "Import", lambda: self.library.download(historical=item["document"])
         )
@@ -176,14 +209,32 @@ class MainAssetActions:
         menu.exec(view.mapToGlobal(point))
 
     def _remove_history(self, item: dict[str, Any]) -> None:
-        if (
-            self.library.presenter
-            and QtWidgets.QMessageBox.question(
-                self.window, "Delete version", "Delete this historical version?"
+        if self.library.presenter:
+            asset_id, history_id = item["document"]["id"], item["id"]
+            self._confirm_removal(
+                {"asset_id": asset_id, "history_id": history_id},
+                lambda: self.library.presenter.delete_history(asset_id, history_id),
             )
-            == QtWidgets.QMessageBox.StandardButton.Yes
-        ):
-            self.library.presenter.delete_history(item["document"]["id"], item["id"])
+
+    def _allow_batch(self, count: int, action: str) -> bool:
+        policy = self.bindings.policy
+        if not 1 <= count <= policy.maximum_node_batch:
+            self.library.show_error(
+                f"{action} between 1 and {policy.maximum_node_batch} nodes at a time."
+            )
+            return False
+        if count > policy.warn_node_batch:
+            return (
+                QtWidgets.QMessageBox.question(
+                    self.bindings.parent,
+                    action + " nodes",
+                    f"{action} {count} nodes? Houdini may take some time to complete this batch.",
+                    QtWidgets.QMessageBox.StandardButton.Yes
+                    | QtWidgets.QMessageBox.StandardButton.No,
+                )
+                == QtWidgets.QMessageBox.StandardButton.Yes
+            )
+        return True
 
     def register_nodes(self, nodes: Any) -> None:
         if (
@@ -192,8 +243,7 @@ class MainAssetActions:
             or self.library._tasks.busy
         ):
             return
-        if not nodes or len(nodes) > 30:
-            self.library.show_error("Register between 1 and 30 nodes at a time.")
+        if not self._allow_batch(len(nodes) if nodes else 0, "Register"):
             return
         self._nodes = list(nodes)
         self.next()
@@ -214,7 +264,7 @@ class MainAssetActions:
             )
         elif self._nodes:
             try:
-                path, metadata, thumbnail = self.window._capture_team_node(
+                path, metadata, thumbnail = self.bindings.tools._capture_team_node(
                     self._nodes.pop(0)
                 )
                 assert self.library.presenter is not None
@@ -231,30 +281,33 @@ class MainAssetActions:
                 self.library.show_error(str(error))
 
     def import_drop(self, drop_data: Any) -> None:
-        from libs.drag_payload import decode_payload
 
         if self.library._tasks.busy:
-            self.window._dragdrop_overlay_close()
+            self.bindings.presentation._dragdrop_overlay_close()
             return
         action, items = drop_data
-        self.window._dragdrop_overlay_close()
+        self.bindings.presentation._dragdrop_overlay_close()
         if action != QtCore.Qt.DropAction.IgnoreAction or not items:
+            return
+        if not self._allow_batch(len(items), "Import"):
             return
         documents = []
         for item in items:
-            data = decode_payload(item)
-            if data.get("library_id") != self.library.project.get("id"):
+            data = decode_drag_record(item)
+            if isinstance(
+                data, SceneRecord
+            ) or data.library_id != self.library.project.get("id"):
                 self.library.show_error(
                     "This drag belongs to a different library. Select the asset again."
                 )
                 return
-            history_id = data.get("hist_id")
+            history_id = data.hist_id if isinstance(data, HistoryData) else None
             historical = (
                 self.library._histories.get(history_id)
                 if isinstance(history_id, int)
                 else None
             )
-            asset_id = data.get("hda_id")
+            asset_id = data.hda_id
             document = (
                 historical["document"]
                 if historical

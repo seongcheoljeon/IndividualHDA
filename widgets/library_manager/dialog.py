@@ -21,6 +21,7 @@ from libs.library_backups import (
 )
 from libs.library_explorer import history_versions, search_assets
 from libs.library_maintenance import Cancelled, apply_paths, inspect_library, plan_paths
+from libs.runtime_settings import RuntimeSettings
 from libs.task_controller import TaskController
 from libs.version_compare import compare_expanded, expand_asset
 from widgets.library_manager.presenter import LibraryManagerPresenter
@@ -39,9 +40,12 @@ class LibraryManager(QtWidgets.QDialog):
         user: str,
         asset_id: int | None = None,
         parent: QtWidgets.QWidget | None = None,
+        *,
+        runtime: RuntimeSettings = RuntimeSettings(),
     ) -> None:
         super().__init__(parent)
         self.database, self.assets, self.user = database, assets, user
+        self.runtime = runtime
         self.setWindowTitle("Library Manager")
         self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
         self.resize(1050, 680)
@@ -52,7 +56,7 @@ class LibraryManager(QtWidgets.QDialog):
         self._closing = False
         self._destroying = False
         self._pending_search = False
-        self._presenter = LibraryManagerPresenter()
+        self._presenter = LibraryManagerPresenter(page_size=runtime.explorer_page_size)
         self._temporary: tempfile.TemporaryDirectory[str] | None = None
         layout = QtWidgets.QVBoxLayout(self)
         self.tabs = QtWidgets.QTabWidget()
@@ -533,7 +537,7 @@ class LibraryManager(QtWidgets.QDialog):
         layout.addWidget(self.field)
         self.search_timer = QtCore.QTimer(self)
         self.search_timer.setSingleShot(True)
-        self.search_timer.setInterval(250)
+        self.search_timer.setInterval(self.runtime.explorer_delay_ms)
         self.search_timer.timeout.connect(self._search)
         self.search.textChanged.connect(self._queue_search)
         self.field.currentIndexChanged.connect(self._queue_search)
@@ -541,7 +545,7 @@ class LibraryManager(QtWidgets.QDialog):
         self.explorer = self._table(layout, ["ID", "Name", "Category", "Version"])
         self._button(
             layout,
-            "Load next 200",
+            f"Load next {self.runtime.explorer_page_size}",
             lambda: self._guard(lambda: self._search(more=True)),
         )
         self._button(
@@ -588,7 +592,13 @@ class LibraryManager(QtWidgets.QDialog):
 
         self._run(
             lambda token: search_assets(
-                self.database, self.user, text, field, offset, cancel=token
+                self.database,
+                self.user,
+                text,
+                field,
+                offset,
+                limit=self.runtime.explorer_page_size,
+                cancel=token,
             ),
             ready,
         )

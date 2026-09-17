@@ -7,10 +7,25 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from ihda_server.storage_lock import storage_lock
+from libs.search_limits import TEAM_PAGE_DEFAULT
 from libs.team.contracts import Command, NotFound, Page, Role
 
 
 class CatalogStore(Protocol):
+    def tracking_read(
+        self,
+        project_id: str,
+        user_id: str,
+        kind: str,
+        asset_uuid: str,
+        version_uuid: str | None = None,
+        offset: int = 0,
+        limit: int = TEAM_PAGE_DEFAULT,
+    ) -> list[dict[str, Any]]: ...
+    def tracking_execute(
+        self, project_id: str, user_id: str, body: dict[str, Any]
+    ) -> dict[str, Any]: ...
+
     def copy_check(
         self,
         project_id: str,
@@ -47,7 +62,7 @@ class CatalogStore(Protocol):
         user_id: str,
         query: str = "",
         offset: int = 0,
-        limit: int = 100,
+        limit: int = TEAM_PAGE_DEFAULT,
     ) -> Page: ...
     def get_asset(
         self, project_id: str, user_id: str, asset_id: int

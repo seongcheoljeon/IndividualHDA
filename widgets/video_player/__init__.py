@@ -4,9 +4,14 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from widgets.video_player.video_player import VideoPlayer
 
 from PySide6 import QtCore, QtWidgets
+
+from libs.resource_policy import MediaPolicy
 
 _MESSAGE = (
     "Video player unavailable: PySide6.QtMultimedia is missing in this Houdini build"
@@ -44,11 +49,14 @@ class UnavailableVideoPlayer(QtWidgets.QWidget):
 
 
 def make_video_player(
-    ffmpeg_dirpath: pathlib.Path | None, parent: QtWidgets.QWidget | None
-) -> QtWidgets.QWidget:
+    ffmpeg_dirpath: pathlib.Path | None,
+    parent: QtWidgets.QWidget | None,
+    *,
+    policy: MediaPolicy = MediaPolicy(),
+) -> VideoPlayer | UnavailableVideoPlayer:
     try:
         from widgets.video_player.video_player import VideoPlayer
     except ImportError as error:
         logging.getLogger(__name__).warning("%s (%s)", _MESSAGE, error)
         return UnavailableVideoPlayer(parent)
-    return VideoPlayer(ffmpeg_dirpath=ffmpeg_dirpath, parent=parent)
+    return VideoPlayer(ffmpeg_dirpath=ffmpeg_dirpath, parent=parent, policy=policy)

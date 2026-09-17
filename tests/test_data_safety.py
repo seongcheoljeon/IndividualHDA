@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from test_sqlite_repository import payload
+from support.personal import payload
 
 from libs.archive_transfer import ArchiveTransfer
 from libs.database.sqlite_repository import SqliteLibraryRepository
@@ -44,7 +44,7 @@ def test_failed_registration_removes_the_files_it_created(tmp_path: Path) -> Non
     with pytest.raises(LibraryError):
         broken.register_asset(fire)
     assert not (fire.hda_dirpath / fire.hda_filename).exists()
-    assert repo.list_assets() and repo.list_assets()[0]["hda_name"] == "Water"
+    assert repo.list_assets() and repo.list_assets()[0].hda_name == "Water"
 
 
 def test_wal_mode_lets_a_reader_see_writes_and_revision_moves(tmp_path: Path) -> None:

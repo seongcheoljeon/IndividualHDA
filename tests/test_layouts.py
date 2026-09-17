@@ -88,7 +88,10 @@ def test_preference_tabs_and_persisted_control_contract(app: Any) -> None:
             "Padding",
             "Text",
         ]
-        assert layout.lineEdit__data_dirpath.placeholderText() == "d:/library"
+        assert (
+            layout.lineEdit__data_dirpath.placeholderText()
+            == "Choose a library directory"
+        )
         assert layout.lineEdit__result.isReadOnly()
         assert layout.spinBox__default_main_icon_size.minimum() > 0
         assert layout.doubleSpinBox__default_list_item_padding.suffix() == "px"

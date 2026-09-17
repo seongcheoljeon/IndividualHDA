@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Protocol, cast
 
 from libs.database.lifecycle import PersonalLifecycle, inspect_files
+from libs.database.rows import named_query
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 from libs.team.contracts import Command, Operation, TeamError
 from libs.team.limits import DEFAULT_AUDIT_EVENT_LIMIT
@@ -14,6 +15,11 @@ from libs.team.pending import PendingCommand
 
 
 class ManagementGateway(Protocol):
+    def record_check(self, asset_id: int, body: dict[str, Any]) -> None: ...
+    def tracking_read(
+        self, kind: str, asset_uuid: str, offset: int = 0
+    ) -> list[dict[str, Any]]: ...
+    def dependents(self, item: dict[str, Any]) -> list[dict[str, Any]]: ...
     def trash(self) -> list[dict[str, Any]]: ...
     def change(self, item: dict[str, Any], operation: str) -> None: ...
     def details(self, asset_id: int) -> dict[str, Any]: ...
@@ -38,67 +44,147 @@ class LocalManagement:
 
     def details(self, asset_id: int) -> dict[str, Any]:
         with SQLite3DatabaseAPI(self.database) as db:
-            identity = db._connect.execute(
-                "SELECT uuid FROM asset_identity WHERE asset_id=? AND deleted_at IS NULL",
-                (asset_id,),
+            identity = named_query(
+                db._connect,
+                "SELECT uuid FROM asset_identity WHERE asset_id=:asset_id AND deleted_at IS NULL",
+                {"asset_id": asset_id},
             ).fetchone()
             if identity is None:
                 raise ValueError("Asset no longer exists")
+            from libs.database.tracking import local_tracking
+
+            tracking = local_tracking(db._connect)
             versions = []
-            for history_id, version, description, details in db._connect.execute(
-                """SELECT h.id,h.version,h.comment,v.details
+            for row in named_query(
+                db._connect,
+                """SELECT h.id,h.version,h.comment,v.details,v.uuid AS version_uuid
                 FROM hda_history h JOIN version_identity v ON v.history_id=h.id
-                WHERE h.hda_key_id=? AND v.deleted_at IS NULL ORDER BY h.id DESC""",
-                (asset_id,),
+                WHERE h.hda_key_id=:asset_id AND v.deleted_at IS NULL ORDER BY h.id DESC""",
+                {"asset_id": asset_id},
             ):
                 versions.append(
                     {
-                        "id": history_id,
-                        "version": version,
-                        "document": {"description": description, **json.loads(details)},
+                        "id": row["id"],
+                        "version_uuid": row["version_uuid"],
+                        "version": row["version"],
+                        "snapshot": {
+                            "description": row["comment"],
+                            **json.loads(row["details"]),
+                        },
+                        "document": {
+                            "description": row["comment"],
+                            **json.loads(row["details"]),
+                            "dependencies": tracking.dependencies(row["version_uuid"]),
+                        },
                     }
                 )
             events = [
                 {
-                    "operation": operation,
-                    "actor": actor,
-                    "occurred_at": occurred,
-                    "changes": json.loads(changes),
+                    "operation": row["operation"],
+                    "actor": row["actor"],
+                    "occurred_at": row["occurred_at"],
+                    "changes": json.loads(row["changes"]),
                 }
-                for operation, actor, occurred, changes in db._connect.execute(
-                    "SELECT operation,actor,occurred_at,changes FROM audit_events WHERE asset_uuid=? ORDER BY occurred_at DESC LIMIT ?",
-                    (identity[0], DEFAULT_AUDIT_EVENT_LIMIT),
+                for row in named_query(
+                    db._connect,
+                    "SELECT operation,actor,occurred_at,changes FROM audit_events WHERE asset_uuid=:uuid ORDER BY occurred_at DESC LIMIT :DEFAULT_AUDIT_EVENT_LIMIT",
+                    {
+                        "uuid": identity["uuid"],
+                        "DEFAULT_AUDIT_EVENT_LIMIT": DEFAULT_AUDIT_EVENT_LIMIT,
+                    },
                 )
             ]
             files = [
                 {
-                    "version": version,
-                    "kind": kind,
-                    "filename": filename,
-                    "status": status,
+                    "version": row["version"],
+                    "kind": row["kind"],
+                    "filename": row["filename"],
+                    "status": row["status"],
                 }
-                for version, kind, filename, status in db._connect.execute(
-                    """SELECT h.version,f.kind,f.filename,f.status FROM version_files f JOIN hda_history h ON h.id=f.history_id WHERE h.hda_key_id=?""",
-                    (asset_id,),
+                for row in named_query(
+                    db._connect,
+                    "SELECT h.version,f.kind,f.filename,f.status FROM version_files f JOIN hda_history h ON h.id=f.history_id WHERE h.hda_key_id=:asset_id",
+                    {"asset_id": asset_id},
                 )
             ]
-            return {"versions": versions, "events": events, "files": files}
+            from libs.database.tracking import local_tracking
+
+            tracking = local_tracking(db._connect)
+            return {
+                "versions": versions,
+                "events": events,
+                "files": files,
+                "asset_uuid": identity["uuid"],
+                "tracking": {
+                    kind: tracking.read(kind, identity["uuid"])
+                    for kind in ("checks", "dependents", "scenes")
+                },
+            }
 
     def save_details(
         self, asset_id: int, version: dict[str, Any], values: dict[str, Any]
     ) -> None:
         with SQLite3DatabaseAPI(self.database) as db, db.transaction():
-            row = db._connect.execute(
-                "SELECT h.hda_key_id,h.comment,v.details FROM hda_history h JOIN version_identity v ON v.history_id=h.id WHERE h.id=?",
-                (version["id"],),
+            row = named_query(
+                db._connect,
+                "SELECT h.hda_key_id,h.comment,v.details FROM hda_history h JOIN version_identity v ON v.history_id=h.id WHERE h.id=:id",
+                {"id": version["id"]},
             ).fetchone()
             if (
                 row is None
-                or row[0] != asset_id
-                or {"description": row[1], **json.loads(row[2])} != version["document"]
+                or row["hda_key_id"] != asset_id
+                or {"description": row["comment"], **json.loads(row["details"])}
+                != version.get("snapshot", version["document"])
             ):
                 raise ValueError("Version changed; reload before saving")
             PersonalLifecycle(db._connect).details(version["id"], values)
+
+    def tracking_read(
+        self, kind: str, asset_uuid: str, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        from libs.database.tracking import local_tracking
+
+        with SQLite3DatabaseAPI(self.database) as db:
+            return local_tracking(db._connect).read(kind, asset_uuid, offset=offset)
+
+    def record_check(self, asset_id: int, body: dict[str, Any]) -> None:
+        from libs.database.tracking import local_tracking
+
+        with SQLite3DatabaseAPI(self.database) as db, db.transaction():
+            tracking = local_tracking(db._connect)
+            version = tracking.version(body["values"]["version_uuid"])
+            identity = named_query(
+                db._connect,
+                "SELECT uuid FROM asset_identity WHERE asset_id=:asset_id",
+                {"asset_id": asset_id},
+            ).fetchone()
+            if identity is None or identity["uuid"] != version["asset_uuid"]:
+                raise ValueError("Version belongs to a different asset")
+            actor = db._connect.execute(
+                "SELECT user_id FROM hda_key WHERE id=:asset_id", {"asset_id": asset_id}
+            ).fetchone()[0]
+            local_tracking(db._connect).execute(
+                actor, body["request_id"], "check", body["values"]
+            )
+
+    def dependents(self, item: dict[str, Any]) -> list[dict[str, Any]]:
+        from libs.database.tracking import local_tracking
+
+        with SQLite3DatabaseAPI(self.database) as db:
+            asset = db._connect.execute(
+                "SELECT uuid FROM asset_identity WHERE asset_id=:asset_id",
+                {"asset_id": item["asset_id"]},
+            ).fetchone()
+            if not asset:
+                return []
+            uuid = None
+            if item.get("history_id"):
+                version = db._connect.execute(
+                    "SELECT uuid FROM version_identity WHERE history_id=:history_id",
+                    {"history_id": item["history_id"]},
+                ).fetchone()
+                uuid = version[0] if version else None
+            return local_tracking(db._connect).read("dependents", asset[0], uuid)
 
     def inspect(self) -> None:
         with SQLite3DatabaseAPI(self.database) as db:
@@ -145,7 +231,17 @@ class RemoteManagement:
         versions = self.catalog.histories(asset_id)
         for version in versions:
             version["asset_revision"] = asset["revision"]
+        tracking = (
+            {
+                kind: self.catalog.tracking_read(kind, asset["asset_uuid"])
+                for kind in ("checks", "dependents", "scenes")
+            }
+            if self.catalog.tracking_supported()
+            else None
+        )
         return {
+            "asset_uuid": asset["asset_uuid"],
+            "tracking": tracking,
             "versions": versions,
             "events": self.catalog.events(asset["asset_uuid"]),
             "files": self.catalog.file_status(asset_id),
@@ -162,3 +258,33 @@ class RemoteManagement:
                 values={"history_id": version["id"], **values},
             )
         )
+
+    def tracking_read(
+        self, kind: str, asset_uuid: str, offset: int = 0
+    ) -> list[dict[str, Any]]:
+        return list(self.catalog.tracking_read(kind, asset_uuid, offset=offset))
+
+    def record_check(self, asset_id: int, body: dict[str, Any]) -> None:
+        self.catalog.tracking_execute(body)
+
+    def dependents(self, item: dict[str, Any]) -> list[dict[str, Any]]:
+        if not self.catalog.tracking_supported():
+            return []
+        if item.get("asset_uuid"):
+            return list(
+                self.catalog.tracking_read(
+                    "dependents", item["asset_uuid"], item.get("version_uuid")
+                )
+            )
+        asset = self.catalog.get_asset(item["asset_id"])
+        uuid = None
+        if item.get("history_id"):
+            uuid = next(
+                (
+                    h["document"]["version_uuid"]
+                    for h in self.catalog.histories(item["asset_id"])
+                    if h["id"] == item["history_id"]
+                ),
+                None,
+            )
+        return list(self.catalog.tracking_read("dependents", asset["asset_uuid"], uuid))

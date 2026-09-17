@@ -6,6 +6,7 @@ This module owns presentation only. Event handling stays in the owning widget.
 
 from __future__ import annotations
 
+from PySide6 import QtWidgets
 from PySide6.QtCore import (
     QCoreApplication,
     QDate,
@@ -53,6 +54,26 @@ def _translate(text: str) -> str:
 
 
 class MainWindowLayout:
+    # Persisted control names whose widgets are constructed by AssetBrowserView.
+    splitter__ihda_whole_vertical: QtWidgets.QSplitter
+    stackedWidget__hda: QtWidgets.QStackedWidget
+    verticalLayout__listview: QtWidgets.QVBoxLayout
+    verticalLayout__tableview: QtWidgets.QVBoxLayout
+    pushButton__favorite_node: QtWidgets.QPushButton
+    pushButton__thumbnail: QtWidgets.QPushButton
+    pushButton__zoomin: QtWidgets.QPushButton
+    pushButton__zoomout: QtWidgets.QPushButton
+    doubleSpinBox__zoom: QtWidgets.QDoubleSpinBox
+    pushButton__icon_mode: QtWidgets.QPushButton
+    pushButton__table_mode: QtWidgets.QPushButton
+    comboBox__search_type: QtWidgets.QComboBox
+    checkBox__casesensitive_hda: QtWidgets.QCheckBox
+    lineEdit__search_hda: QtWidgets.QLineEdit
+    label__hda_count: QtWidgets.QLabel
+    pushButton__ai_suggest: QtWidgets.QPushButton
+    actionOpen_Log_Folder: QAction
+    actionLocal_AI_Models: QAction
+
     def build_ui(self, window: QMainWindow) -> None:
         self._configure_window(window)
         self._build_application_actions(window)
@@ -1520,6 +1541,6 @@ class MainWindowLayout:
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionAutomatic_Name_Change)
         self.toolBar.setWindowTitle(_translate("toolBar"))
-        self.stackedWidget__whole.setCurrentIndex(0)
-        self.stackedWidget__category.setCurrentIndex(0)
-        self.stackedWidget__hda_infos.setCurrentIndex(0)
+        self.stackedWidget__whole.setCurrentWidget(self.page__ihda)
+        self.stackedWidget__category.setCurrentWidget(self.page__category)
+        self.stackedWidget__hda_infos.setCurrentWidget(self.page__hda_info)

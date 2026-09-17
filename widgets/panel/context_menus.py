@@ -1,17 +1,19 @@
 """Context menus for the Individual HDA panel.
 
-Mixin methods run on the panel GUI thread and share its protected state.
-They do not own a separate QWidget or change the public panel interface.
+Explicit bindings connect this feature to its view and collaborators.
 """
 
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-import public
-from libs import houdini_api, ihda_system, log_handler
+from libs import host, houdini_api, ihda_system, keys, log_handler
+from libs.item_paths import item_path
 from model import (
     ihda_inside_model,
     ihda_list_model,
@@ -19,20 +21,63 @@ from model import (
     ihda_table_model,
 )
 
+if TYPE_CHECKING:
+    from widgets.make_video_info.make_video_info import MakeVideoInfo
+    from widgets.panel.asset_management import PanelAssetManagement
+    from widgets.panel.host_callbacks import PanelHostCallbacks
+    from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.library_queries import PanelLibraryQueries
+    from widgets.panel.library_tools import PanelLibraryTools
+    from widgets.panel.media_actions import PanelMediaActions
+    from widgets.panel.model_binding import PanelModelBinding
+    from widgets.panel.notes import PanelNotes
+    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.selection import PanelSelection
+    from widgets.panel.state import PanelSessionState, PanelViews
+    from widgets.rename_ihda.rename_ihda import RenameIHDA
+    from widgets.team_library.integration import MainLibraryIntegration
+    from widgets.video_player import UnavailableVideoPlayer
+    from widgets.video_player.video_player import VideoPlayer
 
-class ContextMenusMixin:
+
+@dataclass(frozen=True, slots=True)
+class PanelContextMenusBindings:
+    host_enabled: bool
+    callbacks: PanelHostCallbacks
+    management: PanelAssetManagement
+    media: PanelMediaActions
+    models: PanelModelBinding
+    notes: PanelNotes
+    parent: QtWidgets.QWidget
+    presentation: PanelPresentation
+    queries: PanelLibraryQueries
+    rename_dialog: RenameIHDA
+    selection: PanelSelection
+    session: PanelSessionState
+    suggest: Callable[[], None]
+    team: Callable[[], MainLibraryIntegration]
+    tools: PanelLibraryTools
+    ui: MainWindowLayout
+    video_info: MakeVideoInfo
+    video_player: VideoPlayer | UnavailableVideoPlayer
+    views: PanelViews
+
+
+class PanelContextMenus:
+    bindings: PanelContextMenusBindings
+
     def _build_context_history_menu(self, point: QtCore.QPoint) -> None:
-        team = getattr(self, "_team_library", None)
+        team = self.bindings.team()
         if team is not None and team.active:
             team.actions.history_menu(point)
             return
-        index = self._ihda_history_view.indexAt(point)
+        index = self.bindings.views.history.indexAt(point)
         if not index.isValid():
             return
-        if not self._is_valid_hist_current_item_data:
+        if not self.bindings.queries._is_valid_hist_current_item_data:
             return
-        context_menu = QtWidgets.QMenu(self)
-        open_context_menu = QtWidgets.QMenu("Open", self)
+        context_menu = QtWidgets.QMenu(self.bindings.parent)
+        open_context_menu = QtWidgets.QMenu("Open", self.bindings.parent)
         open_context_menu.setIcon(
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_donut_large_white.png"))
         )
@@ -65,42 +110,51 @@ class ContextMenusMixin:
         context_menu.addSeparator()
         context_menu.addAction(action_context_menu_remove)
         # refresh current data
-        self._selection.set_field(index.data(), history=True)
-        self._refresh_history_current_attribs()
-        self._set_hda_hist_info_to_parms()
-        if self._selection.history.data is None:
+        self.bindings.selection.state.set_field(index.data(), history=True)
+        self.bindings.selection._refresh_history_current_attribs()
+        self.bindings.notes._set_hda_hist_info_to_parms()
+        if self.bindings.selection.state.history.data is None:
             return
-        hip_dirpath = self._selection.history.data.get(public.Key.History.hip_dirpath)
-        action = context_menu.exec(self._ihda_history_view.mapToGlobal(point))
+        hip_dirpath = self.bindings.selection.state.history.require_data().hip_dirpath
+        action = context_menu.exec(self.bindings.views.history.mapToGlobal(point))
         if action == action_open_context_ihda_folder:
-            ihda_system.IHDASystem.open_folder(dirpath=self._selection.history.filepath)
+            ihda_system.IHDASystem.open_folder(
+                dirpath=self.bindings.selection.state.history.filepath
+            )
         elif action == action_open_context_hip_folder:
             ihda_system.IHDASystem.open_folder(dirpath=hip_dirpath)
         elif action == action_open_context_hip_file:
-            hip_filepath = hip_dirpath / self._selection.history.data.get(
-                public.Key.History.hip_filename
+            hip_filepath = item_path(
+                hip_dirpath,
+                self.bindings.selection.state.history.require_data().hip_filename,
             )
-            self._open_houdini_file(hip_filepath=hip_filepath)
+            self.bindings.presentation._open_houdini_file(hip_filepath=hip_filepath)
         elif action == action_context_menu_detail:
-            self._detail_view_ihda_data(data=self._selection.history.data)
+            self.bindings.notes._detail_view_ihda_data(
+                data=self.bindings.selection.state.history.data
+            )
         elif action == action_context_menu_remove:
-            self._remove_hist_item()
+            self.bindings.management._remove_hist_item()
         else:
             pass
 
     def _build_context_ihda_menu(self, point: QtCore.QPoint) -> None:
-        team = getattr(self, "_team_library", None)
+        team = self.bindings.team()
         if team is not None and team.active:
             team.actions.context_menu(point)
             return
-        view = self._ihda_list_view if self._is_icon_mode else self._ihda_table_view
+        view = (
+            self.bindings.views.assets_list
+            if self.bindings.presentation._is_icon_mode
+            else self.bindings.views.assets_table
+        )
         index = view.indexAt(point)
         if not index.isValid():
             return
-        if not self._is_valid_current_hda_item_data:
+        if not self.bindings.queries._is_valid_current_hda_item_data:
             return
-        context_menu = QtWidgets.QMenu(self)
-        open_context_menu = QtWidgets.QMenu("Open", self)
+        context_menu = QtWidgets.QMenu(self.bindings.parent)
+        open_context_menu = QtWidgets.QMenu("Open", self.bindings.parent)
         open_context_menu.setIcon(
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_donut_large_white.png"))
         )
@@ -118,14 +172,14 @@ class ContextMenusMixin:
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/hipfile.png"))
         )
 
-        hda_context_menu = QtWidgets.QMenu("iHDA", self)
+        hda_context_menu = QtWidgets.QMenu("iHDA", self.bindings.parent)
         hda_context_menu.setIcon(
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/houdini_logo_white.png"))
         )
 
         action_hda_context_menu_favorite = hda_context_menu.addAction("Favorite")
         favorite_icon = "ic_favorite_border_white.png"
-        if self._selection.asset.data.get(public.Key.is_favorite_hda):
+        if self.bindings.selection.state.asset.require_data().is_favorite_hda:
             favorite_icon = "ic_favorite_white.png"
         action_hda_context_menu_favorite.setIcon(
             QtGui.QIcon(QtGui.QPixmap(f":/main/icons/{favorite_icon}"))
@@ -145,7 +199,7 @@ class ContextMenusMixin:
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_border_color_white.png"))
         )
         hda_context_menu.addSeparator()
-        hda_make_context_menu = QtWidgets.QMenu("Make", self)
+        hda_make_context_menu = QtWidgets.QMenu("Make", self.bindings.parent)
         hda_make_context_menu.setIcon(
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_camera_white.png"))
         )
@@ -159,6 +213,16 @@ class ContextMenusMixin:
         action_hda_make_context_menu_video.setIcon(
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_videocam_white.png"))
         )
+        for host_action in (
+            action_hda_make_context_menu_thumbnail,
+            action_hda_make_context_menu_video,
+            action_hda_make_context_menu_rename,
+        ):
+            host_action.setEnabled(self.bindings.host_enabled)
+            if not self.bindings.host_enabled:
+                host_action.setToolTip(
+                    "This action requires a running Houdini session."
+                )
         hda_context_menu.addMenu(hda_make_context_menu)
         hda_context_menu.addSeparator()
         action_hda_context_menu_remove = hda_context_menu.addAction("Delete")
@@ -166,7 +230,7 @@ class ContextMenusMixin:
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_delete_forever_white.png"))
         )
         # History
-        hist_context_menu = QtWidgets.QMenu("History", self)
+        hist_context_menu = QtWidgets.QMenu("History", self.bindings.parent)
         hist_context_menu.setIcon(
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_query_builder_white.png"))
         )
@@ -189,58 +253,69 @@ class ContextMenusMixin:
         context_menu.addMenu(hist_context_menu)
         context_menu.addSeparator()
         # refresh current data
-        self._selection.set_field(index.data())
-        self._refresh_current_attribs()
-        self._set_hda_info_to_parms()
+        self.bindings.selection.state.set_field(index.data())
+        self.bindings.selection._refresh_current_attribs()
+        self.bindings.notes._set_hda_info_to_parms()
 
-        if self._selection.asset.data is None:
+        if self.bindings.selection.state.asset.data is None:
             return
-        hip_dirpath = self._selection.asset.data.get(public.Key.hip_dirpath)
+        hip_dirpath = self.bindings.selection.state.asset.require_data().hip_dirpath
         action = context_menu.exec(view.mapToGlobal(point))
         if action == action_open_context_ihda_folder:
-            ihda_system.IHDASystem.open_folder(dirpath=self._selection.asset.filepath)
+            ihda_system.IHDASystem.open_folder(
+                dirpath=self.bindings.selection.state.asset.filepath
+            )
         elif action == action_open_context_hip_folder:
             ihda_system.IHDASystem.open_folder(dirpath=hip_dirpath)
         elif action == action_open_context_hip_file:
-            hip_filepath = hip_dirpath / self._selection.asset.data.get(
-                public.Key.hip_filename
+            hip_filepath = item_path(
+                hip_dirpath,
+                self.bindings.selection.state.asset.require_data().hip_filename,
             )
-            self._open_houdini_file(hip_filepath=hip_filepath)
+            self.bindings.presentation._open_houdini_file(hip_filepath=hip_filepath)
         elif action == action_hda_context_menu_copy:
-            self._open_copy_to_team()
+            self.bindings.tools._open_copy_to_team()
         elif action == action_hda_context_menu_favorite:
-            self._hda_favorite()
+            self.bindings.management._hda_favorite()
         elif action == action_hda_context_menu_detail:
-            self._detail_view_ihda_data(data=self._selection.asset.data)
+            self.bindings.notes._detail_view_ihda_data(
+                data=self.bindings.selection.state.asset.data
+            )
         elif action == action_hda_context_menu_ai:
-            self._slot_ai_suggest()
+            self.bindings.suggest()
         elif action == action_hda_make_context_menu_thumbnail:
-            self._wrapper_execute_deferred(self._slot_make_thumbnail)
+            self.bindings.callbacks._wrapper_execute_deferred(
+                self.bindings.media._slot_make_thumbnail
+            )
         elif action == action_hda_make_context_menu_video:
-            if public.IS_HOUDINI:
+            if host.IS_HOUDINI:
                 frinfo = houdini_api.HoudiniAPI.frame_info()
-                self._make_videoinfo.sf = frinfo[0]
-                self._make_videoinfo.ef = frinfo[1]
-                self._make_videoinfo.fps = frinfo[2]
-            self._make_videoinfo.show()
+                self.bindings.video_info.sf = frinfo[0]
+                self.bindings.video_info.ef = frinfo[1]
+                self.bindings.video_info.fps = frinfo[2]
+            self.bindings.video_info.show()
         elif action == action_hda_make_context_menu_rename:
-            self._rename_ihda.clear_parms()
-            self._rename_ihda.set_old_ihda_name(self._selection.asset.name)
-            self._rename_ihda.show()
+            self.bindings.rename_dialog.clear_parms()
+            self.bindings.rename_dialog.set_old_ihda_name(
+                self.bindings.selection.state.asset.name or ""
+            )
+            self.bindings.rename_dialog.show()
         elif action == action_hda_context_menu_remove:
-            if self._is_icon_mode:
-                indexes = self._ihda_list_view.selectedIndexes()
+            if self.bindings.presentation._is_icon_mode:
+                indexes = self.bindings.views.assets_list.selectedIndexes()
             else:
                 # table 모델은 이렇게 해야한다. 왜냐면 cell 선택시 모든 cell을 선택되어지도록 했는데
                 # 이것 때문에 중복 index가 생겨 첫번째 컬럼을 명확시 지정하였다.
-                indexes = self._ihda_table_view.selectionModel().selectedRows(0)
+                indexes = (
+                    self.bindings.views.assets_table.selectionModel().selectedRows(0)
+                )
             if not len(indexes):
                 log_handler.LogHandler.log_msg(
                     method=logging.info, msg="iHDA node is not selected"
                 )
                 return
-            msgbox = QtWidgets.QMessageBox(self)
-            msgbox.setFont(self._get_default_font())
+            msgbox = QtWidgets.QMessageBox(self.bindings.parent)
+            msgbox.setFont(self.bindings.presentation._get_default_font())
             msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
             msgbox.setWindowTitle("Remove iHDA Node")
             msgbox.setText(
@@ -258,39 +333,47 @@ class ContextMenusMixin:
             reply = msgbox.exec()
             if reply != QtWidgets.QMessageBox.StandardButton.Yes:
                 return
-            self._remove_hda_item(indexes=indexes)
+            self.bindings.management._remove_hda_item(indexes=indexes)
         elif action == action_hist_context_menu_ihda_history:
-            hda_name = self._selection.asset.name
-            hda_id = self._selection.asset.id
-            if not self._repository.has_history(hda_id):
+            hda_name = self.bindings.selection.state.asset.name or ""
+            hda_id = self.bindings.selection.state.asset.require_data().hda_id
+            if not self.bindings.session.require_repository().has_history(hda_id):
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
                     msg=f'node history of "{hda_name}" iHDA node does not exist',
                 )
                 return
-            self._slot_select_view(index=self._hist_view_idx)
-            self._select_hist_ihda_combobox_item(hkey_id=hda_id)
+            self.bindings.selection._slot_select_view(
+                index=self.bindings.ui.stackedWidget__whole.indexOf(
+                    self.bindings.ui.page__history
+                )
+            )
+            self.bindings.selection._select_hist_ihda_combobox_item(hkey_id=hda_id)
         elif action == action_hist_context_menu_note_history:
-            hda_name = self._selection.asset.name
-            hda_id = self._selection.asset.id
-            hist_note_data = self._repository.note_history(hda_id)
-            self._slot_hda_note_history(
+            hda_name = self.bindings.selection.state.asset.name or ""
+            hda_id = self.bindings.selection.state.asset.require_data().hda_id
+            hist_note_data = self.bindings.session.require_repository().note_history(
+                hda_id
+            )
+            self.bindings.notes._slot_hda_note_history(
                 hist_note_data=hist_note_data, hda_name=hda_name
             )
         elif action == action_hist_context_menu_remove_history:
-            if self._is_icon_mode:
-                indexes = self._ihda_list_view.selectedIndexes()
+            if self.bindings.presentation._is_icon_mode:
+                indexes = self.bindings.views.assets_list.selectedIndexes()
             else:
                 # table 모델은 이렇게 해야한다. 왜냐면 cell 선택시 모든 cell을 선택되어지도록 했는데
                 # 이것 때문에 중복 index가 생겨 첫번째 컬럼을 명확시 지정하였다.
-                indexes = self._ihda_table_view.selectionModel().selectedRows(0)
+                indexes = (
+                    self.bindings.views.assets_table.selectionModel().selectedRows(0)
+                )
             if not len(indexes):
                 log_handler.LogHandler.log_msg(
                     method=logging.info, msg="iHDA node is not selected"
                 )
                 return
-            msgbox = QtWidgets.QMessageBox(self)
-            msgbox.setFont(self._get_default_font())
+            msgbox = QtWidgets.QMessageBox(self.bindings.parent)
+            msgbox.setFont(self.bindings.presentation._get_default_font())
             msgbox.setWindowTitle("Delete iHDA node history")
             msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
             msgbox.setText(
@@ -304,53 +387,51 @@ class ContextMenusMixin:
             if reply == QtWidgets.QMessageBox.StandardButton.No:
                 return
             # player가 재생중이거나 일시정지 상태면 정지
-            self._video_player.player_stop()
+            self.bindings.video_player.player_stop()
             del_hist_data_lst = []
             for index in sorted(indexes, key=lambda x: x.row(), reverse=True):
                 if not index.isValid():
                     continue
-                if self._is_icon_mode:
+                if self.bindings.presentation._is_icon_mode:
                     hda_id = index.data(ihda_list_model.ListModel.id_role)
                     hda_name = index.data(ihda_list_model.ListModel.name_role)
                 else:
                     hda_id = index.data(ihda_table_model.TableModel.id_role)
                     hda_name = index.data(ihda_table_model.TableModel.name_role)
-                if not self._repository.has_history(hda_id):
+                if not self.bindings.session.require_repository().has_history(hda_id):
                     log_handler.LogHandler.log_msg(
                         method=logging.warning,
                         msg=f'node history of "{hda_name}" iHDA node does not exist',
                     )
                     continue
                 # 삭제할 히스토리 데이터 수거
-                hist_data_lst = (
-                    self._ihda_history_model.get_hist_data_by_hkey_id_from_model(
-                        hkey_id=hda_id
-                    )
+                hist_data_lst = self.bindings.models.history_model.get_hist_data_by_hkey_id_from_model(
+                    hkey_id=hda_id
                 )
                 del_hist_data_lst.extend(hist_data_lst)
-            self._trash_history_rows(del_hist_data_lst)
+            self.bindings.management._trash_history_rows(del_hist_data_lst)
         else:
             pass
 
     def _build_context_category_menu(self, point: QtCore.QPoint) -> None:
-        index = self._ihda_category_view.indexAt(point)
+        index = self.bindings.views.category.indexAt(point)
         if not index.isValid():
             return
 
     def _build_context_record_menu(self, point: QtCore.QPoint) -> None:
-        index = self._ihda_record_view.indexAt(point)
+        index = self.bindings.views.record.indexAt(point)
         if not index.isValid():
             return
         item_type = index.data(ihda_record_model.RecordModel.record_type_role)
-        if item_type == public.Type.root:
+        if item_type == keys.Type.root:
             return
         hip_dirpath = index.data(ihda_record_model.RecordModel.hip_dirpath_role)
         hip_filepath = index.data(ihda_record_model.RecordModel.hip_filepath_role)
         hda_filepath = index.data(ihda_record_model.RecordModel.hda_filepath_role)
         record_data = index.data(ihda_record_model.RecordModel.record_data_role)
         pnode_path = index.data(ihda_record_model.RecordModel.pnode_path_role)
-        context_menu = QtWidgets.QMenu(self)
-        open_context_menu = QtWidgets.QMenu("Open", self)
+        context_menu = QtWidgets.QMenu(self.bindings.parent)
+        open_context_menu = QtWidgets.QMenu("Open", self.bindings.parent)
         open_context_menu.setIcon(
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_donut_large_white.png"))
         )
@@ -398,36 +479,38 @@ class ContextMenusMixin:
         context_menu.addSeparator()
         context_menu.addSeparator()
         context_menu.addAction(action_context_menu_remove)
-        action = context_menu.exec(self._ihda_record_view.mapToGlobal(point))
+        action = context_menu.exec(self.bindings.views.record.mapToGlobal(point))
         if action == action_open_context_ihda_folder:
             ihda_system.IHDASystem.open_folder(dirpath=hda_filepath)
         elif action == action_open_context_hip_folder:
             ihda_system.IHDASystem.open_folder(dirpath=hip_dirpath)
         elif action == action_open_context_hip_file:
-            self._open_houdini_file(hip_filepath=hip_filepath)
+            self.bindings.presentation._open_houdini_file(hip_filepath=hip_filepath)
         elif action == action_context_menu_go_to_network:
-            self._go_to_houdini_node(node_path=pnode_path)
+            self.bindings.selection._go_to_houdini_node(node_path=pnode_path)
         elif action == action_context_menu_detail:
             record_id = index.data(ihda_record_model.RecordModel.record_id_role)
             if record_id is None:
                 return
-            record_data = self._repository.record_detail(record_id)
-            self._detail_view_record_data(record_data=record_data)
+            record_data = self.bindings.session.require_repository().record_detail(
+                record_id
+            )
+            self.bindings.notes._detail_view_record_data(record_data=record_data)
         elif action == action_context_menu_remove:
-            self._remove_selected_record_item(index=index)
+            self.bindings.management._remove_selected_record_item(index=index)
         else:
             pass
 
     def _build_context_inside_menu(self, point: QtCore.QPoint) -> None:
-        index = self._ihda_inside_view.indexAt(point)
+        index = self.bindings.views.inside.indexAt(point)
         if not index.isValid():
             return
         item_type = index.data(ihda_inside_model.InsideModel.node_type_role)
-        if item_type == public.Type.root:
+        if item_type == keys.Type.root:
             return
-        is_ihda_node = bool(item_type == public.Type.ihda)
+        is_ihda_node = bool(item_type == keys.Type.ihda)
         hda_id = index.data(ihda_inside_model.InsideModel.hda_id_role)
-        context_menu = QtWidgets.QMenu(self)
+        context_menu = QtWidgets.QMenu(self.bindings.parent)
         # go to node
         action_context_menu_go_to_node = context_menu.addAction("Go To Node")
         action_context_menu_go_to_node.setIcon(
@@ -438,7 +521,7 @@ class ContextMenusMixin:
         action_open_context_ihda_folder = None
         action_open_context_ihda_video = None
         if is_ihda_node:
-            open_context_menu = QtWidgets.QMenu("Open", self)
+            open_context_menu = QtWidgets.QMenu("Open", self.bindings.parent)
             open_context_menu.setIcon(
                 QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_donut_large_white.png"))
             )
@@ -455,27 +538,33 @@ class ContextMenusMixin:
             )
             context_menu.addMenu(open_context_menu)
             context_menu.addSeparator()
-        action = context_menu.exec(self._ihda_inside_view.mapToGlobal(point))
+        action = context_menu.exec(self.bindings.views.inside.mapToGlobal(point))
         if action == action_open_context_ihda_folder:
             if hda_id is None:
                 return
-            hda_fpath = self._repository.asset_filepath(hda_id)
+            hda_fpath = self.bindings.session.require_repository().asset_filepath(
+                hda_id
+            )
             ihda_system.IHDASystem.open_folder(dirpath=hda_fpath)
         elif action == action_open_context_ihda_video:
             if hda_id is None:
                 return
             hda_ver = index.data(ihda_inside_model.InsideModel.version_role)
             hda_name = index.data(ihda_inside_model.InsideModel.hda_org_name_role)
-            video_info = self._repository.latest_video(hda_id, hda_ver)
+            video_info = self.bindings.session.require_repository().latest_video(
+                hda_id, hda_ver
+            )
             if video_info is None:
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
                     msg=f'"{hda_name} (v{hda_ver})" iHDA node has no video',
                 )
                 return
-            self._play_video_most_recent_by_version(video_info=video_info)
+            self.bindings.selection._play_video_most_recent_by_version(
+                video_info=video_info
+            )
         elif action == action_context_menu_go_to_node:
             node_path = index.data(ihda_inside_model.InsideModel.node_path_role)
-            self._go_to_houdini_node(node_path=node_path)
+            self.bindings.selection._go_to_houdini_node(node_path=node_path)
         else:
             pass

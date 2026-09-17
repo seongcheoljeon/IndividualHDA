@@ -58,12 +58,12 @@ def verify_bundle(root: Path) -> dict[str, Any]:
         or not isinstance(inventory.get("tables"), dict)
     ):
         raise ValueError("Backup inventory is missing")
-    from ihda_server.database import SCHEMA_VERSION
-    from ihda_server.schema import metadata
+    from ihda_server.backup_schema import backup_tables
 
-    if inventory.get("schema_version") != SCHEMA_VERSION or set(
-        inventory["tables"]
-    ) != set(metadata.tables):
+    version = inventory.get("schema_version")
+    if type(version) is not int:
+        raise ValueError("Backup schema version must be an integer")
+    if set(inventory["tables"]) != {table.name for table in backup_tables(version)}:
         raise ValueError("Backup schema is unsupported or incomplete")
     for summary in inventory["tables"].values():
         if (

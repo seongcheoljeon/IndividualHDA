@@ -4,9 +4,9 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from test_sqlite_repository import payload
-from test_team_library import TestTransport, create_asset
-from test_team_library import server as server  # noqa: F401
+from support.personal import payload
+from support.team import TestTransport, create_asset
+from support.team import server as server  # noqa: F401
 
 
 def wait_panel(app: Any, panel: Any) -> None:
@@ -19,7 +19,7 @@ def wait_panel(app: Any, panel: Any) -> None:
         if (
             not team._tasks.busy
             and not team._refresh_pending
-            and not panel._sync_tasks.busy
+            and not panel._library_sync.tasks.busy
         ):
             app.processEvents()
             return
@@ -72,11 +72,15 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
     panel = IndividualHDA()
     try:
         wait_panel(app, panel)
-        panel._ihda_list_view.setCurrentIndex(panel._ihda_list_proxy_model.index(0, 0))
-        panel._slot_on_hda_item_clicked(panel._ihda_list_proxy_model.index(0, 0))
+        panel.views.assets_list.setCurrentIndex(
+            panel.models.list_proxy_model.index(0, 0)
+        )
+        panel.selection._slot_on_hda_item_clicked(
+            panel.models.list_proxy_model.index(0, 0)
+        )
         panel.textEdit__note.setPlainText("unsaved personal draft")
-        original_view = panel._ihda_list_view
-        panel._ai_target_id = local_asset["hda_id"]
+        original_view = panel.views.assets_list
+        panel._ai_target_id = local_asset.hda_id
         team = panel._team_library
 
         class BrokenCatalog(HttpCatalog):
@@ -91,18 +95,22 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         )
         wait_panel(app, panel)
         assert not team.active
-        assert panel._assets.rows[0]["hda_name"] == "LocalWater"
+        assert panel.models.assets.rows[0].hda_name == "LocalWater"
         assert panel.textEdit__note.toPlainText() == "unsaved personal draft"
 
         team.open_backend(backend, {"id": project, "name": "Studio", "role": "owner"})
         wait_panel(app, panel)
         assert team.active, panel.label__metadata_status.text()
-        assert panel._ihda_list_view is original_view
-        assert panel._assets.rows[0]["hda_name"] == "TeamWater"
-        assert panel._repository is None and panel._db_filepath is None
+        assert panel.views.assets_list is original_view
+        assert panel.models.assets.rows[0].hda_name == "TeamWater"
+        assert panel.session.repository is None and panel.queries._db_filepath is None
         assert panel._browser.view.comboBox__library_source.currentText() == "Studio"
-        panel._ihda_list_view.setCurrentIndex(panel._ihda_list_proxy_model.index(0, 0))
-        panel._slot_on_hda_item_clicked(panel._ihda_list_proxy_model.index(0, 0))
+        panel.views.assets_list.setCurrentIndex(
+            panel.models.list_proxy_model.index(0, 0)
+        )
+        panel.selection._slot_on_hda_item_clicked(
+            panel.models.list_proxy_model.index(0, 0)
+        )
         from libs.ai_features import Description
 
         panel._ai_describe_done(Description("stale personal AI suggestion", []))
@@ -111,17 +119,17 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         panel.pushButton__note_save.click()
         wait_panel(app, panel)
         assert backend.get_asset(remote_asset["id"])["note"] == "saved in team"
-        assert not local.list_assets()[0]["hda_note"]
+        assert not local.list_assets()[0].hda_note
         assert writes and writes[-1] is not main_thread()
         from PySide6 import QtCore
 
-        index = panel._ihda_list_proxy_model.index(0, 0)
+        index = panel.models.list_proxy_model.index(0, 0)
         assert index.flags() & QtCore.Qt.ItemFlag.ItemIsDragEnabled
         assert not index.data(QtCore.Qt.ItemDataRole.FontRole).strikeOut()
         panel.actionHistory.trigger()
         wait_panel(app, panel)
-        assert panel._ihda_history_model.rowCount() == 1
-        history_index = panel._ihda_history_model.index(0, 0)
+        assert panel.models.history_model.rowCount() == 1
+        history_index = panel.models.history_model.index(0, 0)
         assert not history_index.data(QtCore.Qt.ItemDataRole.FontRole).strikeOut()
         # A failed history request must not poison the loaded-owner cache.
         original_histories = team.catalog.histories
@@ -142,22 +150,26 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         team.refresh()
         panel.actionHistory.trigger()
         wait_panel(app, panel)
-        assert panel._ihda_history_model.rowCount() == 1
-        assert panel._selection.asset.name == "TeamWater"
-        panel._slot_select_view(index=panel._ihda_view_idx)
+        assert panel.models.history_model.rowCount() == 1
+        assert panel.selection.state.asset.name == "TeamWater"
+        panel.selection._slot_select_view(index=panel._ihda_view_idx)
 
         panel.comboBox__search_type.setCurrentText("Note")
         panel.lineEdit__search_hda.setText("saved in team")
         wait_search(app, panel)
-        assert panel._ihda_list_proxy_model.rowCount() == 1
+        assert panel.models.list_proxy_model.rowCount() == 1
         panel.lineEdit__search_hda.setText("missing note")
         wait_search(app, panel)
-        assert panel._ihda_list_proxy_model.rowCount() == 0
+        assert panel.models.list_proxy_model.rowCount() == 0
         panel.lineEdit__search_hda.clear()
         panel.comboBox__search_type.setCurrentText("Name")
         wait_search(app, panel)
-        panel._ihda_list_view.setCurrentIndex(panel._ihda_list_proxy_model.index(0, 0))
-        panel._slot_on_hda_item_clicked(panel._ihda_list_proxy_model.index(0, 0))
+        panel.views.assets_list.setCurrentIndex(
+            panel.models.list_proxy_model.index(0, 0)
+        )
+        panel.selection._slot_on_hda_item_clicked(
+            panel.models.list_proxy_model.index(0, 0)
+        )
         latest = backend.get_asset(remote_asset["id"])
         backend.execute(
             Command(
@@ -187,7 +199,7 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         team.open_backend(backend, {"id": project, "name": "Studio", "role": "viewer"})
         wait_panel(app, panel)
         assert not panel.pushButton__note_save.isEnabled()
-        assert not panel.actionProject_Members.isVisible()
+        assert not panel.tools.actionProject_Members.isVisible()
         team.open_backend(
             broken, {"id": project, "name": "Unavailable", "role": "owner"}
         )
@@ -205,10 +217,14 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         team.use_personal()
         wait_panel(app, panel)
         assert not team.active
-        assert panel._assets.rows[0]["hda_name"] == "LocalWater"
-        panel._ihda_list_view.setCurrentIndex(panel._ihda_list_proxy_model.index(0, 0))
-        panel._slot_on_hda_item_clicked(panel._ihda_list_proxy_model.index(0, 0))
-        assert panel._selection.asset.id == local_asset["hda_id"]
+        assert panel.models.assets.rows[0].hda_name == "LocalWater"
+        panel.views.assets_list.setCurrentIndex(
+            panel.models.list_proxy_model.index(0, 0)
+        )
+        panel.selection._slot_on_hda_item_clicked(
+            panel.models.list_proxy_model.index(0, 0)
+        )
+        assert panel.selection.state.asset.id == local_asset.hda_id
         assert panel.textEdit__note.toPlainText() == "unsaved personal draft"
         assert panel.actionExport_Data.isEnabled()
     finally:
@@ -226,12 +242,17 @@ def test_connection_dialog_only_opens_verified_project_and_never_saves_token(
     client, _, _, _, token, _, _ = server
 
     class Transport(TestTransport):
-        def __init__(self, url: str, credential: Any) -> None:
+        def __init__(self, url: str, credential: Any, *, timeout: float) -> None:
             super().__init__(client, credential())
             self.url = url
+            assert timeout == 47
 
     monkeypatch.setattr(connection_module, "HttpTransport", Transport)
-    dialog = connection_module.ConnectionDialog(tmp_path)
+    from libs.runtime_settings import RuntimeSettings
+
+    dialog = connection_module.ConnectionDialog(
+        tmp_path, runtime=RuntimeSettings(team_timeout_seconds=47)
+    )
     connected = []
     dialog.connected.connect(
         lambda backend, project: connected.append((backend, project))

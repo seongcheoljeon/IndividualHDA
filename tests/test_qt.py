@@ -150,7 +150,7 @@ def test_panel_with_saved_library(
         assert db.insert_thumbnail_info(key, assets, "thumb.jpg", "1.0") == 1
         assert db.insert_tag_info(key, ["water"]) == 1
     panel = IndividualHDA()
-    model = panel._ihda_list_proxy_model
+    model = panel.models.list_proxy_model
     assert model.rowCount() == 1
     panel.lineEdit__search_hda.setText("missing")
     wait_search(app, panel)
@@ -171,12 +171,12 @@ def test_panel_with_saved_library(
     # The code-built browser still drives the legacy selection/detail path.
     browser = panel._browser.view
     browser.listView__hda.clicked.emit(model.index(0, 0))
-    assert panel._selection.asset.id == key
+    assert panel.selection.state.asset.id == key
     browser.pushButton__table_mode.click()
-    browser.tableView__hda.setCurrentIndex(panel._ihda_table_proxy_model.index(0, 0))
-    browser.tableView__hda.clicked.emit(panel._ihda_table_proxy_model.index(0, 0))
+    browser.tableView__hda.setCurrentIndex(panel.models.table_proxy_model.index(0, 0))
+    browser.tableView__hda.clicked.emit(panel.models.table_proxy_model.index(0, 0))
     assert (
-        panel._selection.asset.id == key
+        panel.selection.state.asset.id == key
         and browser.stackedWidget__hda.currentIndex() == 1
     )
     # Real save buttons -> presenter -> worker -> SQLite -> shared models.
@@ -189,28 +189,28 @@ def test_panel_with_saved_library(
     panel.pushButton__note_save.click()
     panel._details.close()  # drain the worker and deliver its GUI callback
     assert (
-        panel._repository.list_assets()[0]["hda_note"]
+        panel.session.repository.list_assets()[0].hda_note
         == "saved from the metadata presenter"
     )
-    assert panel._assets.rows[0]["hda_note"] == "saved from the metadata presenter"
+    assert panel.models.assets.rows[0].hda_note == "saved from the metadata presenter"
     panel.textEdit__tag.setPlainText("#Water #water #한글")
     panel.pushButton__tag_save.click()
     panel._details.close()
-    assert panel._repository.list_assets()[0]["hda_tags"] == ["Water", "한글"]
+    assert panel.session.repository.list_assets()[0].hda_tags == ("Water", "한글")
     assert not panel.label__metadata_status.text()
     panel.doubleSpinBox__zoom.setValue(150)
     panel._ui_settings.save_cfg_dict_to_file()
     panel.doubleSpinBox__zoom.setValue(100)
     panel._ui_settings.load_cfg_dict_from_file()
     assert panel.doubleSpinBox__zoom.value() == 150
-    panel._open_library_tools(4)
-    dialog = panel._library_manager
+    panel.tools._open_library_tools(4)
+    dialog = panel.tools.library_manager
     assert dialog.tabs.count() == 6 and dialog.tabs.currentIndex() == 4
     dialog.close()
     app.processEvents()
-    assert panel._library_manager is None
-    panel._open_library_tools(0)
-    panel._library_manager._search()
+    assert panel.tools.library_manager is None
+    panel.tools._open_library_tools(0)
+    panel.tools.library_manager._search()
     panel.close()
     app.processEvents()
 
@@ -261,16 +261,18 @@ def test_panel_background_job_lifecycle(
                 panel._preference, "shutdown", lambda: shutdowns.append(1)
             )
             assert not panel.close()
-            assert panel._close_requested and not panel._closing
+            assert panel.status.close_requested and not panel.status.closing
             # A refused close tears nothing down yet.
-            assert not shutdowns and panel._sync_timer.isActive()
+            assert not shutdowns and panel._library_sync.timer.isActive()
         release.set()
         if outcome == "host_destroy":
             panel.shutdown_for_host()
-            assert panel._host_destroying and panel._closing
+            assert panel.status.host_destroying and panel.status.closing
         for _ in range(500):
             app.processEvents()
-            if panel._tasks.file_job is None and (outcome != "close" or panel._closing):
+            if panel._tasks.file_job is None and (
+                outcome != "close" or panel.status.closing
+            ):
                 break
             QtTest.QTest.qWait(10)
         assert panel._tasks.file_job is None
@@ -278,9 +280,9 @@ def test_panel_background_job_lifecycle(
         assert results == ([] if outcome == "failure" else [("finished", app.thread())])
         assert panel.centralwidget.isEnabled()
         if outcome == "close":
-            assert panel._closing
+            assert panel.status.closing
             assert shutdowns == [1]
-            assert not panel._sync_timer.isActive()
+            assert not panel._library_sync.timer.isActive()
             assert not panel._asset_search_debounce.timer.isActive()
     finally:
         release.set()

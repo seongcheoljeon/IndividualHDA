@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from libs.domain import AssetData, HistoryData
+from libs.asset_contracts import AssetData, HistoryData
 
 
 def display_time(value: str) -> str:
@@ -32,11 +32,13 @@ def asset_row(document: dict[str, Any], cache_root: Path) -> AssetData:
         hda_cate=document["category"],
         hda_version=document["version"],
         hda_note=document.get("note", ""),
-        hda_tags=document.get("tags", []),
+        hda_tags=tuple(document.get("tags", [])),
         is_favorite_hda=bool(document.get("favorite")),
-        hda_icon=metadata.get("node_icon_path_list")
-        or metadata.get("hda_icon")
-        or ["SOP", "box"],
+        hda_icon=tuple(
+            metadata.get("node_icon_path_list")
+            or metadata.get("hda_icon")
+            or ["SOP", "box"]
+        ),
         hda_dirpath=cache_root / asset.get("digest", "missing"),
         hda_filename=asset.get("filename", "asset.hda"),
         thumbnail_dirpath=Path(thumbnail).parent if thumbnail else None,
@@ -74,24 +76,24 @@ def history_row(item: dict[str, Any], cache_root: Path) -> HistoryData:
         comment=document.get("description", ""),
         org_hda_name=document["name"],
         version=item["version"],
-        ihda_filename=row["hda_filename"],
-        ihda_dirpath=row["hda_dirpath"],
-        reg_time=row["hda_mtime"],
-        hou_version=row["hou_version"],
+        ihda_filename=row.hda_filename,
+        ihda_dirpath=row.hda_dirpath,
+        reg_time=row.hda_mtime,
+        hou_version=row.hou_version,
         hip_filename=None,
         hip_dirpath=None,
-        hda_license=row["hda_license"],
+        hda_license=row.hda_license,
         os="",
-        node_old_path=row["node_old_path"],
-        node_def_desc=row["node_def_desc"],
-        node_type_name=row["node_type_name"],
+        node_old_path=row.node_old_path,
+        node_def_desc=row.node_def_desc,
+        node_type_name=row.node_type_name,
         node_category=document["category"],
         userid=document.get("created_by", ""),
-        icon=row["hda_icon"],
-        tags=row["hda_tags"],
-        hda_note=row["hda_note"],
-        thumb_dirpath=row["thumbnail_dirpath"],
-        thumb_filename=row["thumbnail_filename"],
+        icon=row.hda_icon,
+        tags=row.hda_tags,
+        hda_note=row.hda_note,
+        thumb_dirpath=row.thumbnail_dirpath,
+        thumb_filename=row.thumbnail_filename,
         video_dirpath=None,
         video_filename=None,
         remote=True,

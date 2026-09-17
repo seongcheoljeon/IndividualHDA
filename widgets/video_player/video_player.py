@@ -14,10 +14,10 @@ from typing import Any
 
 from PySide6 import QtCore, QtGui, QtMultimedia, QtWidgets
 
-import public
-from libs import dragdrop_overlay, ffmpeg_api, log_handler
+from libs import dragdrop_overlay, ffmpeg_api, log_handler, paths
 from libs.media_playlist import MediaPlaylist
 from libs.process_job import ProcessJob
+from libs.resource_policy import MediaPolicy
 from widgets.video_player import video_ui_settings, video_widget
 from widgets.video_player.layout import VideoPlayerLayout
 from widgets.video_player.presenter import VideoPresenter
@@ -28,25 +28,29 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         self,
         ffmpeg_dirpath: pathlib.Path | None = None,
         parent: QtWidgets.QWidget | None = None,
+        *,
+        policy: MediaPolicy = MediaPolicy(),
     ) -> None:
         super().__init__(parent)
         self.build_ui(self)
+        self.policy = policy
         self._presenter = VideoPresenter(self)
         self.setAcceptDrops(True)
         # media settgins
         self.__ffmpeg_dirpath = ffmpeg_dirpath
         self.__video_widget = video_widget.VideoWidget(parent=self)
         self.__video_widget.overlay.show()
+        self.__video_widget.play_toggle_requested.connect(self.slot_play_toggle)
         self.horizontalLayout__viewport.addWidget(self.__video_widget)
         self.__player = QtMultimedia.QMediaPlayer(self)
         self.__player.setVideoOutput(self.__video_widget)
         self.__playlist = MediaPlaylist(self.__player, self)
         self.__audio = QtMultimedia.QAudioOutput(self)
         self.__player.setAudioOutput(self.__audio)
-        self.__probe_jobs = set()
-        self.__probe_pending = []
+        self.__probe_jobs: dict[ProcessJob, pathlib.Path] = {}
+        self.__probe_pending: list[pathlib.Path] = []
         self.__probe_closing = False
-        self.__probe_cache = {}
+        self.__probe_cache: dict[pathlib.Path, Any] = {}
         self.__playlist.currentIndexChanged.connect(
             self.listWidget__playlist.setCurrentRow
         )
@@ -58,7 +62,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         self.__prev_volume = self.horizontalSlider__volume.value()
         self.__audio.setVolume(self.__prev_volume / 100.0)
         self.__playback_idx = 1
-        self.__last_dirpath = None
+        self.__last_dirpath: pathlib.Path | None = None
         self.__org_title = self.windowTitle()
         self.__track_info = ""
         self.__status_info = ""
@@ -279,7 +283,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
     def __slot_video_metadata(self) -> None:
         item = self.listWidget__playlist.currentItem()
         if item is not None:
-            self.__probe(item.text())
+            self.__probe(pathlib.Path(item.text()))
 
     def __probe(self, filepath: pathlib.Path) -> None:
         if filepath in self.__probe_cache:
@@ -287,7 +291,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
             return
         if self.__probe_closing or filepath in self.__probe_pending:
             return
-        if any(getattr(job, "filepath", None) == filepath for job in self.__probe_jobs):
+        if filepath in self.__probe_jobs.values():
             return
         if len(self.__probe_jobs) >= 2:
             self.__probe_pending.append(filepath)
@@ -301,16 +305,17 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
                 "json",
                 "-show_format",
                 "-show_streams",
-                filepath,
+                str(filepath),
             ]
         except FileNotFoundError:
             return
-        job = ProcessJob(command, self, timeout_ms=20000)
-        job.filepath = filepath
-        self.__probe_jobs.add(job)
+        job = ProcessJob(
+            command, self, timeout_ms=self.policy.probe_timeout_seconds * 1000
+        )
+        self.__probe_jobs[job] = filepath
 
         def complete(code: Any, output: Any) -> None:
-            self.__probe_jobs.discard(job)
+            self.__probe_jobs.pop(job, None)
             try:
                 info = json.loads(output) if code == 0 else {}
                 self.__probe_cache[filepath] = info
@@ -339,7 +344,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         if current and pathlib.Path(current.text()) == filepath:
             self.__set_track_info(title)
 
-    def __slot_update_duration(self, duration: float) -> None:
+    def __slot_update_duration(self, duration: int) -> None:
         self.horizontalSlider__progress.setMaximum(duration // 1000)
         if duration >= 0:
             self.label__total_time.setText(VideoPlayer.__msec2strftime(ms=duration))
@@ -472,8 +477,8 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
             == QtMultimedia.QMediaPlayer.PlaybackState.StoppedState
         )
 
-    def __slot_playlist_doubleclicked(self, index: QtCore.QModelIndex) -> None:
-        row = index.listWidget().currentRow()
+    def __slot_playlist_doubleclicked(self, index: QtWidgets.QListWidgetItem) -> None:
+        row = self.listWidget__playlist.row(index)
         vpath = QtCore.QFileInfo(self.listWidget__playlist.item(row).text().strip())
         if not vpath.exists():
             log_handler.LogHandler.log_msg(
@@ -506,13 +511,13 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
                 if "://" in filepath
                 else QtCore.QUrl.fromLocalFile(str(pathlib.Path(filepath).absolute()))
             )
-            self.__playlist.addMedia(url)
+            self.__playlist.addMedia(url.toString())
             self.listWidget__playlist.addItem(filepath)
             self.listWidget__playlist.item(
                 self.listWidget__playlist.count() - 1
             ).setToolTip(filepath)
             existing.add(filepath)
-            self.__probe(filepath)
+            self.__probe(pathlib.Path(filepath))
 
     def play_after_add_playlist(self, filepath_lst: Any = None) -> None:
         assert isinstance(filepath_lst[0], pathlib.Path)
@@ -531,7 +536,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         self.__player.play()
 
     def __load_config(self) -> None:
-        if public.Paths.json_video_filepath.exists():
+        if paths.Paths.json_video_filepath.exists():
             self.__ui_settings.load_main_window_geometry()
             self.__ui_settings.load_splitter_status()
             self.__ui_settings.load_cfg_dict_from_file()
@@ -593,7 +598,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
 
     def __find_playlist_index_by_filepath(
         self, filepath: pathlib.Path | None = None
-    ) -> int | None:
+    ) -> int:
         assert isinstance(filepath, pathlib.Path)
         all_playlist_path = self.get_all_playlist_path()
         if filepath not in all_playlist_path:
@@ -642,7 +647,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
     def __slot_stop_btn(self) -> None:
         self.__player.stop()
 
-    def __slot_update_btn(self, state: bool) -> None:
+    def __slot_update_btn(self, state: QtMultimedia.QMediaPlayer.PlaybackState) -> None:
         self.__video_widget.overlay.close()
         media_cnt = self.__playlist.mediaCount()
         self.pushButton__play.setEnabled(media_cnt > 0)
@@ -764,7 +769,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
             self.__last_dirpath = pathlib.Path(dirpath)
 
     @staticmethod
-    def __get_playback_mode(index: QtCore.QModelIndex) -> list[Any]:
+    def __get_playback_mode(index: int) -> list[Any]:
         playback_mode = {
             0: MediaPlaylist.CurrentItemOnce,
             1: MediaPlaylist.CurrentItemInLoop,
@@ -782,12 +787,12 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         return [playback_mode[index], playback_mode_icon[index]]
 
     @staticmethod
-    def __msec2strftime(ms: int | None = None) -> str:
+    def __msec2strftime(ms: int = 0) -> str:
         return ":".join([str(x).zfill(2) for x in VideoPlayer.__msec2time(ms=ms)])
 
     # video는 milliseconds 이다.
     @staticmethod
-    def __msec2time(ms: int | None = None) -> list[Any]:
+    def __msec2time(ms: int = 0) -> list[Any]:
         sec = ms // 1000
         h, m = divmod(sec, 3600)
         m, s = divmod(m, 60)

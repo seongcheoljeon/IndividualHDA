@@ -11,7 +11,7 @@ from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-import public
+from libs import keys
 
 
 class Object(QtCore.QObject):
@@ -59,7 +59,7 @@ class HistoryView(QtWidgets.QTableView):
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         if event.mimeData().hasText():
             event.acceptProposedAction()
-        elif event.mimeData().hasFormat(public.Type.mime_type):
+        elif event.mimeData().hasFormat(keys.Type.mime_type):
             event.setDropAction(QtCore.Qt.DropAction.CopyAction)
             event.acceptProposedAction()
         else:
@@ -73,12 +73,10 @@ class HistoryView(QtWidgets.QTableView):
                 x for x in self.__comp_space.split(event.mimeData().text()) if len(x)
             ]
             self.signal.signal_object.emit(mime_dat)
-        elif event.mimeData().hasFormat(public.Type.mime_type):
+        elif event.mimeData().hasFormat(keys.Type.mime_type):
             event.setDropAction(QtCore.Qt.DropAction.CopyAction)
             event.acceptProposedAction()
-            self.signal.signal_object.emit(
-                [event.mimeData().data(public.Type.mime_type)]
-            )
+            self.signal.signal_object.emit([event.mimeData().data(keys.Type.mime_type)])
         else:
             super().dropEvent(event)
         stdout.flush()
@@ -87,7 +85,7 @@ class HistoryView(QtWidgets.QTableView):
         if not (event.buttons() & QtCore.Qt.MouseButton.MiddleButton):
             return
         indexes = self.selectionModel().selectedRows(
-            public.Value.drag_column_history_view
+            keys.Value.drag_column_history_view
         )
         if not len(indexes):
             return
@@ -98,7 +96,7 @@ class HistoryView(QtWidgets.QTableView):
                 continue
             model = index.model()
             mime_data = model.mimeData([index])
-            model_data = mime_data.data(public.Type.mime_type).data()
+            model_data = mime_data.data(keys.Type.mime_type).data()
             drag.setMimeData(mime_data)
             model_data_lst.append(model_data)
             pixmap = index.data(QtCore.Qt.ItemDataRole.DecorationRole)

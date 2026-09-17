@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Protocol
 
-from libs.domain import AssetData, HistoryData, SelectionState
+from libs.asset_contracts import AssetData, HistoryData
+from libs.domain import SelectionState
 
 
 class SelectionView(Protocol):
@@ -42,10 +43,10 @@ class PanelSelectionPresenter:
         self.state.clear_asset()
         self.state.clear_history()
         for row, asset in enumerate(assets):
-            if asset["hda_id"] == asset_id:
+            if asset.hda_id == asset_id:
                 self.state.select_asset(asset, row, asset_field)
                 break
         for row, history in enumerate(histories):
-            if history["hist_id"] == history_id:
+            if history.hist_id == history_id:
                 self.state.select_history(history, row, history_field)
                 break

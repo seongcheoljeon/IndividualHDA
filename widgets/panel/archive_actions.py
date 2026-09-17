@@ -8,71 +8,91 @@ from __future__ import annotations
 import logging
 import pathlib
 from collections.abc import Callable
-from typing import Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore, QtWidgets
 
 from libs import ihda_system
 
+if TYPE_CHECKING:
+    from libs.task_controller import TaskController
+    from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.library_queries import PanelLibraryQueries
+    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.services import PanelServices
+    from widgets.panel.state import PanelSessionState, PanelStatus
+    from widgets.video_player import UnavailableVideoPlayer
+    from widgets.video_player.video_player import VideoPlayer
+
+
+@dataclass(frozen=True, slots=True)
+class PanelArchivesBindings:
+    parent: QtWidgets.QWidget
+    presentation: PanelPresentation
+    queries: PanelLibraryQueries
+    services: PanelServices
+    session: PanelSessionState
+    status: PanelStatus
+    tasks: TaskController
+    ui: MainWindowLayout
+    video_player: VideoPlayer | UnavailableVideoPlayer
+
 
 class PanelArchives:
-    def __init__(self, window: Any) -> None:
-        self.window = window
+    bindings: PanelArchivesBindings
+
+    def __init__(self) -> None:
         self.stream: Any = None
         self.imported = False
 
     def start(
         self, operation: Callable[..., Any], completion: Callable[..., Any]
     ) -> None:
-        window = self.window
-        if window._tasks.busy:
+        if self.bindings.tasks.busy:
             return
-        window._loading_show()
-        window.centralwidget.setEnabled(False)
-        window.toolBar.setEnabled(False)
-        window.menubar.setEnabled(False)
+        self.bindings.presentation._loading_show()
+        self.bindings.ui.centralwidget.setEnabled(False)
+        self.bindings.ui.toolBar.setEnabled(False)
+        self.bindings.ui.menubar.setEnabled(False)
         try:
-            window._tasks.start(operation, completion)
+            self.bindings.tasks.start(operation, completion)
         except Exception as error:
             self.result(None, error)
 
     @QtCore.Slot(object, object)
     def result(self, result: Any, error: Exception | None) -> None:
-        window = self.window
-        window._loading_close()
-        window.centralwidget.setEnabled(True)
-        window.toolBar.setEnabled(True)
-        window.menubar.setEnabled(True)
+        self.bindings.presentation._loading_close()
+        self.bindings.ui.centralwidget.setEnabled(True)
+        self.bindings.ui.toolBar.setEnabled(True)
+        self.bindings.ui.menubar.setEnabled(True)
         if error is not None:
             logging.error("Library operation failed: %s", error)
 
     @QtCore.Slot()
     def idle(self) -> None:
-        window = self.window
-        if window._close_requested:
-            QtCore.QTimer.singleShot(0, window.close)
+        if self.bindings.status.close_requested:
+            QtCore.QTimer.singleShot(0, self.bindings.parent.close)
 
     def shutdown_for_host(self) -> None:
-        window = self.window
-        window._host_destroying = True
-        window._close_requested = False
-        window._tasks.drain()
-        window.close()
+        self.bindings.status.host_destroying = True
+        self.bindings.status.close_requested = False
+        self.bindings.tasks.drain()
+        self.bindings.parent.close()
 
     def import_data(self) -> None:
-        window = self.window
         source, _ = QtWidgets.QFileDialog.getOpenFileName(
-            window,
+            self.bindings.parent,
             "Select Import iHDA Data File",
             str(pathlib.Path.home()),
             "iHDA file (*.zip *.ZIP)",
         )
         if not source:
             return
-        window._video_player.player_stop()
-        stream = window._services.archives(
-            window._hda_base_dirpath,
-            window._library.data_dirpath,
+        self.bindings.video_player.player_stop()
+        stream = self.bindings.services.archives(
+            self.bindings.session.require_context().hda_base_dirpath,
+            self.bindings.session.require_context().data_dirpath,
         )
         self.stream = stream
         self.start(lambda: stream.import_ihda_data(source), self.import_complete)
@@ -83,17 +103,16 @@ class PanelArchives:
         self.imported = True
 
     def import_complete(self, backup: Any) -> None:
-        window = self.window
         if backup is None:
             return
-        window.centralwidget.setEnabled(False)
-        window.toolBar.setEnabled(False)
-        window.menubar.setEnabled(False)
+        self.bindings.ui.centralwidget.setEnabled(False)
+        self.bindings.ui.toolBar.setEnabled(False)
+        self.bindings.ui.menubar.setEnabled(False)
         self.stage_import(self.stream)
-        if window._host_destroying:
+        if self.bindings.status.host_destroying:
             return
         QtWidgets.QMessageBox.information(
-            window,
+            self.bindings.parent,
             "Individual HDA",
             "Import is complete. restart iHDA app\nThe existing iHDA data was backed up\n"
             + str(backup),
@@ -105,15 +124,14 @@ class PanelArchives:
             self.imported = False
 
     def export_data(self) -> None:
-        window = self.window
         destination = QtWidgets.QFileDialog.getExistingDirectory(
-            window, "Select Export Directory", str(pathlib.Path.home())
+            self.bindings.parent, "Select Export Directory", str(pathlib.Path.home())
         )
         if not destination:
             return
-        stream = window._services.archives(
-            window._hda_base_dirpath,
-            window._library.data_dirpath,
+        stream = self.bindings.services.archives(
+            self.bindings.session.require_context().hda_base_dirpath,
+            self.bindings.session.require_context().data_dirpath,
         )
         self.start(lambda: stream.export_ihda_data(destination), self.export_complete)
 

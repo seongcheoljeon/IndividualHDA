@@ -9,6 +9,7 @@ from typing import Any
 
 from PySide6 import QtCore, QtWidgets
 
+from libs.runtime_settings import RuntimeSettings
 from libs.settings_store import save_json
 from libs.task_controller import TaskController
 from libs.team.client import BlobCache, HttpCatalog, HttpTransport
@@ -19,12 +20,17 @@ class ConnectionDialog(QtWidgets.QDialog):
     connected = QtCore.Signal(object, object)
 
     def __init__(
-        self, config_root: Path, parent: QtWidgets.QWidget | None = None
+        self,
+        config_root: Path,
+        parent: QtWidgets.QWidget | None = None,
+        *,
+        runtime: RuntimeSettings = RuntimeSettings(),
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("Connect team library")
         self.setMinimumWidth(420)
         self._root = config_root
+        self.runtime = runtime
         self._tasks = TaskController(self)
         self._tasks.result.connect(self._result)
         self._tasks.idle.connect(self._idle)
@@ -96,7 +102,9 @@ class ConnectionDialog(QtWidgets.QDialog):
         token = self.lineEdit__access_token.text().strip()
 
         def connect() -> tuple[HttpTransport, dict[str, Any]]:
-            transport = HttpTransport(url, lambda: token)
+            transport = HttpTransport(
+                url, lambda: token, timeout=self.runtime.team_timeout_seconds
+            )
             from libs.team.contracts import API_VERSION, TeamError
 
             if transport.request("GET", "/health").get("api_version") != API_VERSION:

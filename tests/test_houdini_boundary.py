@@ -51,25 +51,23 @@ def test_houdini_deferred_callback_ignores_destroyed_panel(
 
     queued: list = []
     calls: list[str] = []
-    from libs import houdini_api
+    from widgets.panel.state import PanelStatus
 
-    monkeypatch.setattr(
-        houdini_api,
-        "hdefereval",
-        SimpleNamespace(executeDeferred=queued.append),
-        raising=False,
+    panel = host_callbacks.PanelHostCallbacks()
+    panel.bindings = SimpleNamespace(
+        status=PanelStatus(),
+        host=SimpleNamespace(execute_deferred=queued.append),
     )
-    panel = SimpleNamespace(_closing=False, _host_destroying=False)
-    host_callbacks.HostCallbacksMixin._wrapper_execute_deferred(
+    host_callbacks.PanelHostCallbacks._wrapper_execute_deferred(
         panel, lambda: calls.append("called")
     )
     assert calls == []
     queued.pop()()
     assert calls == ["called"]
-    host_callbacks.HostCallbacksMixin._wrapper_execute_deferred(
+    host_callbacks.PanelHostCallbacks._wrapper_execute_deferred(
         panel, lambda: calls.append("late")
     )
-    panel._host_destroying = True
+    panel.bindings.status.host_destroying = True
     queued.pop()()
     assert calls == ["called"]
 

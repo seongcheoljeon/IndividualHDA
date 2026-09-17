@@ -11,12 +11,14 @@ from typing import Any
 # description:
 from PySide6 import QtGui, QtWidgets
 
-import public
+from libs import keys, paths
 from libs.ai_provider import FIELDS, KINDS, PLACEHOLDERS, AISettings
 from libs.ffmpeg_api import FFmpegAPI
+from libs.runtime_settings import RuntimeSettings
 from widgets.preference import preference_ui_settings
 from widgets.preference.layout import PreferenceLayout
 from widgets.preference.presenter import PreferencePresenter
+from widgets.preference.runtime_group import RuntimeGroup
 
 
 class Preference(QtWidgets.QDialog, PreferenceLayout):
@@ -25,13 +27,34 @@ class Preference(QtWidgets.QDialog, PreferenceLayout):
         self.build_ui(self)
         self._presenter = PreferencePresenter(self)
         self.__build_ai_group()
+        self.runtime_group = RuntimeGroup(self)
+        self.verticalLayout__preferences.insertWidget(3, self.runtime_group)
         self.__pref_settings = preference_ui_settings.PreferenceUISettings(window=self)
-        self.__data_final_dirpath = None
-        self.__ffmpeg_final_dirpath = None
+        self.__data_final_dirpath: pathlib.Path | None = None
+        self.__ffmpeg_final_dirpath: pathlib.Path | None = None
         self.__is_data_valid = False
         self.__is_ffmpeg_valid = False
         self.__init_set()
         self.__connections()
+
+    @property
+    def runtime_settings(self) -> RuntimeSettings:
+        return self.runtime_group.settings()
+
+    @runtime_settings.setter
+    def runtime_settings(self, value: RuntimeSettings) -> None:
+        self.runtime_group.set_settings(value)
+
+    def showEvent(self, event: QtGui.QShowEvent) -> None:
+        # Keep confirmation buttons accessible when the advanced group is expanded.
+        available = self.screen().availableGeometry().adjusted(16, 16, -16, -16)
+        self.resize(self.size().boundedTo(available.size()))
+        super().showEvent(event)
+
+    def reject(self) -> None:
+        # Reopening the retained dialog must not resurrect cancelled edits.
+        self.__pref_settings.load_cfg_dict_from_file()
+        super().reject()
 
     def __build_ai_group(self) -> None:
         # Built in code rather than Designer: four fields, no styling of its own.
@@ -145,22 +168,22 @@ class Preference(QtWidgets.QDialog, PreferenceLayout):
         )
 
     def __set_default_settings(self) -> None:
-        view_font_style = public.UISetting.view_font_style
-        view_font_size = public.UISetting.view_font_size
-        listview_icon_size = public.UISetting.listview_node_icon_size
-        tableview_icon_size = public.UISetting.tableview_node_icon_size
-        treeview_icon_size = public.UISetting.treeview_node_icon_size
-        listview_thumb_scale = public.UISetting.listview_thumbnail_scale
-        tableview_thumb_scale = public.UISetting.tableview_thumbnail_scale
+        view_font_style = keys.UISetting.view_font_style
+        view_font_size = keys.UISetting.view_font_size
+        listview_icon_size = keys.UISetting.listview_node_icon_size
+        tableview_icon_size = keys.UISetting.tableview_node_icon_size
+        treeview_icon_size = keys.UISetting.treeview_node_icon_size
+        listview_thumb_scale = keys.UISetting.listview_thumbnail_scale
+        tableview_thumb_scale = keys.UISetting.tableview_thumbnail_scale
         # main
-        main_icon_size = public.UISetting.dft_icon_size
+        main_icon_size = keys.UISetting.dft_icon_size
         # padding
-        pad_listview = public.UISetting.padding_listview
-        pad_tableview = public.UISetting.padding_tableview
-        pad_history = public.UISetting.padding_history
-        pad_category = public.UISetting.padding_category
-        pad_record = public.UISetting.padding_record
-        pad_inside = public.UISetting.padding_inside
+        pad_listview = keys.UISetting.padding_listview
+        pad_tableview = keys.UISetting.padding_tableview
+        pad_history = keys.UISetting.padding_history
+        pad_category = keys.UISetting.padding_category
+        pad_record = keys.UISetting.padding_record
+        pad_inside = keys.UISetting.padding_inside
         # settings
         find_idx = self.fontComboBox__view_font_style.findText(view_font_style)
         if find_idx != -1:
@@ -199,12 +222,12 @@ class Preference(QtWidgets.QDialog, PreferenceLayout):
             font_lst[font] = idx
         return font_lst
 
-    def __get_font_by_index(self, index: int | None = None) -> str:
+    def __get_font_by_index(self, index: int = 0) -> str:
         return self.fontComboBox__view_font_style.itemText(index)
 
     def __slot_data_textchanged(self, text: str) -> None:
         dirpath = pathlib.Path(text.strip())
-        self.__data_final_dirpath = public.hda_base_dirpath(base_dirpath=dirpath)
+        self.__data_final_dirpath = paths.hda_base_dirpath(base_dirpath=dirpath)
         if dirpath.exists():
             icon = ":/main/icons/ic_done_white.png"
             self.lineEdit__result.setStyleSheet("")
@@ -279,8 +302,7 @@ class Preference(QtWidgets.QDialog, PreferenceLayout):
         data_dirpath = self.__pref_settings.get_data_dirpath_from_saved()
         if (data_dirpath is None) or (not len(data_dirpath)):
             return False
-        data_dirpath = pathlib.Path(data_dirpath)
-        return data_dirpath.exists()
+        return pathlib.Path(data_dirpath).exists()
 
     def is_valid_ffmpeg_dirpath(self) -> bool:
         try:
@@ -292,12 +314,16 @@ class Preference(QtWidgets.QDialog, PreferenceLayout):
 
     def accept(self) -> None:
         if self._presenter.validate(self.lineEdit__data_dirpath.text()):
+            try:
+                self.__pref_settings.save_cfg_dict_to_file()
+            except (ValueError, OSError) as error:
+                self.show_preference_error(str(error))
+                return
             self.__pref_settings.save_main_window_geometry()
             self.__pref_settings.save_splitter_status()
-            self.__pref_settings.save_cfg_dict_to_file()
             self.__is_data_valid = True
             if len(self.lineEdit__ffmpeg_dirpath.text().strip()):
-                if self.ffmpeg_dirpath.exists():
+                if self.ffmpeg_dirpath is not None and self.ffmpeg_dirpath.exists():
                     self.__is_ffmpeg_valid = True
             super().accept()
 

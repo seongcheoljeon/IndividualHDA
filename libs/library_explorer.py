@@ -7,6 +7,11 @@ from pathlib import Path
 from typing import Any
 
 from libs.library_maintenance import check_cancel, read_database
+from libs.search_limits import (
+    EXPLORER_PAGE_DEFAULT,
+    EXPLORER_PAGE_MAX,
+    SEARCH_RESULT_LIMIT,
+)
 
 
 def search_assets(
@@ -15,10 +20,10 @@ def search_assets(
     text: str,
     field: str = "Name",
     offset: int = 0,
-    limit: int = 200,
+    limit: int = EXPLORER_PAGE_DEFAULT,
     cancel: threading.Event | None = None,
 ) -> list[dict[str, Any]]:
-    if limit < 1 or limit > 1000 or offset < 0:
+    if limit < 1 or limit > EXPLORER_PAGE_MAX or offset < 0:
         raise ValueError("Invalid page bounds")
     columns = {
         "Name": "k.name",
@@ -32,13 +37,8 @@ def search_assets(
     )
     with read_database(database, cancel) as connection:
         rows = connection.execute(
-            f"""SELECT k.id,k.name,k.category,i.version,i.dirpath,i.filename
-            FROM hda_key k JOIN hda_info i ON i.hda_key_id=k.id
-            LEFT JOIN tag_info t ON t.hda_key_id=k.id
-            LEFT JOIN houdini_node_info n ON n.hda_key_id=k.id
-            WHERE k.id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND k.user_id=? AND {column} LIKE ? ESCAPE '\\'
-            ORDER BY k.name,k.id LIMIT ? OFFSET ?""",
-            (user, pattern, limit, offset),
+            f"SELECT k.id,k.name,k.category,i.version,i.dirpath,i.filename\n            FROM hda_key k JOIN hda_info i ON i.hda_key_id=k.id\n            LEFT JOIN tag_info t ON t.hda_key_id=k.id\n            LEFT JOIN houdini_node_info n ON n.hda_key_id=k.id\n            WHERE k.id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND k.user_id=:user AND {column} LIKE :pattern ESCAPE '\\'\n            ORDER BY k.name,k.id LIMIT :limit OFFSET :offset",
+            {"user": user, "pattern": pattern, "limit": limit, "offset": offset},
         ).fetchall()
         check_cancel(cancel)
         return [dict(row) for row in rows]
@@ -106,7 +106,7 @@ def search_asset_ids(
     user: str | None = None,
     field: str = "All",
     case_sensitive: bool = False,
-    limit: int = 5000,
+    limit: int = SEARCH_RESULT_LIMIT,
     cancel: threading.Event | None = None,
 ) -> list[int]:
     """Asset ids whose fields match every token of ``query`` (see syntax above).
@@ -147,9 +147,9 @@ def history_versions(
             (SELECT note FROM hda_note_history n WHERE n.hda_key_id=h.hda_key_id
              AND n.hda_version=h.version AND n.registration_datetime<=h.registration_datetime
              ORDER BY n.registration_datetime DESC,n.id DESC LIMIT 1) AS note
-            FROM hda_history h WHERE h.hda_key_id=?
+            FROM hda_history h WHERE h.hda_key_id=:asset_id
             AND h.hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL)
             AND h.id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) ORDER BY h.id DESC""",
-                (asset_id,),
+                {"asset_id": asset_id},
             )
         ]

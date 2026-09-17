@@ -20,7 +20,9 @@ from ihda_server.catalog import SqlCatalog
 from ihda_server.database import make_engine, verify_schema
 from ihda_server.service import LibraryService
 from ihda_server.storage import FileBlobStore
+from libs.app_metadata import VERSION
 from libs.file_integrity import FILE_READ_CHUNK_BYTES
+from libs.search_limits import TEAM_PAGE_DEFAULT
 from libs.team.contracts import (
     API_PREFIX,
     API_VERSION,
@@ -55,7 +57,7 @@ class MemberBody(BaseModel):
 def make_app(
     service: LibraryService, *, max_upload: int = DEFAULT_MAX_UPLOAD_BYTES
 ) -> FastAPI:
-    application = FastAPI(title="Individual HDA Team Library", version="2.0.0")
+    application = FastAPI(title="Individual HDA Team Library", version=VERSION)
 
     @application.exception_handler(TeamError)
     async def team_error(request: Request, error: TeamError) -> JSONResponse:
@@ -100,7 +102,7 @@ def make_app(
         return {
             "status": "ok",
             "api_version": API_VERSION,
-            "capabilities": ["asset_copy"],
+            "capabilities": ["asset_copy", "version_tracking"],
         }
 
     @application.get(API_PREFIX + "/projects/{project_id}/copy-check")
@@ -132,6 +134,26 @@ def make_app(
         project_id: str, asset_id: int, user: str = Depends(actor)
     ) -> list[dict[str, Any]]:
         return service.catalog.file_status(project_id, user, asset_id)
+
+    @application.get(API_PREFIX + "/projects/{project_id}/tracking/{kind}")
+    def tracking_read(
+        project_id: str,
+        kind: str,
+        asset_uuid: str,
+        version_uuid: str | None = None,
+        offset: int = 0,
+        limit: int = TEAM_PAGE_DEFAULT,
+        user: str = Depends(actor),
+    ) -> list[dict[str, Any]]:
+        return service.catalog.tracking_read(
+            project_id, user, kind, asset_uuid, version_uuid, offset, limit
+        )
+
+    @application.post(API_PREFIX + "/projects/{project_id}/tracking")
+    def tracking_execute(
+        project_id: str, body: dict[str, Any], user: str = Depends(actor)
+    ) -> dict[str, Any]:
+        return service.catalog.tracking_execute(project_id, user, body)
 
     @application.get(API_PREFIX + "/projects/{project_id}/trash")
     def trash(project_id: str, user: str = Depends(actor)) -> list[dict[str, Any]]:
@@ -165,7 +187,7 @@ def make_app(
         user: str = Depends(actor),
         query: str = "",
         offset: int = 0,
-        limit: int = 100,
+        limit: int = TEAM_PAGE_DEFAULT,
     ) -> dict[str, Any]:
         return asdict(
             service.catalog.list_assets(project_id, user, query, offset, limit)

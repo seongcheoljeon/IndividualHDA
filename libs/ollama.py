@@ -18,10 +18,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from libs.ai_backends import AIError, _open, normalize_endpoint
+from libs.ai_defaults import OLLAMA_ENDPOINT, OLLAMA_MODEL
 
 log = logging.getLogger(__name__)
 
-DEFAULT_ENDPOINT = "http://localhost:11434"
+DEFAULT_ENDPOINT = OLLAMA_ENDPOINT
 DOWNLOAD_PAGE = "https://ollama.com/download"
 _run = subprocess.run  # test seam
 
@@ -46,13 +47,13 @@ class ModelChoice:
 # input and multilingual (incl. Korean) text; sizes are the default quantization.
 RECOMMENDED: tuple[ModelChoice, ...] = (
     ModelChoice("qwen3-vl:4b", 3.3, 6, True, "Small and fast; laptops, 6 GB GPUs"),
-    ModelChoice("qwen3-vl:8b", 6.1, 8, True, "Balanced default for 8-12 GB GPUs"),
+    ModelChoice(OLLAMA_MODEL, 6.1, 8, True, "Balanced default for 8-12 GB GPUs"),
     ModelChoice("gemma4:12b", 7.6, 12, True, "Best quality under 16 GB; 256K context"),
     ModelChoice(
         "gemma4:26b", 19.0, 24, True, "Workstation class; MoE, fast for its size"
     ),
 )
-FALLBACK_MODEL = "qwen3-vl:8b"
+FALLBACK_MODEL = OLLAMA_MODEL
 
 
 def endpoint_url(endpoint: str) -> str:

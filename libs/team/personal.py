@@ -13,18 +13,22 @@ from contextlib import contextmanager, nullcontext
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from libs import asset_commands
+from libs.asset_contracts import AssetData
 from libs.asset_rename import AssetNames, build_rename_plan, rename_asset
 from libs.contracts import TransactionalRepository
 from libs.database.lifecycle import PersonalLifecycle
 from libs.database.rename_repository import SQLiteRenameRepository
+from libs.database.rows import named_query
 from libs.database.sqlite_repository import SqliteLibraryRepository
-from libs.domain import AssetData
+from libs.database.tracking import local_tracking
 from libs.file_integrity import FILE_READ_CHUNK_BYTES
 from libs.operation_journal import MoveJournal, durable_operation
+from libs.record_codec import decode_record
 from libs.repository import LibraryConflict, LibraryError, RegistrationPayload
+from libs.search_limits import QUERY_TEXT_MAX, TEAM_PAGE_DEFAULT, TEAM_PAGE_MAX
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 from libs.team.contracts import (
     Blob,
@@ -135,42 +139,55 @@ class PersonalCatalog:
                 path = Path(data[directory]) / data[filename]
                 if path.is_file():
                     files[kind] = asdict(self.upload(path))
-        revision = db._connect.execute(
-            "SELECT revision FROM catalog_revisions WHERE asset_id=?", (data["hda_id"],)
+        revision = named_query(
+            db._connect,
+            "SELECT revision FROM catalog_revisions WHERE asset_id=:hda_id",
+            {"hda_id": data["hda_id"]},
         ).fetchone()
-        identity = db._connect.execute(
-            "SELECT uuid,current_version_uuid,created_at,updated_at FROM asset_identity WHERE asset_id=?",
-            (data["hda_id"],),
+        identity = named_query(
+            db._connect,
+            "SELECT uuid,current_version_uuid,created_at,updated_at FROM asset_identity WHERE asset_id=:hda_id",
+            {"hda_id": data["hda_id"]},
         ).fetchone()
-        preference = db._connect.execute(
-            "SELECT revision,last_used_at,use_count FROM asset_user_preferences WHERE asset_id=? AND user_id=?",
-            (data["hda_id"], self.user),
+        preference = named_query(
+            db._connect,
+            "SELECT revision,last_used_at,use_count FROM asset_user_preferences WHERE asset_id=:hda_id AND user_id=:user",
+            {"hda_id": data["hda_id"], "user": self.user},
         ).fetchone()
-        historical = db._connect.execute(
+        historical = named_query(
+            db._connect,
             """SELECT v.uuid,v.details,h.comment FROM version_identity v JOIN hda_history h ON h.id=v.history_id
-            WHERE h.hda_key_id=? AND h.version=? ORDER BY h.id DESC LIMIT 1""",
-            (data["hda_id"], data["hda_version"]),
+            WHERE h.hda_key_id=:hda_id AND v.uuid=:current_version_uuid""",
+            {
+                "hda_id": data["hda_id"],
+                "current_version_uuid": identity["current_version_uuid"],
+            },
         ).fetchone()
         return {
-            **(json.loads(historical[1]) if historical else {}),
-            "description": historical[2] if historical else "",
-            "asset_uuid": identity[0],
-            "version_uuid": historical[0] if historical else identity[1],
-            "preference_revision": preference[0] if preference else 0,
-            "last_used_at": preference[1] if preference else None,
-            "use_count": preference[2] if preference else 0,
+            **(json.loads(historical["details"]) if historical else {}),
+            "dependencies": local_tracking(db._connect).dependencies(historical["uuid"])
+            if historical
+            else [],
+            "description": historical["comment"] if historical else "",
+            "asset_uuid": identity["uuid"],
+            "version_uuid": historical["uuid"]
+            if historical
+            else identity["current_version_uuid"],
+            "preference_revision": preference["revision"] if preference else 0,
+            "last_used_at": preference["last_used_at"] if preference else None,
+            "use_count": preference["use_count"] if preference else 0,
             "id": data["hda_id"],
             "name": data["hda_name"],
             "category": data["hda_cate"],
             "version": data["hda_version"],
-            "revision": revision[0] if revision else 1,
+            "revision": revision["revision"] if revision else 1,
             "note": data.get("hda_note") or "",
-            "tags": data.get("hda_tags") or [],
+            "tags": list(data.get("hda_tags") or ()),
             "favorite": bool(data.get("is_favorite_hda")),
             "files": files,
             "metadata": json.loads(json.dumps(data, default=str)),
-            "created_at": identity[2] or data.get("hda_ctime", ""),
-            "updated_at": identity[3] or data.get("hda_mtime", ""),
+            "created_at": identity["created_at"] or data.get("hda_ctime", ""),
+            "updated_at": identity["updated_at"] or data.get("hda_mtime", ""),
         }
 
     def _get(self, db: SQLite3DatabaseAPI, asset_id: int) -> dict[str, Any]:
@@ -178,16 +195,18 @@ class PersonalCatalog:
             (
                 row
                 for row in self._repository(db).list_assets(self.user)
-                if row["hda_id"] == asset_id
+                if row.hda_id == asset_id
             ),
             None,
         )
         if data is None:
             raise NotFound("Asset does not exist")
-        return dict(data)
+        return asdict(data)
 
-    def list_assets(self, query: str = "", offset: int = 0, limit: int = 100) -> Page:
-        if offset < 0 or not 1 <= limit <= 200 or len(query) > 1000:
+    def list_assets(
+        self, query: str = "", offset: int = 0, limit: int = TEAM_PAGE_DEFAULT
+    ) -> Page:
+        if offset < 0 or not 1 <= limit <= TEAM_PAGE_MAX or len(query) > QUERY_TEXT_MAX:
             raise TeamError("Invalid pagination or query")
         query = query.strip()
         with SQLite3DatabaseAPI(self.database) as db, db.transaction():
@@ -195,16 +214,16 @@ class PersonalCatalog:
                 row
                 for row in self._repository(db).list_assets(self.user)
                 if not query
-                or query.casefold() in row["hda_name"].casefold()
-                or query.casefold() in row["hda_cate"].casefold()
+                or query.casefold() in row.hda_name.casefold()
+                or query.casefold() in row.hda_cate.casefold()
             ]
-            rows.sort(key=lambda row: (row["hda_name"].casefold(), row["hda_id"]))
-            revision = db._connect.execute(
-                "SELECT COALESCE(SUM(revision),0) FROM catalog_revisions"
+            rows.sort(key=lambda row: (row.hda_name.casefold(), row.hda_id))
+            revision = named_query(
+                db._connect, "SELECT COALESCE(SUM(revision),0) FROM catalog_revisions"
             ).fetchone()[0]
             return Page(
                 [
-                    self._document(db, dict(row))
+                    self._document(db, asdict(row))
                     for row in rows[offset : offset + limit]
                 ],
                 len(rows),
@@ -225,29 +244,33 @@ class PersonalCatalog:
             for row in reversed(rows):
                 data = dict(current)
                 data.update(
-                    hda_version=row["version"],
-                    hda_dirpath=row["ihda_dirpath"],
-                    hda_filename=row["ihda_filename"],
-                    thumbnail_dirpath=row["thumb_dirpath"],
-                    thumbnail_filename=row["thumb_filename"],
-                    video_dirpath=row.get("video_dirpath"),
-                    video_filename=row.get("video_filename"),
+                    hda_version=row.version,
+                    hda_dirpath=row.ihda_dirpath,
+                    hda_filename=row.ihda_filename,
+                    thumbnail_dirpath=row.thumb_dirpath,
+                    thumbnail_filename=row.thumb_filename,
+                    video_dirpath=row.video_dirpath,
+                    video_filename=row.video_filename,
                 )
                 document = self._document(db, data)
-                version_identity = db._connect.execute(
-                    "SELECT uuid,details FROM version_identity WHERE history_id=?",
-                    (row["hist_id"],),
+                version_identity = named_query(
+                    db._connect,
+                    "SELECT uuid,details FROM version_identity WHERE history_id=:hist_id",
+                    {"hist_id": row.hist_id},
                 ).fetchone()
                 document.update(
-                    version_uuid=version_identity[0],
-                    description=row.get("comment", ""),
-                    **json.loads(version_identity[1]),
+                    version_uuid=version_identity["uuid"],
+                    description=row.comment,
+                    **json.loads(version_identity["details"]),
+                )
+                document["dependencies"] = local_tracking(db._connect).dependencies(
+                    version_identity["uuid"]
                 )
                 document["metadata"] = json.loads(json.dumps(row, default=str))
                 result.append(
                     {
-                        "id": row["hist_id"],
-                        "version": row["version"],
+                        "id": row.hist_id,
+                        "version": row.version,
                         "document": document,
                     }
                 )
@@ -258,23 +281,22 @@ class PersonalCatalog:
             items = PersonalLifecycle(db._connect).trash()
             for item in items:
                 item["revision"] = db._connect.execute(
-                    "SELECT revision FROM catalog_revisions WHERE asset_id=?",
-                    (item["asset_id"],),
+                    "SELECT revision FROM catalog_revisions WHERE asset_id=:asset_id",
+                    {"asset_id": item["asset_id"]},
                 ).fetchone()[0]
             return items
 
     def events(self, asset_uuid: str) -> list[dict[str, Any]]:
         with SQLite3DatabaseAPI(self.database) as db:
-            cursor = db._connect.execute(
-                "SELECT * FROM audit_events WHERE asset_uuid=? ORDER BY occurred_at DESC LIMIT ?",
-                (asset_uuid, DEFAULT_AUDIT_EVENT_LIMIT),
+            cursor = named_query(
+                db._connect,
+                "SELECT * FROM audit_events WHERE asset_uuid=:asset_uuid ORDER BY occurred_at DESC LIMIT :DEFAULT_AUDIT_EVENT_LIMIT",
+                {
+                    "asset_uuid": asset_uuid,
+                    "DEFAULT_AUDIT_EVENT_LIMIT": DEFAULT_AUDIT_EVENT_LIMIT,
+                },
             )
-            return [
-                dict(
-                    zip([column[0] for column in cursor.description], row, strict=True)
-                )
-                for row in cursor.fetchall()
-            ]
+            return [dict(row) for row in cursor.fetchall()]
 
     def execute(self, command: Command) -> dict[str, Any]:
         try:
@@ -291,16 +313,18 @@ class PersonalCatalog:
             durable_operation(self.database.parent, db) as journal,
         ):
             db._connect.execute(
-                "UPDATE write_context SET request_id=?", (command.request_id,)
+                "UPDATE write_context SET request_id=:request_id",
+                {"request_id": command.request_id},
             )
-            receipt = db._connect.execute(
-                "SELECT fingerprint,result FROM catalog_requests WHERE request_id=?",
-                (command.request_id,),
+            receipt = named_query(
+                db._connect,
+                "SELECT fingerprint,result FROM catalog_requests WHERE request_id=:request_id",
+                {"request_id": command.request_id},
             ).fetchone()
             if receipt is not None:
-                if receipt[0] != command.fingerprint():
+                if receipt["fingerprint"] != command.fingerprint():
                     raise Conflict("Request ID was already used with different content")
-                return dict(json.loads(receipt[1]))
+                return dict(json.loads(receipt["result"]))
             if command.operation in {
                 "restore",
                 "purge",
@@ -308,11 +332,15 @@ class PersonalCatalog:
                 "purge_history",
             }:
                 assert command.asset_id is not None
-                revision = db._connect.execute(
-                    "SELECT revision FROM catalog_revisions WHERE asset_id=?",
-                    (command.asset_id,),
+                revision = named_query(
+                    db._connect,
+                    "SELECT revision FROM catalog_revisions WHERE asset_id=:asset_id",
+                    {"asset_id": command.asset_id},
                 ).fetchone()
-                if revision is None or revision[0] != command.expected_revision:
+                if (
+                    revision is None
+                    or revision["revision"] != command.expected_revision
+                ):
                     raise Conflict("Asset changed; reload")
                 action = (
                     "restore" if command.operation.startswith("restore") else "purge"
@@ -321,8 +349,8 @@ class PersonalCatalog:
                     command.asset_id, action, command.values.get("history_id")
                 )
                 db._connect.execute(
-                    "UPDATE catalog_revisions SET revision=revision+1 WHERE asset_id=?",
-                    (command.asset_id,),
+                    "UPDATE catalog_revisions SET revision=revision+1 WHERE asset_id=:asset_id",
+                    {"asset_id": command.asset_id},
                 )
                 result = (
                     {"id": command.asset_id, "deleted": True, "purged": True}
@@ -330,16 +358,21 @@ class PersonalCatalog:
                     else self._document(db, self._get(db, command.asset_id))
                 )
                 db._connect.execute(
-                    "INSERT INTO catalog_requests VALUES(?,?,?)",
-                    (command.request_id, command.fingerprint(), json.dumps(result)),
+                    "INSERT INTO catalog_requests (request_id,fingerprint,result) VALUES(:request_id,:value,:result)",
+                    {
+                        "request_id": command.request_id,
+                        "value": command.fingerprint(),
+                        "result": json.dumps(result),
+                    },
                 )
                 return result
             if command.operation != "create":
                 assert command.asset_id is not None
                 self._get(db, command.asset_id)
-                revision = db._connect.execute(
-                    "SELECT revision FROM catalog_revisions WHERE asset_id=?",
-                    (command.asset_id,),
+                revision = named_query(
+                    db._connect,
+                    "SELECT revision FROM catalog_revisions WHERE asset_id=:asset_id",
+                    {"asset_id": command.asset_id},
                 ).fetchone()[0]
                 if (
                     command.operation not in {"preference", "usage"}
@@ -350,8 +383,12 @@ class PersonalCatalog:
                     )
             result = self._apply(db, journal, command)
             db._connect.execute(
-                "INSERT INTO catalog_requests VALUES(?,?,?)",
-                (command.request_id, command.fingerprint(), json.dumps(result)),
+                "INSERT INTO catalog_requests (request_id,fingerprint,result) VALUES(:request_id,:value,:result)",
+                {
+                    "request_id": command.request_id,
+                    "value": command.fingerprint(),
+                    "result": json.dumps(result),
+                },
             )
             return result
 
@@ -372,8 +409,8 @@ class PersonalCatalog:
             if (
                 current is not None
                 and db._connect.execute(
-                    "SELECT 1 FROM hda_history WHERE hda_key_id=? AND version=?",
-                    (asset_id, values["version"]),
+                    "SELECT 1 FROM hda_history WHERE hda_key_id=:asset_id AND version=:version",
+                    {"asset_id": asset_id, "version": values["version"]},
                 ).fetchone()
             ):
                 raise Conflict("This version already exists, including Trash")
@@ -419,12 +456,16 @@ class PersonalCatalog:
                 def_desc=metadata.get("node_def_desc", ""),
                 is_network=bool(metadata.get("is_network")),
                 is_sub_network=bool(metadata.get("is_sub_network")),
-                type_path_lst=metadata.get("node_type_path_list")
-                or [category + "/" + metadata.get("node_type_name", "unknown")],
-                cate_path_lst=metadata.get("node_cate_path_list") or [category.title()],
-                icon_path_lst=metadata.get("hda_icon") or ["SOP", "box"],
-                input_conn=[],
-                output_conn=[],
+                type_path_lst=tuple(
+                    metadata.get("node_type_path_list")
+                    or [category + "/" + metadata.get("node_type_name", "unknown")]
+                ),
+                cate_path_lst=tuple(
+                    metadata.get("node_cate_path_list") or [category.title()]
+                ),
+                icon_path_lst=tuple(metadata.get("hda_icon") or ["SOP", "box"]),
+                input_conn=(),
+                output_conn=(),
                 hou_version=metadata.get("hou_version", ""),
                 hou_license=metadata.get("hda_license", ""),
                 operating_system=metadata.get("operating_system", ""),
@@ -442,9 +483,10 @@ class PersonalCatalog:
                 if asset_id is None
                 else repository.add_version(asset_id, payload)
             )
-            asset_id = result.asset["hda_id"]
+            asset_id = result.asset.hda_id
             latest = db._connect.execute(
-                "SELECT MAX(id) FROM hda_history WHERE hda_key_id=?", (asset_id,)
+                "SELECT MAX(id) FROM hda_history WHERE hda_key_id=:asset_id",
+                {"asset_id": asset_id},
             ).fetchone()[0]
             if latest is not None:
                 PersonalLifecycle(db._connect).details(
@@ -488,7 +530,7 @@ class PersonalCatalog:
                     repository.toggle_favorite(asset_id)
             elif command.operation == "rename":
                 plan = build_rename_plan(
-                    cast(AssetData, current),
+                    decode_record(AssetData, current),
                     values["name"],
                     self._names,
                     rename_video=repository.video_matches_version(
@@ -499,14 +541,10 @@ class PersonalCatalog:
                     SQLiteRenameRepository(db), plan, operations=shared_operation
                 )
             elif command.operation == "delete":
-                asset_commands.delete_asset(
-                    db, asset_id, current["hda_dirpath"], operations=shared_operation
-                )
+                asset_commands.delete_asset(db, asset_id)
                 return {"id": asset_id, "deleted": True}
             elif command.operation == "delete_history":
-                asset_commands.delete_history(
-                    db, asset_id, values["history_id"], [], operations=shared_operation
-                )
+                asset_commands.delete_history(db, asset_id, values["history_id"])
             elif command.operation == "media":
                 file = self.download(parse_blob(values["file"]))
                 if values["kind"] == "thumbnail":

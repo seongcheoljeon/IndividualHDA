@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from libs.search_limits import EXPLORER_PAGE_DEFAULT, EXPLORER_PAGE_MAX
+
 
 @dataclass(frozen=True)
 class PageRequest:
@@ -13,7 +15,10 @@ class PageRequest:
 
 
 class LibraryManagerPresenter:
-    def __init__(self) -> None:
+    def __init__(self, page_size: int = EXPLORER_PAGE_DEFAULT) -> None:
+        if type(page_size) is not int or not 1 <= page_size <= EXPLORER_PAGE_MAX:
+            raise ValueError("Invalid Explorer page size")
+        self.page_size = page_size
         self._generation = 0
         self._offset = 0
 
@@ -28,5 +33,9 @@ class LibraryManagerPresenter:
         if request.generation != self._generation:
             return None
         self._offset = request.offset + count
-        suffix = " · end of results" if count < 200 else " · load next page for more"
+        suffix = (
+            " · end of results"
+            if count < self.page_size
+            else " · load next page for more"
+        )
         return f"{self._offset} assets loaded" + suffix

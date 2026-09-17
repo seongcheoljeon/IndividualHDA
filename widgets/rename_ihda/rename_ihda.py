@@ -16,7 +16,7 @@ class RenameIHDA(QtWidgets.QDialog, RenameLayout):
         super().__init__(parent)
         self.build_ui(self)
         self.label__bridge.setText(">>>>>")
-        self.__final_ihda_name = None
+        self.__final_ihda_name = ""
         self.__is_valid_ihda_name = False
         self._presenter = RenamePresenter(self)
         self.__connections()
@@ -37,7 +37,7 @@ class RenameIHDA(QtWidgets.QDialog, RenameLayout):
         self.set_confirm_pixmap(validation.valid)
         self.set_confirm_text(validation.error or "Valid iHDA name.")
         self.is_valid_ihda_name = validation.valid
-        self.__final_ihda_name = validation.name if validation.valid else None
+        self.__final_ihda_name = validation.name if validation.valid else ""
 
     def accept(self) -> None:
         if not self.__is_valid_ihda_name:
@@ -56,7 +56,7 @@ class RenameIHDA(QtWidgets.QDialog, RenameLayout):
         self.label__confirm_ihda_name.clear()
         self.label__new_ihda_name.clear()
         self.label__old_ihda_name.clear()
-        self.__final_ihda_name = None
+        self.__final_ihda_name = ""
         self.set_confirm_pixmap(False)
         self.is_valid_ihda_name = False
 

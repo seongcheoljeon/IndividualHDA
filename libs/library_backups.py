@@ -142,7 +142,13 @@ class RecoveryEntry:
     referenced: bool
 
 
-def _inventory(path: Path) -> tuple[int, str]:
+@dataclass(frozen=True, slots=True, kw_only=True)
+class FileInventory:
+    size: int
+    fingerprint: str
+
+
+def _inventory(path: Path) -> FileInventory:
     digest, size = hashlib.sha256(), 0
     for item in [path, *sorted(path.rglob("*"))] if path.is_dir() else [path]:
         if item.is_symlink():
@@ -153,7 +159,7 @@ def _inventory(path: Path) -> tuple[int, str]:
         )
         if item.is_file():
             size += info.st_size
-    return size, digest.hexdigest()
+    return FileInventory(size=size, fingerprint=digest.hexdigest())
 
 
 def recovery_files(
@@ -176,13 +182,13 @@ def recovery_files(
             continue
         if any(parent in candidates for parent in path.parents):
             continue
-        size, fingerprint = _inventory(path)
+        inventory = _inventory(path)
         resolved = path.resolve()
         result.append(
             RecoveryEntry(
                 path,
-                size,
-                fingerprint,
+                inventory.size,
+                inventory.fingerprint,
                 any(p == resolved or p.is_relative_to(resolved) for p in used),
             )
         )
@@ -238,7 +244,7 @@ def cleanup_recovery(
                 raise OSError("Recovery backup verification failed")
         # Recheck after compression. No deletion occurs if the preview changed.
         for entry in selected:
-            if _inventory(entry.path)[1] != entry.fingerprint:
+            if _inventory(entry.path).fingerprint != entry.fingerprint:
                 raise RuntimeError(
                     f"Recovery files changed; safety copy retained at {backup}"
                 )

@@ -133,9 +133,9 @@ def main() -> None:
         panel = IndividualHDA()
         import public
 
-        panel._set_theme(public.Name.darkblue_theme)
+        panel.presentation._set_theme(public.Name.darkblue_theme)
         assert panel.styleSheet()
-        panel._set_theme(public.Name.default_theme)
+        panel.presentation._set_theme(public.Name.default_theme)
         from widgets.library_manager.dialog import LibraryManager
 
         manager = LibraryManager(

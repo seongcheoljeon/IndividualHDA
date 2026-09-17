@@ -2,58 +2,35 @@
 
 from __future__ import annotations
 
-import collections
 import logging
 import pathlib
-from typing import Any, cast
+from dataclasses import asdict
+from typing import Any
 
-from libs import log_handler
+from libs.asset_contracts import HistoryData, HistoryThumbnail, NoteHistory
+from libs.database.rows import history_record, named_query
 from libs.database.session import DatabaseSession
 from libs.database.values import DatabaseValues
-from libs.domain import HistoryData
 from libs.keys import Key
 from libs.path_updates import PathMoves, relocated_path
-from libs.tags import normalize_tags
+from libs.record_codec import decode_record
 
 
 class HistoryOperations(DatabaseSession):
-    def insert_hda_history(self, data: Any = None) -> int | None:
+    def insert_hda_history(self, data: HistoryData) -> int | None:
         query = """
         INSERT INTO hda_history
             (hda_key_id, comment, org_hda_name, version, hda_filename, hda_dirpath,
             registration_datetime, houdini_version, hip_filename, hip_dirpath, hda_license, operating_system,
             node_old_path, node_def_desc, node_type_name, node_category, userid, icon,
             thumb_filename, thumb_dirpath, video_filename, video_dirpath)
-        VALUES (?, ?, ?, ?, ?, ?,
-            (SELECT DATETIME('now', 'localtime')), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (:hda_id, :comment, :org_hda_name, :version, :ihda_filename, :ihda_dirpath,
+            (SELECT DATETIME('now', 'localtime')), :hou_version, :hip_filename, :hip_dirpath,
+            :hda_license, :os, :node_old_path, :node_def_desc, :node_type_name, :node_category,
+            :userid, :icon, :thumb_filename, :thumb_dirpath, :video_filename, :video_dirpath)
         """
         try:
-            hist_key_lst = [
-                Key.History.hda_id,
-                Key.History.comment,
-                Key.History.org_hda_name,
-                Key.History.version,
-                Key.History.ihda_filename,
-                Key.History.ihda_dirpath,
-                Key.History.reg_time,
-                Key.History.hou_version,
-                Key.History.hip_filename,
-                Key.History.hip_dirpath,
-                Key.History.hda_license,
-                Key.History.os,
-                Key.History.node_old_path,
-                Key.History.node_def_desc,
-                Key.History.node_type_name,
-                Key.History.node_category,
-                Key.History.userid,
-                Key.History.icon,
-                Key.History.thumb_filename,
-                Key.History.thumb_dirpath,
-                Key.History.video_filename,
-                Key.History.video_dirpath,
-            ]
-            assert len(hist_key_lst) == len(data)
-            hist_dat = collections.OrderedDict(zip(hist_key_lst, data, strict=False))
+            hist_dat: dict[str, Any] = asdict(data)
             del hist_dat[Key.History.reg_time]
             hist_dat[Key.History.ihda_dirpath] = hist_dat[
                 Key.History.ihda_dirpath
@@ -72,16 +49,13 @@ class HistoryOperations(DatabaseSession):
             hist_dat[Key.History.icon] = DatabaseValues._make_icon_to_string(
                 hist_dat[Key.History.icon]
             )
-            dat = tuple(hist_dat.values())
-            cursor = self._cursor.execute(query, dat)
+            cursor = self._cursor.execute(query, hist_dat)
             self._commit()
             return cursor.rowcount
         except Exception as err:
             self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="*** hda_history (insert) ***"
-            )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
+            logging.error("*** hda_history (insert) ***")
+            logging.error(err)
             return None
 
     def update_hda_name_to_history(
@@ -97,24 +71,32 @@ class HistoryOperations(DatabaseSession):
         path_moves: PathMoves | None = None,
     ) -> int | None:
         if path_moves is not None:
-            rows = self._cursor.execute(
-                "SELECT id, hda_dirpath, hda_filename, thumb_dirpath, thumb_filename, video_dirpath, video_filename FROM hda_history WHERE hda_key_id = ?",
-                (hda_key_id,),
+            rows = named_query(
+                self._connect,
+                "SELECT id, hda_dirpath, hda_filename, thumb_dirpath, thumb_filename, video_dirpath, video_filename FROM hda_history WHERE hda_key_id = :hda_key_id",
+                {"hda_key_id": hda_key_id},
             ).fetchall()
             updates = []
             for row in rows:
-                values: list[str | None] = []
-                for directory, filename in zip(row[1::2], row[2::2], strict=False):
+                values: dict[str, Any] = {"id": row["id"]}
+                for directory_key, filename_key in (
+                    ("hda_dirpath", "hda_filename"),
+                    ("thumb_dirpath", "thumb_filename"),
+                    ("video_dirpath", "video_filename"),
+                ):
+                    directory, filename = row[directory_key], row[filename_key]
                     if directory is not None and filename is not None:
                         path = relocated_path(
                             pathlib.Path(directory) / filename, path_moves
                         )
-                        values.extend((path.parent.as_posix(), path.name))
+                        values[directory_key] = path.parent.as_posix()
+                        values[filename_key] = path.name
                     else:
-                        values.extend((directory, filename))
-                updates.append((*values, row[0]))
+                        values[directory_key] = directory
+                        values[filename_key] = filename
+                updates.append(values)
             self._cursor.executemany(
-                "UPDATE hda_history SET hda_dirpath=?, hda_filename=?, thumb_dirpath=?, thumb_filename=?, video_dirpath=?, video_filename=? WHERE id=?",
+                "UPDATE hda_history SET hda_dirpath=:hda_dirpath, hda_filename=:hda_filename, thumb_dirpath=:thumb_dirpath, thumb_filename=:thumb_filename, video_dirpath=:video_dirpath, video_filename=:video_filename WHERE id=:id",
                 updates,
             )
             self._commit()
@@ -122,57 +104,61 @@ class HistoryOperations(DatabaseSession):
         assert isinstance(hda_dirpath, pathlib.Path)
         if video_dirpath is not None:
             query_whole_dirpath = """
-            UPDATE hda_history SET hda_dirpath = ?, thumb_dirpath = ?,
+            UPDATE hda_history SET hda_dirpath = :hda_dirpath, thumb_dirpath = :value,
             video_dirpath =
             CASE
                 WHEN video_dirpath IS NOT NULL
-                    THEN ?
+                    THEN :video_dirpath
                 ELSE video_dirpath
             END
-            WHERE hda_key_id = ?
+            WHERE hda_key_id = :hda_key_id
             """
-            query_whole_dirpath_params: tuple[Any, ...] = (
-                hda_dirpath.as_posix(),
-                thumb_dirpath.as_posix() if thumb_dirpath is not None else None,
-                video_dirpath.as_posix(),
-                hda_key_id,
-            )
+            query_whole_dirpath_params: dict[str, Any] = {
+                "hda_dirpath": hda_dirpath.as_posix(),
+                "value": thumb_dirpath.as_posix()
+                if thumb_dirpath is not None
+                else None,
+                "video_dirpath": video_dirpath.as_posix(),
+                "hda_key_id": hda_key_id,
+            }
             query_filename_by_ver = """
-            UPDATE hda_history SET hda_filename = ?, thumb_filename = ?,
+            UPDATE hda_history SET hda_filename = :hda_filename, thumb_filename = :thumb_filename,
             video_filename =
             CASE
                 WHEN video_filename IS NOT NULL
-                    THEN ?
+                    THEN :video_filename
                 ELSE video_filename
             END
-            WHERE hda_key_id = ? AND version = ?
+            WHERE hda_key_id = :hda_key_id AND version = :hda_version
             """
-            query_filename_by_ver_params: tuple[Any, ...] = (
-                hda_filename,
-                thumb_filename,
-                video_filename,
-                hda_key_id,
-                hda_version,
-            )
+            query_filename_by_ver_params: dict[str, Any] = {
+                "hda_filename": hda_filename,
+                "thumb_filename": thumb_filename,
+                "video_filename": video_filename,
+                "hda_key_id": hda_key_id,
+                "hda_version": hda_version,
+            }
         else:
             query_whole_dirpath = """
-            UPDATE hda_history SET hda_dirpath = ?, thumb_dirpath = ? WHERE hda_key_id = ?
+            UPDATE hda_history SET hda_dirpath = :hda_dirpath, thumb_dirpath = :value WHERE hda_key_id = :hda_key_id
             """
-            query_whole_dirpath_params = (
-                hda_dirpath.as_posix(),
-                thumb_dirpath.as_posix() if thumb_dirpath is not None else None,
-                hda_key_id,
-            )
+            query_whole_dirpath_params = {
+                "hda_dirpath": hda_dirpath.as_posix(),
+                "value": thumb_dirpath.as_posix()
+                if thumb_dirpath is not None
+                else None,
+                "hda_key_id": hda_key_id,
+            }
             query_filename_by_ver = """
-            UPDATE hda_history SET hda_filename = ?, thumb_filename = ?
-            WHERE hda_key_id = ? AND version = ?
+            UPDATE hda_history SET hda_filename = :hda_filename, thumb_filename = :thumb_filename
+            WHERE hda_key_id = :hda_key_id AND version = :hda_version
             """
-            query_filename_by_ver_params = (
-                hda_filename,
-                thumb_filename,
-                hda_key_id,
-                hda_version,
-            )
+            query_filename_by_ver_params = {
+                "hda_filename": hda_filename,
+                "thumb_filename": thumb_filename,
+                "hda_key_id": hda_key_id,
+                "hda_version": hda_version,
+            }
         # most_recent_hist_id = self.get_most_recent_ihda_history_id(
         #     hda_key_id=hda_key_id, hda_version=hda_version)
         # query_comment = '''
@@ -193,10 +179,8 @@ class HistoryOperations(DatabaseSession):
             return res_cnt
         except Exception as err:
             self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="*** hda_name_to_history (update) ***"
-            )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
+            logging.error("*** hda_name_to_history (update) ***")
+            logging.error(err)
             return None
 
     def is_library_file_referenced(
@@ -204,23 +188,13 @@ class HistoryOperations(DatabaseSession):
     ) -> bool:
         """Check surviving current/history references inside the delete transaction."""
         rows = self._cursor.execute(
-            """SELECT dirpath, filename FROM hda_info WHERE filename = ? COLLATE NOCASE
-            UNION ALL SELECT dirpath, filename FROM thumbnail_info WHERE filename = ? COLLATE NOCASE
-            UNION ALL SELECT dirpath, filename FROM video_info WHERE filename = ? COLLATE NOCASE
-            UNION ALL SELECT hda_dirpath, hda_filename FROM hda_history WHERE id != ? AND hda_filename = ? COLLATE NOCASE
-            UNION ALL SELECT thumb_dirpath, thumb_filename FROM hda_history WHERE id != ? AND thumb_filename = ? COLLATE NOCASE
-            UNION ALL SELECT video_dirpath, video_filename FROM hda_history WHERE id != ? AND video_filename = ? COLLATE NOCASE""",
-            (
-                path.name,
-                path.name,
-                path.name,
-                excluding_history_id,
-                path.name,
-                excluding_history_id,
-                path.name,
-                excluding_history_id,
-                path.name,
-            ),
+            """SELECT dirpath, filename FROM hda_info WHERE filename = :name COLLATE NOCASE
+            UNION ALL SELECT dirpath, filename FROM thumbnail_info WHERE filename = :name COLLATE NOCASE
+            UNION ALL SELECT dirpath, filename FROM video_info WHERE filename = :name COLLATE NOCASE
+            UNION ALL SELECT hda_dirpath, hda_filename FROM hda_history WHERE id != :excluding_history_id AND hda_filename = :name COLLATE NOCASE
+            UNION ALL SELECT thumb_dirpath, thumb_filename FROM hda_history WHERE id != :excluding_history_id AND thumb_filename = :name COLLATE NOCASE
+            UNION ALL SELECT video_dirpath, video_filename FROM hda_history WHERE id != :excluding_history_id AND video_filename = :name COLLATE NOCASE""",
+            {"name": path.name, "excluding_history_id": excluding_history_id},
         )
         target = path.resolve()
         return any(
@@ -234,61 +208,57 @@ class HistoryOperations(DatabaseSession):
     ) -> int | None:
         if (hda_key_id is None) and (hist_id is None):
             query = """DELETE FROM hda_history"""
-            query_params: tuple[Any, ...] = ()
+            query_params: dict[str, Any] = {}
         elif (hda_key_id is not None) and (hist_id is None):
             query = """
-            DELETE FROM hda_history WHERE hda_key_id = ?
+            DELETE FROM hda_history WHERE hda_key_id = :hda_key_id
             """
-            query_params = (hda_key_id,)
+            query_params = {"hda_key_id": hda_key_id}
         elif (hda_key_id is None) and (hist_id is not None):
             query = """
-                DELETE FROM hda_history WHERE id = ?
+                DELETE FROM hda_history WHERE id = :hist_id
                 """
-            query_params = (hist_id,)
+            query_params = {"hist_id": hist_id}
         else:
             query = """
-            DELETE FROM hda_history WHERE hda_key_id = ? AND id = ?
+            DELETE FROM hda_history WHERE hda_key_id = :hda_key_id AND id = :hist_id
             """
-            query_params = (hda_key_id, hist_id)
+            query_params = {"hda_key_id": hda_key_id, "hist_id": hist_id}
         try:
             cursor = self._cursor.execute(query, query_params)
             self._commit()
             return cursor.rowcount
         except Exception as err:
             self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="*** hda_history (delete) ***"
-            )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
+            logging.error("*** hda_history (delete) ***")
+            logging.error(err)
             return None
 
     def delete_hda_note_history(self, hda_key_id: int | None = None) -> int | None:
         if hda_key_id is None:
             query = """DELETE FROM hda_note_history"""
-            query_params: tuple[Any, ...] = ()
+            query_params: dict[str, Any] = {}
         else:
-            query = "DELETE FROM hda_note_history WHERE hda_key_id = ?"
-            query_params = (hda_key_id,)
+            query = "DELETE FROM hda_note_history WHERE hda_key_id = :hda_key_id"
+            query_params = {"hda_key_id": hda_key_id}
         try:
             cursor = self._cursor.execute(query, query_params)
             self._commit()
             return cursor.rowcount
         except Exception as err:
             self._rollback()
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="*** hda_note_history (delete) ***"
-            )
-            log_handler.LogHandler.log_msg(method=logging.error, msg=err)
+            logging.error("*** hda_note_history (delete) ***")
+            logging.error(err)
             return None
 
     def is_exist_hda_history(self, hda_key_id: int | None = None) -> bool:
         if hda_key_id is None:
             query = """SELECT COUNT(*) FROM hda_history"""
-            query_params: tuple[Any, ...] = ()
+            query_params: dict[str, Any] = {}
         else:
-            query = """SELECT COUNT(*) FROM hda_history WHERE hda_key_id = ?
+            query = """SELECT COUNT(*) FROM hda_history WHERE hda_key_id = :hda_key_id
             """
-            query_params = (hda_key_id,)
+            query_params = {"hda_key_id": hda_key_id}
         cursor = self._cursor.execute(query, query_params)
         dat = cursor.fetchone()[0]
         return bool(dat)
@@ -296,11 +266,11 @@ class HistoryOperations(DatabaseSession):
     def is_exist_hda_note_history(self, hda_key_id: int | None = None) -> bool:
         if hda_key_id is None:
             query = """SELECT COUNT(*) FROM hda_note_history"""
-            query_params: tuple[Any, ...] = ()
+            query_params: dict[str, Any] = {}
         else:
-            query = """SELECT COUNT(*) FROM hda_note_history WHERE hda_key_id = ?
+            query = """SELECT COUNT(*) FROM hda_note_history WHERE hda_key_id = :hda_key_id
             """
-            query_params = (hda_key_id,)
+            query_params = {"hda_key_id": hda_key_id}
         cursor = self._cursor.execute(query, query_params)
         dat = cursor.fetchone()[0]
         return bool(dat)
@@ -308,9 +278,9 @@ class HistoryOperations(DatabaseSession):
     def is_most_recent_ihda_history(
         self, hda_key_id: int | None = None, hist_id: int | None = None
     ) -> bool:
-        query = """SELECT MAX(id) FROM hda_history WHERE hda_key_id = ?
+        query = """SELECT MAX(id) FROM hda_history WHERE hda_key_id = :hda_key_id
         """
-        query_params: tuple[Any, ...] = (hda_key_id,)
+        query_params: dict[str, Any] = {"hda_key_id": hda_key_id}
         cursor = self._cursor.execute(query, query_params)
         dat = cursor.fetchone()[0]
         return dat == hist_id
@@ -318,9 +288,12 @@ class HistoryOperations(DatabaseSession):
     def get_most_recent_ihda_history_id(
         self, hda_key_id: int | None = None, hda_version: str | None = None
     ) -> int | None:
-        query = """SELECT MAX(id) FROM hda_history WHERE hda_key_id = ? AND version = ?
+        query = """SELECT MAX(id) FROM hda_history WHERE hda_key_id = :hda_key_id AND version = :hda_version
         """
-        query_params: tuple[Any, ...] = (hda_key_id, hda_version)
+        query_params: dict[str, Any] = {
+            "hda_key_id": hda_key_id,
+            "hda_version": hda_version,
+        }
         cursor = self._cursor.execute(query, query_params)
         dat = cursor.fetchone()[0]
         return dat
@@ -328,11 +301,11 @@ class HistoryOperations(DatabaseSession):
     def count_hda_history(self, hda_key_id: int | None = None) -> int:
         if hda_key_id is None:
             query = """SELECT COUNT(*) FROM hda_history"""
-            query_params: tuple[Any, ...] = ()
+            query_params: dict[str, Any] = {}
         else:
-            query = """SELECT COUNT(*) FROM hda_history WHERE hda_key_id = ?
+            query = """SELECT COUNT(*) FROM hda_history WHERE hda_key_id = :hda_key_id
             """
-            query_params = (hda_key_id,)
+            query_params = {"hda_key_id": hda_key_id}
         cursor = self._cursor.execute(query, query_params)
         dat = cursor.fetchone()[0]
         return dat
@@ -340,11 +313,11 @@ class HistoryOperations(DatabaseSession):
     def count_hda_note_history(self, hda_key_id: int | None = None) -> int:
         if hda_key_id is None:
             query = """SELECT COUNT(*) FROM hda_note_history"""
-            query_params: tuple[Any, ...] = ()
+            query_params: dict[str, Any] = {}
         else:
-            query = """SELECT COUNT(*) FROM hda_note_history WHERE hda_key_id = ?
+            query = """SELECT COUNT(*) FROM hda_note_history WHERE hda_key_id = :hda_key_id
             """
-            query_params = (hda_key_id,)
+            query_params = {"hda_key_id": hda_key_id}
         cursor = self._cursor.execute(query, query_params)
         dat = cursor.fetchone()[0]
         return dat
@@ -353,9 +326,9 @@ class HistoryOperations(DatabaseSession):
         self, user_id: str | None = None
     ) -> list[tuple[Any, ...]]:
         query = """
-        SELECT id, hda_key_id, hda_dirpath, hda_filename FROM hda_history WHERE id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) AND hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND userid = ?
+        SELECT id, hda_key_id, hda_dirpath, hda_filename FROM hda_history WHERE id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) AND hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND userid = :user_id
         """
-        query_params: tuple[Any, ...] = (user_id,)
+        query_params: dict[str, Any] = {"user_id": user_id}
         cursor = self._cursor.execute(query, query_params)
         fetch_dat = cursor.fetchall()
         if (fetch_dat is None) or (not len(fetch_dat)):
@@ -369,49 +342,46 @@ class HistoryOperations(DatabaseSession):
         user_id: str | None = None,
     ) -> str | None:
         query = """
-        SELECT hda_license FROM hda_history WHERE hda_key_id = ? AND version = ? AND userid = ?
+        SELECT hda_license FROM hda_history WHERE hda_key_id = :hda_key_id AND version = :version AND userid = :user_id
         """
-        query_params: tuple[Any, ...] = (hda_key_id, version, user_id)
+        query_params: dict[str, Any] = {
+            "hda_key_id": hda_key_id,
+            "version": version,
+            "user_id": user_id,
+        }
         cursor = self._cursor.execute(query, query_params)
         dat = cursor.fetchone()[0]
         return dat
 
     def get_history_video_info(self, hda_key_id: int | None = None) -> None | list[Any]:
         query = """
-        SELECT dirpath, filename FROM video_info WHERE hda_key_id = ?
+        SELECT dirpath, filename FROM video_info WHERE hda_key_id = :hda_key_id
         """
-        query_params: tuple[Any, ...] = (hda_key_id,)
-        cursor = self._cursor.execute(query, query_params)
+        query_params: dict[str, Any] = {"hda_key_id": hda_key_id}
+        cursor = named_query(self._connect, query, query_params)
         fetch_dat = cursor.fetchall()
         if fetch_dat is None:
             return None
         dat = []
         for video_info in fetch_dat:
-            dat.append(pathlib.Path(video_info[0]) / video_info[1])
+            dat.append(pathlib.Path(video_info["dirpath"]) / video_info["filename"])
         return dat
 
-    def get_thumbnail_by_hda_history(self, user_id: str | None = None) -> list[Any]:
+    def get_thumbnail_by_hda_history(
+        self, user_id: str | None = None
+    ) -> list[HistoryThumbnail]:
         query = """
-        SELECT id, thumb_dirpath, thumb_filename FROM hda_history WHERE userid = ? ORDER BY id
+        SELECT id AS hist_id,
+            thumb_dirpath AS thumb_dirpath,
+            thumb_filename AS thumb_filename
+        FROM hda_history WHERE userid = :user_id ORDER BY id
         """
-        query_params: tuple[Any, ...] = (user_id,)
-        cursor = self._cursor.execute(query, query_params)
+        query_params: dict[str, Any] = {"user_id": user_id}
+        cursor = named_query(self._connect, query, query_params)
         fetch_dat = cursor.fetchall()
         if (fetch_dat is None) or (not len(fetch_dat)):
             return []
-        dat = []
-        key_lst = [
-            Key.History.hist_id,
-            Key.History.thumb_dirpath,
-            Key.History.thumb_filename,
-        ]
-        for row_val in fetch_dat:
-            tmp_dict = dict(zip(key_lst, row_val, strict=False))
-            tmp_dict[Key.History.thumb_dirpath] = pathlib.Path(
-                tmp_dict[Key.History.thumb_dirpath]
-            )
-            dat.append(tmp_dict)
-        return dat
+        return [decode_record(HistoryThumbnail, dict(row)) for row in fetch_dat]
 
     def get_hda_history(
         self,
@@ -421,121 +391,123 @@ class HistoryOperations(DatabaseSession):
     ) -> list[HistoryData]:
         if hda_key_id is not None:
             query = """
-            SELECT id, hda_key_id, comment, org_hda_name, version, hda_filename, hda_dirpath,
-                registration_datetime, houdini_version, hip_filename, hip_dirpath, hda_license,
-                operating_system, node_old_path, node_def_desc, node_type_name, node_category, userid, icon,
-                (SELECT tag FROM tag_info WHERE hda_key_id = hda_history.hda_key_id),
-                thumb_filename, thumb_dirpath, video_filename, video_dirpath
-            FROM hda_history WHERE id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) AND hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND hda_key_id = ? AND userid = ?
+            SELECT id AS hist_id,
+            hda_key_id AS hda_id,
+            comment AS comment,
+            org_hda_name AS org_hda_name,
+            version AS version,
+            hda_filename AS ihda_filename,
+            hda_dirpath AS ihda_dirpath,
+            registration_datetime AS reg_time,
+            houdini_version AS hou_version,
+            hip_filename AS hip_filename,
+            hip_dirpath AS hip_dirpath,
+            hda_license AS hda_license,
+            operating_system AS os,
+            node_old_path AS node_old_path,
+            node_def_desc AS node_def_desc,
+            node_type_name AS node_type_name,
+            node_category AS node_category,
+            userid AS userid,
+            icon AS icon,
+            (SELECT tag FROM tag_info WHERE hda_key_id = hda_history.hda_key_id) AS tags,
+            thumb_filename AS thumb_filename,
+            thumb_dirpath AS thumb_dirpath,
+            video_filename AS video_filename,
+            video_dirpath AS video_dirpath
+        FROM hda_history WHERE id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) AND hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND hda_key_id = :hda_key_id AND userid = :user_id
             """
-            query_params: tuple[Any, ...] = (hda_key_id, user_id)
+            query_params: dict[str, Any] = {
+                "hda_key_id": hda_key_id,
+                "user_id": user_id,
+            }
         else:
             query = """
-            SELECT id, hda_key_id, comment, org_hda_name, version, hda_filename, hda_dirpath,
-                registration_datetime, houdini_version, hip_filename, hip_dirpath, hda_license,
-                operating_system, node_old_path, node_def_desc, node_type_name, node_category, userid, icon,
-                (SELECT tag FROM tag_info WHERE hda_key_id = hda_history.hda_key_id),
-                thumb_filename, thumb_dirpath, video_filename, video_dirpath
-            FROM hda_history WHERE id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) AND hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND userid = ?
+            SELECT id AS hist_id,
+            hda_key_id AS hda_id,
+            comment AS comment,
+            org_hda_name AS org_hda_name,
+            version AS version,
+            hda_filename AS ihda_filename,
+            hda_dirpath AS ihda_dirpath,
+            registration_datetime AS reg_time,
+            houdini_version AS hou_version,
+            hip_filename AS hip_filename,
+            hip_dirpath AS hip_dirpath,
+            hda_license AS hda_license,
+            operating_system AS os,
+            node_old_path AS node_old_path,
+            node_def_desc AS node_def_desc,
+            node_type_name AS node_type_name,
+            node_category AS node_category,
+            userid AS userid,
+            icon AS icon,
+            (SELECT tag FROM tag_info WHERE hda_key_id = hda_history.hda_key_id) AS tags,
+            thumb_filename AS thumb_filename,
+            thumb_dirpath AS thumb_dirpath,
+            video_filename AS video_filename,
+            video_dirpath AS video_dirpath
+        FROM hda_history WHERE id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) AND hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND userid = :user_id
             """
-            query_params = (user_id,)
+            query_params = {"user_id": user_id}
         if search_date is not None:
-            query = (
-                query
-                + " AND registration_datetime BETWEEN "
-                + "?"
-                + " AND "
-                + "?"
-                + "\n            "
-            )
-            query_params = query_params + (search_date[0], search_date[1])
+            query += " AND registration_datetime BETWEEN :start_date AND :end_date"
+            query_params.update(start_date=search_date[0], end_date=search_date[1])
         query = query + " ORDER BY id"
-        query_params = query_params + ()
-        cursor = self._cursor.execute(query, query_params)
-        key_lst = DatabaseValues.hda_history_key_lst()
+        cursor = named_query(self._connect, query, query_params)
         fetch_dat = cursor.fetchall()
         if (fetch_dat is None) or (not len(fetch_dat)):
             return []
         dat = []
         for row_val in fetch_dat:
-            tmp_dict = dict(zip(key_lst, row_val, strict=False))
-            tags = tmp_dict[Key.History.tags]
-            if tags is None:
-                tmp_dict[Key.History.tags] = []
-            else:
-                tmp_dict[Key.History.tags] = normalize_tags(tags)
-            tmp_dict[Key.History.icon] = tmp_dict[Key.History.icon].split(",")
-            tmp_dict[Key.History.ihda_dirpath] = pathlib.Path(
-                tmp_dict[Key.History.ihda_dirpath]
-            )
-            tmp_dict[Key.History.hip_dirpath] = pathlib.Path(
-                tmp_dict[Key.History.hip_dirpath]
-            )
-            tmp_dict[Key.History.thumb_dirpath] = pathlib.Path(
-                tmp_dict[Key.History.thumb_dirpath]
-            )
-            if tmp_dict[Key.History.video_dirpath] is not None:
-                tmp_dict[Key.History.video_dirpath] = pathlib.Path(
-                    tmp_dict[Key.History.video_dirpath]
-                )
-            dat.append(cast(HistoryData, tmp_dict))
+            tmp_dict = dict(row_val)
+            dat.append(history_record(tmp_dict))
         return dat
 
-    def get_hda_note_history(
-        self, hda_key_id: int | None = None, with_datetime: bool = False
-    ) -> list[tuple[Any, ...]] | None:
-        if with_datetime:
-            query = """
-            SELECT registration_datetime, hda_version, note FROM hda_note_history
-            WHERE hda_key_id = ?"""
-            query_params: tuple[Any, ...] = (hda_key_id,)
-        else:
-            query = "SELECT note FROM hda_note_history WHERE hda_key_id = ?"
-            query_params = (hda_key_id,)
-        cursor = self._cursor.execute(query, query_params)
-        dat = cursor.fetchall()
-        if (dat is None) or (not len(dat)):
-            return None
-        return dat
+    def get_hda_note_history(self, hda_key_id: int | None = None) -> list[NoteHistory]:
+        query = """SELECT registration_datetime AS registered_at, hda_version AS version, note
+            FROM hda_note_history WHERE hda_key_id=:hda_key_id ORDER BY id"""
+        return [
+            NoteHistory(**dict(row))
+            for row in named_query(self._connect, query, {"hda_key_id": hda_key_id})
+        ]
 
     def get_hda_history_video_most_recent_by_ver(
         self, hda_key_id: int | None = None, version: str | None = None
-    ) -> None | list[Any]:
+    ) -> pathlib.Path | None:
         query_most_recent_id = """
-        SELECT MAX(id) FROM hda_history WHERE hda_key_id = ? AND version = ?
+        SELECT MAX(id) FROM hda_history WHERE hda_key_id = :hda_key_id AND version = :version
         """
-        query_most_recent_id_params = (hda_key_id, version)
+        query_most_recent_id_params = {"hda_key_id": hda_key_id, "version": version}
         cursor = self._cursor.execute(query_most_recent_id, query_most_recent_id_params)
         most_recent_id = cursor.fetchone()[0]
         if most_recent_id is None:
             return None
         query = """SELECT video_dirpath, video_filename FROM hda_history
-        WHERE id = ?"""
-        query_params: tuple[Any, ...] = (most_recent_id,)
-        cursor = self._cursor.execute(query, query_params)
+        WHERE id = :most_recent_id"""
+        query_params: dict[str, Any] = {"most_recent_id": most_recent_id}
+        cursor = named_query(self._connect, query, query_params)
         dat = cursor.fetchone()
         if (dat is None) or (not len(dat)):
             return None
         if any(x is None for x in dat):
             return None
         # dirpath
-        dat = list(dat)
-        dat[0] = pathlib.Path(dat[0])
-        return dat
+        return pathlib.Path(dat["video_dirpath"]) / dat["video_filename"]
 
     def get_hda_note_history_most_recent_by_ver(
         self, hda_key_id: int | None = None, version: str | None = None
     ) -> str | None:
         query_most_recent_id = """
-        SELECT MAX(id) FROM hda_note_history WHERE hda_key_id = ? AND hda_version = ?
+        SELECT MAX(id) FROM hda_note_history WHERE hda_key_id = :hda_key_id AND hda_version = :version
         """
-        query_most_recent_id_params = (hda_key_id, version)
+        query_most_recent_id_params = {"hda_key_id": hda_key_id, "version": version}
         cursor = self._cursor.execute(query_most_recent_id, query_most_recent_id_params)
         most_recent_id = cursor.fetchone()[0]
         if most_recent_id is None:
             return None
-        query = "SELECT note FROM hda_note_history WHERE id = ?"
-        query_params: tuple[Any, ...] = (most_recent_id,)
+        query = "SELECT note FROM hda_note_history WHERE id = :most_recent_id"
+        query_params: dict[str, Any] = {"most_recent_id": most_recent_id}
         cursor = self._cursor.execute(query, query_params)
         dat = cursor.fetchone()[0]
         if (dat is None) or (not len(dat)):

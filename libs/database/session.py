@@ -8,11 +8,17 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any, Self
 
+from libs.database.policy import SQLitePolicy
 from libs.database_migrations import backup_database, migrate
 
 
 class DatabaseSession:
-    def __init__(self, db_filepath: str | pathlib.Path | None = None) -> None:
+    def __init__(
+        self,
+        db_filepath: str | pathlib.Path | None = None,
+        *,
+        policy: SQLitePolicy = SQLitePolicy(),
+    ) -> None:
         if db_filepath is None:
             raise ValueError("Database path is required")
         self._db_filepath = pathlib.Path(db_filepath)
@@ -20,9 +26,11 @@ class DatabaseSession:
         self._db_cursor: sqlite3.Cursor | None = None
         self._transaction_depth = 0
         try:
-            self._connection = sqlite3.connect(str(self._db_filepath), timeout=5.0)
+            self._connection = sqlite3.connect(
+                str(self._db_filepath), timeout=policy.connect_timeout_seconds
+            )
             self._connect.execute("PRAGMA foreign_keys = ON")
-            self._connect.execute("PRAGMA busy_timeout = 5000")
+            self._connect.execute(f"PRAGMA busy_timeout = {policy.busy_timeout_ms}")
             # WAL: readers (search worker, revision poller, a second panel) no longer
             # block writers. Persistent; requires a local filesystem (see README).
             self._connect.execute("PRAGMA journal_mode = WAL")
@@ -82,7 +90,8 @@ class DatabaseSession:
             from libs.library_metadata import new_identity
 
             self._connect.execute(
-                "UPDATE write_context SET request_id=?", (new_identity(),)
+                "UPDATE write_context SET request_id=:new_identity",
+                {"new_identity": new_identity()},
             )
         savepoint = f"ihda_nested_{self._transaction_depth}"
         if not outer:
@@ -126,7 +135,8 @@ class DatabaseSession:
                 "Operation markers require an active transaction"
             )
         self._connect.execute(
-            "INSERT INTO operation_commits(operation_id) VALUES (?)", (operation_id,)
+            "INSERT INTO operation_commits(operation_id) VALUES (:operation_id)",
+            {"operation_id": operation_id},
         )
 
     @property

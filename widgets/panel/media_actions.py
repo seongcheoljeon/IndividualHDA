@@ -1,28 +1,60 @@
 """Media actions for the Individual HDA panel.
 
-Mixin methods run on the panel GUI thread and share its protected state.
-They do not own a separate QWidget or change the public panel interface.
+Explicit bindings connect this feature to its view and collaborators.
 """
 
 from __future__ import annotations
 
+import logging
 import pathlib
+import uuid
+from collections.abc import Callable
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-if TYPE_CHECKING:
-    pass
+from PySide6 import QtCore, QtWidgets
 
-import logging
-import uuid
-
-from PySide6 import QtCore
-
-import public
-from libs import ffmpeg_api, houdini_api, ihda_system, log_handler
+from libs import ffmpeg_api, host, houdini_api, ihda_system, keys, log_handler
+from libs.host_ports import HostCapturePort
 from widgets.asset_media.presenter import AssetMediaPresenter, MediaRequest
 
+if TYPE_CHECKING:
+    from re import Pattern
 
-class MediaActionsMixin:
+    from libs.task_controller import TaskController
+    from widgets.make_video_info.make_video_info import MakeVideoInfo
+    from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.library_queries import PanelLibraryQueries
+    from widgets.panel.model_binding import PanelModelBinding
+    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.selection import PanelSelection
+    from widgets.panel.state import PanelSessionState, PanelStatus
+    from widgets.preference.preference import Preference
+    from widgets.team_library.integration import MainLibraryIntegration
+
+
+@dataclass(frozen=True, slots=True)
+class PanelMediaActionsBindings:
+    capture: HostCapturePort
+    host_enabled: bool
+    models: PanelModelBinding
+    parent: QtWidgets.QWidget
+    preference: Preference
+    presentation: PanelPresentation
+    queries: PanelLibraryQueries
+    selection: PanelSelection
+    sequence_pattern: Pattern[str]
+    session: PanelSessionState
+    status: PanelStatus
+    tasks: TaskController
+    team: Callable[[], MainLibraryIntegration]
+    ui: MainWindowLayout
+    video_info: MakeVideoInfo
+
+
+class PanelMediaActions:
+    bindings: PanelMediaActionsBindings
+
     def show_media_error(self, message: str) -> None:
         log_handler.LogHandler.log_msg(method=logging.error, msg=message)
 
@@ -31,22 +63,24 @@ class MediaActionsMixin:
         assert isinstance(preview_dirpath, pathlib.Path)
         is_del = False
         if preview_dirpath.parent.exists():
-            if preview_dirpath.parent.name == public.Name.preview_dirname:
+            if preview_dirpath.parent.name == keys.Name.preview_dirname:
                 is_del = ihda_system.IHDASystem.remove_dir(
                     dirpath=preview_dirpath.parent, verbose=False
                 )
         return is_del
 
     def _slot_make_thumbnail(self) -> None:
-        team = getattr(self, "_team_library", None)
+        if not self.bindings.host_enabled:
+            return
+        team = self.bindings.team()
         if team is not None and team.active:
             team.actions.attach("thumbnail")
             return
-        if public.IS_HOUDINI:
-            hda_dirpath = self._selection.asset.data.get(public.Key.hda_dirpath)
-            hda_name = self._selection.asset.data.get(public.Key.hda_name)
-            hda_version = self._selection.asset.data.get(public.Key.hda_version)
-            hda_id = self._selection.asset.data.get(public.Key.hda_id)
+        if host.IS_HOUDINI:
+            hda_dirpath = self.bindings.selection.state.asset.require_data().hda_dirpath
+            hda_name = self.bindings.selection.state.asset.require_data().hda_name
+            hda_version = self.bindings.selection.state.asset.require_data().hda_version
+            hda_id = self.bindings.selection.state.asset.require_data().hda_id
             # thumbnail
             thumb_dirpath = houdini_api.HoudiniAPI.make_thumbnail_dirpath(
                 hda_dirpath=hda_dirpath
@@ -57,8 +91,10 @@ class MediaActionsMixin:
             thumb_filepath = thumb_dirpath / thumb_filename
             if not thumb_dirpath.exists():
                 thumb_dirpath.mkdir(parents=True)
-            houdini_api.HoudiniAPI.create_thumbnail(output_filepath=thumb_filepath)
-            AssetMediaPresenter(self, self._repository).thumbnail(
+            self.bindings.capture.create_thumbnail(output_filepath=thumb_filepath)
+            AssetMediaPresenter(
+                self, self.bindings.session.require_repository()
+            ).thumbnail(
                 MediaRequest(hda_id, hda_version, thumb_dirpath, thumb_filename),
                 lambda updated: self._apply_thumbnail(
                     hda_id, hda_version, thumb_filepath, updated
@@ -78,12 +114,14 @@ class MediaActionsMixin:
     ) -> None:
         # model에서 새로운 파일을 새롭게 읽을 수 있도록 thumb_filepath인자에 값을 배정하지 않았다.
         # self._update_pixmap_thumbnail(hkey_id=hda_id, thumb_filepath=pathlib.Path())
-        self._update_pixmap_thumbnail(hkey_id=hda_id, thumb_filepath=thumb_filepath)
-        hist_id = self._ihda_history_model.get_history_id_from_model(
+        self.bindings.models._update_pixmap_thumbnail(
+            hkey_id=hda_id, thumb_filepath=thumb_filepath
+        )
+        hist_id = self.bindings.models.history_model.get_history_id_from_model(
             hkey_id=hda_id, version=hda_version
         )
         if hist_id is not None:
-            self._update_pixmap_hist_thumbnail(
+            self.bindings.models._update_pixmap_hist_thumbnail(
                 hist_id=hist_id, thumb_filepath=thumb_filepath
             )
         if is_update_thumb:
@@ -92,26 +130,28 @@ class MediaActionsMixin:
             )
 
     def _slot_make_video(self) -> None:
-        team = getattr(self, "_team_library", None)
+        if not self.bindings.host_enabled:
+            return
+        team = self.bindings.team()
         if team is not None and team.active:
             team.actions.attach("video")
             return
-        if self._tasks.busy:
+        if self.bindings.tasks.busy:
             return
-        if not self._preference.is_ffmpeg_valid:
+        if not self.bindings.preference.is_ffmpeg_valid:
             log_handler.LogHandler.log_msg(
                 method=logging.error, msg="ffmpeg is not installed"
             )
             return
-        if not public.IS_HOUDINI:
+        if not host.IS_HOUDINI:
             log_handler.LogHandler.log_msg(
                 method=logging.warning, msg="run on the houdini"
             )
             return
         new_frinfo = [
-            self._make_videoinfo.sf,
-            self._make_videoinfo.ef,
-            self._make_videoinfo.fps,
+            self.bindings.video_info.sf,
+            self.bindings.video_info.ef,
+            self.bindings.video_info.fps,
         ]
         num_frame = (new_frinfo[1] - new_frinfo[0]) + 1
         if num_frame <= 0:
@@ -119,12 +159,12 @@ class MediaActionsMixin:
                 method=logging.error, msg="frame range is wrong"
             )
             return
-        self._loading_show()
-        data = self._selection.asset.data
-        hda_dirpath = data.get(public.Key.hda_dirpath)
-        hda_name = data.get(public.Key.hda_name)
-        hda_version = data.get(public.Key.hda_version)
-        hda_id = data.get(public.Key.hda_id)
+        self.bindings.presentation._loading_show()
+        data = self.bindings.selection.state.asset.require_data()
+        hda_dirpath = data.hda_dirpath
+        hda_name = data.hda_name
+        hda_version = data.hda_version
+        hda_id = data.hda_id
         preview_dirpath = houdini_api.HoudiniAPI.make_preview_dirpath(
             hda_dirpath=hda_dirpath, version=hda_version
         )
@@ -135,31 +175,31 @@ class MediaActionsMixin:
             preview_dirpath=preview_dirpath,
             preview_filename=preview_filename,
             frinfo=new_frinfo,
-            res=self._make_videoinfo.get_resolution(),
-            is_beauty=self._make_videoinfo.is_beautypass,
-            is_initsim=self._make_videoinfo.is_init_sim,
-            is_motion=self._make_videoinfo.is_motionblur,
-            is_crop=self._make_videoinfo.is_crop_mask,
+            res=self.bindings.video_info.get_resolution(),
+            is_beauty=self.bindings.video_info.is_beautypass,
+            is_initsim=self.bindings.video_info.is_init_sim,
+            is_motion=self.bindings.video_info.is_motionblur,
+            is_crop=self.bindings.video_info.is_crop_mask,
         )
         if preview_filepath is None:
             self._remove_preview_dir(preview_dirpath=preview_dirpath)
-            self._loading_close()
+            self.bindings.presentation._loading_close()
             return
         # $F4 --> %04d
         preview_filepath = preview_filepath.with_name(
-            self._regex_squence_str.sub("%04d", preview_filepath.name)
+            self.bindings.sequence_pattern.sub("%04d", preview_filepath.name)
         )
         log_handler.LogHandler.log_msg(
             method=logging.info,
             msg=f"[{new_frinfo[0]}-{new_frinfo[1]}, fps: {new_frinfo[2]}]",
         )
         meta_data = {
-            public.Name.FFmpeg.Metadata.author: self._user,
-            public.Name.FFmpeg.Metadata.year: str(
+            keys.Name.FFmpeg.Metadata.author: self.bindings.session.user,
+            keys.Name.FFmpeg.Metadata.year: str(
                 QtCore.QDate.currentDate().toString("yyyy")
             ),
-            public.Name.FFmpeg.Metadata.title: hda_name,
-            public.Name.FFmpeg.Metadata.desc: f"{public.Name.hda_prefix_str} Video",
+            keys.Name.FFmpeg.Metadata.title: hda_name,
+            keys.Name.FFmpeg.Metadata.desc: f"{keys.Name.hda_prefix_str} Video",
         }
         video_dirpath = houdini_api.HoudiniAPI.make_video_dirpath(
             hda_dirpath=hda_dirpath
@@ -174,26 +214,26 @@ class MediaActionsMixin:
         )
         try:
             command = ffmpeg_api.FFmpegAPI.image_sequence_command(
-                self._preference.ffmpeg_dirpath,
+                self.bindings.preference.ffmpeg_dirpath,
                 preview_filepath,
                 temporary,
-                new_frinfo[0],
-                num_frame,
+                int(new_frinfo[0]),
+                int(num_frame),
                 new_frinfo[2],
                 meta_data,
             )
         except (OSError, ValueError) as error:
             logging.error("Cannot start video encoding: %s", error)
-            self._loading_close()
+            self.bindings.presentation._loading_close()
             return
-        self.centralwidget.setEnabled(False)
-        self.toolBar.setEnabled(False)
-        self.menubar.setEnabled(False)
+        self.bindings.ui.centralwidget.setEnabled(False)
+        self.bindings.ui.toolBar.setEnabled(False)
+        self.bindings.ui.menubar.setEnabled(False)
 
         def finished(code: int, diagnostic: str) -> None:
             try:
-                if code != 0 or self._closing:
-                    if not self._closing:
+                if code != 0 or self.bindings.status.closing:
+                    if not self.bindings.status.closing:
                         logging.error("Video creation failed: %s", diagnostic[-8192:])
                     return
                 temporary.replace(output)
@@ -204,13 +244,13 @@ class MediaActionsMixin:
                 logging.error("Cannot finish video creation: %s", error)
             finally:
                 temporary.unlink(missing_ok=True)
-                self._loading_close()
-                self.centralwidget.setEnabled(True)
-                self.toolBar.setEnabled(True)
-                self.menubar.setEnabled(True)
+                self.bindings.presentation._loading_close()
+                self.bindings.ui.centralwidget.setEnabled(True)
+                self.bindings.ui.toolBar.setEnabled(True)
+                self.bindings.ui.menubar.setEnabled(True)
 
         try:
-            if not self._tasks.start_process(command, finished):
+            if not self.bindings.tasks.start_process(command, finished):
                 finished(-1, "Another library operation is active")
         except Exception as error:
             finished(-1, str(error))
@@ -218,45 +258,47 @@ class MediaActionsMixin:
     def _finish_video(
         self,
         hda_id: int,
-        hda_version: str | None,
+        hda_version: str,
         video_dirpath: pathlib.Path,
         video_filename: str,
         preview_dirpath: pathlib.Path,
     ) -> None:
-        if self._repository is None:
+        if self.bindings.session.repository is None:
             return
-        row = self._assets.id_rows.get(hda_id)
+        row = self.bindings.models.assets.id_rows.get(hda_id)
         if row is None:
             raise RuntimeError("Encoded asset is no longer in the library")
         request = MediaRequest(hda_id, hda_version, video_dirpath, video_filename)
-        if AssetMediaPresenter(self, self._repository).video(
+        if AssetMediaPresenter(self, self.bindings.session.require_repository()).video(
             request, lambda kind: self._apply_video(row, request, kind)
         ):
             self._remove_preview_dir(preview_dirpath=preview_dirpath)
-        self._loading_close()
+        self.bindings.presentation._loading_close()
 
     def _apply_video(self, row: int, request: MediaRequest, kind: str) -> None:
         video_dirpath, video_filename = request.directory, request.filename
         log_handler.LogHandler.log_msg(
             method=logging.info, msg=f"video {kind} complete"
         )
-        self._change_hda_data(row=row, key=public.Key.video_dirpath, val=video_dirpath)
-        self._change_hda_data(
-            row=row, key=public.Key.video_filename, val=video_filename
+        self.bindings.queries._change_hda_data(
+            row=row, key=keys.Key.video_dirpath, val=video_dirpath
+        )
+        self.bindings.queries._change_hda_data(
+            row=row, key=keys.Key.video_filename, val=video_filename
         )
         # history
         # Media changes update the current version and its audit trail.
 
-    @staticmethod
     def _make_preview(
+        self,
         preview_dirpath: pathlib.Path | None = None,
         preview_filename: Any = None,
         frinfo: Any = None,
         res: Any = None,
-        is_beauty: bool | None = None,
-        is_initsim: bool | None = None,
-        is_motion: bool | None = None,
-        is_crop: bool | None = None,
+        is_beauty: bool = False,
+        is_initsim: bool = False,
+        is_motion: bool = False,
+        is_crop: bool = False,
     ) -> pathlib.Path | None:
         assert isinstance(preview_dirpath, pathlib.Path)
         preview_filepath = preview_dirpath / preview_filename
@@ -264,7 +306,7 @@ class MediaActionsMixin:
             pfile.unlink()
         if not preview_dirpath.exists():
             preview_dirpath.mkdir(parents=True)
-        is_done_preview = houdini_api.HoudiniAPI.create_preview(
+        is_done_preview = self.bindings.capture.create_preview(
             output_filepath=preview_filepath,
             frame_info=frinfo,
             resolution=res,

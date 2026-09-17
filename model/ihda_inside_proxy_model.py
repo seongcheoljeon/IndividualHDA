@@ -13,7 +13,9 @@ class InsideProxyModel(TreeProxyModel):
         super().__init__(parent)
         self._hda_id: int | None = None
 
-    def row_matches(self, index: QtCore.QModelIndex) -> bool:
+    def row_matches(
+        self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex
+    ) -> bool:
         return (
             self._hda_id is None or index.data(InsideModel.hda_id_role) == self._hda_id
         )

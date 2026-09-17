@@ -11,10 +11,12 @@ import urllib.parse
 import urllib.request
 from collections.abc import Callable, Iterator
 from dataclasses import asdict
+from math import isfinite
 from pathlib import Path
 from typing import Any, Protocol
 
 from libs.file_integrity import FileContent, measure_file
+from libs.search_limits import TEAM_PAGE_DEFAULT
 from libs.team.contracts import (
     API_PREFIX,
     Blob,
@@ -54,6 +56,13 @@ class HttpTransport:
         timeout: float = DEFAULT_HTTP_TIMEOUT_SECONDS,
         limits: HttpLimits | None = None,
     ) -> None:
+        if (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, (int, float))
+            or not isfinite(timeout)
+            or timeout <= 0
+        ):
+            raise ValueError("HTTP timeout must be finite and positive")
         parsed = urllib.parse.urlsplit(url)
         if (
             parsed.scheme not in {"http", "https"}
@@ -198,7 +207,9 @@ class HttpCatalog:
     def namespace(self) -> str:
         return "team:" + str(self.cache.root.resolve())
 
-    def list_assets(self, query: str = "", offset: int = 0, limit: int = 100) -> Page:
+    def list_assets(
+        self, query: str = "", offset: int = 0, limit: int = TEAM_PAGE_DEFAULT
+    ) -> Page:
         values = self.transport.request(
             "GET",
             self._base
@@ -222,6 +233,32 @@ class HttpCatalog:
         return dict(
             self.transport.request("POST", self._base + "/commands", asdict(command))
         )
+
+    def tracking_supported(self) -> bool:
+        return "version_tracking" in self.transport.request("GET", "/health").get(
+            "capabilities", []
+        )
+
+    def tracking_read(
+        self,
+        kind: str,
+        asset_uuid: str,
+        version_uuid: str | None = None,
+        offset: int = 0,
+        limit: int = TEAM_PAGE_DEFAULT,
+    ) -> list[dict[str, Any]]:
+        query = {"asset_uuid": asset_uuid, "offset": offset, "limit": limit}
+        if version_uuid is not None:
+            query["version_uuid"] = version_uuid
+        return list(
+            self.transport.request(
+                "GET",
+                self._base + "/tracking/" + kind + "?" + urllib.parse.urlencode(query),
+            )
+        )
+
+    def tracking_execute(self, body: dict[str, Any]) -> dict[str, Any]:
+        return dict(self.transport.request("POST", self._base + "/tracking", body))
 
     def file_status(self, asset_id: int) -> list[dict[str, Any]]:
         return list(

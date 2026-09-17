@@ -26,13 +26,12 @@ INVENTORY_BATCH_ROWS = 1000
 
 
 def inventory(connection: Connection) -> dict[str, Any]:
-    if (
-        connection.execute(select(tables.versions.c.version)).scalar_one()
-        != SCHEMA_VERSION
-    ):
-        raise ValueError("Unsupported server schema; migrate before backup/restore")
+    from ihda_server.backup_schema import backup_tables
+
+    version = connection.execute(select(tables.versions.c.version)).scalar_one()
+    inventory_tables = backup_tables(version)
     summaries = {}
-    for table in tables.metadata.sorted_tables:
+    for table in inventory_tables:
         digest, count = hashlib.sha256(), 0
         rows = (
             connection.execution_options(yield_per=INVENTORY_BATCH_ROWS)
@@ -76,7 +75,7 @@ def inventory(connection: Connection) -> dict[str, Any]:
         raise ValueError(
             "A version references a file absent from project blob ownership"
         )
-    return {"schema_version": SCHEMA_VERSION, "tables": summaries, "blobs": blobs}
+    return {"schema_version": version, "tables": summaries, "blobs": blobs}
 
 
 class PostgresBackup:
@@ -125,6 +124,11 @@ class PostgresBackup:
                 raise ValueError(
                     "Additional database schemas are not supported by this backup format"
                 )
+            if (
+                connection.execute(select(tables.versions.c.version)).scalar_one()
+                != SCHEMA_VERSION
+            ):
+                raise ValueError("Migrate the server before creating a new backup")
             snapshot = connection.execute(
                 text("SELECT pg_export_snapshot()")
             ).scalar_one()

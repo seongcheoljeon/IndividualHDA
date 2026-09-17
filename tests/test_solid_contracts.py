@@ -7,37 +7,19 @@ from typing import Any
 
 import pytest
 from PySide6 import QtCore
+from support.names import Names
 
+from libs.asset_contracts import AssetData
 from libs.asset_rename import build_rename_plan, rename_asset
 from libs.asset_store import AssetStore
 from libs.background_job import BackgroundJob
 from libs.contracts import SilentRows
 from libs.database.rename_repository import SQLiteRenameRepository
+from libs.operation_journal import durable_operation
 from libs.process_job import ProcessJob
+from libs.record_codec import decode_record
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 from libs.task_controller import TaskController
-
-
-class Names:
-    @staticmethod
-    def make_hda_filename(name: str, version: str, with_suffix: bool = True) -> str:
-        return f"{name}-{version}.hda"
-
-    @staticmethod
-    def make_thumbnail_filename(name: str, version: str) -> str:
-        return f"{name}.png"
-
-    @staticmethod
-    def make_thumbnail_dirpath(directory: Path) -> Path:
-        return directory / "thumbnail"
-
-    @staticmethod
-    def make_video_filename(name: str, version: str) -> str:
-        return f"{name}.mp4"
-
-    @staticmethod
-    def make_video_dirpath(directory: Path) -> Path:
-        return directory / "video"
 
 
 def test_domain_imports_without_qt_or_houdini() -> None:
@@ -59,7 +41,8 @@ from libs.ai_backends import OllamaProvider
 from libs.ollama import choose_recommended
 assert type(make_provider(AISettings(kind='local', model='m'))) is OllamaProvider
 store = AssetStore()
-store.insert({'hda_id': 1, 'hda_name': 'A'})
+from libs.asset_contracts import AssetData
+store.insert(AssetData(hda_id=1, hda_name='A'))
 assert store.id_rows[1] == 0
 """
     subprocess.run(
@@ -80,11 +63,11 @@ def test_store_observer_sees_valid_before_and_after_states() -> None:
             events.append(("after", len(store.rows), dict(store.id_rows)))
 
     store = AssetStore(Observer())
-    store.insert({"hda_id": 7, "hda_name": "Water"})
+    store.insert(decode_record(AssetData, {"hda_id": 7, "hda_name": "Water"}))
     assert events == [("before", 0, 0), ("after", 1, {7: 0})]
     with pytest.raises(IndexError):
-        store.update(-1, {"hda_name": "wrong"})
-    assert store.rows[0]["hda_name"] == "Water"
+        store.update(-1, decode_record(AssetData, {"hda_id": 0, "hda_name": "wrong"}))
+    assert store.rows[0].hda_name == "Water"
 
 
 @pytest.mark.parametrize("fail_history", [False, True])
@@ -96,16 +79,19 @@ def test_rename_sqlite_adapter_preserves_atomicity(
     (old / "old.hda").write_text("asset")
     (old / "thumbnail").mkdir()
     (old / "thumbnail" / "old.png").write_text("thumbnail")
-    data = {
-        "hda_id": 1,
-        "hda_name": "Old",
-        "hda_version": "1.0",
-        "hda_dirpath": old,
-        "hda_filename": "old.hda",
-        "node_old_path": "/obj/Old",
-        "thumbnail_dirpath": old / "thumbnail",
-        "thumbnail_filename": "old.png",
-    }
+    data = decode_record(
+        AssetData,
+        {
+            "hda_id": 1,
+            "hda_name": "Old",
+            "hda_version": "1.0",
+            "hda_dirpath": old,
+            "hda_filename": "old.hda",
+            "node_old_path": "/obj/Old",
+            "thumbnail_dirpath": old / "thumbnail",
+            "thumbnail_filename": "old.png",
+        },
+    )
     plan = build_rename_plan(data, "New", Names(), rename_video=False)
     assert old.exists() and not plan.directory.exists()  # planning has no mutations
     with SQLite3DatabaseAPI(tmp_path / "ihda.db") as db:
@@ -118,14 +104,14 @@ def test_rename_sqlite_adapter_preserves_atomicity(
         if fail_history:
             monkeypatch.setattr(db, "update_hda_name_to_history", lambda **kwargs: None)
             with pytest.raises(RuntimeError):
-                rename_asset(adapter, plan)
+                rename_asset(adapter, plan, operations=durable_operation)
             assert db.get_count_hda_key(name="Old") == 1
             assert (old / "old.hda").is_file()
             assert (old / "thumbnail" / "old.png").is_file()
             assert not plan.directory.exists()
         else:
-            renamed, _ = rename_asset(adapter, plan)
-            assert renamed > 0
+            counts = rename_asset(adapter, plan, operations=durable_operation)
+            assert counts.assets > 0
             assert db.get_count_hda_key(name="New") == 1
             assert (plan.directory / plan.filename).is_file()
             assert (plan.thumbnail_directory / plan.thumbnail_filename).is_file()
@@ -168,7 +154,7 @@ def test_qt_model_empty_population_and_unsupported_drop(app: Any, name: str) -> 
     )
     model = model_type()
     model.add_items()
-    model.append_item({"hda_id": 1, "hda_name": "Asset"})
+    model.append_item(decode_record(AssetData, {"hda_id": 1, "hda_name": "Asset"}))
     assert model.rowCount() == 1
     assert not model.dropMimeData(
         QtCore.QMimeData(), QtCore.Qt.DropAction.CopyAction, 0, 0, QtCore.QModelIndex()

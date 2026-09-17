@@ -17,8 +17,7 @@ from threading import Thread
 from typing import Any
 from webbrowser import open_new
 
-import public
-from libs import log_handler
+from libs import log_handler, paths, platform_info
 
 
 class IHDASystem:
@@ -38,11 +37,11 @@ class IHDASystem:
                 msg=f"iHDA directory does not exists ({dirpath})",
             )
             return
-        if public.is_windows():
+        if platform_info.is_windows():
             os.startfile(dirpath.as_posix())  # type: ignore[attr-defined]  # Windows only
-        elif public.is_linux():
+        elif platform_info.is_linux():
             Popen(["xdg-open", str(dirpath)])
-        elif public.is_mac():
+        elif platform_info.is_mac():
             Popen(["open", str(dirpath)])
         else:
             log_handler.LogHandler.log_msg(
@@ -128,7 +127,7 @@ class IHDASystem:
                 method=logging.error, msg="the value of the houdini file path is null"
             )
             return
-        houfx_cmd = public.Paths.houdinifx_cmd
+        houfx_cmd = paths.Paths.houdinifx_cmd
         assert isinstance(hip_filepath, pathlib.Path)
         assert isinstance(houfx_cmd, pathlib.Path)
         if not hip_filepath.exists():

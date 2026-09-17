@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
+from dataclasses import dataclass
+from functools import partial
 from html import escape
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
+from libs.asset_contracts import AssetIcon, LibrarySnapshot
 from libs.host import IS_HOUDINI
 from libs.paths import Paths
 from libs.tags import normalize_tags
@@ -25,11 +29,73 @@ from widgets.team_library.actions import MainAssetActions
 from widgets.team_library.executor import WorkspaceTaskExecutor
 from widgets.team_library.presenter import WorkspacePresenter
 
+if TYPE_CHECKING:
+    from libs.ihda_icons import IHDAIcons
+    from libs.resource_policy import CallbackPolicy
+    from libs.runtime_settings import RuntimeSettings
+    from widgets.asset_browser.integration import AssetBrowserIntegration
+    from widgets.asset_details.integration import AssetDetailsIntegration
+    from widgets.panel.library_sync import PanelLibrarySync
+    from widgets.panel.library_tools import PanelLibraryTools
+    from widgets.panel.model_binding import PanelModelBinding
+    from widgets.panel.notes import PanelNotes
+    from widgets.panel.policy import PanelPolicy
+    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.selection import PanelSelection
+    from widgets.panel.state import PanelSessionState, PanelStatus, PanelViews
+    from widgets.video_player import UnavailableVideoPlayer
+    from widgets.video_player.video_player import VideoPlayer
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class TeamBindings:
+    parent: QtWidgets.QWidget
+    callbacks: CallbackPolicy
+    runtime: RuntimeSettings
+    policy: PanelPolicy
+    tasks: TaskController
+    ai_tasks: TaskController
+    browser: AssetBrowserIntegration
+    details: AssetDetailsIntegration
+    icons: IHDAIcons
+    sync: PanelLibrarySync
+    video_player: VideoPlayer | UnavailableVideoPlayer
+    models: PanelModelBinding
+    notes: PanelNotes
+    presentation: PanelPresentation
+    selection: PanelSelection
+    session: PanelSessionState
+    status: PanelStatus
+    tools: PanelLibraryTools
+    views: PanelViews
+    apply_snapshot: Callable[[LibrarySnapshot], None]
+    refresh: Callable[[], None]
+    invalidate_ai: Callable[[], None]
+    show_assets: Callable[[], None]
+    show_video: Callable[[], None]
+    personal_controls: tuple[QtWidgets.QWidget | QtGui.QAction, ...]
+    label__hist_cnt: QtWidgets.QLabel
+    label__hist_tags: QtWidgets.QLabel
+    label__metadata_status: QtWidgets.QLabel
+    lineEdit__search_hda: QtWidgets.QLineEdit
+    pushButton__ai_suggest: QtWidgets.QPushButton
+    pushButton__note_save: QtWidgets.QPushButton
+    pushButton__tag_save: QtWidgets.QPushButton
+    stackedWidget__hda_infos: QtWidgets.QStackedWidget
+    textEdit__note: QtWidgets.QTextEdit
+    textEdit__tag: QtWidgets.QTextEdit
+
 
 class MainLibraryIntegration(QtCore.QObject):
-    def __init__(self, window: Any) -> None:
-        super().__init__(window)
-        self.window = window
+    def require_catalog(self) -> PanelCatalog:
+        if self.catalog is None:
+            raise RuntimeError("No team library is active")
+        return self.catalog
+
+    def __init__(self, bindings: TeamBindings) -> None:
+        super().__init__(bindings.parent)
+        self.bindings = bindings
+        self.callbacks = bindings.callbacks
         self.actions = MainAssetActions(self)
         self._root = Paths.config_dirpath / "workspace"
         self._tasks = TaskController(self)
@@ -60,11 +126,11 @@ class MainLibraryIntegration(QtCore.QObject):
         self._conflict_asset_id: int | None = None
         self._review_asset_id: int | None = None
         self._pending: PendingCommand | None = None
-        self.source = window._browser.view.comboBox__library_source
+        self.source = bindings.browser.view.comboBox__library_source
         self.source.activated.connect(self._source_changed)
-        window.textEdit__note.textChanged.connect(self._edited)
-        window.textEdit__tag.textChanged.connect(self._edited)
-        window.label__metadata_status.linkActivated.connect(self._recover)
+        bindings.textEdit__note.textChanged.connect(self._edited)
+        bindings.textEdit__tag.textChanged.connect(self._edited)
+        bindings.label__metadata_status.linkActivated.connect(self._recover)
 
     @property
     def active(self) -> bool:
@@ -93,7 +159,9 @@ class MainLibraryIntegration(QtCore.QObject):
             self._connection.show()
             self._connection.raise_()
             return
-        dialog = ConnectionDialog(self._root, self.window)
+        dialog = ConnectionDialog(
+            self._root, self.bindings.parent, runtime=self.bindings.runtime
+        )
         self._connection = dialog
         dialog.connected.connect(self.open_backend)
         dialog.finished.connect(self._connection_finished)
@@ -105,10 +173,12 @@ class MainLibraryIntegration(QtCore.QObject):
             dialog.deleteLater()
 
     def open_backend(self, backend: HttpCatalog, project: dict[str, Any]) -> None:
-        if self._tasks.busy or self._closing or self.window._tasks.busy:
+        if self._tasks.busy or self._closing or self.bindings.tasks.busy:
             self.show_error("Wait for the current library operation to finish.")
             return
-        candidate = PanelCatalog(backend)
+        candidate = PanelCatalog(
+            backend, page_size=self.bindings.runtime.team_page_size
+        )
         self._candidate = candidate
         self._loading = True
         self.source.setEnabled(False)
@@ -123,7 +193,7 @@ class MainLibraryIntegration(QtCore.QObject):
                 self.show_error(str(error))
                 self.source.setEnabled(True)
                 return
-            if self.window._tasks.busy:
+            if self.bindings.tasks.busy:
                 self.show_error(
                     "Finish the current library operation, then connect again."
                 )
@@ -139,22 +209,21 @@ class MainLibraryIntegration(QtCore.QObject):
     def _activate(
         self, catalog: PanelCatalog, project: dict[str, Any], page: Page
     ) -> None:
-        window = self.window
+        bindings = self.bindings
         if not self.active:
-            window._details.suspend()
-            window._sync_tasks.drain()
-            self._personal_repository = window._repository
-            self._personal_library = window._library
-            self._personal_selection = window._selection.asset.id
+            bindings.details.suspend()
+            bindings.sync.tasks.drain()
+            self._personal_repository = bindings.session.repository
+            self._personal_library = bindings.session.context
+            self._personal_selection = bindings.selection.state.asset.id
         else:
             assert self.presenter is not None
             self.presenter.close()
-        window._ai_target_id = -1
-        window._details.presenter.select(None)
-        window._repository = None
-        window._library = None
-        window._browser.change_repository(None)
-        window._selection.clear()
+        bindings.invalidate_ai()
+        bindings.details.presenter.select(None)
+        bindings.session.replace(None, None)
+        bindings.browser.change_repository(None)
+        bindings.selection.state.clear()
         if self.catalog is not None:
             self.catalog.cancel.set()
         self.catalog, self.project = catalog, dict(project)
@@ -164,27 +233,31 @@ class MainLibraryIntegration(QtCore.QObject):
             / (hashlib.sha256(catalog.namespace.encode()).hexdigest() + ".json")
         )
         self.presenter = WorkspacePresenter(
-            self, catalog, self._executor, self._pending
+            self,
+            catalog,
+            self._executor,
+            self._pending,
+            page_size=self.bindings.runtime.team_page_size,
         )
-        window._panel_library = TeamPanelSession(self)
+        bindings.session.actions = TeamPanelSession(self)
         self._documents.clear()
         self._histories.clear()
         self._history_owner = None
         self._history_pending = False
         self._conflict = False
-        self._set_personal_controls(window._panel_library.capabilities.local_files)
+        self._set_personal_controls(bindings.session.actions.capabilities.local_files)
         with QtCore.QSignalBlocker(self.source):
             self.source.clear()
             self.source.addItem("Personal", "personal")
             self.source.addItem(project["name"], "team")
             self.source.addItem("Connect team…", "connect")
             self.source.setCurrentIndex(1)
-        window._slot_select_view(index=window._ihda_view_idx)
+        bindings.show_assets()
         self.presenter.page_ready(page)
-        window._init_select_ihda_category_model()
+        bindings.selection._init_select_ihda_category_model()
         self.show_busy(False)
-        self.window.actionProject_Members.setVisible(
-            window._panel_library.capabilities.manage_members
+        self.bindings.tools.actionProject_Members.setVisible(
+            bindings.session.actions.capabilities.manage_members
         )
 
     def _set_personal_controls(self, enabled: bool) -> None:
@@ -195,30 +268,17 @@ class MainLibraryIntegration(QtCore.QObject):
             return
         if self._disabled:
             return
-        names = (
-            "actionImport_Data",
-            "actionExport_Data",
-            "actionDelete_All",
-            "actionCleanup",
-            "actionOpen_the_hda_directory",
-            "actionPreference",
-            "actionReset",
-            "actionNode_Synchronization",
-            "pushButton__hda_loc_record",
-            "pushButton__hda_inside_node_view",
-        )
-        for name in names:
-            control = getattr(self.window, name)
+        for control in self.bindings.personal_controls:
             self._disabled.append((control, control.isEnabled()))
             control.setEnabled(False)
-        self.window.stackedWidget__hda_infos.setCurrentIndex(0)
+        self.bindings.stackedWidget__hda_infos.setCurrentIndex(0)
 
     def _can_leave(self) -> bool:
         if self.presenter is None or not self.presenter.has_unsaved_changes:
             return True
         return (
             QtWidgets.QMessageBox.question(
-                self.window,
+                self.bindings.parent,
                 "Unsaved team edits",
                 "Discard unsaved edits and switch libraries?",
                 QtWidgets.QMessageBox.StandardButton.Discard
@@ -229,7 +289,7 @@ class MainLibraryIntegration(QtCore.QObject):
         )
 
     def use_personal(self) -> None:
-        if self._tasks.busy or self.window._tasks.busy:
+        if self._tasks.busy or self.bindings.tasks.busy:
             self._reset_source()
             return
         if not self.active:
@@ -243,27 +303,30 @@ class MainLibraryIntegration(QtCore.QObject):
         if self.catalog is not None:
             self.catalog.cancel.set()
         self.catalog = None
-        window = self.window
-        window._ai_target_id = -1
-        window._repository = self._personal_repository
-        window._library = self._personal_library
-        window._selection.clear()
-        window._selection.restore_asset_id(self._personal_selection)
-        window._panel_library = PersonalPanelSession(window)
-        window._browser.change_repository(window._repository)
-        self._set_personal_controls(window._panel_library.capabilities.local_files)
-        window.actionProject_Members.setVisible(False)
-        window.pushButton__ai_suggest.setEnabled(not window._ai_tasks.busy)
-        window.pushButton__note_save.setEnabled(True)
-        window.pushButton__tag_save.setEnabled(True)
-        window.textEdit__note.setReadOnly(False)
-        window.textEdit__tag.setReadOnly(False)
-        window._ihda_icons.pixmap_thumbnail_data.clear()
-        window._ihda_icons.pixmap_hist_thumbnail_data.clear()
-        window._slot_select_view(index=window._ihda_view_idx)
-        window._apply_library_snapshot((0, [], [], [], [], []))
-        window._selection.restore_asset_id(self._personal_selection)
-        window.reload_library()
+        bindings = self.bindings
+        bindings.invalidate_ai()
+        bindings.session.replace(self._personal_library, self._personal_repository)
+        bindings.selection.state.clear()
+        bindings.selection.state.restore_asset_id(self._personal_selection)
+        bindings.session.actions = PersonalPanelSession(
+            bindings.session,
+            bindings.details.presenter,
+            lambda: bindings.sync.presenter.refresh(),
+        )
+        bindings.browser.change_repository(bindings.session.repository)
+        self._set_personal_controls(bindings.session.actions.capabilities.local_files)
+        bindings.tools.actionProject_Members.setVisible(False)
+        bindings.pushButton__ai_suggest.setEnabled(not bindings.ai_tasks.busy)
+        bindings.pushButton__note_save.setEnabled(True)
+        bindings.pushButton__tag_save.setEnabled(True)
+        bindings.textEdit__note.setReadOnly(False)
+        bindings.textEdit__tag.setReadOnly(False)
+        bindings.icons.pixmap_thumbnail_data.clear()
+        bindings.icons.pixmap_hist_thumbnail_data.clear()
+        bindings.show_assets()
+        bindings.apply_snapshot(LibrarySnapshot(revision=0))
+        bindings.selection.state.restore_asset_id(self._personal_selection)
+        bindings.refresh()
         with QtCore.QSignalBlocker(self.source):
             self.source.clear()
             self.source.addItem("Personal", "personal")
@@ -286,28 +349,33 @@ class MainLibraryIntegration(QtCore.QObject):
             self.refresh()
         elif self._history_pending:
             self._history_pending = False
-            if self.window._is_ihda_history_view:
+            if self.bindings.presentation._is_ihda_history_view:
                 self.request_history()
 
     def show_page(self, page: Page) -> None:
         assert self.catalog is not None
-        self.window._ihda_icons.pixmap_thumbnail_data.clear()
-        self.window._ihda_icons.pixmap_hist_thumbnail_data.clear()
+        self.bindings.icons.pixmap_thumbnail_data.clear()
+        self.bindings.icons.pixmap_hist_thumbnail_data.clear()
         self._documents = {item["id"]: item for item in page.items}
         self._histories.clear()
         self._history_owner = None
-        self._history_pending = self.window._is_ihda_history_view
+        self._history_pending = self.bindings.presentation._is_ihda_history_view
         rows = [asset_row(item, self.catalog.backend.cache.root) for item in page.items]
-        categories = sorted({item["hda_cate"] for item in rows})
-        icons = [(row["hda_id"], row["hda_icon"]) for row in rows]
-        self.window._apply_library_snapshot(
-            (page.revision, rows, categories, [], icons, [])
+        categories = sorted({item.hda_cate for item in rows})
+        icons = tuple(AssetIcon(asset_id=row.hda_id, icon=row.hda_icon) for row in rows)
+        self.bindings.apply_snapshot(
+            LibrarySnapshot(
+                revision=page.revision,
+                assets=tuple(rows),
+                categories=tuple(categories),
+                icons=icons,
+            )
         )
         self._prepare_previews(
             [(item["id"], item) for item in page.items], history=False
         )
-        self.window._browser.presenter.change_gateway(DocumentSearch(page.items))
-        self.window._browser.refresh()
+        self.bindings.browser.presenter.change_gateway(DocumentSearch(page.items))
+        self.bindings.browser.refresh()
 
     def _prepare_previews(
         self, documents: list[tuple[int, dict[str, Any]]], *, history: bool
@@ -315,7 +383,7 @@ class MainLibraryIntegration(QtCore.QObject):
         catalog = self.catalog
         if catalog is None:
             return
-        icons = self.window._ihda_icons
+        icons = self.bindings.icons
         cache = (
             icons.pixmap_hist_thumbnail_data if history else icons.pixmap_thumbnail_data
         )
@@ -325,7 +393,7 @@ class MainLibraryIntegration(QtCore.QObject):
                 blob = parse_blob(reference)
                 path = catalog.backend.cache.root / blob.digest / blob.filename
                 cache.set_path(
-                    identifier, path, resolve=lambda blob=blob: catalog.download(blob)
+                    identifier, path, resolve=partial(catalog.download, blob)
                 )
 
     def select(self, asset_id: int | None) -> None:
@@ -334,22 +402,22 @@ class MainLibraryIntegration(QtCore.QObject):
             if self._history_owner != asset_id:
                 self._histories.clear()
                 self._history_owner = None
-                self.window._selection.clear_history()
-                self.window._ihda_history_model.reload([])
-                self.window.label__hist_cnt.setText("0")
-                self.window.label__hist_tags.clear()
+                self.bindings.selection.state.clear_history()
+                self.bindings.models.history_model.reload([])
+                self.bindings.label__hist_cnt.setText("0")
+                self.bindings.label__hist_tags.clear()
             if asset_id is None:
                 self.show_asset({}, "", "")
 
     def show_asset(self, asset: dict[str, Any], note: str, tags: str) -> None:
-        window = self.window
+        bindings = self.bindings
         with (
-            QtCore.QSignalBlocker(window.textEdit__note),
-            QtCore.QSignalBlocker(window.textEdit__tag),
+            QtCore.QSignalBlocker(bindings.textEdit__note),
+            QtCore.QSignalBlocker(bindings.textEdit__tag),
         ):
-            window.textEdit__note.setPlainText(note)
-            window.textEdit__tag.setPlainText(tags)
-        window._set_label_tags(normalize_tags(tags))
+            bindings.textEdit__note.setPlainText(note)
+            bindings.textEdit__tag.setPlainText(tags)
+        bindings.notes._set_label_tags(normalize_tags(tags))
         if self._review_asset_id is not None and self._review_asset_id == asset.get(
             "id"
         ):
@@ -359,11 +427,11 @@ class MainLibraryIntegration(QtCore.QObject):
     def _edited(self) -> None:
         if self.presenter is not None:
             self.presenter.edit(
-                self.window.textEdit__note.toPlainText(),
-                self.window.textEdit__tag.toPlainText(),
+                self.bindings.textEdit__note.toPlainText(),
+                self.bindings.textEdit__tag.toPlainText(),
             )
             if self._conflict:
-                self.window.label__metadata_status.setText(self._conflict_message)
+                self.bindings.label__metadata_status.setText(self._conflict_message)
             elif not self._tasks.busy:
                 self.show_status(
                     "Unsaved changes" if self.presenter.has_unsaved_changes else ""
@@ -373,22 +441,22 @@ class MainLibraryIntegration(QtCore.QObject):
         if self.presenter is None or not self.writable:
             return
         values = (
-            {"note": self.window.textEdit__note.toPlainText()}
+            {"note": self.bindings.textEdit__note.toPlainText()}
             if choice == "note"
-            else {"tags": normalize_tags(self.window.textEdit__tag.toPlainText())}
+            else {"tags": normalize_tags(self.bindings.textEdit__tag.toPlainText())}
         )
         self.presenter.mutate("metadata", values)
 
     def show_busy(self, busy: bool) -> None:
         self.source.setEnabled(not busy)
         if self.active:
-            self.window.pushButton__note_save.setEnabled(not busy and self.writable)
-            self.window.pushButton__tag_save.setEnabled(not busy and self.writable)
-            self.window.pushButton__ai_suggest.setEnabled(
-                self.writable and not self.window._ai_tasks.busy
+            self.bindings.pushButton__note_save.setEnabled(not busy and self.writable)
+            self.bindings.pushButton__tag_save.setEnabled(not busy and self.writable)
+            self.bindings.pushButton__ai_suggest.setEnabled(
+                self.writable and not self.bindings.ai_tasks.busy
             )
-            self.window.textEdit__note.setReadOnly(not self.writable)
-            self.window.textEdit__tag.setReadOnly(not self.writable)
+            self.bindings.textEdit__note.setReadOnly(not self.writable)
+            self.bindings.textEdit__tag.setReadOnly(not self.writable)
         if busy:
             self.show_status("Working…")
 
@@ -402,7 +470,7 @@ class MainLibraryIntegration(QtCore.QObject):
             and self.active
             and self._pending.legacy() is not None
         ):
-            self.window.label__metadata_status.setText(
+            self.bindings.label__metadata_status.setText(
                 'A pre-upgrade request is preserved. <a href="legacy">Review request</a>'
             )
             return
@@ -412,12 +480,16 @@ class MainLibraryIntegration(QtCore.QObject):
             and self._pending.load() is not None
         ):
             message = 'A save needs confirmation. <a href="retry">Retry</a>'
-        self.window.label__metadata_status.setText(message)
+        self.bindings.label__metadata_status.setText(message)
 
     def show_error(self, message: str) -> None:
-        self.window.label__metadata_status.setTextFormat(QtCore.Qt.TextFormat.PlainText)
-        self.window.label__metadata_status.setText(message)
-        self.window.label__metadata_status.setTextFormat(QtCore.Qt.TextFormat.AutoText)
+        self.bindings.label__metadata_status.setTextFormat(
+            QtCore.Qt.TextFormat.PlainText
+        )
+        self.bindings.label__metadata_status.setText(message)
+        self.bindings.label__metadata_status.setTextFormat(
+            QtCore.Qt.TextFormat.AutoText
+        )
 
     def show_failure(self, error: Exception) -> None:
         self.actions.clear()
@@ -434,7 +506,7 @@ class MainLibraryIntegration(QtCore.QObject):
             self._conflict_message = (
                 escape(str(error)) + ' <a href="compare">Review changes</a>'
             )
-            self.window.label__metadata_status.setText(self._conflict_message)
+            self.bindings.label__metadata_status.setText(self._conflict_message)
         elif self._pending is not None and (
             self._pending.legacy() is not None or self._pending.load() is not None
         ):
@@ -452,7 +524,7 @@ class MainLibraryIntegration(QtCore.QObject):
             values = payload.get("values", {})
             if not isinstance(values, dict):
                 values = {}
-            review = QtWidgets.QMessageBox(self.window)
+            review = QtWidgets.QMessageBox(self.bindings.parent)
             review.setWindowTitle("Review pre-upgrade request")
             review.setText(
                 "The request has not been resent. Archive it, review the latest asset, then apply any remaining changes through the normal editor."
@@ -486,15 +558,17 @@ class MainLibraryIntegration(QtCore.QObject):
             self.presenter.retry()
         elif action == "compare":
             if self._conflict_asset_id is not None:
-                self.window._slot_select_view(index=self.window._ihda_view_idx)
-                self.window.lineEdit__search_hda.clear()
-                self.window._init_select_ihda_category_model()
-                self.window._select_model_item_by_hda_id(self._conflict_asset_id)
-            self._review_asset_id = self.window._selection.asset.id
+                self.bindings.show_assets()
+                self.bindings.lineEdit__search_hda.clear()
+                self.bindings.selection._init_select_ihda_category_model()
+                self.bindings.selection._select_model_item_by_hda_id(
+                    self._conflict_asset_id
+                )
+            self._review_asset_id = self.bindings.selection.state.asset.id
             self.presenter.reload_selected()
 
     def _show_comparison(self, asset: dict[str, Any], note: str, tags: str) -> None:
-        dialog = QtWidgets.QDialog(self.window)
+        dialog = QtWidgets.QDialog(self.bindings.parent)
         dialog.setWindowTitle("Review changes — " + asset["name"])
         dialog.resize(680, 360)
         layout = QtWidgets.QVBoxLayout(dialog)
@@ -532,7 +606,7 @@ class MainLibraryIntegration(QtCore.QObject):
         self._refresh_pending = True
 
     def request_history(self) -> None:
-        asset_id = self.window._selection.asset.id
+        asset_id = self.bindings.selection.state.asset.id
         if (
             self.presenter is None
             or asset_id is None
@@ -548,24 +622,26 @@ class MainLibraryIntegration(QtCore.QObject):
     def show_history(self, items: list[dict[str, Any]]) -> None:
         assert self.catalog is not None
         self._history_owner = (
-            items[0]["document"]["id"] if items else self.window._selection.asset.id
+            items[0]["document"]["id"]
+            if items
+            else self.bindings.selection.state.asset.id
         )
         self._histories = {item["id"]: item for item in items}
         rows = [history_row(item, self.catalog.backend.cache.root) for item in items]
-        self.window._ihda_icons.make_pixmap_hist_thumbnail_data(rows)
+        self.bindings.icons.make_pixmap_hist_thumbnail_data(rows)
         self._prepare_previews(
             [(item["id"], item["document"]) for item in items], history=True
         )
-        self.window._ihda_history_model.reload(rows)
-        self.window.label__hist_cnt.setText(str(len(rows)))
+        self.bindings.models.history_model.reload(rows)
+        self.bindings.label__hist_cnt.setText(str(len(rows)))
 
     def file_ready(self, path: Path, asset: dict[str, Any]) -> None:
         try:
             if self._file_kind == "video":
-                self.window._slot_select_view(index=self.window._video_view_idx)
-                self.window._video_player.play_after_add_playlist(filepath_lst=[path])
+                self.bindings.show_video()
+                self.bindings.video_player.play_after_add_playlist(filepath_lst=[path])
             elif IS_HOUDINI:
-                self.window._import_team_asset(path, asset, self._import_target)
+                self.bindings.tools._import_team_asset(path, asset, self._import_target)
                 if self.catalog is not None:
                     from libs.team.contracts import Command
 
@@ -586,7 +662,10 @@ class MainLibraryIntegration(QtCore.QObject):
         if catalog is None or self._closing or catalog is not self.catalog:
             return
         if self._tasks.busy:
-            QtCore.QTimer.singleShot(50, lambda: self._record_usage(catalog, command))
+            QtCore.QTimer.singleShot(
+                self.callbacks.retry_delay_ms,
+                lambda: self._record_usage(catalog, command),
+            )
             return
         backend: Any = catalog
         self._executor.submit(
@@ -628,7 +707,7 @@ class MainLibraryIntegration(QtCore.QObject):
             self._members_dialog.raise_()
             return
         dialog = MembersDialog(
-            self.catalog.backend.transport, self.project, self.window
+            self.catalog.backend.transport, self.project, self.bindings.parent
         )
         self._members_dialog = dialog
         dialog.finished.connect(self._members_closed)
