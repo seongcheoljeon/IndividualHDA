@@ -18,7 +18,7 @@ jobs:
             requirements: requirements-test-server.txt
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - run: python -m pip install -r ${{ matrix.requirements }}
@@ -38,7 +38,7 @@ jobs:
       QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
           cache: pip
@@ -83,7 +83,7 @@ jobs:
       IHDA_TEST_POSTGRES_URL: postgresql+psycopg://ihda:test-only-password@127.0.0.1:5432/ihda_test
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.11'
       - name: Install Qt runtime and test tools
