@@ -10,7 +10,10 @@ from sqlalchemy import Connection, delete, insert, select, update
 
 from ihda_server import lifecycle_schema as state
 from ihda_server import schema as tables
-from libs.library_metadata import new_identity, utc_now, version_details
+from ihda_server.audit import record_event
+from ihda_server.tracking import team_tracking
+from ihda_server.tracking_schema import dependencies
+from libs.library_metadata import utc_now, version_details
 from libs.team.contracts import Command, Conflict, NotFound
 
 
@@ -115,24 +118,8 @@ class LifecycleStore:
         after: dict[str, Any],
         request_id: str | None = None,
     ) -> None:
-        keys = set(before) | set(after)
-        changes = {
-            key: {"before": before.get(key), "after": after.get(key)}
-            for key in sorted(keys)
-            if before.get(key) != after.get(key)
-        }
-        connection.execute(
-            insert(state.audit).values(
-                id=new_identity(),
-                project_id=project_id,
-                actor=actor,
-                occurred_at=utc_now(),
-                request_id=request_id,
-                operation=operation,
-                asset_uuid=after.get("asset_uuid", before.get("asset_uuid")),
-                version_uuid=after.get("version_uuid", before.get("version_uuid")),
-                changes=changes,
-            )
+        record_event(
+            connection, project_id, actor, operation, before, after, request_id
         )
 
     @staticmethod
@@ -162,8 +149,6 @@ class LifecycleStore:
             )
         )
         LifecycleStore.sync_files(connection, history_id, document)
-        from ihda_server.tracking import team_tracking
-
         project_id = connection.execute(
             select(tables.history.c.project_id).where(tables.history.c.id == history_id)
         ).scalar_one()
@@ -232,8 +217,6 @@ class LifecycleStore:
             if deleted != (operation != "delete"):
                 raise Conflict("The asset's trash state changed; reload")
             if operation == "purge":
-                from ihda_server.tracking_schema import dependencies
-
                 connection.execute(
                     delete(dependencies).where(
                         dependencies.c.scope_id == project_id,
@@ -285,8 +268,6 @@ class LifecycleStore:
         if deleted != (operation != "delete_history"):
             raise Conflict("The version's trash state changed; reload")
         if operation == "purge_history":
-            from ihda_server.tracking_schema import dependencies
-
             connection.execute(
                 delete(dependencies).where(
                     dependencies.c.scope_id == project_id,

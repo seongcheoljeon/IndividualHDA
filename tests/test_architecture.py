@@ -289,6 +289,15 @@ CROSS_FEATURE_PRIVATE: dict[str, int] = {}
 # Debt: imports inside function bodies in libs/ and ihda_server/ (most hide an
 # import cycle). Target: only the ones that defer optional dependencies.
 LAZY_IMPORT_SITES: dict[str, int] = {
+    "ihda_server.backup_cli": 4,
+    "ihda_server.backup_files": 1,
+    "ihda_server.backup_postgres": 2,
+    "ihda_server.catalog": 3,
+    "ihda_server.cli": 6,
+    "ihda_server.database": 2,
+    "ihda_server.migrations": 2,
+    "ihda_server.storage_lock": 2,
+    "ihda_server.tracking": 1,
     "libs.ai_provider": 1,
     "libs.data_stream": 2,
     "libs.database.assets": 3,
@@ -313,16 +322,6 @@ LAZY_IMPORT_SITES: dict[str, int] = {
     "libs.team.personal": 1,
     "libs.team.registration_recovery": 3,
     "libs.version_compare": 2,
-    "ihda_server.backup_cli": 4,
-    "ihda_server.backup_files": 1,
-    "ihda_server.backup_postgres": 2,
-    "ihda_server.catalog": 8,
-    "ihda_server.cli": 6,
-    "ihda_server.database": 2,
-    "ihda_server.lifecycle": 3,
-    "ihda_server.migrations": 2,
-    "ihda_server.storage_lock": 2,
-    "ihda_server.tracking": 4,
 }
 # Debt: LibraryRepository size and its methods without a production caller.
 REPOSITORY_METHODS = 44

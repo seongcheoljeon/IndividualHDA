@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy import Connection, text
 
 from ihda_server import tracking_schema
+from ihda_server.audit import record_event
 from libs.version_tracking import VersionTracking
 
 
@@ -50,9 +51,7 @@ def team_tracking(connection: Connection, scope: str) -> VersionTracking:
     def audit(
         actor: str, request_id: str, version: dict[str, Any], document: dict[str, Any]
     ) -> None:
-        from ihda_server.lifecycle import LifecycleStore
-
-        LifecycleStore.event(
+        record_event(
             connection,
             scope,
             actor,
@@ -99,10 +98,8 @@ def install(connection: Connection) -> None:
         .mappings()
         .all()
     )
-    from ihda_server.lifecycle import LifecycleStore
-
     for row in invalid:
-        LifecycleStore.event(
+        record_event(
             connection,
             row["project_id"],
             "migration",

@@ -28,6 +28,7 @@ from sqlalchemy.exc import IntegrityError
 from ihda_server import lifecycle_schema as state
 from ihda_server import schema as tables
 from ihda_server.lifecycle import LifecycleStore
+from ihda_server.tracking import team_tracking
 from libs.library_metadata import new_identity, version_details
 from libs.search_limits import QUERY_TEXT_MAX, TEAM_PAGE_DEFAULT, TEAM_PAGE_MAX
 from libs.tags import normalize_tags
@@ -327,8 +328,6 @@ class SqlCatalog:
             info = self.lifecycle.asset_state(connection, asset_id)
             if info["deleted_at"]:
                 raise NotFound("Asset is in the trash")
-            from ihda_server.tracking import team_tracking
-
             document = {
                 **document,
                 "dependencies": team_tracking(connection, project_id).dependencies(
@@ -367,8 +366,6 @@ class SqlCatalog:
                     .order_by(tables.history.c.id.desc())
                 ).mappings()
             ]
-
-            from ihda_server.tracking import team_tracking
 
             tracking = team_tracking(connection, project_id)
             dependencies = tracking.dependencies_many(
@@ -622,8 +619,6 @@ class SqlCatalog:
                         **version_details(snapshot),
                         **{k: v for k, v in values.items() if k != "history_id"},
                     }
-                    from ihda_server.tracking import team_tracking
-
                     tracking = team_tracking(connection, project_id)
                     tracking.replace_dependencies(
                         snapshot["version_uuid"], details.get("dependencies", [])
@@ -809,8 +804,6 @@ class SqlCatalog:
         offset: int = 0,
         limit: int = TEAM_PAGE_DEFAULT,
     ) -> list[dict[str, Any]]:
-        from ihda_server.tracking import team_tracking
-
         try:
             with self._engine.connect() as connection:
                 self.authorize(connection, project_id, user_id)
@@ -823,8 +816,6 @@ class SqlCatalog:
     def tracking_execute(
         self, project_id: str, user_id: str, body: dict[str, Any]
     ) -> dict[str, Any]:
-        from ihda_server.tracking import team_tracking
-
         try:
             if set(body) != {"request_id", "operation", "values"} or not isinstance(
                 body["values"], dict
