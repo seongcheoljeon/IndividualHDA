@@ -34,6 +34,9 @@ class ManagementGateway(Protocol):
         self, asset_id: int, version: dict[str, Any], values: dict[str, Any]
     ) -> None: ...
     def reclaim(self, apply: bool) -> list[dict[str, Any]]: ...
+    @property
+    def inspects_files(self) -> bool: ...
+    def inspect(self) -> None: ...
 
 
 class LocalManagement:
@@ -194,6 +197,8 @@ class LocalManagement:
                 uuid = version[0] if version else None
             return local_tracking(db._connect).read("dependents", asset[0], uuid)
 
+    inspects_files = True
+
     def inspect(self) -> None:
         with SQLite3DatabaseAPI(self.database) as db:
             inspect_files(db._connect)
@@ -238,6 +243,11 @@ class RemoteManagement:
 
     def reclaim(self, apply: bool) -> list[dict[str, Any]]:
         return []  # the server keeps its own blobs; nothing to free here
+
+    inspects_files = False
+
+    def inspect(self) -> None:
+        return None  # file integrity is the server's job
 
     def trash(self) -> list[dict[str, Any]]:
         return list(self.catalog.trash())

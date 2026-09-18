@@ -95,6 +95,8 @@ def test_describe_asset_round_trip(tmp_path: Path) -> None:
     ticks: list[int] = []
 
     class Fake:
+        last_timings: dict[str, float] = {}
+
         def complete(self, prompt: Prompt, *, progress: Any = None) -> str:
             seen.append(prompt)
             if progress is not None:

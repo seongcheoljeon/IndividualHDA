@@ -8,7 +8,7 @@ pass a timeout; nothing is installed into Houdini's Python.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -58,6 +58,8 @@ class AIProvider(Protocol):
     def complete(
         self, prompt: Prompt, *, progress: Callable[[int], None] | None = None
     ) -> str: ...
+    @property
+    def last_timings(self) -> Mapping[str, float]: ...
 
 
 class NullProvider:
@@ -67,6 +69,10 @@ class NullProvider:
         self, prompt: Prompt, *, progress: Callable[[int], None] | None = None
     ) -> str:
         return ""
+
+    @property
+    def last_timings(self) -> Mapping[str, float]:
+        return {}
 
 
 def make_provider(settings: AISettings) -> AIProvider:

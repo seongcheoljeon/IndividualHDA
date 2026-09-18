@@ -22,6 +22,12 @@ class View:
 
     show_error = show_status
 
+    def show_failure(self, error: Exception) -> None:
+        self.messages.append(str(error))
+
+    def asset_committed(self, result: Any) -> None:
+        self.committed = result
+
     def show_busy(self, busy: bool) -> None:
         self.busy = busy
 

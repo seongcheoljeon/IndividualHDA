@@ -115,6 +115,8 @@ def test_ai_suggest_fills_editors_without_saving(
     prompts: list[Prompt] = []
 
     class Fake:
+        last_timings: dict[str, float] = {}
+
         def complete(self, prompt: Prompt, *, progress: Any = None) -> str:
             prompts.append(prompt)
             if progress is not None:
@@ -190,6 +192,8 @@ def test_ai_cancel_discards_the_answer_and_is_not_an_error(
     captured: list[Any] = []
 
     class Fake:
+        last_timings: dict[str, float] = {}
+
         def complete(self, prompt: Prompt, *, progress: Any = None) -> str:
             captured.append(progress)
             return '{"summary": "should never arrive", "tags": []}'

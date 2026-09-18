@@ -36,6 +36,8 @@ class WorkspaceView(Protocol):
     def show_page(self, page: Page) -> None: ...
     def show_asset(self, asset: dict[str, Any], note: str, tags: str) -> None: ...
     def show_error(self, message: str) -> None: ...
+    def show_failure(self, error: Exception) -> None: ...
+    def asset_committed(self, result: dict[str, Any]) -> None: ...
     def show_status(self, message: str) -> None: ...
     def show_busy(self, busy: bool) -> None: ...
     def show_history(
@@ -93,11 +95,7 @@ class WorkspacePresenter:
                 return
             self._view.show_busy(False)
             if error is not None:
-                failure = getattr(self._view, "show_failure", None)
-                if failure is not None:
-                    failure(error)
-                else:
-                    self._view.show_error(str(error))
+                self._view.show_failure(error)
             else:
                 completed(value)
 
@@ -220,9 +218,7 @@ class WorkspacePresenter:
         self._view.show_status(
             "Saved. Refresh the list to see name, version or deletion changes."
         )
-        committed = getattr(self._view, "asset_committed", None)
-        if committed is not None:
-            committed(result)
+        self._view.asset_committed(result)
 
     def reload_selected(self) -> None:
         try:

@@ -33,6 +33,8 @@ def test_ai_call_runs_off_gui_thread_and_delivers_once(app: Any) -> None:
     results: list[str] = []
 
     class Recording:
+        last_timings: dict[str, float] = {}
+
         def complete(self, prompt: Prompt) -> str:
             seen.append(QThread.currentThread())
             return prompt.text.upper()

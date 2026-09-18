@@ -209,7 +209,7 @@ class PanelAIActions(QtCore.QObject):
         self.bindings.ui.textEdit__tag.setPlainText(
             self.bindings.notes.set_tag_string(merged)
         )
-        timings = format_timings(getattr(self._provider, "last_timings", None) or {})
+        timings = format_timings(dict(self._provider.last_timings))
         log_handler.LogHandler.log_msg(
             method=logging.info,
             msg="AI suggestion filled the note and tag editors; press the save buttons"

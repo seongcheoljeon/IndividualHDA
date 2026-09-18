@@ -108,14 +108,12 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
         self.pushButton__save = QtWidgets.QPushButton("Save")
         self.pushButton__refresh = QtWidgets.QPushButton("Refresh")
         self.pushButton__check_files = QtWidgets.QPushButton("Check files")
-        check_files = getattr(gateway, "inspect", None)
         self.pushButton__check_files.setVisible(
-            asset_id is not None and check_files is not None
+            asset_id is not None and gateway.inspects_files
         )
-        if check_files is not None:
-            self.pushButton__check_files.clicked.connect(
-                lambda: self._run(check_files, self._saved)
-            )
+        self.pushButton__check_files.clicked.connect(
+            lambda: self._run(gateway.inspect, self._saved)
+        )
         for button in (
             self.pushButton__restore,
             self.pushButton__purge,
