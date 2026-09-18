@@ -8,6 +8,8 @@ from typing import Any, Protocol, cast
 
 from libs.database.lifecycle import PersonalLifecycle, inspect_files
 from libs.database.rows import named_query
+from libs.library_files import cleanup
+from libs.paths import hda_base_dirpath
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 from libs.team.contracts import (
     DEFAULT_AUDIT_EVENT_LIMIT,
@@ -31,6 +33,7 @@ class ManagementGateway(Protocol):
     def save_details(
         self, asset_id: int, version: dict[str, Any], values: dict[str, Any]
     ) -> None: ...
+    def reclaim(self, apply: bool) -> list[dict[str, Any]]: ...
 
 
 class LocalManagement:
@@ -195,6 +198,19 @@ class LocalManagement:
         with SQLite3DatabaseAPI(self.database) as db:
             inspect_files(db._connect)
 
+    def reclaim(self, apply: bool) -> list[dict[str, Any]]:
+        """Files a purge queued for deletion: preview them, or delete the safe ones.
+
+        Purging only removes rows; the files wait in file_cleanup so a failed
+        delete never leaves the database pointing at nothing. cleanup() skips
+        paths another version still references or that lie outside the library.
+        """
+        return cleanup(
+            self.database,
+            hda_base_dirpath(base_dirpath=self.database.parent),
+            apply=apply,
+        )
+
 
 class RemoteManagement:
     def __init__(
@@ -219,6 +235,9 @@ class RemoteManagement:
         else:
             if self.pending is not None:
                 self.pending.clear(command.request_id)
+
+    def reclaim(self, apply: bool) -> list[dict[str, Any]]:
+        return []  # the server keeps its own blobs; nothing to free here
 
     def trash(self) -> list[dict[str, Any]]:
         return list(self.catalog.trash())

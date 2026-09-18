@@ -354,7 +354,9 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
                     )
                     == QtWidgets.QMessageBox.StandardButton.Yes
                 ):
-                    self._run(lambda: self.gateway.change(item, operation), self._saved)
+                    self._run(
+                        lambda: self.gateway.change(item, operation), self._purged
+                    )
 
             QtCore.QTimer.singleShot(0, apply)
 
@@ -363,6 +365,44 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
     def _saved(self, result: Any) -> None:
         self.changed.emit()
         self._reload_pending = True
+
+    def _purged(self, result: Any) -> None:
+        self._saved(result)
+        self._when_idle(
+            lambda: self._run(lambda: self.gateway.reclaim(False), self._offer_reclaim)
+        )
+
+    def _when_idle(self, action: Callable[[], None]) -> None:
+        # A result can arrive before the worker clears busy; wait, do not drop it.
+        if self._closing:
+            return
+        if self._tasks.busy:
+            QtCore.QTimer.singleShot(
+                self.callbacks.retry_delay_ms, lambda: self._when_idle(action)
+            )
+            return
+        action()
+
+    def _offer_reclaim(self, rows: list[dict[str, Any]]) -> None:
+        """Purge only dropped rows; ask before the queued files leave the disk."""
+        candidates = [row for row in rows if row["status"] == "candidate"]
+        if self._closing or not candidates:
+            return
+        kept = len(rows) - len(candidates)
+        megabytes = sum(row.get("bytes", 0) for row in candidates) / 1_000_000
+        message = (
+            f"Delete {len(candidates)} file(s) ({megabytes:.1f} MB) that no version "
+            "references anymore?"
+        )
+        if kept:
+            message += (
+                f"\n{kept} file(s) stay: still referenced or outside the library."
+            )
+        if (
+            QtWidgets.QMessageBox.question(self, "Free disk space", message)
+            == QtWidgets.QMessageBox.StandardButton.Yes
+        ):
+            self._run(lambda: self.gateway.reclaim(True), lambda rows: None)
 
     def _idle(self) -> None:
         if self._closing:

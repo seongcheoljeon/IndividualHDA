@@ -29,6 +29,7 @@ def cleanup(
         ).fetchall():
             path = Path(stored)
             resolved = path.resolve()
+            size = path.stat().st_size if path.is_file() else 0
             error = ""
             if resolved in referenced:
                 error = "Still referenced"
@@ -55,6 +56,7 @@ def cleanup(
             results.append(
                 {
                     "path": stored,
+                    "bytes": size,
                     "status": error or ("removed" if apply else "candidate"),
                 }
             )
