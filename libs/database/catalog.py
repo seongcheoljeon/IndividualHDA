@@ -100,8 +100,13 @@ class CatalogOperations(DatabaseSession):
         return dat
 
     def get_hda_category(self, user_id: str | None = None) -> list[str]:
+        # Only categories with a live asset: a trashed asset keeps its hda_key row
+        # until it is purged, so the cleanup trigger alone leaves the tree stale.
         query = """
-        SELECT category FROM hda_category WHERE user_id = :user_id ORDER BY category
+        SELECT c.category FROM hda_category c WHERE c.user_id = :user_id AND EXISTS (
+            SELECT 1 FROM hda_key k JOIN asset_identity a ON a.asset_id = k.id
+            WHERE k.user_id = c.user_id AND k.category = c.category AND a.deleted_at IS NULL)
+        ORDER BY c.category
         """
         query_params: dict[str, Any] = {"user_id": user_id}
         cursor = self._cursor.execute(query, query_params)

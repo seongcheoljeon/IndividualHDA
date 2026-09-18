@@ -119,6 +119,15 @@ def test_repository_roundtrip(tmp_path: Path) -> None:
     repo.delete_asset(1, tmp_path / "sop" / "Water")
     assert repo.list_assets() == []
     assert (tmp_path / "sop" / "Water").exists()
+    # Trash keeps the hda_key row, so the empty category must vanish by query,
+    # not by the hard-delete trigger; restoring brings it back.
+    assert repo.categories(owner="tester") == []
+    from libs.library_management import LocalManagement
+
+    LocalManagement(database).change({"asset_id": 1, "history_id": None}, "restore")
+    assert repo.categories(owner="tester") == ["sop"]
+    LocalManagement(database).change({"asset_id": 1, "history_id": None}, "delete")
+    assert repo.categories(owner="tester") == []
 
 
 def test_missing_database_is_reported(tmp_path: Path) -> None:
