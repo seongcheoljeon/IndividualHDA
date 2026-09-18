@@ -69,6 +69,36 @@ Future work can further split the screen integration adapters as their UI grows.
 Do not reintroduce shared Mixins, runtime public-facade imports or maintained-module
 type-check exclusions. A plugin system is not needed for ordinary contributions.
 
+## Completed in the SOLID audit slice (2026-09)
+
+- Trashed assets no longer leak into tags, icons, thumbnails or the category tree;
+  the live-row filter is one constant. Note/tag/registration writes and the
+  multi-statement writers run in transactions. Empty categories disappear.
+- Panel features talk through `widgets/panel/ports.py`; the personal/team split is
+  behind `LibraryPort`. `LibraryRepository` is three roles; dead methods are gone.
+- Item models stop stat()ing files and mutating rows while painting.
+- Server: reads/writes through `ProjectAccess`, `CatalogQueries` split from
+  `SqlCatalog`, `audit.py` breaks the tracking cycle, per-row queries batched,
+  indexes + schema 4, events paging, REPEATABLE READ on PostgreSQL listings.
+- `AssetsOperations` split (metadata/media), main-window pages build in their own
+  modules, `PersonalCatalog` removed, shared icons/timestamps/headers named once.
+- Purge offers to free the queued files and empty directories.
+- Six only-shrink guards in `tests/test_architecture.py` (see CONTRIBUTING.md).
+
+## Next bounded slice (remaining audit items)
+
+- Optional protocol members still found with `getattr` (`show_failure`,
+  `asset_committed`, `inspect`, `last_timings`): declare them.
+- String switches left: tracking `kind`, `_file_kind`, AI `settings.kind`.
+- Dead code candidates from the audit (verify references before deleting).
+- `SOFT_DELETE_UNFILTERED` 26 → 0 by using the constants in per-id queries too.
+- `TaskController` generation counter so dialogs stop retrying around the
+  result-before-finished race.
+- `SqlCatalog._apply` operation chain → per-operation handlers; then the label map
+  and `history_activity` share the operation list.
+- `HoudiniAPI` (95 methods) split by concern; other large classes only when their
+  area grows.
+
 ## Operational limits
 
 Native Houdini validation is still needed for this slice: drop a new node, add a

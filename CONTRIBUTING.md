@@ -69,6 +69,42 @@ capture/callback/scene fakes through `PanelServices` in tests. Host calls run on
 GUI thread. Slow I/O goes through the existing task controllers. On library changes,
 check the session identity before applying asynchronous results.
 
+## Extension points
+
+The code is arranged so that one kind of change touches one place. Use these
+entry points instead of reaching into another module's internals:
+
+| You want to… | Do this | Not this |
+| --- | --- | --- |
+| Call another panel feature from a feature | Add the member to that feature's protocol in `widgets/panel/ports.py` (drop the underscore on the method) and use it through `self.bindings.<feature>` | Call `self.bindings.<feature>._name` |
+| Behave differently for personal vs team libraries | Add a method to `LibraryPort` in `widgets/panel/library_port.py` and implement it in `PersonalLibrary` and `TeamLibrary`; the composition root (`_active_library`) picks the adapter | Branch on `team.active` in a feature |
+| Add a kind of library (archive, read-only mirror, …) | Write one `LibraryPort` adapter and choose it in `widgets/panel/composition.py` | Edit every feature |
+| Read `hda_key` / `hda_history` rows | Filter with `rows.LIVE_ASSET_IDS` / `LIVE_HISTORY_IDS` (`libs/database/rows.py`); trashed assets keep their rows until purge | Write the `deleted_at` subquery by hand, or skip it |
+| Write several rows in one storage method | `with self.transaction():` (SAVEPOINT-reentrant) and let SQLite errors propagate; the repository maps them to `LibraryError` | `try/except` + `_rollback()` around each statement |
+| Add a server catalog method | Take the connection from `self.reading(project_id, user_id)` or `self.writing(...)` in `ihda_server/access.py`; reads go in `CatalogQueries`, writes in `SqlCatalog` | `self._engine.connect()` and a manual `authorize()` |
+| Add a team operation | Add it to `Operation` in `libs/team/contracts.py` (the gate reads that literal), a branch in `SqlCatalog._apply` and `LifecycleStore.change_lifecycle`, and a label in `widgets/library_metadata/dialog.py:_activity`; `libs/history_activity.py` decides whether it shows as a History row | A second hand-written list of operations |
+| Show something new in the History list | Build rows with `libs/history_activity.py` (`kind != "version"`); never insert into `hda_history` — the v6 trigger turns every row into a version | Synthetic history rows |
+| Record an audit event on the server | `ihda_server/audit.py:record_event` | Import `LifecycleStore` from `tracking` |
+| Add a widget to the main window | The page's `build_*` in `widgets/panel/layout_*.py` (or `MainWindowLayout._build_*`), declare its attribute on `MainWindowLayout`, then the feature's `*Bindings` and `composition.py` | — |
+| Free disk space after a purge | `ManagementGateway.reclaim(apply)`; purging only queues paths in `file_cleanup`, `libs/library_files.cleanup` deletes the unreferenced ones and empty directories | Delete files inside the purge transaction |
+
+## Guard tests
+
+`tests/test_architecture.py` fails the build when a rule is broken. Each counter is
+"only shrinks": lowering it means you paid debt, so update the constant; raising it
+is the signal to use the extension point above instead.
+
+| Constant / test | Means | When it fails |
+| --- | --- | --- |
+| `test_domain_libs_have_no_qt`, `test_only_the_host_boundary_imports_hou` | `libs/` is domain code; only `libs.host`/`libs.houdini_api` import `hou` | Move the Qt/HOM use behind `libs/qt_helpers.py`, `HoudiniAPI`, or add a real Qt wrapper to `QT_LIBS` |
+| `CROSS_FEATURE_PRIVATE = {}` | No feature reads another feature's `_member` through its bindings | Expose it on the port |
+| `TEAM_ACTIVE_BRANCHES = 1` | Only the composition root asks whether a team library is active | Put the behavior on `LibraryPort` |
+| `REPOSITORY_METHODS`, `DEAD_REPOSITORY_METHODS` | `LibraryRepository` does not grow and every method has a production caller | Add to the right role protocol (`LibraryReads` / `AssetWrites` / `SceneRecordRepository`) and call it, or drop it |
+| `SOFT_DELETE_UNFILTERED` | Per-file count of raw `hda_key`/`hda_history` reads without a live filter | Use `LIVE_ASSET_IDS` / `LIVE_HISTORY_IDS` |
+| `LAZY_IMPORT_SITES` | Per-module count of imports inside functions (most hide a cycle) | Break the cycle (see `ihda_server/audit.py` for the pattern) or defer only an optional dependency |
+| `test_catalog_methods_cannot_bypass_project_authorization` | `catalog.py` / `queries.py` never touch the engine directly | Use `reading()` / `writing()` |
+| `test_every_referenced_icon_resolves` | Every `:/…/icons/x.png` (including `libs/ui_icons.Icon`) exists in a registered resource module | Register the icon in `icons.qrc` and regenerate `icons_rc.py` |
+
 ## Checks
 
 ```sh

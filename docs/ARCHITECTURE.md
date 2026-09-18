@@ -322,6 +322,44 @@ New production code imports the owning module directly and routes storage and
 Houdini work through their boundaries. Additional checks prohibit panel Mixins,
 whole-window/Any binding fields and maintained-module mypy exclusions.
 
+The 2026-09 SOLID audit added only-shrink counters for the debts it found:
+`CROSS_FEATURE_PRIVATE` (features reading another feature's underscore members,
+now `{}`), `TEAM_ACTIVE_BRANCHES` (personal features branching on the team
+integration, now 1: the composition root), `REPOSITORY_METHODS` /
+`DEAD_REPOSITORY_METHODS` (size and use of `LibraryRepository`),
+`SOFT_DELETE_UNFILTERED` (raw `hda_key`/`hda_history` reads without the live-row
+filter), `LAZY_IMPORT_SITES` (function-level imports), plus a hard rule that
+`ihda_server/catalog.py` and `queries.py` never touch the engine directly. Paying
+debt lowers a constant; the equality assert forces the update so the debt cannot
+silently return.
+
+## Ports and adapters
+
+Panel features are typed against protocols, not each other: `widgets/panel/ports.py`
+declares what each feature exposes (`LibraryQueryPort`, `AssetModelPort`,
+`PresentationPort`, `SelectionPort`, …) and every `*Bindings` field uses the port.
+`widgets/panel/library_port.py` hides the personal/team distinction behind
+`LibraryPort`; `PersonalLibrary` and `TeamLibrary` are the two adapters and
+`composition._active_library` is the only place that chooses. Requests a team handles
+(register, drop, remove, menus, attach, play) return True from the port; the personal
+implementation runs otherwise.
+
+`LibraryRepository` is the union of three role protocols (`LibraryReads`,
+`AssetWrites`, `SceneRecordRepository`). Soft deletes live in `asset_identity` /
+`version_identity`; every read applies `rows.LIVE_ASSET_IDS` / `LIVE_HISTORY_IDS`.
+Rename and preview-video events are recorded by the v5 audit triggers and surfaced
+as non-version History rows by `libs/history_activity.py`; nothing writes
+activity into `hda_history`. Item models carry `available` (computed once per
+load) instead of calling `Path.exists()` while painting.
+
+On the server, `ihda_server/access.py:ProjectAccess` hands out connections only
+through `reading()` / `writing()` / `creating()`, which authorize and lock first;
+`CatalogQueries` holds the reads and `SqlCatalog` the writes. The audit trail is
+`ihda_server/audit.py`, shared by catalog, lifecycle and tracking without a cycle.
+Protocol caps (`MAX_COMMAND_BYTES`, `DEFAULT_AUDIT_EVENT_LIMIT`, …) live in
+`libs/team/contracts.py`; `libs/team/limits.py` keeps only the transport's local
+resource policy.
+
 Module homes after the split: constants in `libs/keys.py`, paths and the SQLite
 file layout in `libs/paths.py`, OS predicates in `libs/platform_info.py`,
 `IS_HOUDINI` in `libs/host.py`, the About/License HTML in
