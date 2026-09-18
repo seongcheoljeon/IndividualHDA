@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from dataclasses import replace
 from types import MappingProxyType
 
-from libs.asset_contracts import AssetData
+from libs.asset_contracts import AssetData, numbered
 from libs.contracts import RowNotifications, SilentRows
 
 
@@ -25,6 +26,8 @@ class AssetStore:
         self._observer = observer
 
     def _reindex(self) -> None:
+        # Rows carry their position; the models read it instead of recomputing.
+        self.rows[:] = numbered(self.rows)
         self._id_rows.clear()
         self._id_rows.update((item.hda_id, row) for row, item in enumerate(self.rows))
 
@@ -57,7 +60,7 @@ class AssetStore:
         item = self.rows[row]
         if data.hda_id != item.hda_id:
             raise ValueError("Asset IDs are immutable")
-        self.rows[row] = data
+        self.rows[row] = replace(data, item_row=row)
         self._observer.changed(row)
 
     def remove(self, row: int) -> None:

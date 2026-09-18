@@ -9,8 +9,8 @@ from typing import Any
 
 from PySide6 import QtCore, QtGui
 
-from libs.asset_contracts import HistoryData
-from libs.item_paths import item_path
+from libs.asset_contracts import HistoryData, numbered
+from libs.item_paths import item_path, path_exists
 from libs.model_columns import HistoryColumn
 from libs.path_updates import PathMoves, relocated_path
 from model.item_media import PixmapSource, thumbnail
@@ -56,7 +56,9 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
-        self.__items = items if items is not None else []
+        # Keep the caller's list: AssetStore shares its rows with the models.
+        self.__items = items if isinstance(items, list) else list(items or ())
+        self.__items[:] = numbered(self.__items)
         self.__pixmap_ihda_data = (
             pixmap_ihda_data if pixmap_ihda_data is not None else {}
         )
@@ -126,9 +128,6 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
     ) -> int:
         return len(HistoryColumn)
 
-    def set_row_col_in_item(self, row: int) -> None:
-        self.__items[row] = replace(self.__items[row], item_row=row)
-
     def data(
         self,
         index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
@@ -138,7 +137,6 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
             return None
         row = index.row()
         column = index.column()
-        self.set_row_col_in_item(row)
         data = self.__items[row]
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
             if column == HistoryColumn.ID and not data.is_version:
@@ -225,17 +223,9 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
             if not data.is_version:
                 font.setItalic(True)  # no file behind it, but nothing is missing
                 return font
-            hda_dirpath = data.ihda_dirpath
-            if hda_dirpath is None:
+            if not data.available and not data.remote:
                 font.setItalic(True)
                 font.setStrikeOut(True)
-            else:
-                hda_filepath = item_path(hda_dirpath, data.ihda_filename)
-                if (
-                    hda_filepath is None or not hda_filepath.exists()
-                ) and not index.data(HistoryModel.data_role).remote:
-                    font.setItalic(True)
-                    font.setStrikeOut(True)
             return font
         elif role == HistoryModel.data_role:
             return data
@@ -292,10 +282,8 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
                 QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled
             )
         if index.isValid():
-            hda_filepath = index.data(HistoryModel.filepath_role)
-            if (hda_filepath is None or not hda_filepath.exists()) and not index.data(
-                HistoryModel.data_role
-            ).remote:
+            data = index.data(HistoryModel.data_role)
+            if not data.available and not data.remote:
                 flags = (
                     QtCore.Qt.ItemFlag.ItemIsSelectable
                     | QtCore.Qt.ItemFlag.ItemIsEnabled
@@ -316,17 +304,19 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
     def reload(self, data: Any = None) -> None:
         self.beginResetModel()
         self.__items = data if isinstance(data, list) else list(data or ())
+        self.__items[:] = numbered(self.__items)
         self.endResetModel()
 
     def add_items(self, data: Any = ()) -> None:
         self.beginResetModel()
         self.__items = data if isinstance(data, list) else list(data or ())
+        self.__items[:] = numbered(self.__items)
         self.endResetModel()
 
     def append_item(self, item: Any) -> None:
         index = len(self.__items)
         self.beginInsertRows(QtCore.QModelIndex(), index, index)
-        self.__items.append(item)
+        self.__items.append(replace(item, item_row=index))
         self.endInsertRows()
 
     def relocate_asset_paths(
@@ -352,6 +342,9 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
                         filename_key: path.name,
                     }
                     item = replace(item, **changes)
+            item = replace(
+                item, available=path_exists(item.ihda_dirpath, item.ihda_filename)
+            )
             self.__items[row] = item
             changed.append(item)
             self.dataChanged.emit(
@@ -456,6 +449,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
             return False
         self.beginRemoveRows(QtCore.QModelIndex(), row, row)
         del self.__items[row]
+        self.__items[row:] = numbered(self.__items[row:], row)
         self.endRemoveRows()
         return True
 
@@ -512,6 +506,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
             return False
         self.beginRemoveRows(QtCore.QModelIndex(), position, position + rows - 1)
         del self.__items[position : position + rows]
+        self.__items[position:] = numbered(self.__items[position:], position)
         self.endRemoveRows()
         return True
 

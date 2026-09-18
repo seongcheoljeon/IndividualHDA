@@ -373,6 +373,7 @@ def test_activity_rows_are_readable_but_inert(app: Any) -> None:
         version="1.0",
         ihda_dirpath=Path("/missing"),
         ihda_filename="Water.hda",
+        available=False,  # computed once at load time, not per repaint
         reg_time="2026-09-17 10:00:00",
     )
     activity = HistoryData(

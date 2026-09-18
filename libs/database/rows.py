@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from libs.asset_contracts import AssetData, HistoryData
+from libs.item_paths import path_exists
 from libs.record_codec import decode_record
 from libs.tags import normalize_tags
 
@@ -58,6 +59,7 @@ def asset_data(row: Mapping[str, Any]) -> AssetData:
         data[field] = bool(data[field])
     data["hda_icon"] = data["hda_icon"].split(",") if data["hda_icon"] else []
     data["hda_tags"] = normalize_tags(data["hda_tags"]) if data["hda_tags"] else []
+    data["available"] = path_exists(data["hda_dirpath"], data.get("hda_filename"))
     return decode_record(AssetData, data)
 
 
@@ -66,4 +68,5 @@ def history_record(row: Mapping[str, Any]) -> HistoryData:
     _paths(data, ("ihda_dirpath", "hip_dirpath", "thumb_dirpath", "video_dirpath"))
     data["icon"] = data["icon"].split(",") if data["icon"] else []
     data["tags"] = normalize_tags(data["tags"]) if data["tags"] else []
+    data["available"] = path_exists(data["ihda_dirpath"], data.get("ihda_filename"))
     return decode_record(HistoryData, data)

@@ -8,7 +8,7 @@ from typing import Any
 
 from PySide6 import QtCore, QtGui
 
-from libs.asset_contracts import AssetData
+from libs.asset_contracts import AssetData, numbered
 from libs.item_paths import item_path
 from model.item_media import PixmapSource, thumbnail
 
@@ -51,7 +51,9 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
-        self.__items = items if items is not None else []
+        # Keep the caller's list: AssetStore shares its rows with the models.
+        self.__items = items if isinstance(items, list) else list(items or ())
+        self.__items[:] = numbered(self.__items)
         self.__pixmap_ihda_data = (
             pixmap_ihda_data if pixmap_ihda_data is not None else {}
         )
@@ -106,10 +108,8 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
             return QtCore.Qt.ItemFlag.ItemIsDropEnabled
         flags = super().flags(index)
         if index.isValid():
-            hda_filepath = index.data(ListModel.filepath_role)
-            if (hda_filepath is None or not hda_filepath.exists()) and not index.data(
-                ListModel.data_role
-            ).remote:
+            data = index.data(ListModel.data_role)
+            if not data.available and not data.remote:
                 flags = (
                     QtCore.Qt.ItemFlag.ItemIsSelectable
                     | QtCore.Qt.ItemFlag.ItemIsEnabled
@@ -155,9 +155,6 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
         # Domain drops are handled by view signals, not raw Qt row insertion.
         return action == QtCore.Qt.DropAction.IgnoreAction
 
-    def set_row_col_in_item(self, row: int) -> None:
-        self.__items[row] = replace(self.__items[row], item_row=row)
-
     def data(
         self,
         index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
@@ -166,7 +163,6 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
         if (index is None) or not (0 <= index.row() < len(self.__items)):
             return None
         row = index.row()
-        self.set_row_col_in_item(row)
         index_dat = self.__items[row]
         hda_name = index_dat.hda_name
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
@@ -209,13 +205,7 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
             font = QtGui.QFont()
             font.setFamily(self._font_style)
             font.setPointSize(self._font_size)
-            hda_filepath = item_path(
-                index_dat.hda_dirpath,
-                index_dat.hda_filename,
-            )
-            if (hda_filepath is None or not hda_filepath.exists()) and not index.data(
-                ListModel.data_role
-            ).remote:
+            if not index_dat.available and not index_dat.remote:
                 font.setItalic(True)
                 font.setStrikeOut(True)
             return font
@@ -285,12 +275,13 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
     def add_items(self, data: Any = ()) -> None:
         self.beginResetModel()
         self.__items = data if isinstance(data, list) else list(data or ())
+        self.__items[:] = numbered(self.__items)
         self.endResetModel()
 
     def append_item(self, item: Any) -> None:
         index = len(self.__items)
         self.beginInsertRows(QtCore.QModelIndex(), index, index)
-        self.__items.append(item)
+        self.__items.append(replace(item, item_row=index))
         self.endInsertRows()
 
     def remove_item(self, row: int | None = None) -> bool:
@@ -298,6 +289,7 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
             return False
         self.beginRemoveRows(QtCore.QModelIndex(), row, row)
         del self.__items[row]
+        self.__items[row:] = numbered(self.__items[row:], row)
         self.endRemoveRows()
         return True
 

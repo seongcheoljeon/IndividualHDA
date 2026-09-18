@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Iterable
+from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import TypeVar
+
+RowT = TypeVar("RowT", "AssetData", "HistoryData")
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -36,6 +40,9 @@ class AssetData:
     hda_version: str = ""
     hda_dirpath: Path | None = None
     hda_filename: str | None = None
+    # Whether the HDA file was present when the row was loaded; models read
+    # this instead of stat()ing the file on every repaint.
+    available: bool = True
     thumbnail_filename: str | None = None
     thumbnail_dirpath: Path | None = None
     video_filename: str | None = None
@@ -60,6 +67,7 @@ class HistoryData:
     # "version" is a real hda_history row; "rename"/"video" rows come from
     # audit events and own no files, so the panel neither opens nor deletes them.
     kind: str = "version"
+    available: bool = True
     hist_id: int = 0
     hda_id: int
     comment: str | None = None
@@ -162,3 +170,8 @@ class AssetBeforeUpdate:
     hda_note: str | None
     video_dirpath: Path | None
     video_filename: str | None
+
+
+def numbered(items: Iterable[RowT], start: int = 0) -> list[RowT]:
+    """Rows with item_row set to their position; models call this on row ops."""
+    return [replace(item, item_row=row) for row, item in enumerate(items, start)]
