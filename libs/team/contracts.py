@@ -6,7 +6,7 @@ import hashlib
 import json
 import re
 from dataclasses import asdict, dataclass, field
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, get_args
 from uuid import UUID, uuid4
 
 from libs.file_integrity import FileContent
@@ -112,23 +112,7 @@ class Command:
             UUID(self.request_id)
         except (ValueError, TypeError) as error:
             raise TeamError("request_id must be a UUID") from error
-        if self.operation not in {
-            "copy_asset",
-            "create",
-            "version",
-            "metadata",
-            "rename",
-            "delete",
-            "delete_history",
-            "media",
-            "preference",
-            "usage",
-            "restore",
-            "purge",
-            "restore_history",
-            "purge_history",
-            "version_details",
-        }:
+        if self.operation not in get_args(Operation):
             raise TeamError("Unknown operation")
         if self.operation not in {"create", "copy_asset"} and (
             not self.asset_id

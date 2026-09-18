@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Protocol
@@ -36,7 +36,7 @@ class WorkspaceView(Protocol):
     def show_status(self, message: str) -> None: ...
     def show_busy(self, busy: bool) -> None: ...
     def show_history(
-        self, items: list[dict[str, Any]], events: list[dict[str, Any]]
+        self, items: list[dict[str, Any]], events: Sequence[dict[str, Any]] = ()
     ) -> None: ...
     def file_ready(self, path: Path, asset: dict[str, Any]) -> None: ...
 

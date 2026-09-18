@@ -363,7 +363,7 @@ class MainLibraryIntegration(QtCore.QObject):
         self._histories.clear()
         self._history_owner = None
         self._history_pending = self.bindings.presentation._is_ihda_history_view
-        rows = [asset_row(item, self.catalog.backend.cache.root) for item in page.items]
+        rows = [asset_row(item, self.catalog.cache_root) for item in page.items]
         categories = sorted({item.hda_cate for item in rows})
         icons = tuple(AssetIcon(asset_id=row.hda_id, icon=row.hda_icon) for row in rows)
         self.bindings.apply_snapshot(
@@ -394,7 +394,7 @@ class MainLibraryIntegration(QtCore.QObject):
             reference = document.get("files", {}).get("thumbnail")
             if reference is not None:
                 blob = parse_blob(reference)
-                path = catalog.backend.cache.root / blob.digest / blob.filename
+                path = catalog.cache_root / blob.digest / blob.filename
                 cache.set_path(
                     identifier, path, resolve=partial(catalog.download, blob)
                 )
@@ -642,7 +642,7 @@ class MainLibraryIntegration(QtCore.QObject):
             else self.bindings.selection.state.asset.id
         )
         self._histories = {item["id"]: item for item in items}
-        rows = [history_row(item, self.catalog.backend.cache.root) for item in items]
+        rows = [history_row(item, self.catalog.cache_root) for item in items]
         if self._history_owner is not None:
             asset = self.bindings.selection.state.asset
             rows = merge_history_rows(rows, self._activity_rows(events, asset, items))
@@ -757,7 +757,7 @@ class MainLibraryIntegration(QtCore.QObject):
             self._members_dialog.raise_()
             return
         dialog = MembersDialog(
-            self.catalog.backend.transport, self.project, self.bindings.parent
+            self.catalog.transport, self.project, self.bindings.parent
         )
         self._members_dialog = dialog
         dialog.finished.connect(self._members_closed)

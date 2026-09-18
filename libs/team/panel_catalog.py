@@ -7,7 +7,7 @@ from threading import Event
 from typing import Any
 
 from libs.search_limits import TEAM_PAGE_DEFAULT
-from libs.team.client import HttpCatalog
+from libs.team.client import HttpCatalog, Transport
 from libs.team.contracts import Blob, Command, Page, Unavailable
 
 
@@ -26,6 +26,14 @@ class PanelCatalog:
     @property
     def namespace(self) -> str:
         return self.backend.namespace
+
+    @property
+    def cache_root(self) -> Path:
+        return self.backend.cache.root
+
+    @property
+    def transport(self) -> Transport:
+        return self.backend.transport
 
     def list_assets(
         self, query: str = "", offset: int = 0, limit: int = TEAM_PAGE_DEFAULT
