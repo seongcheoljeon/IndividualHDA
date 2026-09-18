@@ -225,3 +225,23 @@ def test_history_delete_keeps_its_asset_when_selection_changes(tmp_path: Path) -
     executor.complete()
     assert backend.items[1]["history_id"] == 10
     assert "history_id" not in backend.items[2]
+
+
+def test_unsaved_fields_is_per_field_and_per_selected_asset(tmp_path: Path) -> None:
+    """Two indicators need per-field dirtiness; leaving the library needs the
+    whole-library answer. The two questions stay separate."""
+    presenter, view, backend, executor, pending = workspace(tmp_path)
+    assert presenter.unsaved_fields == (False, False)
+    assert not presenter.has_unsaved_changes
+
+    note, tags = view.asset[1:]
+    presenter.edit("edited note", tags)
+    assert presenter.unsaved_fields == (True, False)
+    presenter.edit(note, "#brand #new")
+    assert presenter.unsaved_fields == (False, True)
+
+    # Selecting a clean asset clears the indicators, but the library is still
+    # dirty, so the "discard unsaved edits?" prompt must keep firing.
+    presenter.select(2)
+    assert presenter.unsaved_fields == (False, False)
+    assert presenter.has_unsaved_changes

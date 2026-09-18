@@ -23,6 +23,7 @@ class DetailsBindings:
     note: QtWidgets.QTextEdit
     tags: QtWidgets.QTextEdit
     status: QtWidgets.QLabel
+    tag_status: QtWidgets.QLabel
     show_tags: Callable[[list[str]], None]
     saved: Callable[[int, Field, str | list[str]], None]
 
@@ -89,7 +90,7 @@ class AssetDetailsIntegration:
             bindings.tags.setPlainText(tags)
         bindings.show_tags(normalize_tags(tags))
 
-    def show_state(self, dirty: bool, saving: bool) -> None:
+    def show_state(self, note_dirty: bool, tag_dirty: bool, saving: bool) -> None:
         if saving:
             self._save_error = ""
         self.label__metadata_status.setText(
@@ -98,9 +99,12 @@ class AssetDetailsIntegration:
             else "Save failed — edits retained"
             if self._save_error
             else "Unsaved changes"
-            if dirty
+            if note_dirty
             else ""
         )
+        # Tag label carries dirtiness only. "Saving…" and save errors stay on the
+        # shared line; repeating them here is the contention this split removes.
+        self.bindings.tag_status.setText("Unsaved changes" if tag_dirty else "")
 
     def show_error(self, message: str) -> None:
         self._save_error = message

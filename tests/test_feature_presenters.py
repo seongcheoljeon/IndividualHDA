@@ -23,7 +23,7 @@ from widgets.web_view.presenter import WebPresenter
 class View:
     def __init__(self) -> None:
         self.draft = ("", "")
-        self.state = (False, False)
+        self.state = (False, False, False)
         self.errors: list[str] = []
         self.saves: list[Any] = []
         self.content: Any = None
@@ -32,8 +32,8 @@ class View:
     def show_draft(self, note: str, tags: str) -> None:
         self.draft = note, tags
 
-    def show_state(self, dirty: bool, saving: bool) -> None:
-        self.state = dirty, saving
+    def show_state(self, note_dirty: bool, tag_dirty: bool, saving: bool) -> None:
+        self.state = note_dirty, tag_dirty, saving
 
     def show_error(self, message: str) -> None:
         self.errors.append(message)
@@ -91,6 +91,35 @@ class Metadata:
         self.writes.append((asset_id, list(tags)))
 
 
+def test_note_and_tag_dirty_are_reported_separately() -> None:
+    """Each editor has its own save button, so each needs its own indicator.
+
+    One shared flag lit the note indicator whenever tags were edited -- and an
+    AI suggestion fills both at once, which is where it showed.
+    """
+    view, executor, repository = View(), DelayedExecutor(), Metadata()
+    presenter = AssetDetailsPresenter(view, executor)
+    presenter.change_gateway(repository)
+    presenter.select(1, "note", ["tag"])
+    assert view.state == (False, False, False)
+
+    presenter.edit("edited note", "#tag")
+    assert view.state == (True, False, False)
+    presenter.save("note")
+    executor.complete()
+    assert view.state == (False, False, False)
+
+    presenter.edit("edited note", "#tag #extra")
+    assert view.state == (False, True, False)
+    presenter.save("tag")
+    executor.complete()
+    assert view.state == (False, False, False)
+
+    # Both at once -- the AI suggestion path.
+    presenter.edit("again", "#tag #extra #more")
+    assert view.state == (True, True, False)
+
+
 @pytest.mark.parametrize("field", ["note", "tag"])
 def test_save_keeps_target_and_newer_edits(field: Any) -> None:
     view, executor, repository = View(), DelayedExecutor(), Metadata()
@@ -109,7 +138,7 @@ def test_save_keeps_target_and_newer_edits(field: Any) -> None:
     assert view.saves[0][0] == 1
     presenter.select(1, "first edit", ["Water", "한글"])
     assert view.draft == ("second edit", "#newer")
-    assert view.state == (True, False)
+    assert view.state == (True, True, False)
 
 
 def test_failed_save_keeps_draft_and_can_retry() -> None:
@@ -123,10 +152,10 @@ def test_failed_save_keeps_draft_and_can_retry() -> None:
     assert view.errors == ["offline"] and not view.saves
     presenter.select(4)
     presenter.select(3, "old")
-    assert view.draft[0] == "unsaved" and view.state == (True, False)
+    assert view.draft[0] == "unsaved" and view.state == (True, False, False)
     presenter.save("note")
     executor.complete()
-    assert view.state == (False, False)
+    assert view.state == (False, False, False)
     assert repository.writes == [(3, "unsaved")]
 
 
@@ -145,7 +174,7 @@ def test_library_switch_ignores_old_result_and_executor_busy_is_recoverable() ->
     presenter.edit("new edit", "")
     executor.accept = False
     presenter.save("note")
-    assert view.state == (True, False) and view.errors
+    assert view.state == (True, False, False) and view.errors
     executor.accept = True
     presenter.save("note")
     executor.complete()
@@ -357,7 +386,7 @@ def test_same_library_preference_change_preserves_draft() -> None:
     presenter.edit("draft", "#tag")
     presenter.change_gateway(Metadata(), preserve_drafts=True)
     presenter.select(1, "saved")
-    assert view.draft == ("draft", "#tag") and view.state == (True, False)
+    assert view.draft == ("draft", "#tag") and view.state == (True, True, False)
 
 
 def test_dialog_validation_controls_accepted_signal(

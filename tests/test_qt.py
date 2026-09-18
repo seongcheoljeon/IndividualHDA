@@ -194,10 +194,14 @@ def test_panel_with_saved_library(
     )
     assert panel.models.assets.rows[0].hda_note == "saved from the metadata presenter"
     panel.textEdit__tag.setPlainText("#Water #water #한글")
+    # Editing tags must light the tag indicator, not the note one.
+    assert panel.label__tag_status.text() == "Unsaved changes"
+    assert not panel.label__metadata_status.text()
     panel.pushButton__tag_save.click()
     panel._details.close()
     assert panel.session.repository.list_assets()[0].hda_tags == ("Water", "한글")
     assert not panel.label__metadata_status.text()
+    assert not panel.label__tag_status.text()
     panel.doubleSpinBox__zoom.setValue(150)
     panel._ui_settings.save_cfg_dict_to_file()
     panel.doubleSpinBox__zoom.setValue(100)
@@ -326,3 +330,176 @@ def test_help_server_is_resolved_only_when_web_view_is_shown(
         assert loads[-1] == "http://localhost:48626/"
     finally:
         view.close()
+
+
+@pytest.mark.parametrize(
+    ("saved", "expected", "kept"),
+    [
+        # A dead help server from a previous Houdini session must not come back.
+        ("http://127.0.0.1:9547/", "http://localhost:48626/", False),
+        # A page the user navigated to is still restored.
+        ("https://forums.odforce.net/", "https://forums.odforce.net/", True),
+    ],
+)
+def test_saved_address_never_revives_a_dead_help_server(
+    app: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+    saved: str,
+    expected: str,
+    kept: bool,
+) -> None:
+    import json
+
+    import public
+    from libs import keys
+    from widgets.web_view.web_view import WebView
+
+    config = tmp_path / "web.json"
+    config.write_text(json.dumps({keys.Name.WebUI.url_addr: saved}), encoding="utf-8")
+    monkeypatch.setattr(public.Paths, "json_web_filepath", config)
+    monkeypatch.setattr(public.Paths, "ini_web_filepath", tmp_path / "web.ini")
+
+    loads: list[str] = []
+    monkeypatch.setattr(
+        WebView,
+        "_WebView__load",
+        lambda self, url=None: loads.append(url or self.lineEdit__address.text()),
+    )
+    view = WebView(help_site=lambda: "http://localhost:48626/")
+    try:
+        view.show()
+        app.processEvents()
+        assert loads == [expected]
+    finally:
+        view.close()
+    # Closing rewrites the file: the stale key is dropped, a real one is retained.
+    stored = json.loads(config.read_text(encoding="utf-8"))
+    assert (keys.Name.WebUI.url_addr in stored) is kept
+
+
+@pytest.mark.parametrize(
+    ("url", "loopback"),
+    [
+        ("http://127.0.0.1:9547/", True),
+        ("http://127.0.1.1:8000/", True),
+        ("http://localhost:48626/", True),
+        ("http://[::1]:9547/", True),
+        ("https://forums.odforce.net/", False),
+        ("", False),
+        (None, False),
+    ],
+)
+def test_is_loopback(url: Any, loopback: bool) -> None:
+    from widgets.web_view.web_ui_settings import _is_loopback
+
+    assert _is_loopback(url) is loopback
+
+
+def test_playback_does_not_require_ffmpeg(
+    app: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    """Double-click plays through QMediaPlayer, which never shells out to FFmpeg.
+
+    The gate used to sit on this path, so an unset FFmpeg directory blocked
+    playback of videos that already existed.
+    """
+    from types import SimpleNamespace
+
+    from main import IndividualHDA
+    from model import ihda_record_model
+    from widgets.preference.preference import Preference
+    from widgets.web_view.web_view import WebView
+
+    monkeypatch.setattr(WebView, "_WebView__set_init_load", lambda self: None)
+    monkeypatch.setattr(Preference, "is_valid_ffmpeg_dirpath", lambda self: False)
+
+    video = tmp_path / "asset_v1.0.mp4"
+    video.write_bytes(b"not really a movie")
+
+    panel = IndividualHDA()
+    try:
+        assert not panel._preference.is_ffmpeg_valid
+        played: list[list[pathlib.Path]] = []
+        monkeypatch.setattr(
+            panel._video_player,
+            "play_after_add_playlist",
+            lambda filepath_lst: played.append(filepath_lst),
+        )
+        # The test environment has no library selected; only latest_video is used.
+        panel.session.repository = SimpleNamespace(
+            latest_video=lambda asset_id, version: video
+        )
+        roles = {
+            ihda_record_model.RecordModel.record_data_role: SimpleNamespace(
+                node_ver="1.0"
+            ),
+            ihda_record_model.RecordModel.hda_id_role: 1,
+            ihda_record_model.RecordModel.name_role: "asset",
+        }
+        index = SimpleNamespace(isValid=lambda: True, data=roles.get)
+
+        panel.selection._slot_hda_record_double_clicked(index)
+
+        assert played == [[video]]
+        assert panel.stackedWidget__whole.currentWidget() is panel.page__video_player
+    finally:
+        panel.close()
+
+
+def test_path_with_qt_libraries() -> None:
+    """Chromium's helper resolves Houdini's Qt DLLs through PATH, or dies.
+
+    QtWebEngineProcess.exe sits in $HFS/qt/bin with no DLLs beside it, so without
+    $HFS/bin on PATH it exits with STATUS_DLL_NOT_FOUND and every navigation
+    fails. Appending keeps Houdini's bundled codecs from shadowing the libraries
+    of other child processes.
+    """
+    import os
+
+    from widgets.web_view import path_with_qt_libraries
+
+    # No drive letters: os.pathsep is ":" on this platform and would split them.
+    houdini = os.path.join("Houdini", "bin")
+    other = os.path.join("other", "tools")
+
+    added = path_with_qt_libraries(houdini, other)
+    assert added == other + os.pathsep + houdini
+    # Appended, never prepended.
+    assert added.split(os.pathsep)[-1] == houdini
+    # Idempotent: a second panel must not keep growing PATH.
+    assert path_with_qt_libraries(houdini, added) is None
+    assert path_with_qt_libraries(houdini, "") == houdini
+    # Windows case-insensitivity comes from os.path.normcase and cannot be
+    # exercised here: normcase is the identity on POSIX.
+
+
+def test_playback_state_is_quiet_but_failures_are_logged(
+    app: Any, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Buffering and track changes fire several times a second.
+
+    They used to be logged verbatim -- the same string the window title already
+    shows -- which flooded the panel on every play. A real failure still has to
+    surface, and now does so as an error instead of hiding inside a title.
+    """
+    import logging
+
+    from widgets.video_player.video_player import VideoPlayer
+
+    widget = VideoPlayer()
+    try:
+        with caplog.at_level(logging.DEBUG):
+            widget._VideoPlayer__set_status_info("Buffering 40%")
+            widget._VideoPlayer__set_track_info("clip.mp4")
+        assert "Buffering 40%" in widget.windowTitle()
+        assert caplog.records == []
+
+        caplog.clear()
+        widget._VideoPlayer__player.errorString = lambda: "codec not supported"
+        with caplog.at_level(logging.DEBUG):
+            widget._VideoPlayer__display_error_msg(None)
+        assert [r.levelno for r in caplog.records] == [logging.ERROR]
+        assert "codec not supported" in caplog.records[0].getMessage()
+    finally:
+        widget.close()

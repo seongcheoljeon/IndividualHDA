@@ -361,6 +361,20 @@ class WorkspacePresenter:
         self._run(download, lambda path: self._view.file_ready(path, asset))
 
     @property
+    def unsaved_fields(self) -> tuple[bool, bool]:
+        """(note, tags) dirtiness of the selected asset, for the two indicators.
+
+        has_unsaved_changes below answers a different question -- "may we leave
+        this library?" -- and must keep scanning every cached asset.
+        """
+        asset_id = self._selected
+        draft = self._drafts.get(asset_id) if asset_id is not None else None
+        if draft is None or asset_id not in self._assets:
+            return False, False
+        note, tags = self._text(self._assets[asset_id])
+        return draft[0] != note, draft[1] != tags
+
+    @property
     def has_unsaved_changes(self) -> bool:
         return any(
             asset_id in self._assets and draft != self._text(self._assets[asset_id])

@@ -77,6 +77,7 @@ class TeamBindings:
     label__hist_cnt: QtWidgets.QLabel
     label__hist_tags: QtWidgets.QLabel
     label__metadata_status: QtWidgets.QLabel
+    label__tag_status: QtWidgets.QLabel
     lineEdit__search_hda: QtWidgets.QLineEdit
     pushButton__ai_suggest: QtWidgets.QPushButton
     pushButton__note_save: QtWidgets.QPushButton
@@ -418,11 +419,22 @@ class MainLibraryIntegration(QtCore.QObject):
             bindings.textEdit__note.setPlainText(note)
             bindings.textEdit__tag.setPlainText(tags)
         bindings.notes._set_label_tags(normalize_tags(tags))
+        self._show_tag_dirty()
         if self._review_asset_id is not None and self._review_asset_id == asset.get(
             "id"
         ):
             self._review_asset_id = None
             self._show_comparison(asset, note, tags)
+
+    def _show_tag_dirty(self) -> tuple[bool, bool]:
+        """Refresh the tag indicator; return (note, tags) dirtiness."""
+        note_dirty, tag_dirty = (
+            self.presenter.unsaved_fields
+            if self.presenter is not None
+            else (False, False)
+        )
+        self.bindings.label__tag_status.setText("Unsaved changes" if tag_dirty else "")
+        return note_dirty, tag_dirty
 
     def _edited(self) -> None:
         if self.presenter is not None:
@@ -430,12 +442,11 @@ class MainLibraryIntegration(QtCore.QObject):
                 self.bindings.textEdit__note.toPlainText(),
                 self.bindings.textEdit__tag.toPlainText(),
             )
+            note_dirty, _ = self._show_tag_dirty()
             if self._conflict:
                 self.bindings.label__metadata_status.setText(self._conflict_message)
             elif not self._tasks.busy:
-                self.show_status(
-                    "Unsaved changes" if self.presenter.has_unsaved_changes else ""
-                )
+                self.show_status("Unsaved changes" if note_dirty else "")
 
     def save(self, choice: str) -> None:
         if self.presenter is None or not self.writable:

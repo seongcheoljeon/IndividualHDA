@@ -18,7 +18,7 @@ class MetadataGateway(Protocol):
 
 class DetailsView(Protocol):
     def show_draft(self, note: str, tags: str) -> None: ...
-    def show_state(self, dirty: bool, saving: bool) -> None: ...
+    def show_state(self, note_dirty: bool, tag_dirty: bool, saving: bool) -> None: ...
     def show_error(self, message: str) -> None: ...
     def saved(self, asset_id: int, field: Field, value: str | list[str]) -> None: ...
 
@@ -93,8 +93,14 @@ class AssetDetailsPresenter:
             self.select(None)
 
     def _state(self) -> None:
+        # Per field: the note and the tags have their own save buttons and their
+        # own indicator, so one "dirty" flag cannot say which one is unsaved.
         draft = self._drafts.get(self._asset_id) if self._asset_id is not None else None
-        self._view.show_state(bool(draft and draft.dirty), self._saving)
+        self._view.show_state(
+            bool(draft and draft.note != draft.saved_note),
+            bool(draft and draft.tags != draft.saved_tags),
+            self._saving,
+        )
 
     def save(self, field: Field) -> None:
         gateway, asset_id = self._gateway, self._asset_id
