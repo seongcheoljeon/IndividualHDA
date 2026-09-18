@@ -14,12 +14,9 @@ from uuid import uuid4
 
 from sqlalchemy import (
     Connection,
-    Engine,
-    and_,
     delete,
     func,
     insert,
-    or_,
     select,
     update,
 )
@@ -27,81 +24,35 @@ from sqlalchemy.exc import IntegrityError
 
 from ihda_server import lifecycle_schema as state
 from ihda_server import schema as tables
-from ihda_server.lifecycle import LifecycleStore
+from ihda_server.queries import CatalogQueries
 from ihda_server.tracking import team_tracking
 from libs.library_metadata import new_identity, version_details
-from libs.search_limits import QUERY_TEXT_MAX, TEAM_PAGE_DEFAULT, TEAM_PAGE_MAX
 from libs.tags import normalize_tags
 from libs.team.contracts import (
-    DEFAULT_AUDIT_EVENT_LIMIT,
     Blob,
     Command,
     Conflict,
-    Forbidden,
     NotFound,
-    Page,
     Role,
     TeamError,
     parse_blob,
 )
 
 
-class SqlCatalog:
-    def __init__(self, engine: Engine) -> None:
-        self._engine = engine
-        self.lifecycle = LifecycleStore()
-
-    @staticmethod
-    def authorize(
-        connection: Connection,
-        project_id: str,
-        user_id: str,
-        write: bool = False,
-        owner: bool = False,
-    ) -> str:
-        role = connection.execute(
-            select(tables.members.c.role).where(
-                tables.members.c.project_id == project_id,
-                tables.members.c.user_id == user_id,
-            )
-        ).scalar_one_or_none()
-        if role is None or (write and role == "viewer") or (owner and role != "owner"):
-            raise Forbidden("Project permission denied")
-        return str(role)
-
-    @staticmethod
-    def lock(connection: Connection, project_id: str) -> None:
-        result = connection.execute(
-            update(tables.projects)
-            .where(tables.projects.c.id == project_id)
-            .values(revision=tables.projects.c.revision)
-        )
-        if result.rowcount != 1:
-            raise Forbidden("Project permission denied")
+class SqlCatalog(CatalogQueries):
+    """Writes to a project; reads are inherited from CatalogQueries."""
 
     def require_access(
         self, project_id: str, user_id: str, write: bool = False
     ) -> None:
-        with self._engine.connect() as connection:
-            self.authorize(connection, project_id, user_id, write)
-
-    def projects(self, user_id: str) -> list[dict[str, Any]]:
-        with self._engine.connect() as connection:
-            return [
-                dict(row)
-                for row in connection.execute(
-                    select(tables.projects, tables.members.c.role)
-                    .join(tables.members)
-                    .where(tables.members.c.user_id == user_id)
-                    .order_by(tables.projects.c.name)
-                ).mappings()
-            ]
+        with self.reading(project_id, user_id, write=write):
+            pass
 
     def create_project(self, user_id: str, name: str) -> dict[str, Any]:
         if not name.strip() or len(name) > 120:
             raise TeamError("Project name must contain 1–120 characters")
         project = {"id": str(uuid4()), "name": name.strip(), "revision": 0}
-        with self._engine.begin() as connection:
+        with self.creating() as connection:
             connection.execute(insert(tables.projects).values(**project))
             connection.execute(
                 insert(tables.members).values(
@@ -110,30 +61,12 @@ class SqlCatalog:
             )
         return project
 
-    def members(self, project_id: str, user_id: str) -> list[dict[str, Any]]:
-        with self._engine.connect() as connection:
-            self.authorize(connection, project_id, user_id, owner=True)
-            return [
-                dict(row)
-                for row in connection.execute(
-                    select(
-                        tables.members.c.user_id,
-                        tables.members.c.role,
-                        tables.users.c.name,
-                    )
-                    .join(tables.users)
-                    .where(tables.members.c.project_id == project_id)
-                ).mappings()
-            ]
-
     def set_member(
         self, project_id: str, actor: str, user_id: str, role: Role | None
     ) -> None:
         if role not in {"viewer", "editor", "owner", None}:
             raise TeamError("Invalid project role")
-        with self._engine.begin() as connection:
-            self.lock(connection, project_id)
-            self.authorize(connection, project_id, actor, owner=True)
+        with self.writing(project_id, actor, owner=True) as connection:
             if (
                 connection.execute(
                     select(tables.users.c.id).where(tables.users.c.id == user_id)
@@ -181,9 +114,7 @@ class SqlCatalog:
     def register_blob(
         self, project_id: str, user_id: str, digest: str, size: int
     ) -> None:
-        with self._engine.begin() as connection:
-            self.lock(connection, project_id)
-            self.authorize(connection, project_id, user_id, write=True)
+        with self.writing(project_id, user_id) as connection:
             if (
                 connection.execute(
                     select(tables.blobs.c.digest).where(
@@ -199,19 +130,6 @@ class SqlCatalog:
                     )
                 )
 
-    def blob_size(self, project_id: str, user_id: str, digest: str) -> int:
-        with self._engine.connect() as connection:
-            self.authorize(connection, project_id, user_id)
-            size = connection.execute(
-                select(tables.blobs.c.size).where(
-                    tables.blobs.c.project_id == project_id,
-                    tables.blobs.c.digest == digest,
-                )
-            ).scalar_one_or_none()
-            if size is None:
-                raise NotFound("File does not belong to this project")
-            return int(size)
-
     @staticmethod
     def _verify_blob(connection: Connection, project_id: str, blob: Blob) -> None:
         size = connection.execute(
@@ -223,177 +141,17 @@ class SqlCatalog:
         if size != blob.size:
             raise TeamError("File must be uploaded to this project before registration")
 
-    def list_assets(
-        self,
-        project_id: str,
-        user_id: str,
-        query: str = "",
-        offset: int = 0,
-        limit: int = TEAM_PAGE_DEFAULT,
-    ) -> Page:
-        if offset < 0 or not 1 <= limit <= TEAM_PAGE_MAX or len(query) > QUERY_TEXT_MAX:
-            raise TeamError("Invalid pagination or query")
-        with self._engine.connect() as connection:
-            if connection.dialect.name == "postgresql":
-                # count, rows and revision must come from one snapshot: READ
-                # COMMITTED re-snapshots per statement and can pair rows with a
-                # newer revision, which clients use for optimistic locking.
-                connection = connection.execution_options(
-                    isolation_level="REPEATABLE READ"
-                )
-            self.authorize(connection, project_id, user_id)
-            criteria = [
-                tables.assets.c.project_id == project_id,
-                tables.assets.c.id.in_(
-                    select(state.asset_state.c.asset_id).where(
-                        state.asset_state.c.deleted_at.is_(None)
-                    )
-                ),
-            ]
-            if query.strip():
-                pattern = (
-                    "%"
-                    + query.strip()
-                    .replace("\\", "\\\\")
-                    .replace("%", "\\%")
-                    .replace("_", "\\_")
-                    + "%"
-                )
-                criteria.append(
-                    or_(
-                        tables.assets.c.name.ilike(pattern, escape="\\"),
-                        tables.assets.c.category.ilike(pattern, escape="\\"),
-                    )
-                )
-            total = connection.execute(
-                select(func.count()).select_from(tables.assets).where(*criteria)
-            ).scalar_one()
-            # One LEFT JOIN instead of a preference SELECT per listed asset.
-            mine = state.preferences
-            rows = (
-                connection.execute(
-                    select(
-                        tables.assets.c.document,
-                        mine.c.favorite,
-                        mine.c.revision,
-                        mine.c.use_count,
-                        mine.c.last_used_at,
-                    )
-                    .select_from(
-                        tables.assets.outerjoin(
-                            mine,
-                            and_(
-                                mine.c.asset_id == tables.assets.c.id,
-                                mine.c.user_id == user_id,
-                            ),
-                        )
-                    )
-                    .where(*criteria)
-                    .order_by(tables.assets.c.name_key, tables.assets.c.id)
-                    .offset(offset)
-                    .limit(limit)
-                )
-                .mappings()
-                .all()
-            )
-            revision = connection.execute(
-                select(tables.projects.c.revision).where(
-                    tables.projects.c.id == project_id
-                )
-            ).scalar_one()
-            return Page(
-                [
-                    self.lifecycle.apply_preference(
-                        row["document"], self.lifecycle.preference_row(row, user_id)
-                    )
-                    for row in rows
-                ],
-                total,
-                offset,
-                limit,
-                revision,
-            )
-
-    def get_asset(self, project_id: str, user_id: str, asset_id: int) -> dict[str, Any]:
-        with self._engine.connect() as connection:
-            self.authorize(connection, project_id, user_id)
-            document = connection.execute(
-                select(tables.assets.c.document).where(
-                    tables.assets.c.project_id == project_id,
-                    tables.assets.c.id == asset_id,
-                )
-            ).scalar_one_or_none()
-            if document is None:
-                raise NotFound("Asset does not exist")
-            info = self.lifecycle.asset_state(connection, asset_id)
-            if info["deleted_at"]:
-                raise NotFound("Asset is in the trash")
-            document = {
-                **document,
-                "dependencies": team_tracking(connection, project_id).dependencies(
-                    document["version_uuid"]
-                ),
-            }
-            return self.lifecycle.decorate(connection, document, user_id)
-
-    def histories(
-        self, project_id: str, user_id: str, asset_id: int
-    ) -> list[dict[str, Any]]:
-        with self._engine.connect() as connection:
-            self.authorize(connection, project_id, user_id)
-            rows = [
-                dict(row)
-                for row in connection.execute(
-                    select(
-                        tables.history.c.id,
-                        tables.history.c.version,
-                        tables.history.c.document,
-                    )
-                    .where(
-                        tables.history.c.project_id == project_id,
-                        tables.history.c.asset_id == asset_id,
-                        tables.history.c.id.in_(
-                            select(state.version_state.c.history_id).where(
-                                state.version_state.c.deleted_at.is_(None)
-                            )
-                        ),
-                        tables.history.c.asset_id.in_(
-                            select(state.asset_state.c.asset_id).where(
-                                state.asset_state.c.deleted_at.is_(None)
-                            )
-                        ),
-                    )
-                    .order_by(tables.history.c.id.desc())
-                ).mappings()
-            ]
-
-            tracking = team_tracking(connection, project_id)
-            dependencies = tracking.dependencies_many(
-                [row["document"]["version_uuid"] for row in rows]
-            )
-            for row in rows:
-                row["document"] = {
-                    **row["document"],
-                    "dependencies": dependencies.get(
-                        row["document"]["version_uuid"], []
-                    ),
-                }
-            return rows
-
     def execute(
         self, project_id: str, user_id: str, command: Command
     ) -> dict[str, Any]:
         command.validate()
         try:
-            with self._engine.begin() as connection:
-                self.lock(connection, project_id)
-                self.authorize(
-                    connection,
-                    project_id,
-                    user_id,
-                    write=command.operation not in {"preference", "usage"},
-                    owner=command.operation in {"purge", "purge_history"},
-                )
+            with self.writing(
+                project_id,
+                user_id,
+                write=command.operation not in {"preference", "usage"},
+                owner=command.operation in {"purge", "purge_history"},
+            ) as connection:
                 receipt = (
                     connection.execute(
                         select(tables.requests).where(
@@ -680,139 +438,6 @@ class SqlCatalog:
         )
         return self.lifecycle.decorate(connection, document, user_id)
 
-    def trash(self, project_id: str, user_id: str) -> list[dict[str, Any]]:
-        with self._engine.connect() as connection:
-            self.authorize(connection, project_id, user_id)
-            rows = [
-                dict(row)
-                for row in connection.execute(
-                    select(
-                        tables.assets.c.id,
-                        tables.assets.c.name,
-                        tables.assets.c.revision,
-                        state.asset_state.c.deleted_at,
-                        state.asset_state.c.uuid.label("asset_uuid"),
-                    )
-                    .join(state.asset_state)
-                    .where(
-                        tables.assets.c.project_id == project_id,
-                        state.asset_state.c.deleted_at.is_not(None),
-                    )
-                ).mappings()
-            ]
-            for item in rows:
-                item["asset_id"] = item.pop("id")
-                item["history_id"] = None
-            for row in connection.execute(
-                select(
-                    tables.assets.c.id,
-                    tables.assets.c.name,
-                    tables.assets.c.revision,
-                    tables.history.c.id.label("history_id"),
-                    tables.history.c.version,
-                    state.version_state.c.deleted_at,
-                    state.asset_state.c.uuid.label("asset_uuid"),
-                    state.version_state.c.uuid.label("version_uuid"),
-                )
-                .select_from(tables.assets)
-                .join(tables.history)
-                .join(state.version_state)
-                .join(
-                    state.asset_state,
-                    state.asset_state.c.asset_id == tables.assets.c.id,
-                )
-                .where(
-                    tables.assets.c.project_id == project_id,
-                    state.asset_state.c.deleted_at.is_(None),
-                    state.version_state.c.deleted_at.is_not(None),
-                )
-            ).mappings():
-                item = dict(row)
-                item["asset_id"] = item.pop("id")
-                rows.append(item)
-            return rows
-
-    def events(
-        self, project_id: str, user_id: str, asset_uuid: str
-    ) -> list[dict[str, Any]]:
-        with self._engine.connect() as connection:
-            self.authorize(connection, project_id, user_id)
-            return [
-                dict(row)
-                for row in connection.execute(
-                    select(state.audit, tables.users.c.name.label("actor_name"))
-                    .outerjoin(tables.users, tables.users.c.id == state.audit.c.actor)
-                    .where(
-                        state.audit.c.project_id == project_id,
-                        state.audit.c.asset_uuid == asset_uuid,
-                    )
-                    .order_by(state.audit.c.occurred_at.desc())
-                    .limit(DEFAULT_AUDIT_EVENT_LIMIT)
-                ).mappings()
-            ]
-
-    def file_status(
-        self, project_id: str, user_id: str, asset_id: int
-    ) -> list[dict[str, Any]]:
-        with self._engine.connect() as connection:
-            self.authorize(connection, project_id, user_id)
-            return [
-                dict(row)
-                for row in connection.execute(
-                    select(
-                        tables.history.c.version,
-                        state.file_refs.c.kind,
-                        state.file_refs.c.filename,
-                        state.file_refs.c.status,
-                    )
-                    .join(tables.history)
-                    .where(
-                        tables.history.c.asset_id == asset_id,
-                        tables.history.c.project_id == project_id,
-                    )
-                ).mappings()
-            ]
-
-    def copy_check(
-        self,
-        project_id: str,
-        user_id: str,
-        name: str,
-        category: str,
-        library_uuid: str,
-        asset_uuid: str,
-    ) -> dict[str, Any]:
-        from ihda_server.copy_import import copy_matches
-
-        with self._engine.connect() as connection:
-            self.authorize(connection, project_id, user_id)
-            return copy_matches(
-                connection,
-                project_id,
-                name,
-                category,
-                {"library_uuid": library_uuid, "asset_uuid": asset_uuid},
-            )
-
-    def tracking_read(
-        self,
-        project_id: str,
-        user_id: str,
-        kind: str,
-        asset_uuid: str,
-        version_uuid: str | None = None,
-        offset: int = 0,
-        limit: int = TEAM_PAGE_DEFAULT,
-    ) -> list[dict[str, Any]]:
-        try:
-            with self._engine.connect() as connection:
-                self.authorize(connection, project_id, user_id)
-                return team_tracking(connection, project_id).read(
-                    kind, asset_uuid, version_uuid, offset, limit
-                )
-        except ValueError as error:
-            raise TeamError(str(error)) from error
-
     def tracking_execute(
         self, project_id: str, user_id: str, body: dict[str, Any]
     ) -> dict[str, Any]:
@@ -821,11 +446,9 @@ class SqlCatalog:
                 body["values"], dict
             ):
                 raise ValueError("Invalid tracking request")
-            with self._engine.begin() as connection:
-                self.lock(connection, project_id)
-                self.authorize(
-                    connection, project_id, user_id, write=body["operation"] != "scene"
-                )
+            with self.writing(
+                project_id, user_id, write=body["operation"] != "scene"
+            ) as connection:
                 result = team_tracking(connection, project_id).execute(
                     user_id, body["request_id"], body["operation"], body["values"]
                 )

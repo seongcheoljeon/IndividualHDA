@@ -295,10 +295,11 @@ LAZY_IMPORT_SITES: dict[str, int] = {
     "ihda_server.backup_cli": 4,
     "ihda_server.backup_files": 1,
     "ihda_server.backup_postgres": 2,
-    "ihda_server.catalog": 3,
+    "ihda_server.catalog": 2,
     "ihda_server.cli": 6,
     "ihda_server.database": 2,
     "ihda_server.migrations": 2,
+    "ihda_server.queries": 1,
     "ihda_server.storage_lock": 2,
     "ihda_server.tracking": 1,
     "libs.ai_provider": 1,
@@ -448,3 +449,12 @@ def test_team_active_branches_only_shrink() -> None:
         "personal features should depend on a library port, not on team.active "
         f"(now {now})"
     )
+
+
+def test_catalog_methods_cannot_bypass_project_authorization() -> None:
+    """Only ihda_server.access touches the engine; reads and writes go through it."""
+    for module in ("ihda_server.catalog", "ihda_server.queries"):
+        for node in ast.walk(MODULES[module]):
+            assert not (isinstance(node, ast.Attribute) and node.attr == "_engine"), (
+                f"{module} reaches the engine directly; use reading()/writing()"
+            )
