@@ -9,6 +9,8 @@ from typing import Any
 # description       :
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from libs.qt_helpers import sized_font
+
 
 class Overlay(QtWidgets.QWidget):
     def __init__(self, text: str = "", parent: QtWidgets.QWidget | None = None) -> None:
@@ -43,14 +45,14 @@ class Overlay(QtWidgets.QWidget):
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         painter.fillRect(event.rect(), QtGui.QBrush(QtGui.QColor(0, 0, 0, 100)))
         painter.setPen(QtCore.Qt.GlobalColor.white)
-        painter.setFont(QtGui.QFont("Arial", self.fontsize))
+        painter.setFont(sized_font(self.font(), self.fontsize))
         painter.drawText(
             event.rect(),
             QtCore.Qt.AlignmentFlag.AlignCenter | QtCore.Qt.AlignmentFlag.AlignCenter,
             self.text,
         )
         painter.setPen(QtCore.Qt.GlobalColor.darkGray)
-        painter.setFont(QtGui.QFont("Arial", 13))
+        painter.setFont(sized_font(self.font(), 13))
         painter.drawText(
             event.rect(),
             QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignTop,

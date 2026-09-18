@@ -343,7 +343,9 @@ class Extensions:
 
 
 class UISetting:
-    dft_font_style: Final = "MS Shell Dlg 2" if is_windows() else "Courier"
+    # Bundled with the panel (resource/fonts), so it is the same on every platform.
+    # libs.app_fonts registers the files; this is the family they expose.
+    dft_font_style: Final = "MaruBuri"
     view_font_style: Final = dft_font_style
     dft_font_size: Final = 10
     view_font_size: Final = 11

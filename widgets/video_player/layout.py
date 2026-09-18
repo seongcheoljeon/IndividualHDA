@@ -87,9 +87,7 @@ class VideoPlayerLayout:
         self.verticalLayout__playlist.setContentsMargins(0, 0, 0, 3)
         self.listWidget__playlist = QListWidget(self.widget__playlist)
         self.listWidget__playlist.setObjectName("listWidget__playlist")
-        self.listWidget__playlist.setFont(
-            make_font(families=["MS Shell Dlg 2"], point_size=11)
-        )
+        self.listWidget__playlist.setFont(make_font(point_size=11))
         self.listWidget__playlist.setFrameShape(QFrame.Shape.NoFrame)
         self.verticalLayout__playlist.addWidget(self.listWidget__playlist)
         self.horizontalLayout__playlist_actions = QHBoxLayout()

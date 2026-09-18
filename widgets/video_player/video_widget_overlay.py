@@ -8,6 +8,8 @@ from __future__ import annotations
 # description       :
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from libs.qt_helpers import sized_font
+
 
 class Overlay(QtWidgets.QWidget):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
@@ -25,14 +27,14 @@ class Overlay(QtWidgets.QWidget):
         painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
         painter.fillRect(event.rect(), QtGui.QBrush(QtGui.QColor(255, 255, 255, 20)))
         painter.setPen(QtCore.Qt.GlobalColor.darkGray)
-        painter.setFont(QtGui.QFont("Arial", 33))
+        painter.setFont(sized_font(self.font(), 33))
         painter.drawText(
             event.rect(),
             QtCore.Qt.AlignmentFlag.AlignCenter | QtCore.Qt.AlignmentFlag.AlignCenter,
             "iHDA Video Player",
         )
         painter.setPen(QtCore.Qt.GlobalColor.darkGray)
-        painter.setFont(QtGui.QFont("Arial", 13))
+        painter.setFont(sized_font(self.font(), 13))
         painter.drawText(
             event.rect(),
             QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop,

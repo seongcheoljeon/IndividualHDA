@@ -9,7 +9,8 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from libs.ai_features import Description
 from libs.app_metadata import MINIMUM_HOUDINI_MAJOR
 from libs.asset_contracts import LibrarySnapshot
-from libs.keys import Type, Value
+from libs.keys import Type, UISetting, Value
+from libs.qt_helpers import apply_panel_font
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
@@ -117,6 +118,8 @@ class IndividualHDA(QtWidgets.QMainWindow, MainWindowLayout):
             raise RuntimeError("Create Individual HDA on the Houdini GUI thread")
         initialize_config()
         super().__init__(parent)
+        # Panel-scoped: Houdini's own widgets keep the host font.
+        apply_panel_font(self, UISetting.dft_font_style)
         self.build_ui(self)
         self.session = PanelSessionState()
         self.status = PanelStatus()
