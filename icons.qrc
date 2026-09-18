@@ -73,5 +73,28 @@
     <file>icons/unknown.png</file>
     <file>icons/unpack_subnet.png</file>
     <file>icons/viewport_logo_trans.png</file>
+    <file>icons/account_circle.png</file>
+    <file>icons/asterisk.png</file>
+    <file>icons/cube.png</file>
+    <file>icons/description.png</file>
+    <file>icons/download.png</file>
+    <file>icons/download_done.png</file>
+    <file>icons/forest.png</file>
+    <file>icons/graph1.png</file>
+    <file>icons/group.png</file>
+    <file>icons/group_add.png</file>
+    <file>icons/group_off.png</file>
+    <file>icons/group_remove.png</file>
+    <file>icons/groups.png</file>
+    <file>icons/monitor_heart.png</file>
+    <file>icons/network_intelligence.png</file>
+    <file>icons/person.png</file>
+    <file>icons/person_add.png</file>
+    <file>icons/person_alert.png</file>
+    <file>icons/person_remove.png</file>
+    <file>icons/terminal.png</file>
+    <file>icons/thumb_down.png</file>
+    <file>icons/thumb_up.png</file>
+    <file>icons/upload.png</file>
   </qresource>
 </RCC>

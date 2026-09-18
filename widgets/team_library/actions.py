@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from libs.asset_contracts import HistoryData
 from libs.drag_payload import decode_drag_record
@@ -34,11 +34,24 @@ class MainAssetActions:
         if index.isValid():
             view.setCurrentIndex(index)
             self.bindings.selection._selected_ihda_item(index)
-            menu.addAction("Import", lambda: self.library.download())
-            menu.addAction("Play video", lambda: self.library.download("video"))
-            assert self.library.presenter is not None
-            menu.addAction("History", self.library.presenter.history)
             menu.addAction(
+                QtGui.QIcon(QtGui.QPixmap(":/main/icons/download.png")),
+                "Import",
+                lambda: self.library.download(),
+            )
+            menu.addAction(
+                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_movie_white.png")),
+                "Play video",
+                lambda: self.library.download("video"),
+            )
+            assert self.library.presenter is not None
+            menu.addAction(
+                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_query_builder_white.png")),
+                "History",
+                self.library.presenter.history,
+            )
+            menu.addAction(
+                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_format_quote_white.png")),
                 "Details",
                 lambda: self.bindings.notes._detail_view_ihda_data(
                     self.bindings.selection.state.asset.data
@@ -46,17 +59,48 @@ class MainAssetActions:
             )
             menu.addSeparator()
             edits = menu.addMenu("Edit")
+            edits.setIcon(
+                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_border_color_white.png"))
+            )
             edits.setEnabled(self.library.writable and not self.library._tasks.busy)
-            edits.addAction("Rename…", self.rename)
-            favorite = menu.addAction("Favorite", self.favorite)
+            edits.addAction(
+                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_border_color_white.png")),
+                "Rename…",
+                self.rename,
+            )
+            favorite = menu.addAction(
+                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_favorite_border_white.png")),
+                "Favorite",
+                self.favorite,
+            )
             favorite.setEnabled(not self.library._tasks.busy)
-            edits.addAction("Add version…", lambda: self.register_file(True))
-            edits.addAction("Attach thumbnail…", lambda: self.attach("thumbnail"))
-            edits.addAction("Attach video…", lambda: self.attach("video"))
+            edits.addAction(
+                QtGui.QIcon(QtGui.QPixmap(":/main/icons/asterisk.png")),
+                "Add version…",
+                lambda: self.register_file(True),
+            )
+            edits.addAction(
+                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_camera_alt_white.png")),
+                "Attach thumbnail…",
+                lambda: self.attach("thumbnail"),
+            )
+            edits.addAction(
+                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_videocam_white.png")),
+                "Attach video…",
+                lambda: self.attach("video"),
+            )
             edits.addSeparator()
-            edits.addAction("Delete…", self.remove)
+            edits.addAction(
+                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_delete_forever_white.png")),
+                "Delete…",
+                self.remove,
+            )
         else:
-            action = menu.addAction("Register file…", self.register_file)
+            action = menu.addAction(
+                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_save_white.png")),
+                "Register file…",
+                self.register_file,
+            )
             action.setEnabled(self.library.writable and not self.library._tasks.busy)
         menu.exec(view.mapToGlobal(point))
 
@@ -199,12 +243,20 @@ class MainAssetActions:
             return
         menu = QtWidgets.QMenu(self.bindings.parent)
         menu.addAction(
-            "Import", lambda: self.library.download(historical=item["document"])
+            QtGui.QIcon(QtGui.QPixmap(":/main/icons/download.png")),
+            "Import",
+            lambda: self.library.download(historical=item["document"]),
         )
         menu.addAction(
-            "Play video", lambda: self.library.download("video", item["document"])
+            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_movie_white.png")),
+            "Play video",
+            lambda: self.library.download("video", item["document"]),
         )
-        remove = menu.addAction("Delete version…", lambda: self._remove_history(item))
+        remove = menu.addAction(
+            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_delete_forever_white.png")),
+            "Delete version…",
+            lambda: self._remove_history(item),
+        )
         remove.setEnabled(self.library.writable and not self.library._tasks.busy)
         menu.exec(view.mapToGlobal(point))
 

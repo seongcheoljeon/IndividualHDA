@@ -114,3 +114,57 @@ def test_application_has_no_designer_sources_or_generated_layouts() -> None:
     assert not sources, (
         "Edit the maintained layout.py modules instead of adding Designer files"
     )
+
+
+def test_every_referenced_icon_resolves(app: Any) -> None:
+    """A wrong resource path renders as a blank icon, never as an error.
+
+    Three menu entries shipped with `_18dp`/`_48dp` suffixes that exist in no
+    .qrc, so they drew nothing. Only literal paths are checked; a few call sites
+    build the name at runtime and cannot be swept this way.
+    """
+    import importlib
+    import re
+    from pathlib import Path
+
+    from PySide6 import QtGui
+
+    root = Path(__file__).resolve().parent.parent
+    # Resources only exist once their generated module is imported, and four
+    # .qrc files share the "main" prefix alone. Register every one of them, or
+    # icons that are perfectly fine get reported as missing.
+    for generated in sorted(root.rglob("*_rc.py")):
+        if ".venv" in generated.parts:
+            continue
+        importlib.import_module(
+            str(generated.relative_to(root).with_suffix("")).replace("/", ".")
+        )
+
+    reference = re.compile(r'":(/[\w-]+/icons/[\w.@-]+)"')
+    missing: dict[str, list[str]] = {}
+    for source in sorted(root.rglob("*.py")):
+        if source.name.endswith("_rc.py") or ".venv" in source.parts:
+            continue
+        for path in reference.findall(source.read_text(encoding="utf-8")):
+            if QtGui.QPixmap(f":{path}").isNull():
+                missing.setdefault(path, []).append(str(source.relative_to(root)))
+    assert not missing, f"unresolved icon resources: {missing}"
+
+
+def test_tag_action_buttons_share_one_icon_size(
+    app: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The AI button is built in code, not in the .py layout, so it missed the
+    explicit icon size its siblings set and rendered visibly smaller."""
+    from main import IndividualHDA
+    from widgets.ui_tokens import TOOLBAR_ICON_SIZE
+    from widgets.web_view.web_view import WebView
+
+    monkeypatch.setattr(WebView, "_WebView__set_init_load", lambda self: None)
+    panel = IndividualHDA()
+    try:
+        expected = panel.pushButton__tag_save.iconSize()
+        assert expected.width() == TOOLBAR_ICON_SIZE
+        assert panel.pushButton__ai_suggest.iconSize() == expected
+    finally:
+        panel.close()

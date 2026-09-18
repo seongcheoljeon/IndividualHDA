@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from widgets.library_manager.dialog import LibraryManager
 
@@ -56,18 +56,32 @@ class PanelLibraryTools:
     def _setup_library_tools(self) -> None:
         self.library_manager = None
         self.tools_require_restart = False
-        menu = self.bindings.ui.menubar.addMenu("Library Tools")
-        action = menu.addAction("Team connection…")
+        # addMenu() appends after Help, which layout.py added last; insert before it.
+        menu = QtWidgets.QMenu("Library Tools", self.bindings.ui.menubar)
+        self.bindings.ui.menubar.insertMenu(
+            self.bindings.ui.menuHelp.menuAction(), menu
+        )
+        action = menu.addAction(
+            QtGui.QIcon(":/main/icons/graph1.png"), "Team connection…"
+        )
         action.triggered.connect(lambda: self.bindings.team().open_connection())
-        self.actionProject_Members = menu.addAction("Project members…")
+        self.actionProject_Members = menu.addAction(
+            QtGui.QIcon(":/main/icons/groups.png"), "Project members…"
+        )
         self.actionProject_Members.setVisible(False)
         self.actionProject_Members.triggered.connect(
             lambda: self.bindings.team().open_members()
         )
         menu.addSeparator()
-        menu.addAction("Copy to team…", self._open_copy_to_team)
+        menu.addAction(
+            QtGui.QIcon(":/main/icons/upload.png"),
+            "Copy to team…",
+            self._open_copy_to_team,
+        )
         self.actionRegistration_Recovery = menu.addAction(
-            "Pending registrations…", self._open_registration_recovery
+            QtGui.QIcon(":/main/icons/ic_query_builder_white.png"),
+            "Pending registrations…",
+            self._open_registration_recovery,
         )
         self.registration_status_tasks = self.bindings.services.tasks(
             self.bindings.parent
@@ -75,24 +89,31 @@ class PanelLibraryTools:
         menu.aboutToShow.connect(self._refresh_registration_status)
         QtCore.QTimer.singleShot(0, self._refresh_registration_status)
         menu.addAction(
-            "Retry scene reporting", lambda: self.bindings.scene_usage().flush()
+            QtGui.QIcon(":/main/icons/ic_refresh_white.png"),
+            "Retry scene reporting",
+            lambda: self.bindings.scene_usage().flush(),
         )
-        menu.addAction("Trash…", lambda: self._open_metadata_tools())
         menu.addAction(
+            QtGui.QIcon(":/main/icons/ic_delete_forever_white.png"),
+            "Trash…",
+            lambda: self._open_metadata_tools(),
+        )
+        menu.addAction(
+            QtGui.QIcon(":/main/icons/ic_format_quote_white.png"),
             "Version details…",
             self._open_selected_version_details,
         )
-        for index, label in enumerate(
+        for index, (label, icon) in enumerate(
             (
-                "Library health…",
-                "Backups and restore…",
-                "Repair moved paths…",
-                "Compare versions…",
-                "Library explorer…",
-                "Recovery files…",
+                ("Library health…", ":/main/icons/monitor_heart.png"),
+                ("Backups and restore…", ":/main/icons/ic_archive_white.png"),
+                ("Repair moved paths…", ":/main/icons/ic_build_white.png"),
+                ("Compare versions…", ":/main/icons/ic_swap_horiz_white.png"),
+                ("Library explorer…", ":/main/icons/ic_find_in_page_white.png"),
+                ("Recovery files…", ":/main/icons/ic_restore_page_white.png"),
             )
         ):
-            action = menu.addAction(label)
+            action = menu.addAction(QtGui.QIcon(icon), label)
             action.triggered.connect(
                 lambda checked=False, tab=index: self._open_library_tools(tab)
             )

@@ -103,7 +103,7 @@ class MainWindowLayout:
     def _build_application_actions(self, window: QMainWindow) -> None:
         self.actionQuit = QAction(window)
         self.actionQuit.setObjectName("actionQuit")
-        self.actionQuit.setIcon(QIcon(":/main/icons/ic_not_interested_white_48dp.png"))
+        self.actionQuit.setIcon(QIcon(":/main/icons/ic_clear_white.png"))
         self.actionQuit.setText(_translate("Quit"))
         self.actionReload = QAction(window)
         self.actionReload.setObjectName("actionReload")
@@ -203,9 +203,7 @@ class MainWindowLayout:
         self.actionExport_Data.setStatusTip(_translate("Export iHDA data."))
         self.actionDownload_FFmpeg = QAction(window)
         self.actionDownload_FFmpeg.setObjectName("actionDownload_FFmpeg")
-        self.actionDownload_FFmpeg.setIcon(
-            QIcon(":/main/icons/ic_language_white_48dp.png")
-        )
+        self.actionDownload_FFmpeg.setIcon(QIcon(":/main/icons/ic_language_white.png"))
         self.actionDownload_FFmpeg.setText(_translate("Download FFmpeg"))
         self.actionDownload_FFmpeg.setStatusTip(
             _translate("Go to the ffmpeg download site.")
@@ -222,10 +220,12 @@ class MainWindowLayout:
         self.actionUpdate.setText(_translate("Update..."))
         self.actionFFmpeg = QAction(window)
         self.actionFFmpeg.setObjectName("actionFFmpeg")
+        self.actionFFmpeg.setIcon(QIcon(":/main/icons/ic_movie_white.png"))
         self.actionFFmpeg.setText(_translate("FFmpeg"))
         self.actionFFmpeg.setToolTip(_translate("Download FFmpeg"))
         self.actionCodec = QAction(window)
         self.actionCodec.setObjectName("actionCodec")
+        self.actionCodec.setIcon(QIcon(":/main/icons/cube.png"))
         self.actionCodec.setText(_translate("Codec"))
         self.actionCodec.setToolTip(_translate("Download Codec"))
         self.actionDelete_All = QAction(window)
@@ -795,6 +795,9 @@ class MainWindowLayout:
             _translate("ex) #basic #explosion #smoke <Separated by #>")
         )
         self.verticalLayout__tag_editor.addWidget(self.textEdit__tag)
+        self.label__tag_status = QLabel(self.widget__tag_editor)
+        self.label__tag_status.setObjectName("label__tag_status")
+        self.verticalLayout__tag_editor.addWidget(self.label__tag_status)
         self.horizontalLayout__tag_actions = QHBoxLayout()
         self.horizontalLayout__tag_actions.setSpacing(3)
         self.horizontalLayout__tag_actions.setObjectName(
@@ -1366,7 +1369,7 @@ class MainWindowLayout:
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
         self.label__hist_tag_pixmap.setPixmap(
-            QPixmap(":/main/icons/ic_bookmark_white_18dp.png")
+            QPixmap(":/main/icons/ic_bookmark_white.png")
         )
         self.label__hist_tag_pixmap.setScaledContents(True)
         self.label__hist_tag_pixmap.setAlignment(Qt.AlignmentFlag.AlignCenter)

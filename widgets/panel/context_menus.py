@@ -186,13 +186,16 @@ class PanelContextMenus:
         )
 
         action_hda_context_menu_copy = hda_context_menu.addAction("Copy to team…")
+        action_hda_context_menu_copy.setIcon(
+            QtGui.QIcon(QtGui.QPixmap(":/main/icons/upload.png"))
+        )
         action_hda_context_menu_detail = hda_context_menu.addAction("Detail")
         action_hda_context_menu_detail.setIcon(
             QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_format_quote_white.png"))
         )
         action_hda_context_menu_ai = hda_context_menu.addAction("AI: Suggest Note/Tags")
         action_hda_context_menu_ai.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_new_releases_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(":/main/icons/network_intelligence.png"))
         )
         action_hda_make_context_menu_rename = hda_context_menu.addAction("Rename")
         action_hda_make_context_menu_rename.setIcon(

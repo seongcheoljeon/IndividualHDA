@@ -337,7 +337,9 @@ class PanelBootstrap:
             lambda: window.presentation._set_theme(theme=Name.darkblue_theme)
         )
         window.actionHelp.triggered.connect(window.presentation._slot_help)
-        window.actionOpen_Log_Folder = QtGui.QAction("Open log folder", window)
+        window.actionOpen_Log_Folder = QtGui.QAction(
+            QtGui.QIcon(":/main/icons/ic_folder_white.png"), "Open log folder", window
+        )
         window.menuHelp.addAction(window.actionOpen_Log_Folder)
         window.actionOpen_Log_Folder.triggered.connect(
             lambda: ihda_system.IHDASystem.open_folder(dirpath=window._log_dirpath)
@@ -363,7 +365,11 @@ class PanelBootstrap:
             lambda: window.selection._slot_select_view(inst=window.actionHistory)
         )
         window.actionPreference.triggered.connect(lambda: window._preference.show())
-        window.actionLocal_AI_Models = QtGui.QAction("Local AI Models…", window)
+        window.actionLocal_AI_Models = QtGui.QAction(
+            QtGui.QIcon(":/main/icons/network_intelligence.png"),
+            "Local AI Models…",
+            window,
+        )
         window.menuTools.insertAction(
             window.menuDownload.menuAction(), window.actionLocal_AI_Models
         )
