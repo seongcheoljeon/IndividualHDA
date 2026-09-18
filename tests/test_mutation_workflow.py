@@ -263,3 +263,35 @@ def test_rename_overlay_closes_on_exception() -> None:
     with pytest.raises(RuntimeError):
         PanelAssetManagement._slot_hda_name_changed(owner)
     assert events == ["show", "close"]
+
+
+def test_history_trash_skips_activity_rows(
+    mutation_panel: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from libs.asset_contracts import HistoryData
+
+    panel = mutation_panel
+    water = next(row for row in panel.models.assets.rows if row.hda_name == "Water")
+    deleted: list[int] = []
+    original = panel.session.repository.delete_history
+
+    def record(asset_id: int, history_id: int, *args: Any, **kwargs: Any) -> Any:
+        deleted.append(history_id)
+        return original(asset_id, history_id, *args, **kwargs)
+
+    monkeypatch.setattr(panel.session.repository, "delete_history", record)
+    histories = panel.models.history_model.get_hist_data_by_hkey_id_from_model(
+        hkey_id=water.hda_id
+    )
+    activity = HistoryData(
+        kind="video",
+        hda_id=water.hda_id,
+        org_hda_name="Water",
+        version="",
+        comment="VIDEO (INSERT)",
+        reg_time="2026-09-17 10:00:00",
+    )
+    panel.management._trash_history_rows([activity, *histories])
+    assert 0 not in deleted and deleted
+    remaining = panel.session.repository.histories(water.hda_id, owner="tester")
+    assert [row.version for row in remaining] == ["1.1"]

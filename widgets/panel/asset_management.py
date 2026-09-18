@@ -426,7 +426,9 @@ iHDA note history: {cnt_hda_note_hist}
             self._trash_history_rows(del_hist_data_lst)
 
     def _trash_history_rows(self, histories: list[HistoryData]) -> None:
-        snapshots = {history.hist_id: history for history in histories}
+        snapshots = {
+            history.hist_id: history for history in histories if history.is_version
+        }
         for history in snapshots.values():
             if not self.bindings.session.require_repository().is_latest_history(
                 history.hda_id, history.hist_id

@@ -141,6 +141,8 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         self.set_row_col_in_item(row)
         data = self.__items[row]
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
+            if column == HistoryColumn.ID and not data.is_version:
+                return ""  # activity rows have no history id
             val = getattr(data, HistoryColumn(column).field)
             if column == self.__hda_dirpath_column:
                 return str(val) if val is not None else ""
@@ -150,6 +152,8 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         elif role == QtCore.Qt.ItemDataRole.DecorationRole:
             other_icon_size = self.__icon_size * 0.7
             if column == self.__hda_name_column:
+                if not data.is_version:
+                    return None
                 return thumbnail(
                     self.__pixmap_hist_thumb_data,
                     data.hist_id,
@@ -218,6 +222,9 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
             font = QtGui.QFont()
             font.setFamily(self._font_style)
             font.setPointSize(self._font_size)
+            if not data.is_version:
+                font.setItalic(True)  # no file behind it, but nothing is missing
+                return font
             hda_dirpath = data.ihda_dirpath
             if hda_dirpath is None:
                 font.setItalic(True)
@@ -279,6 +286,11 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         if not index.isValid():
             return QtCore.Qt.ItemFlag.ItemIsDropEnabled
         flags = super().flags(index)
+        if not index.data(HistoryModel.data_role).is_version:
+            # Activity rows are readable but never dragged into Houdini.
+            return (
+                QtCore.Qt.ItemFlag.ItemIsSelectable | QtCore.Qt.ItemFlag.ItemIsEnabled
+            )
         if index.isValid():
             hda_filepath = index.data(HistoryModel.filepath_role)
             if (hda_filepath is None or not hda_filepath.exists()) and not index.data(
@@ -322,7 +334,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
     ) -> list[HistoryData]:
         changed = []
         for row, item in enumerate(self.__items):
-            if item.hda_id != asset_id:
+            if item.hda_id != asset_id or not item.is_version:
                 continue
             for directory_key, filename_key in (
                 ("ihda_dirpath", "ihda_filename"),
@@ -397,7 +409,10 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
             if not index.isValid():
                 continue
             if index.data(HistoryModel.id_role) == hkey_id:
-                if index.data(HistoryModel.version_role) == version:
+                if (
+                    index.data(HistoryModel.version_role) == version
+                    and index.data(HistoryModel.data_role).is_version
+                ):
                     return index.data(HistoryModel.hist_id_role)
         return None
 

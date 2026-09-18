@@ -6,6 +6,7 @@ CORE = frozenset(
         "test_annotations.py",
         "test_architecture.py",
         "test_database.py",
+        "test_history_activity.py",
         "test_identity.py",
         "test_ollama.py",
         "test_scene_repository.py",

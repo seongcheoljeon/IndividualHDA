@@ -15,6 +15,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from libs import host, houdini_api, ihda_system, keys, log_handler
 from libs.item_paths import item_path
 from model import (
+    ihda_history_model,
     ihda_inside_model,
     ihda_list_model,
     ihda_record_model,
@@ -74,6 +75,8 @@ class PanelContextMenus:
         index = self.bindings.views.history.indexAt(point)
         if not index.isValid():
             return
+        if not index.data(ihda_history_model.HistoryModel.data_role).is_version:
+            return  # activity rows own no file to open, detail or delete
         if not self.bindings.queries._is_valid_hist_current_item_data:
             return
         context_menu = QtWidgets.QMenu(self.bindings.parent)

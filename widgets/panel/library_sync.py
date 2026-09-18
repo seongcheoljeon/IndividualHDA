@@ -14,6 +14,7 @@ from PySide6 import QtCore, QtWidgets
 
 from libs import log_handler
 from libs.asset_contracts import LibrarySnapshot, SyncContext
+from libs.history_activity import merge_history_rows
 from libs.library_backups import auto_backup
 from model.asset_notifications import QtAssetNotifications
 from widgets.panel.sync_presenter import LibrarySyncPresenter
@@ -165,7 +166,12 @@ class PanelLibrarySync:
                 revision=repository.revision(),
                 assets=tuple(repository.list_assets(owner=owner)),
                 categories=tuple(repository.categories(owner=owner)),
-                histories=tuple(repository.histories(None, owner=owner)),
+                histories=tuple(
+                    merge_history_rows(
+                        repository.histories(None, owner=owner),
+                        repository.activity(owner=owner),
+                    )
+                ),
                 icons=tuple(repository.asset_icons(owner=owner)),
                 history_thumbnails=tuple(repository.history_thumbnails(owner=owner)),
             )

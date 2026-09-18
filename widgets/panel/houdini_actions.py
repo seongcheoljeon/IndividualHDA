@@ -189,6 +189,8 @@ class PanelHoudiniActions:
                     model_data = replace(model_data, version_uuid=record.version_uuid)
             # 만약 히스토리에서 드래그&드롭 하는 것이라면
             if isinstance(model_data, HistoryData):
+                if not model_data.is_version:
+                    continue  # activity rows carry no HDA file
                 hda_cate = model_data.node_category
                 hda_id = model_data.hda_id
                 hda_name = model_data.org_hda_name

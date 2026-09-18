@@ -156,3 +156,39 @@ def test_history_comment_keeps_the_kind_and_appends_the_description(
         ),
     )
     assert updated.history.comment == "NODE (UPDATE) reduced the substep count"
+
+
+def test_activity_rows_come_from_audit_events_not_history(tmp_path: Path) -> None:
+    from support.names import Names
+
+    from libs.asset_rename import build_rename_plan
+
+    database = tmp_path / "ihda.db"
+    with SQLite3DatabaseAPI(database):
+        pass
+    repo = SqliteLibraryRepository(database)
+    repo.ensure_user("tester")
+    repo.register_asset(payload(tmp_path, "Water"))
+    assert repo.activity("tester") == []
+
+    video_dir = tmp_path / "sop" / "Water" / "video"
+    video_dir.mkdir()
+    assert repo.set_video(1, video_dir, "Water_v1.0.mp4", "1.0") == "insert"
+    # Re-recording keeps the same path; the trigger is silent, the row is not.
+    assert repo.set_video(1, video_dir, "Water_v1.0.mp4", "1.0") == "update"
+    plan = build_rename_plan(repo.list_assets()[0], "Ocean", Names(), rename_video=True)
+    repo.rename_asset(plan)
+
+    rows = repo.activity("tester")
+    assert [row.comment for row in rows] == [
+        "VIDEO (INSERT)",
+        "VIDEO (UPDATE)",
+        "NAME (CHANGE) Water → Ocean",
+    ]
+    assert all(not row.is_version and row.hist_id == 0 for row in rows)
+    assert {row.userid for row in rows} == {"tester"}
+    assert {row.org_hda_name for row in rows} == {"Ocean"}
+    # Activity never became a version.
+    assert [row.comment for row in repo.histories(1, "tester")] == ["NODE (INSERT)"]
+    assert repo.history_counts().versions == 1
+    assert repo.activity("someone-else") == []

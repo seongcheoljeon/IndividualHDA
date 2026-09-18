@@ -361,3 +361,45 @@ def test_multi_delete_keeps_ids_after_proxy_reorders(app: Any, tmp_path: Path) -
     PanelAssetManagement._remove_hda_item(owner, selected)
     assert deleted == [2, 1]
     assert [item.hda_id for item in rows] == [3]
+
+
+def test_activity_rows_are_readable_but_inert(app: Any) -> None:
+    from libs.asset_contracts import HistoryData
+
+    version = HistoryData(
+        hist_id=7,
+        hda_id=1,
+        org_hda_name="Water",
+        version="1.0",
+        ihda_dirpath=Path("/missing"),
+        ihda_filename="Water.hda",
+        reg_time="2026-09-17 10:00:00",
+    )
+    activity = HistoryData(
+        kind="rename",
+        hda_id=1,
+        org_hda_name="Ocean",
+        version="",
+        comment="NAME (CHANGE) Water → Ocean",
+        reg_time="2026-09-17 11:00:00",
+    )
+    model = HistoryModel(items=[version, activity])
+    proxy = HistoryProxyModel()
+    proxy.setSourceModel(model)
+
+    index = model.index(1, 0)
+    assert not index.flags() & QtCore.Qt.ItemFlag.ItemIsDragEnabled
+    assert index.flags() & QtCore.Qt.ItemFlag.ItemIsSelectable
+    font = index.data(QtCore.Qt.ItemDataRole.FontRole)
+    assert font.italic() and not font.strikeOut()
+    assert index.data(QtCore.Qt.ItemDataRole.DisplayRole) == ""  # no history id
+    assert index.data(QtCore.Qt.ItemDataRole.DecorationRole) is None
+    assert model.index(1, 4).data(QtCore.Qt.ItemDataRole.DisplayRole) == (
+        "NAME (CHANGE) Water → Ocean"
+    )
+    # The version row keeps its missing-file strike-out and its identity lookup.
+    assert model.index(0, 0).data(QtCore.Qt.ItemDataRole.FontRole).strikeOut()
+    assert model.get_history_id_from_model(1, "1.0") == 7
+    assert model.get_history_id_from_model(1, "") is None
+    proxy.set_datetime(["2026-09-17", "2026-09-17"])
+    assert proxy.rowCount() == 2

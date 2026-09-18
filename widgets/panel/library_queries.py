@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from PySide6 import QtCore
 
 from libs.asset_contracts import AssetData, HistoryData
+from libs.history_activity import merge_history_rows
 from libs.scene_contracts import SceneRecord
 from model.asset_notifications import QtAssetNotifications
 
@@ -135,8 +136,13 @@ class PanelLibraryQueries:
     ) -> list[HistoryData]:
         if self.bindings.session.repository is None:
             return []
-        return self.bindings.session.require_repository().histories(
-            hda_key_id, owner=user_id, search_date=search_date
+        repository = self.bindings.session.require_repository()
+        activity = repository.activity(owner=user_id)
+        if hda_key_id is not None:
+            activity = [row for row in activity if row.hda_id == hda_key_id]
+        return merge_history_rows(
+            repository.histories(hda_key_id, owner=user_id, search_date=search_date),
+            activity,
         )
 
     def _get_hda_category(

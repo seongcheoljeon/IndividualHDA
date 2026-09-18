@@ -29,8 +29,10 @@ from libs.asset_contracts import (
     NoteHistory,
 )
 from libs.asset_rename import RenameCounts, RenamePlan, rename_asset
+from libs.database.lifecycle import PersonalLifecycle
 from libs.database.rename_repository import SQLiteRenameRepository
 from libs.database.rows import named_query
+from libs.history_activity import activity_rows
 from libs.library_explorer import search_asset_ids
 from libs.operation_journal import durable_operation
 from libs.record_codec import decode_record
@@ -281,12 +283,9 @@ class SqliteLibraryRepository:
         self, asset_id: int, directory: Path, filename: str, version: str
     ) -> str:
         """Insert or update the preview video row; returns "insert" or "update"."""
-        with self._session() as db:
-            kind = (
-                "update"
-                if db.get_video_info(hda_key_id=asset_id) is not None
-                else "insert"
-            )
+        with self._session() as db, db.transaction():
+            current = db.get_video_info(hda_key_id=asset_id)
+            kind = "update" if current is not None else "insert"
             write = db.update_video_info if kind == "update" else db.insert_video_info
             done = write(
                 hda_key_id=asset_id,
@@ -294,9 +293,42 @@ class SqliteLibraryRepository:
                 filename=filename,
                 version=version,
             )
+            if done is not None and current == directory / filename:
+                # Re-recording the same version keeps the path, so the audit
+                # trigger sees no change; record the replacement ourselves.
+                snapshot = {"filename": filename, "dirpath": str(directory)}
+                PersonalLifecycle(db._connect).event(
+                    asset_id,
+                    "video_info.update",
+                    {"before": snapshot, "after": snapshot},
+                )
         if done is None:
             raise LibraryError("video was not stored")
         return kind
+
+    def activity(self, owner: str | None = None) -> list[HistoryData]:
+        """Renames and preview-video changes as non-version rows.
+
+        Read from audit_events, never hda_history: the v6 trigger would turn a
+        history row into a version. The actor is the asset owner, matching the
+        ``userid`` filter of ``histories``.
+        """
+        if not self._db_filepath.is_file():
+            return []
+        with self._session() as db:
+            rows = named_query(
+                db._connect,
+                """SELECT e.operation,e.actor,e.occurred_at,e.request_id,e.changes,
+                          k.id AS hda_id,k.name AS org_hda_name,k.category AS node_category
+                   FROM audit_events e
+                   JOIN asset_identity a ON a.uuid=e.asset_uuid
+                   JOIN hda_key k ON k.id=a.asset_id
+                   WHERE a.deleted_at IS NULL AND e.actor=:user_id
+                     AND e.operation IN ('hda_key.update','video_info.insert','video_info.update')
+                   ORDER BY e.occurred_at,e.rowid""",
+                {"user_id": owner},
+            ).fetchall()
+        return activity_rows(dict(row) for row in rows)
 
     def add_history_row(self, row: HistoryData) -> int:
         """Append a named history record and return its identity."""

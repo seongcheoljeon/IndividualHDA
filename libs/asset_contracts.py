@@ -57,6 +57,9 @@ class AssetData:
 class HistoryData:
     remote: bool = False
     library_id: str = ""
+    # "version" is a real hda_history row; "rename"/"video" rows come from
+    # audit events and own no files, so the panel neither opens nor deletes them.
+    kind: str = "version"
     hist_id: int = 0
     hda_id: int
     comment: str | None = None
@@ -83,6 +86,10 @@ class HistoryData:
     video_dirpath: Path | None = None
     video_filename: str | None = None
     item_row: int = 0
+
+    @property
+    def is_version(self) -> bool:
+        return self.kind == "version"
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
