@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import platform
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +29,12 @@ class SceneUsageBindings:
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class SceneObservation:
-    node: Any
+    # compare=False: a HOM node outlives nothing. Deleting it in Houdini makes
+    # hou.Node.__eq__ raise ObjectWasDeleted, which a plain `in` check would hit
+    # while looking at entries recorded earlier. session_id identifies the node
+    # and keeps comparing safely after the node is gone.
+    node: Any = field(compare=False)
+    session_id: int
     version_uuid: str
     namespace: str
 
@@ -51,7 +56,10 @@ class SceneUsageIntegration:
         try:
             path = self.bindings.host.current_hipfile()
             entry = SceneObservation(
-                node=node, version_uuid=version_uuid, namespace=namespace
+                node=node,
+                session_id=node.sessionId(),
+                version_uuid=version_uuid,
+                namespace=namespace,
             )
             if entry not in self._observed:
                 self._observed.append(entry)

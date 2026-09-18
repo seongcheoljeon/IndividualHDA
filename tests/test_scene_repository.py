@@ -88,3 +88,31 @@ def test_local_scene_delivery_owns_transactions_and_does_not_resend(
         assert (
             db._connect.execute("SELECT COUNT(*) FROM scene_usages").fetchone()[0] == 1
         )
+
+
+def test_observation_equality_survives_a_node_deleted_in_houdini() -> None:
+    """A HOM node raises ObjectWasDeleted once the user deletes it.
+
+    The observation list is scanned with `in` on every import, so one deleted
+    node anywhere in it aborted the whole scene record with
+    "Imported asset; scene record could not be queued".
+    """
+    from widgets.panel.scene_usage import SceneObservation
+
+    class DeletedNode:
+        def __eq__(self, other: object) -> bool:
+            raise RuntimeError("Attempt to access an object that no longer exists")
+
+        __hash__ = None  # type: ignore[assignment]
+
+    def observation(session_id: int) -> SceneObservation:
+        return SceneObservation(
+            node=DeletedNode(),
+            session_id=session_id,
+            version_uuid="v1",
+            namespace="tester",
+        )
+
+    observed = [observation(1)]
+    assert observation(2) not in observed  # must not raise
+    assert observation(1) in observed  # and dedup still works
