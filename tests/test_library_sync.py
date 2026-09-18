@@ -134,7 +134,7 @@ def test_ai_suggest_fills_editors_without_saving(
     app.processEvents()
     assert "물" in prompts[0].text  # vocabulary from the library
     assert panel.textEdit__note.toPlainText() == "Water sim."
-    assert panel.notes._split_tag_string(panel.notes._hda_tags) == [
+    assert panel.notes.split_tag_string(panel.notes.hda_tags) == [
         "sim",
         "water",
         "물",

@@ -44,8 +44,7 @@ if TYPE_CHECKING:
     from libs.ihda_icons import IHDAIcons
     from widgets.asset_browser.integration import AssetBrowserIntegration
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.ports import LibraryQueryPort, PresentationPort
-    from widgets.panel.selection import PanelSelection
+    from widgets.panel.ports import LibraryQueryPort, PresentationPort, SelectionPort
     from widgets.panel.state import PanelSessionState, PanelViews
 
 
@@ -55,7 +54,7 @@ class PanelModelBindingBindings:
     icons: IHDAIcons
     presentation: PresentationPort
     queries: LibraryQueryPort
-    selection: PanelSelection
+    selection: SelectionPort
     session: PanelSessionState
     ui: MainWindowLayout
     views: PanelViews
@@ -227,7 +226,7 @@ class PanelModelBinding:
         )
         self.history_proxy_model.setSourceModel(self.history_model)
         self.bindings.views.history.setModel(self.history_proxy_model)
-        self.bindings.selection._init_set_hist_ihda_combobox()
+        self.bindings.selection.init_set_hist_ihda_combobox()
         self.bindings.ui.label__hist_cnt.setText(
             str(self.history_proxy_model.rowCount())
         )

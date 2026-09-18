@@ -25,9 +25,7 @@ if TYPE_CHECKING:
     from libs.task_controller import TaskController
     from widgets.asset_details.integration import AssetDetailsIntegration
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.notes import PanelNotes
-    from widgets.panel.ports import AssetModelPort
-    from widgets.panel.selection import PanelSelection
+    from widgets.panel.ports import AssetModelPort, NotesPort, SelectionPort
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState, PanelStatus, PanelViews
 
@@ -37,9 +35,9 @@ class PanelLibrarySyncBindings:
     details: AssetDetailsIntegration
     icons: IHDAIcons
     models: AssetModelPort
-    notes: PanelNotes
+    notes: NotesPort
     parent: QtWidgets.QWidget
-    selection: PanelSelection
+    selection: SelectionPort
     services: PanelServices
     session: PanelSessionState
     status: PanelStatus
@@ -225,9 +223,9 @@ class PanelLibrarySync:
         self.bindings.models.category_model.reload()
         self.bindings.views.category.expandAll()
         self.bindings.models.history_model.reload(histories)
-        self.bindings.selection._default_set_hist_ihda_combobox()
+        self.bindings.selection.default_set_hist_ihda_combobox()
         for row in rows:
-            self.bindings.selection._set_hist_ihda_to_combobox(
+            self.bindings.selection.set_hist_ihda_to_combobox(
                 hkey_id=row.hda_id, hda_name=row.hda_name
             )
         filter_index = self.bindings.ui.comboBox__hist_ihda_node.findData(
@@ -240,10 +238,10 @@ class PanelLibrarySync:
         self.bindings.models.history_proxy_model.set_hda_id(
             self.bindings.ui.comboBox__hist_ihda_node.currentData()
         )
-        self.bindings.selection._restore_panel_selection()
+        self.bindings.selection.restore_panel_selection()
         del selection_blockers
-        self.bindings.notes._set_hda_info_to_parms()
-        self.bindings.notes._set_hda_hist_info_to_parms()
+        self.bindings.notes.set_hda_info_to_parms()
+        self.bindings.notes.set_hda_hist_info_to_parms()
         self.bindings.models.refresh_asset_search()
         self.bindings.ui.label__hda_count.setText(
             str(self.bindings.models.list_proxy_model.rowCount())

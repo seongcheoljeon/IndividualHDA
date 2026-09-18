@@ -65,7 +65,7 @@ def test_mixed_asset_trash_keeps_failed_asset_history_and_selection(
     original = panel.session.repository.delete_asset
     assets = {row.hda_name: row for row in panel.models.assets.rows}
     water_id = assets["Water"].hda_id
-    panel.selection._select_model_item_by_hda_id(water_id)
+    panel.selection.select_model_item_by_hda_id(water_id)
     errors: list[str] = []
     monkeypatch.setattr(panel.management, "show_command_error", errors.append)
 
@@ -80,7 +80,7 @@ def test_mixed_asset_trash_keeps_failed_asset_history_and_selection(
         "Water",
         "Fire",
     }
-    panel.management._remove_hda_item(indexes)
+    panel.management.remove_hda_item(indexes)
     assert [row.hda_name for row in panel.models.assets.rows] == ["Water"]
     assert panel.models.history_model.rowCount() == 2
     assert panel.selection.state.asset.id == water_id
@@ -128,7 +128,7 @@ def test_rename_failure_rolls_back_journal_and_does_not_change_view(
     panel = mutation_panel
     water = next(row for row in panel.models.assets.rows if row.hda_name == "Water")
     old_directory = water.hda_dirpath
-    panel.selection._select_model_item_by_hda_id(water.hda_id)
+    panel.selection.select_model_item_by_hda_id(water.hda_id)
     monkeypatch.setattr(panel.management, "show_command_error", lambda message: None)
     with monkeypatch.context() as patch:
         patch.setattr(
@@ -199,7 +199,7 @@ def test_bulk_history_trash_retains_notes_current_version_and_files(
         hkey_id=asset_id
     )
     paths = [row.ihda_dirpath / row.ihda_filename for row in histories]
-    panel.management._trash_history_rows(
+    panel.management.trash_history_rows(
         histories + histories
     )  # duplicate selections are harmless
     remaining = panel.session.repository.histories(asset_id, owner="tester")
@@ -291,7 +291,7 @@ def test_history_trash_skips_activity_rows(
         comment="VIDEO (INSERT)",
         reg_time="2026-09-17 10:00:00",
     )
-    panel.management._trash_history_rows([activity, *histories])
+    panel.management.trash_history_rows([activity, *histories])
     assert 0 not in deleted and deleted
     remaining = panel.session.repository.histories(water.hda_id, owner="tester")
     assert [row.version for row in remaining] == ["1.1"]

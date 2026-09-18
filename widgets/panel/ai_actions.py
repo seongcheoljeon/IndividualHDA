@@ -21,8 +21,7 @@ from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 if TYPE_CHECKING:
     from libs.task_controller import TaskController
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.notes import PanelNotes
-    from widgets.panel.selection import PanelSelection
+    from widgets.panel.ports import NotesPort, SelectionPort
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState
     from widgets.preference.preference import Preference
@@ -31,9 +30,9 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class PanelAIActionsBindings:
-    notes: PanelNotes
+    notes: NotesPort
     preference: Preference
-    selection: PanelSelection
+    selection: SelectionPort
     services: PanelServices
     session: PanelSessionState
     tasks: TaskController
@@ -202,12 +201,12 @@ class PanelAIActions(QtCore.QObject):
             return
         if description.summary:
             self.bindings.ui.textEdit__note.setPlainText(description.summary)
-        existing = self.bindings.notes._split_tag_string(
-            tag_str=self.bindings.notes._hda_tags
+        existing = self.bindings.notes.split_tag_string(
+            tag_str=self.bindings.notes.hda_tags
         )
         merged = sorted(set(existing) | set(description.tags))
         self.bindings.ui.textEdit__tag.setPlainText(
-            self.bindings.notes._set_tag_string(merged)
+            self.bindings.notes.set_tag_string(merged)
         )
         timings = format_timings(getattr(self._provider, "last_timings", None) or {})
         log_handler.LogHandler.log_msg(

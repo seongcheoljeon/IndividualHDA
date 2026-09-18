@@ -33,7 +33,7 @@ class MainAssetActions:
         menu = QtWidgets.QMenu(self.bindings.parent)
         if index.isValid():
             view.setCurrentIndex(index)
-            self.bindings.selection._selected_ihda_item(index)
+            self.bindings.selection.selected_ihda_item(index)
             menu.addAction(
                 QtGui.QIcon(QtGui.QPixmap(":/main/icons/download.png")),
                 "Import",
@@ -53,7 +53,7 @@ class MainAssetActions:
             menu.addAction(
                 QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_format_quote_white.png")),
                 "Details",
-                lambda: self.bindings.notes._detail_view_ihda_data(
+                lambda: self.bindings.notes.detail_view_ihda_data(
                     self.bindings.selection.state.asset.data
                 ),
             )
@@ -316,7 +316,7 @@ class MainAssetActions:
             )
         elif self._nodes:
             try:
-                path, metadata, thumbnail = self.bindings.tools._capture_team_node(
+                path, metadata, thumbnail = self.bindings.tools.capture_team_node(
                     self._nodes.pop(0)
                 )
                 assert self.library.presenter is not None

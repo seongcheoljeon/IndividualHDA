@@ -23,7 +23,14 @@ from libs.scene_contracts import SceneRecord, SceneRecordInput
 if TYPE_CHECKING:
     import hou
 
-    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, PresentationPort
+    from widgets.panel.ports import (
+        AssetManagementPort,
+        AssetModelPort,
+        CallbacksPort,
+        LibraryQueryPort,
+        PresentationPort,
+        SelectionPort,
+    )
 
 
 from collections.abc import Callable
@@ -31,11 +38,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from widgets.panel.asset_management import PanelAssetManagement
-    from widgets.panel.host_callbacks import PanelHostCallbacks
     from widgets.panel.layout import MainWindowLayout
     from widgets.panel.scene_usage import SceneUsageIntegration
-    from widgets.panel.selection import PanelSelection
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState
     from widgets.team_library.integration import MainLibraryIntegration
@@ -49,14 +53,14 @@ class ImportedNode:
 
 @dataclass(frozen=True, slots=True)
 class PanelHoudiniActionsBindings:
-    callbacks: PanelHostCallbacks
-    management: PanelAssetManagement
+    callbacks: CallbacksPort
+    management: AssetManagementPort
     models: AssetModelPort
     parent: QtWidgets.QWidget
     presentation: PresentationPort
     queries: LibraryQueryPort
     scene_usage: Callable[[], SceneUsageIntegration]
-    selection: PanelSelection
+    selection: SelectionPort
     services: PanelServices
     session: PanelSessionState
     team: Callable[[], MainLibraryIntegration]
@@ -153,7 +157,7 @@ class PanelHoudiniActions:
         cursor_pos = houdini_api.HoudiniAPI.get_cursor_pos(
             network_editor=network_editor
         )
-        self.bindings.callbacks._wrapper_execute_deferred(
+        self.bindings.callbacks.wrapper_execute_deferred(
             lambda: self._create_ihda_node_in_houdini(
                 model_data_lst=model_data_lst,
                 network_editor=network_editor,
@@ -262,9 +266,7 @@ class PanelHoudiniActions:
             # 현재 Houdini 라이센스
             curt_houdini_license = houdini_api.HoudiniAPI.current_houdini_license()
             # 후디니는 commercial라이센스인데 iHDA는 아니라면
-            if not self.bindings.management._ihda_license_check(
-                hda_license=hda_license
-            ):
+            if not self.bindings.management.ihda_license_check(hda_license=hda_license):
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
                     msg=f'[{node_cnt + 1}/{total_node_cnt}] houdini license and "{hda_name} (v{hda_ver})" iHDA license are different',
@@ -297,7 +299,7 @@ class PanelHoudiniActions:
                         msg=f'[{node_cnt + 1}/{total_node_cnt}] importing "{hda_name} (v{hda_ver})" iHDA nodes was canceled',
                     )
                     continue
-            if not self.bindings.callbacks._is_valid_network_category(
+            if not self.bindings.callbacks.is_valid_network_category(
                 network_editor=network_editor, category=hda_cate, hda_name=hda_name
             ):
                 log_handler.LogHandler.log_msg(
@@ -323,7 +325,7 @@ class PanelHoudiniActions:
             node_type = houdini_api.HoudiniAPI.node_type_name(node) or ""
             node_cate = houdini_api.HoudiniAPI.node_category_type_name(node) or ""
             show_comments = self.bindings.ui.actionComment.isChecked()
-            self._hda_info_to_node_comment(
+            self.hda_info_to_node_comment(
                 node=node,
                 hda_name=hda_name,
                 hda_ver=hda_ver,
@@ -434,7 +436,7 @@ class PanelHoudiniActions:
         return sticky
 
     @staticmethod
-    def _hda_info_to_node_comment(
+    def hda_info_to_node_comment(
         node: hou.Node | None = None,
         hda_name: str | None = None,
         hda_ver: Any = None,

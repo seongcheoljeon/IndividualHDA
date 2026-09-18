@@ -17,7 +17,12 @@ from libs.scene_contracts import SceneRecord
 from model.asset_notifications import QtAssetNotifications
 
 if TYPE_CHECKING:
-    from widgets.panel.ports import AssetModelPort, PresentationPort
+    from widgets.panel.ports import (
+        AssetManagementPort,
+        AssetModelPort,
+        PresentationPort,
+        SelectionPort,
+    )
 
     pass
 import logging
@@ -27,17 +32,15 @@ from typing import TYPE_CHECKING
 from libs import keys, log_handler
 
 if TYPE_CHECKING:
-    from widgets.panel.asset_management import PanelAssetManagement
-    from widgets.panel.selection import PanelSelection
     from widgets.panel.state import PanelSessionState
 
 
 @dataclass(frozen=True, slots=True)
 class PanelLibraryQueriesBindings:
-    management: PanelAssetManagement
+    management: AssetManagementPort
     models: AssetModelPort
     presentation: PresentationPort
-    selection: PanelSelection
+    selection: SelectionPort
     session: PanelSessionState
 
 
@@ -55,7 +58,7 @@ class PanelLibraryQueries:
     def get_ihda_data_by_id(self, hda_id: int | None = None, key: Any = None) -> Any:
         if hda_id is None:
             return None
-        item_row = self.bindings.management._get_hda_id_row_map().get(hda_id)
+        item_row = self.bindings.management.get_hda_id_row_map().get(hda_id)
         if item_row is None:
             return None
         if key == keys.Key.item_row:
@@ -81,7 +84,7 @@ class PanelLibraryQueries:
     ) -> QtCore.QModelIndex | None:
         if find_hda_id is None:
             return None
-        hda_id_row_map = self.bindings.management._get_hda_id_row_map()
+        hda_id_row_map = self.bindings.management.get_hda_id_row_map()
         find_row = hda_id_row_map.get(find_hda_id)
         if find_row is None:
             return None

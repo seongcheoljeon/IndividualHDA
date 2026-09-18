@@ -233,9 +233,9 @@ def test_panel_uses_policy_and_page_identity(
         assert panel._history_search_debounce.timer.interval() == 321
         assert panel._MAX_NUM_OF_NODE_REGIST == 20
         panel.stackedWidget__whole.insertWidget(0, QtWidgets.QWidget(panel))
-        panel.selection._slot_select_view(inst=panel.actionVideo_Player)
+        panel.selection.slot_select_view(inst=panel.actionVideo_Player)
         assert panel.stackedWidget__whole.currentWidget() is panel.page__video_player
-        panel.selection._slot_select_view(index=panel._hist_view_idx)
+        panel.selection.slot_select_view(index=panel._hist_view_idx)
         assert panel.stackedWidget__whole.currentWidget() is panel.page__history
         assert panel.actionHistory.isChecked()
     finally:

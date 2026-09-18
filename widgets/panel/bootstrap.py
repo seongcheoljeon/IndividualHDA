@@ -127,7 +127,7 @@ class PanelBootstrap:
             # theme
             window._ui_settings.set_theme(theme=window._ui_settings.get_theme)
             # stackedwidget & view tool button
-            window.selection._slot_select_view(
+            window.selection.slot_select_view(
                 index=window.stackedWidget__whole.currentIndex()
             )
             # stackecdwidget hda infos
@@ -349,16 +349,16 @@ class PanelBootstrap:
         )
         window.actionQuit.triggered.connect(window.close)
         window.actioniHDA.triggered.connect(
-            lambda: window.selection._slot_select_view(inst=window.actioniHDA)
+            lambda: window.selection.slot_select_view(inst=window.actioniHDA)
         )
         window.actionVideo_Player.triggered.connect(
-            lambda: window.selection._slot_select_view(inst=window.actionVideo_Player)
+            lambda: window.selection.slot_select_view(inst=window.actionVideo_Player)
         )
         window.actionWeb.triggered.connect(
-            lambda: window.selection._slot_select_view(inst=window.actionWeb)
+            lambda: window.selection.slot_select_view(inst=window.actionWeb)
         )
         window.actionHistory.triggered.connect(
-            lambda: window.selection._slot_select_view(inst=window.actionHistory)
+            lambda: window.selection.slot_select_view(inst=window.actionHistory)
         )
         window.actionPreference.triggered.connect(lambda: window._preference.show())
         window.actionLocal_AI_Models = QtGui.QAction(

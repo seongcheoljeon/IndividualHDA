@@ -17,13 +17,14 @@ from libs.host_ports import HostCallbacksPort
 if TYPE_CHECKING:
     import hou
 
+    from widgets.panel.ports import SelectionPort
+
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.selection import PanelSelection
     from widgets.panel.state import PanelStatus
 
 
@@ -32,7 +33,7 @@ class PanelHostCallbacksBindings:
     host: HostCallbacksPort
     enabled: bool
     contexts_without_null: list[str]
-    selection: PanelSelection
+    selection: SelectionPort
     status: PanelStatus
     ui: MainWindowLayout
 
@@ -40,13 +41,13 @@ class PanelHostCallbacksBindings:
 class PanelHostCallbacks:
     bindings: PanelHostCallbacksBindings
 
-    def _add_event_loop_callback(self, event_func: Callable[..., Any]) -> None:
+    def add_event_loop_callback(self, event_func: Callable[..., Any]) -> None:
         self.bindings.host.add_event_loop_callback(event_func)
 
     def _add_selection_callback(self, event_func: Callable[..., Any]) -> None:
         self.bindings.host.add_selection_callback(event_func)
 
-    def _remove_event_loop_callback(self, event_func: Callable[..., Any]) -> None:
+    def remove_event_loop_callback(self, event_func: Callable[..., Any]) -> None:
         self.bindings.host.remove_event_loop_callback(event_func)
 
     def _remove_selection_callback(self, event_func: Callable[..., Any]) -> None:
@@ -66,10 +67,10 @@ class PanelHostCallbacks:
                 self.bindings.ui.page__ihda
             )
         ) and (self.bindings.ui.actionCategory_Synchronization.isChecked()):
-            self._remove_event_loop_callback(self._wrapper_current_panetab)
+            self.remove_event_loop_callback(self._wrapper_current_panetab)
         else:
             if self.bindings.ui.actionCategory_Synchronization.isChecked():
-                self._add_event_loop_callback(self._wrapper_current_panetab)
+                self.add_event_loop_callback(self._wrapper_current_panetab)
 
     def _slot_sync_hou_net_cate(self) -> None:
         if not self.bindings.enabled:
@@ -81,12 +82,12 @@ class PanelHostCallbacks:
                     self.bindings.ui.page__ihda
                 )
             ):
-                self._add_event_loop_callback(self._wrapper_current_panetab)
+                self.add_event_loop_callback(self._wrapper_current_panetab)
             log_handler.LogHandler.log_msg(
                 method=logging.debug, msg="enable category synchronization"
             )
         else:
-            self._remove_event_loop_callback(self._wrapper_current_panetab)
+            self.remove_event_loop_callback(self._wrapper_current_panetab)
             log_handler.LogHandler.log_msg(
                 method=logging.info, msg="disable category synchronization"
             )
@@ -108,7 +109,7 @@ class PanelHostCallbacks:
             )
 
     def _wrapper_current_panetab(self) -> None:
-        self._wrapper_execute_deferred(self._set_current_panetab)
+        self.wrapper_execute_deferred(self._set_current_panetab)
 
     def _set_current_panetab(self) -> None:
         panetab = self.bindings.host.pane_tab_under_cursor()
@@ -121,11 +122,11 @@ class PanelHostCallbacks:
         )
         if net_type_name is None:
             return
-        self.bindings.selection._select_category(category=net_type_name)
+        self.bindings.selection.select_category(category=net_type_name)
 
     def _wrapper_selection_callback_item_by_ihda(self, selection: Any) -> None:
         # 굳이 execute deferred함수를 쓸 이유가 없다. 오히려 이 함수를 쓰게되면 딜레이가 생긴다.
-        # self._wrapper_execute_deferred(lambda: self._set_selection_callback_item_by_ihda(selection))
+        # self.wrapper_execute_deferred(lambda: self._set_selection_callback_item_by_ihda(selection))
         self._set_selection_callback_item_by_ihda(selection)
 
     def _set_selection_callback_item_by_ihda(self, selection: Any) -> None:
@@ -135,11 +136,11 @@ class PanelHostCallbacks:
         find_hda_info = self.bindings.host.get_hda_info_by_selection_node(node=node)
         if find_hda_info is None:
             return
-        self.bindings.selection._select_model_item_by_hda_id(
+        self.bindings.selection.select_model_item_by_hda_id(
             hda_id=find_hda_info.get(keys.Key.Comment.ihda_id)
         )
 
-    def _is_valid_network_category(
+    def is_valid_network_category(
         self,
         network_editor: hou.NetworkEditor | None = None,
         category: str | None = None,
@@ -160,7 +161,7 @@ class PanelHostCallbacks:
         )
         return False
 
-    def _wrapper_execute_deferred(self, func: Callable[[], object]) -> None:
+    def wrapper_execute_deferred(self, func: Callable[[], object]) -> None:
         def invoke() -> None:
             if (
                 not self.bindings.status.closing

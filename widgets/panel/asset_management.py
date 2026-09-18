@@ -15,7 +15,14 @@ from libs.scene_record_cleanup import RecordCleanupResult, SceneRecordCleanup
 
 if TYPE_CHECKING:
     from libs.sqlite3_db_api import SQLite3DatabaseAPI
-    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, PresentationPort
+    from widgets.panel.ports import (
+        AssetModelPort,
+        LibraryQueryPort,
+        LibraryToolsPort,
+        NotesPort,
+        PresentationPort,
+        SelectionPort,
+    )
     from widgets.video_player import UnavailableVideoPlayer
     from widgets.video_player.video_player import VideoPlayer
 import logging
@@ -36,9 +43,6 @@ if TYPE_CHECKING:
     from libs.ihda_icons import IHDAIcons
     from widgets.asset_details.integration import AssetDetailsIntegration
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.library_tools import PanelLibraryTools
-    from widgets.panel.notes import PanelNotes
-    from widgets.panel.selection import PanelSelection
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState, PanelViews
     from widgets.rename_ihda.rename_ihda import RenameIHDA
@@ -50,17 +54,17 @@ class PanelAssetManagementBindings:
     details: AssetDetailsIntegration
     icons: IHDAIcons
     models: AssetModelPort
-    notes: PanelNotes
+    notes: NotesPort
     parent: QtWidgets.QWidget
     presentation: PresentationPort
     queries: LibraryQueryPort
     reload_library: Callable[[], None]
     rename_dialog: RenameIHDA
-    selection: PanelSelection
+    selection: SelectionPort
     services: PanelServices
     session: PanelSessionState
     team: Callable[[], MainLibraryIntegration]
-    tools: PanelLibraryTools
+    tools: LibraryToolsPort
     ui: MainWindowLayout
     video_player: VideoPlayer | UnavailableVideoPlayer
     views: PanelViews
@@ -69,7 +73,7 @@ class PanelAssetManagementBindings:
 class PanelAssetManagement:
     bindings: PanelAssetManagementBindings
 
-    def _asset_commands(self) -> AssetCommandPresenter:
+    def asset_commands(self) -> AssetCommandPresenter:
         return AssetCommandPresenter(
             self,
             self.bindings.services.lifecycle(
@@ -196,7 +200,7 @@ class PanelAssetManagement:
         )
 
     @staticmethod
-    def _ihda_license_check(hda_license: str | None = None) -> bool:
+    def ihda_license_check(hda_license: str | None = None) -> bool:
         # 만약 현재 Houdini는 상업용 라이센스이면
         if houdini_api.HoudiniAPI.is_houdini_commercial_license():
             # iHDA는 상업용 라이센스가 아니라면
@@ -256,7 +260,7 @@ class PanelAssetManagement:
             self._delete_video_playlist(video_filepath_list=video_paths)
             self._apply_renamed_asset(data, result)
 
-        return self._asset_commands().rename(
+        return self.asset_commands().rename(
             data,
             new_hda_name,
             committed,
@@ -338,7 +342,7 @@ class PanelAssetManagement:
             self.bindings.models.record_model.reload()
             if bool(is_update_hda_name_hist):
                 # history ihda combobox text 변경
-                find_cmbox_idx = self.bindings.selection._find_hist_ihda_combobox_index(
+                find_cmbox_idx = self.bindings.selection.find_hist_ihda_combobox_index(
                     hkey_id=hda_id
                 )
                 if find_cmbox_idx is not None:
@@ -370,12 +374,12 @@ class PanelAssetManagement:
                 data, row, self.bindings.selection.state.history.field
             )
 
-    def _get_hda_id_row_map(self) -> Mapping[int, int]:
+    def get_hda_id_row_map(self) -> Mapping[int, int]:
         return self.bindings.models.assets.id_rows
 
     def _slot_db_cleanup(self) -> None:
         # Missing files are diagnostics, not evidence that their metadata is disposable.
-        self.bindings.tools._open_library_tools(0)
+        self.bindings.tools.open_library_tools(0)
 
     def _slot_delete_all_history(self) -> None:
         counts = self.bindings.session.require_repository().history_counts()
@@ -421,9 +425,9 @@ iHDA note history: {cnt_hda_note_hist}
                     hkey_id=hkey_id
                 )
                 del_hist_data_lst.extend(hist_data_lst)
-            self._trash_history_rows(del_hist_data_lst)
+            self.trash_history_rows(del_hist_data_lst)
 
-    def _trash_history_rows(self, histories: list[HistoryData]) -> None:
+    def trash_history_rows(self, histories: list[HistoryData]) -> None:
         snapshots = {
             history.hist_id: history for history in histories if history.is_version
         }
@@ -433,7 +437,7 @@ iHDA note history: {cnt_hda_note_hist}
             ):
                 self._delete_each_hist_ihda_item(history)
 
-    def _hda_favorite(self) -> None:
+    def hda_favorite(self) -> None:
         if self.bindings.selection.state.asset.data is None:
             log_handler.LogHandler.log_msg(
                 method=logging.error, msg="no node selected "
@@ -458,7 +462,7 @@ iHDA note history: {cnt_hda_note_hist}
                     msg=f'the "{hda_name}" node has been released from the favorites node',
                 )
 
-    def _remove_selected_record_item(
+    def remove_selected_record_item(
         self, index: QtCore.QModelIndex | None = None
     ) -> None:
         if index is None or not index.isValid():
@@ -491,7 +495,7 @@ iHDA note history: {cnt_hda_note_hist}
         result = SceneRecordCleanup(repository).delete(identities)
         self._apply_scene_record_cleanup(result)
 
-    def _remove_hist_item(self) -> None:
+    def remove_hist_item(self) -> None:
         indexes = self.bindings.views.history.selectionModel().selectedRows(0)
         if not len(indexes):
             log_handler.LogHandler.log_msg(
@@ -526,7 +530,7 @@ iHDA note history: {cnt_hda_note_hist}
             ):
                 self._delete_each_hist_ihda_item(hist_data=hist_data, verbose=True)
 
-    def _remove_hda_item(self, indexes: Any = None) -> None:
+    def remove_hda_item(self, indexes: Any = None) -> None:
         # player가 재생중이거나 일시 정지상태면 정지
         team = self.bindings.team()
         if team is not None and team.active:
@@ -596,7 +600,7 @@ iHDA note history: {cnt_hda_note_hist}
         except Exception as error:
             self.show_command_error(str(error))
             return False
-        return self._asset_commands().delete(
+        return self.asset_commands().delete(
             hda_id,
             hda_dirpath,
             lambda _: self._apply_deleted_asset(
@@ -631,11 +635,11 @@ iHDA note history: {cnt_hda_note_hist}
             ),
         )
         if self.bindings.selection.state.asset.id == hda_id:
-            self.bindings.selection._initialize_current_attribs()
-            self.bindings.notes._clear_parms()
+            self.bindings.selection.initialize_current_attribs()
+            self.bindings.notes.clear_parms()
         if self.bindings.selection.state.history.id == hda_id:
-            self.bindings.selection._initialize_hist_current_attribs()
-            self.bindings.notes._set_hda_hist_info_to_parms()
+            self.bindings.selection.initialize_hist_current_attribs()
+            self.bindings.notes.set_hda_hist_info_to_parms()
         selected_id = self.bindings.selection.state.asset.id
         selected_row = (
             self.bindings.models.assets.id_rows.get(selected_id)
@@ -649,7 +653,7 @@ iHDA note history: {cnt_hda_note_hist}
                 self.bindings.selection.state.asset.field,
             )
         self._restore_history_selection_data()
-        self.bindings.notes._clear_hist_parms()
+        self.bindings.notes.clear_hist_parms()
         self.bindings.models.refresh_asset_search()
         self.bindings.ui.label__hda_count.setText(
             str(self.bindings.models.list_proxy_model.rowCount())
@@ -689,7 +693,7 @@ iHDA note history: {cnt_hda_note_hist}
         except Exception as error:
             self.show_command_error(str(error))
             return False
-        return self._asset_commands().delete_history(
+        return self.asset_commands().delete_history(
             history.hda_id,
             history.hist_id,
             [],
@@ -710,10 +714,10 @@ iHDA note history: {cnt_hda_note_hist}
         self._delete_hist_combobox_ihda_item(hkey_id=hda_id)
         self.bindings.models.remove_pixmap_hist_thumbnail(hist_id=hist_id)
         if self.bindings.selection.state.history.hist_id == hist_id:
-            self.bindings.selection._initialize_hist_current_attribs()
-            self.bindings.notes._set_hda_hist_info_to_parms()
+            self.bindings.selection.initialize_hist_current_attribs()
+            self.bindings.notes.set_hda_hist_info_to_parms()
         self._restore_history_selection_data()
-        self.bindings.notes._clear_hist_parms()
+        self.bindings.notes.clear_hist_parms()
         if verbose:
             log_handler.LogHandler.log_msg(
                 method=logging.info,

@@ -58,13 +58,13 @@ def test_houdini_deferred_callback_ignores_destroyed_panel(
         status=PanelStatus(),
         host=SimpleNamespace(execute_deferred=queued.append),
     )
-    host_callbacks.PanelHostCallbacks._wrapper_execute_deferred(
+    host_callbacks.PanelHostCallbacks.wrapper_execute_deferred(
         panel, lambda: calls.append("called")
     )
     assert calls == []
     queued.pop()()
     assert calls == ["called"]
-    host_callbacks.PanelHostCallbacks._wrapper_execute_deferred(
+    host_callbacks.PanelHostCallbacks.wrapper_execute_deferred(
         panel, lambda: calls.append("late")
     )
     panel.bindings.status.host_destroying = True

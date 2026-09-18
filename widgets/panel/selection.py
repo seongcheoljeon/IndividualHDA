@@ -31,8 +31,12 @@ from widgets.ui_tokens import ASSET_COMBO_ICON_SIZE
 if TYPE_CHECKING:
     from libs.ihda_icons import IHDAIcons
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.notes import PanelNotes
-    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, PresentationPort
+    from widgets.panel.ports import (
+        AssetModelPort,
+        LibraryQueryPort,
+        NotesPort,
+        PresentationPort,
+    )
     from widgets.panel.state import PanelSessionState, PanelViews
     from widgets.preference.preference import Preference
     from widgets.team_library.integration import MainLibraryIntegration
@@ -44,7 +48,7 @@ if TYPE_CHECKING:
 class PanelSelectionBindings:
     icons: IHDAIcons
     models: AssetModelPort
-    notes: PanelNotes
+    notes: NotesPort
     preference: Preference
     presentation: PresentationPort
     queries: LibraryQueryPort
@@ -74,17 +78,17 @@ class PanelSelection:
             self.bindings.models.list_proxy_model.index(0, 0, QtCore.QModelIndex())
         )
 
-    def _init_select_ihda_category_model(self) -> None:
+    def init_select_ihda_category_model(self) -> None:
         idx = self.bindings.models.category_proxy_model.index(
             0, 0, QtCore.QModelIndex()
         )
         self.bindings.views.category.setCurrentIndex(idx)
         self._slot_selected_category(idx)
 
-    def _init_set_hist_ihda_combobox(self) -> None:
+    def init_set_hist_ihda_combobox(self) -> None:
         if self.bindings.session.repository is None:
             return
-        self._default_set_hist_ihda_combobox()
+        self.default_set_hist_ihda_combobox()
         for asset in self.bindings.session.require_repository().asset_names(
             self.bindings.session.user
         ):
@@ -92,9 +96,9 @@ class PanelSelection:
                 asset.asset_id
             ):
                 continue
-            self._set_hist_ihda_to_combobox(hkey_id=asset.asset_id, hda_name=asset.name)
+            self.set_hist_ihda_to_combobox(hkey_id=asset.asset_id, hda_name=asset.name)
 
-    def _default_set_hist_ihda_combobox(self) -> None:
+    def default_set_hist_ihda_combobox(self) -> None:
         self.bindings.ui.comboBox__hist_ihda_node.clear()
         root_icon = QtGui.QIcon(
             self.bindings.icons.pixmap_cate_data.get(
@@ -125,7 +129,7 @@ class PanelSelection:
         self.bindings.ui.comboBox__hda_inside_node.addItem(root_icon, "ALL", -1)
         self.bindings.ui.comboBox__hda_inside_node.setCurrentIndex(0)
 
-    def _set_hist_ihda_to_combobox(
+    def set_hist_ihda_to_combobox(
         self, hkey_id: int | None = None, hda_name: str | None = None
     ) -> None:
         if (
@@ -171,12 +175,12 @@ class PanelSelection:
             for i in range(self.bindings.ui.comboBox__hist_ihda_node.count())
         ]
 
-    def _select_hist_ihda_combobox_item(self, hkey_id: int | None = None) -> None:
-        find_idx = self._find_hist_ihda_combobox_index(hkey_id=hkey_id)
+    def select_hist_ihda_combobox_item(self, hkey_id: int | None = None) -> None:
+        find_idx = self.find_hist_ihda_combobox_index(hkey_id=hkey_id)
         if find_idx is not None:
             self.bindings.ui.comboBox__hist_ihda_node.setCurrentIndex(find_idx)
 
-    def _find_hist_ihda_combobox_index(self, hkey_id: int | None = None) -> int | None:
+    def find_hist_ihda_combobox_index(self, hkey_id: int | None = None) -> int | None:
         find_idx = None
         for idx in range(self.bindings.ui.comboBox__hist_ihda_node.count()):
             cm_item_hkey_id = int(
@@ -187,7 +191,7 @@ class PanelSelection:
                 break
         return find_idx
 
-    def _slot_select_view(self, inst: Any = None, index: int | None = None) -> None:
+    def slot_select_view(self, inst: Any = None, index: int | None = None) -> None:
         pages = {
             self.bindings.ui.actioniHDA: self.bindings.ui.page__ihda,
             self.bindings.ui.actionVideo_Player: self.bindings.ui.page__video_player,
@@ -283,7 +287,7 @@ class PanelSelection:
             str(self.bindings.models.history_proxy_model.rowCount())
         )
 
-    def _select_category(self, category: str | None = None) -> None:
+    def select_category(self, category: str | None = None) -> None:
         root_idx = self.bindings.models.category_proxy_model.index(
             0, 0, QtCore.QModelIndex()
         )
@@ -294,7 +298,7 @@ class PanelSelection:
             return
         self.bindings.views.category.setCurrentIndex(find_idx)
 
-    def _select_model_item_by_hda_id(self, hda_id: int | None = None) -> None:
+    def select_model_item_by_hda_id(self, hda_id: int | None = None) -> None:
         model_hda: QtCore.QAbstractProxyModel
         view_hda: QtWidgets.QAbstractItemView
         if self.bindings.presentation.is_ihda_history_view:
@@ -303,7 +307,7 @@ class PanelSelection:
                 hkey_id=hda_id
             ):
                 return
-            self._select_hist_ihda_combobox_item(hkey_id=hda_id)
+            self.select_hist_ihda_combobox_item(hkey_id=hda_id)
         else:
             if self.bindings.presentation.is_icon_mode:
                 model_hda = self.bindings.models.list_proxy_model
@@ -319,7 +323,7 @@ class PanelSelection:
             view_hda.setCurrentIndex(find_idx)
             self._slot_on_hda_item_clicked(find_idx)
 
-    def _restore_panel_selection(self) -> None:
+    def restore_panel_selection(self) -> None:
         for view, proxy in (
             (self.bindings.views.assets_list, self.bindings.models.list_proxy_model),
             (self.bindings.views.assets_table, self.bindings.models.table_proxy_model),
@@ -341,9 +345,9 @@ class PanelSelection:
         self.bindings.views.history.setCurrentIndex(index)
         category = self.state.item_text
         if category:
-            self._select_category(category)
+            self.select_category(category)
 
-    def _refresh_history_current_attribs(self) -> None:
+    def refresh_history_current_attribs(self) -> None:
         index = self.bindings.views.history.currentIndex()
         self.state.select_history(
             index.data(ihda_history_model.HistoryModel.data_role),
@@ -351,7 +355,7 @@ class PanelSelection:
             str(index.data()) if index.isValid() else None,
         )
 
-    def _refresh_current_attribs(self) -> None:
+    def refresh_current_attribs(self) -> None:
         view = (
             self.bindings.views.assets_list
             if self.bindings.presentation.is_icon_mode
@@ -369,10 +373,10 @@ class PanelSelection:
             str(index.data()) if index.isValid() else None,
         )
 
-    def _initialize_hist_current_attribs(self) -> None:
+    def initialize_hist_current_attribs(self) -> None:
         self.state.clear_history()
 
-    def _initialize_current_attribs(self) -> None:
+    def initialize_current_attribs(self) -> None:
         self.state.clear_asset()
 
     def _slot_record_only_curt_filter(self, *args: Any) -> None:
@@ -456,7 +460,7 @@ class PanelSelection:
         )
 
     @staticmethod
-    def _go_to_houdini_node(node_path: str | None = None) -> None:
+    def go_to_houdini_node(node_path: str | None = None) -> None:
         if not host.IS_HOUDINI:
             return
         if node_path is None:
@@ -488,9 +492,9 @@ class PanelSelection:
             model_idx = model_idx[0]
         if not isinstance(model_idx, QtCore.QModelIndex):
             return
-        self._selected_ihda_item(index=model_idx)
+        self.selected_ihda_item(index=model_idx)
 
-    def _play_video_most_recent_by_version(self, video_info: Any = None) -> None:
+    def play_video_most_recent_by_version(self, video_info: Any = None) -> None:
         video_filepath = video_info
         if video_filepath is None or not video_filepath.exists():
             log_handler.LogHandler.log_msg(
@@ -498,7 +502,7 @@ class PanelSelection:
                 msg="the video file has been renamed or has no video file",
             )
             return
-        self._slot_select_view(
+        self.slot_select_view(
             index=self.bindings.ui.stackedWidget__whole.indexOf(
                 self.bindings.ui.page__video_player
             )
@@ -527,7 +531,7 @@ class PanelSelection:
                 msg=f'"{hda_name} (v{hda_ver})" iHDA node has no video',
             )
             return
-        self._play_video_most_recent_by_version(video_info=video_info)
+        self.play_video_most_recent_by_version(video_info=video_info)
 
     @QtCore.Slot(QtCore.QModelIndex)
     def _slot_hda_inside_double_clicked(self, *args: Any) -> None:
@@ -538,7 +542,7 @@ class PanelSelection:
         if item_type != keys.Type.ihda:
             return
         node_path = index.data(ihda_inside_model.InsideModel.node_path_role)
-        self._go_to_houdini_node(node_path=node_path)
+        self.go_to_houdini_node(node_path=node_path)
 
     @QtCore.Slot(QtCore.QModelIndex)
     def _slot_hda_double_clicked(self, *args: Any) -> None:
@@ -549,7 +553,7 @@ class PanelSelection:
         index = args[0]
         if index is None or not index.isValid():
             return
-        # self._selected_ihda_item(index=index)
+        # self.selected_ihda_item(index=index)
         if self.bindings.presentation.is_ihda_history_view:
             video_dirpath = self.state.history.require_data().video_dirpath
             ihda_ver = self.state.history.require_data().version
@@ -578,7 +582,7 @@ class PanelSelection:
                 msg="the video file has been renamed or has no video file",
             )
             return
-        self._slot_select_view(
+        self.slot_select_view(
             index=self.bindings.ui.stackedWidget__whole.indexOf(
                 self.bindings.ui.page__video_player
             )
@@ -587,7 +591,7 @@ class PanelSelection:
             filepath_lst=[video_filepath]
         )
 
-    def _selected_ihda_item(self, index: QtCore.QModelIndex | None = None) -> None:
+    def selected_ihda_item(self, index: QtCore.QModelIndex | None = None) -> None:
         if index is None or not index.isValid():
             return
         if self.bindings.presentation.is_ihda_history_view:
@@ -614,10 +618,10 @@ class PanelSelection:
             )
 
     def show_asset_selection(self) -> None:
-        self.bindings.notes._set_hda_info_to_parms()
+        self.bindings.notes.set_hda_info_to_parms()
 
     def show_history_selection(self) -> None:
-        self.bindings.notes._set_hda_hist_info_to_parms()
+        self.bindings.notes.set_hda_hist_info_to_parms()
 
     def refresh_selection_dependents(self) -> None:
         # record view 갱신

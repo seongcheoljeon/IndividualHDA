@@ -207,13 +207,13 @@ def test_panel_with_saved_library(
     panel.doubleSpinBox__zoom.setValue(100)
     panel._ui_settings.load_cfg_dict_from_file()
     assert panel.doubleSpinBox__zoom.value() == 150
-    panel.tools._open_library_tools(4)
+    panel.tools.open_library_tools(4)
     dialog = panel.tools.library_manager
     assert dialog.tabs.count() == 6 and dialog.tabs.currentIndex() == 4
     dialog.close()
     app.processEvents()
     assert panel.tools.library_manager is None
-    panel.tools._open_library_tools(0)
+    panel.tools.open_library_tools(0)
     panel.tools.library_manager._search()
     panel.close()
     app.processEvents()

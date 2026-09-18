@@ -38,11 +38,14 @@ if TYPE_CHECKING:
     from widgets.asset_browser.integration import AssetBrowserIntegration
     from widgets.asset_details.integration import AssetDetailsIntegration
     from widgets.panel.library_sync import PanelLibrarySync
-    from widgets.panel.library_tools import PanelLibraryTools
-    from widgets.panel.notes import PanelNotes
     from widgets.panel.policy import PanelPolicy
-    from widgets.panel.ports import AssetModelPort, PresentationPort
-    from widgets.panel.selection import PanelSelection
+    from widgets.panel.ports import (
+        AssetModelPort,
+        LibraryToolsPort,
+        NotesPort,
+        PresentationPort,
+        SelectionPort,
+    )
     from widgets.panel.state import PanelSessionState, PanelStatus, PanelViews
     from widgets.video_player import UnavailableVideoPlayer
     from widgets.video_player.video_player import VideoPlayer
@@ -62,12 +65,12 @@ class TeamBindings:
     sync: PanelLibrarySync
     video_player: VideoPlayer | UnavailableVideoPlayer
     models: AssetModelPort
-    notes: PanelNotes
+    notes: NotesPort
     presentation: PresentationPort
-    selection: PanelSelection
+    selection: SelectionPort
     session: PanelSessionState
     status: PanelStatus
-    tools: PanelLibraryTools
+    tools: LibraryToolsPort
     views: PanelViews
     apply_snapshot: Callable[[LibrarySnapshot], None]
     refresh: Callable[[], None]
@@ -256,7 +259,7 @@ class MainLibraryIntegration(QtCore.QObject):
             self.source.setCurrentIndex(1)
         bindings.show_assets()
         self.presenter.page_ready(page)
-        bindings.selection._init_select_ihda_category_model()
+        bindings.selection.init_select_ihda_category_model()
         self.show_busy(False)
         self.bindings.tools.actionProject_Members.setVisible(
             bindings.session.actions.capabilities.manage_members
@@ -419,7 +422,7 @@ class MainLibraryIntegration(QtCore.QObject):
         ):
             bindings.textEdit__note.setPlainText(note)
             bindings.textEdit__tag.setPlainText(tags)
-        bindings.notes._set_label_tags(normalize_tags(tags))
+        bindings.notes.set_label_tags(normalize_tags(tags))
         self._show_tag_dirty()
         if self._review_asset_id is not None and self._review_asset_id == asset.get(
             "id"
@@ -572,8 +575,8 @@ class MainLibraryIntegration(QtCore.QObject):
             if self._conflict_asset_id is not None:
                 self.bindings.show_assets()
                 self.bindings.lineEdit__search_hda.clear()
-                self.bindings.selection._init_select_ihda_category_model()
-                self.bindings.selection._select_model_item_by_hda_id(
+                self.bindings.selection.init_select_ihda_category_model()
+                self.bindings.selection.select_model_item_by_hda_id(
                     self._conflict_asset_id
                 )
             self._review_asset_id = self.bindings.selection.state.asset.id
@@ -690,7 +693,7 @@ class MainLibraryIntegration(QtCore.QObject):
                 self.bindings.show_video()
                 self.bindings.video_player.play_after_add_playlist(filepath_lst=[path])
             elif IS_HOUDINI:
-                self.bindings.tools._import_team_asset(path, asset, self._import_target)
+                self.bindings.tools.import_team_asset(path, asset, self._import_target)
                 if self.catalog is not None:
                     from libs.team.contracts import Command
 

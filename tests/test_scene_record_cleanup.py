@@ -107,14 +107,14 @@ def test_filtered_parent_selection_keeps_failed_database_record(
         "exec",
         lambda self: QtWidgets.QMessageBox.StandardButton.No,
     )
-    panel.management._remove_selected_record_item(root)
+    panel.management.remove_selected_record_item(root)
     assert len(panel.session.repository.scene_record_files(panel.session.user)) == 3
     monkeypatch.setattr(
         QtWidgets.QMessageBox,
         "exec",
         lambda self: QtWidgets.QMessageBox.StandardButton.Yes,
     )
-    panel.management._remove_selected_record_item(root)
+    panel.management.remove_selected_record_item(root)
     assert [
         r.record_id
         for r in panel.session.repository.scene_record_files(panel.session.user)
@@ -171,7 +171,7 @@ def test_confirmation_uses_ids_captured_before_a_model_reset(
         return QtWidgets.QMessageBox.StandardButton.Yes
 
     monkeypatch.setattr(QtWidgets.QMessageBox, "exec", confirm)
-    panel.management._remove_selected_record_item(index)
+    panel.management.remove_selected_record_item(index)
     assert {
         r.record_id
         for r in panel.session.repository.scene_record_files(panel.session.user)

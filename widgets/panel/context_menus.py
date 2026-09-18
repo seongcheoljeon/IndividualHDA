@@ -24,14 +24,18 @@ from model import (
 
 if TYPE_CHECKING:
     from widgets.make_video_info.make_video_info import MakeVideoInfo
-    from widgets.panel.asset_management import PanelAssetManagement
-    from widgets.panel.host_callbacks import PanelHostCallbacks
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.library_tools import PanelLibraryTools
-    from widgets.panel.media_actions import PanelMediaActions
-    from widgets.panel.notes import PanelNotes
-    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, PresentationPort
-    from widgets.panel.selection import PanelSelection
+    from widgets.panel.ports import (
+        AssetManagementPort,
+        AssetModelPort,
+        CallbacksPort,
+        LibraryQueryPort,
+        LibraryToolsPort,
+        MediaActionsPort,
+        NotesPort,
+        PresentationPort,
+        SelectionPort,
+    )
     from widgets.panel.state import PanelSessionState, PanelViews
     from widgets.rename_ihda.rename_ihda import RenameIHDA
     from widgets.team_library.integration import MainLibraryIntegration
@@ -42,20 +46,20 @@ if TYPE_CHECKING:
 @dataclass(frozen=True, slots=True)
 class PanelContextMenusBindings:
     host_enabled: bool
-    callbacks: PanelHostCallbacks
-    management: PanelAssetManagement
-    media: PanelMediaActions
+    callbacks: CallbacksPort
+    management: AssetManagementPort
+    media: MediaActionsPort
     models: AssetModelPort
-    notes: PanelNotes
+    notes: NotesPort
     parent: QtWidgets.QWidget
     presentation: PresentationPort
     queries: LibraryQueryPort
     rename_dialog: RenameIHDA
-    selection: PanelSelection
+    selection: SelectionPort
     session: PanelSessionState
     suggest: Callable[[], None]
     team: Callable[[], MainLibraryIntegration]
-    tools: PanelLibraryTools
+    tools: LibraryToolsPort
     ui: MainWindowLayout
     video_info: MakeVideoInfo
     video_player: VideoPlayer | UnavailableVideoPlayer
@@ -112,8 +116,8 @@ class PanelContextMenus:
         context_menu.addAction(action_context_menu_remove)
         # refresh current data
         self.bindings.selection.state.set_field(index.data(), history=True)
-        self.bindings.selection._refresh_history_current_attribs()
-        self.bindings.notes._set_hda_hist_info_to_parms()
+        self.bindings.selection.refresh_history_current_attribs()
+        self.bindings.notes.set_hda_hist_info_to_parms()
         if self.bindings.selection.state.history.data is None:
             return
         hip_dirpath = self.bindings.selection.state.history.require_data().hip_dirpath
@@ -131,11 +135,11 @@ class PanelContextMenus:
             )
             self.bindings.presentation.open_houdini_file(hip_filepath=hip_filepath)
         elif action == action_context_menu_detail:
-            self.bindings.notes._detail_view_ihda_data(
+            self.bindings.notes.detail_view_ihda_data(
                 data=self.bindings.selection.state.history.data
             )
         elif action == action_context_menu_remove:
-            self.bindings.management._remove_hist_item()
+            self.bindings.management.remove_hist_item()
         else:
             pass
 
@@ -258,8 +262,8 @@ class PanelContextMenus:
         context_menu.addSeparator()
         # refresh current data
         self.bindings.selection.state.set_field(index.data())
-        self.bindings.selection._refresh_current_attribs()
-        self.bindings.notes._set_hda_info_to_parms()
+        self.bindings.selection.refresh_current_attribs()
+        self.bindings.notes.set_hda_info_to_parms()
 
         if self.bindings.selection.state.asset.data is None:
             return
@@ -278,18 +282,18 @@ class PanelContextMenus:
             )
             self.bindings.presentation.open_houdini_file(hip_filepath=hip_filepath)
         elif action == action_hda_context_menu_copy:
-            self.bindings.tools._open_copy_to_team()
+            self.bindings.tools.open_copy_to_team()
         elif action == action_hda_context_menu_favorite:
-            self.bindings.management._hda_favorite()
+            self.bindings.management.hda_favorite()
         elif action == action_hda_context_menu_detail:
-            self.bindings.notes._detail_view_ihda_data(
+            self.bindings.notes.detail_view_ihda_data(
                 data=self.bindings.selection.state.asset.data
             )
         elif action == action_hda_context_menu_ai:
             self.bindings.suggest()
         elif action == action_hda_make_context_menu_thumbnail:
-            self.bindings.callbacks._wrapper_execute_deferred(
-                self.bindings.media._slot_make_thumbnail
+            self.bindings.callbacks.wrapper_execute_deferred(
+                self.bindings.media.slot_make_thumbnail
             )
         elif action == action_hda_make_context_menu_video:
             if host.IS_HOUDINI:
@@ -337,7 +341,7 @@ class PanelContextMenus:
             reply = msgbox.exec()
             if reply != QtWidgets.QMessageBox.StandardButton.Yes:
                 return
-            self.bindings.management._remove_hda_item(indexes=indexes)
+            self.bindings.management.remove_hda_item(indexes=indexes)
         elif action == action_hist_context_menu_ihda_history:
             hda_name = self.bindings.selection.state.asset.name or ""
             hda_id = self.bindings.selection.state.asset.require_data().hda_id
@@ -347,19 +351,19 @@ class PanelContextMenus:
                     msg=f'node history of "{hda_name}" iHDA node does not exist',
                 )
                 return
-            self.bindings.selection._slot_select_view(
+            self.bindings.selection.slot_select_view(
                 index=self.bindings.ui.stackedWidget__whole.indexOf(
                     self.bindings.ui.page__history
                 )
             )
-            self.bindings.selection._select_hist_ihda_combobox_item(hkey_id=hda_id)
+            self.bindings.selection.select_hist_ihda_combobox_item(hkey_id=hda_id)
         elif action == action_hist_context_menu_note_history:
             hda_name = self.bindings.selection.state.asset.name or ""
             hda_id = self.bindings.selection.state.asset.require_data().hda_id
             hist_note_data = self.bindings.session.require_repository().note_history(
                 hda_id
             )
-            self.bindings.notes._slot_hda_note_history(
+            self.bindings.notes.slot_hda_note_history(
                 hist_note_data=hist_note_data, hda_name=hda_name
             )
         elif action == action_hist_context_menu_remove_history:
@@ -413,7 +417,7 @@ class PanelContextMenus:
                     hkey_id=hda_id
                 )
                 del_hist_data_lst.extend(hist_data_lst)
-            self.bindings.management._trash_history_rows(del_hist_data_lst)
+            self.bindings.management.trash_history_rows(del_hist_data_lst)
         else:
             pass
 
@@ -491,7 +495,7 @@ class PanelContextMenus:
         elif action == action_open_context_hip_file:
             self.bindings.presentation.open_houdini_file(hip_filepath=hip_filepath)
         elif action == action_context_menu_go_to_network:
-            self.bindings.selection._go_to_houdini_node(node_path=pnode_path)
+            self.bindings.selection.go_to_houdini_node(node_path=pnode_path)
         elif action == action_context_menu_detail:
             record_id = index.data(ihda_record_model.RecordModel.record_id_role)
             if record_id is None:
@@ -499,9 +503,9 @@ class PanelContextMenus:
             record_data = self.bindings.session.require_repository().record_detail(
                 record_id
             )
-            self.bindings.notes._detail_view_record_data(record_data=record_data)
+            self.bindings.notes.detail_view_record_data(record_data=record_data)
         elif action == action_context_menu_remove:
-            self.bindings.management._remove_selected_record_item(index=index)
+            self.bindings.management.remove_selected_record_item(index=index)
         else:
             pass
 
@@ -564,11 +568,11 @@ class PanelContextMenus:
                     msg=f'"{hda_name} (v{hda_ver})" iHDA node has no video',
                 )
                 return
-            self.bindings.selection._play_video_most_recent_by_version(
+            self.bindings.selection.play_video_most_recent_by_version(
                 video_info=video_info
             )
         elif action == action_context_menu_go_to_node:
             node_path = index.data(ihda_inside_model.InsideModel.node_path_role)
-            self.bindings.selection._go_to_houdini_node(node_path=node_path)
+            self.bindings.selection.go_to_houdini_node(node_path=node_path)
         else:
             pass

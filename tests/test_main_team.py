@@ -190,7 +190,7 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         wait_panel(app, panel)
         assert panel.models.history_model.rowCount() == 2  # version + rename row
         assert panel.selection.state.asset.name == "TeamWater2"
-        panel.selection._slot_select_view(index=panel._ihda_view_idx)
+        panel.selection.slot_select_view(index=panel._ihda_view_idx)
 
         panel.comboBox__search_type.setCurrentText("Note")
         panel.lineEdit__search_hda.setText("saved in team")

@@ -72,9 +72,8 @@ if TYPE_CHECKING:
     from widgets.asset_browser.integration import AssetBrowserIntegration
     from widgets.asset_details.integration import AssetDetailsIntegration
     from widgets.make_video_info.make_video_info import MakeVideoInfo
-    from widgets.panel.host_callbacks import PanelHostCallbacks
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.ports import AssetModelPort, LibraryQueryPort
+    from widgets.panel.ports import AssetModelPort, CallbacksPort, LibraryQueryPort
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState, PanelStatus, PanelViews
     from widgets.preference.preference import Preference
@@ -86,7 +85,7 @@ if TYPE_CHECKING:
 @dataclass(frozen=True, slots=True)
 class PanelPresentationBindings:
     browser: AssetBrowserIntegration
-    callbacks: PanelHostCallbacks
+    callbacks: CallbacksPort
     details: AssetDetailsIntegration
     drag_overlay: DragOverlay
     loading: Overlay
@@ -226,12 +225,12 @@ class PanelPresentation:
 
     def loading_show(self) -> None:
         if host.IS_HOUDINI:
-            self.bindings.callbacks._add_event_loop_callback(self._loading_counter)
+            self.bindings.callbacks.add_event_loop_callback(self._loading_counter)
         self.bindings.loading.show()
 
     def loading_close(self) -> None:
         if host.IS_HOUDINI:
-            self.bindings.callbacks._remove_event_loop_callback(self._loading_counter)
+            self.bindings.callbacks.remove_event_loop_callback(self._loading_counter)
         self.bindings.loading.close()
 
     def _loading_counter(self) -> None:

@@ -20,8 +20,7 @@ from widgets.ui_tokens import COMPACT_MARGIN, TAG_TEXT_COLOR
 
 if TYPE_CHECKING:
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.ports import AssetModelPort, PresentationPort
-    from widgets.panel.selection import PanelSelection
+    from widgets.panel.ports import AssetModelPort, PresentationPort, SelectionPort
     from widgets.panel.state import PanelSessionState
 
 
@@ -30,7 +29,7 @@ class PanelNotesBindings:
     models: AssetModelPort
     parent: QtWidgets.QWidget
     presentation: PresentationPort
-    selection: PanelSelection
+    selection: SelectionPort
     session: PanelSessionState
     ui: MainWindowLayout
 
@@ -38,13 +37,13 @@ class PanelNotesBindings:
 class PanelNotes:
     bindings: PanelNotesBindings
 
-    def _set_hda_info_to_parms(self) -> None:
+    def set_hda_info_to_parms(self) -> None:
         self.bindings.session.actions.select(
             self.bindings.selection.state.asset.id,
             self.bindings.selection.state.asset.data,
         )
 
-    def _set_hda_hist_info_to_parms(self) -> None:
+    def set_hda_hist_info_to_parms(self) -> None:
         if self.bindings.selection.state.history.data is None:
             self.bindings.ui.label__hist_tags.clear()
             return
@@ -57,17 +56,17 @@ class PanelNotes:
         else:
             self.bindings.ui.label__hist_tags.clear()
 
-    def _set_label_tags(self, tags: Sequence[str]) -> None:
+    def set_label_tags(self, tags: Sequence[str]) -> None:
         self.bindings.ui.label__tags.setText(
-            f"<font color={TAG_TEXT_COLOR}>{self._set_tag_string(tags)}</font>"
+            f"<font color={TAG_TEXT_COLOR}>{self.set_tag_string(tags)}</font>"
         )
 
     def _set_label_hist_tags(self, tags: Sequence[str]) -> None:
         self.bindings.ui.label__hist_tags.setText(
-            f"<font color={TAG_TEXT_COLOR}>{self._set_tag_string(tags)}</font>"
+            f"<font color={TAG_TEXT_COLOR}>{self.set_tag_string(tags)}</font>"
         )
 
-    def _slot_hda_note_history(
+    def slot_hda_note_history(
         self, hist_note_data: Any = None, hda_name: str | None = None
     ) -> None:
         dialog = QtWidgets.QDialog(self.bindings.parent)
@@ -111,12 +110,12 @@ class PanelNotes:
             plain_textedit.appendPlainText("-" * 88)
         dialog.show()
 
-    def _clear_hist_parms(self) -> None:
+    def clear_hist_parms(self) -> None:
         self.bindings.ui.label__hist_cnt.setText(
             str(self.bindings.models.history_proxy_model.rowCount())
         )
 
-    def _clear_parms(self) -> None:
+    def clear_parms(self) -> None:
         self.bindings.ui.label__hda_count.setText(
             str(self.bindings.models.list_proxy_model.rowCount())
         )
@@ -125,13 +124,13 @@ class PanelNotes:
         )
         self.bindings.session.actions.select(None, None)
 
-    def _detail_view_ihda_data(self, data: Any = None) -> None:
+    def detail_view_ihda_data(self, data: Any = None) -> None:
         detailview = detail_view.DetailView(parent=self.bindings.parent)
         detailview.show_detail_ihda_data(
             data=data, is_histview=self.bindings.presentation.is_ihda_history_view
         )
 
-    def _detail_view_record_data(self, record_data: Any = None) -> None:
+    def detail_view_record_data(self, record_data: Any = None) -> None:
         if record_data is None:
             return
         detailview = detail_view.DetailView(parent=self.bindings.parent)
@@ -166,12 +165,12 @@ class PanelNotes:
         return f"{created_date} {created_week} {created_time}"
 
     @staticmethod
-    def _split_tag_string(tag_str: str = "") -> list[str]:
+    def split_tag_string(tag_str: str = "") -> list[str]:
 
         return sorted(normalize_tags(tag_str))
 
     @staticmethod
-    def _set_tag_string(tag_lst: Sequence[str]) -> str:
+    def set_tag_string(tag_lst: Sequence[str]) -> str:
         return " ".join(["#" + x for x in sorted(tag_lst)])
 
     def _slot_save_note_tags(self, choice: Field = "note") -> None:
@@ -205,5 +204,5 @@ class PanelNotes:
                 self.bindings.session.actions.save(choice)
 
     @property
-    def _hda_tags(self) -> str:
+    def hda_tags(self) -> str:
         return self.bindings.ui.textEdit__tag.toPlainText().strip()

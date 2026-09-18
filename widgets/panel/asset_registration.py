@@ -21,18 +21,22 @@ from widgets.asset_lifecycle.capture import HoudiniRegistrationCapture
 if TYPE_CHECKING:
     import hou
 
-    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, PresentationPort
+    from widgets.panel.ports import (
+        AssetManagementPort,
+        AssetModelPort,
+        CallbacksPort,
+        HoudiniActionsPort,
+        LibraryQueryPort,
+        PresentationPort,
+        SelectionPort,
+    )
 
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from widgets.panel.asset_management import PanelAssetManagement
-    from widgets.panel.host_callbacks import PanelHostCallbacks
-    from widgets.panel.houdini_actions import PanelHoudiniActions
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.selection import PanelSelection
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState
     from widgets.preference.preference import Preference
@@ -41,16 +45,16 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class PanelAssetRegistrationBindings:
-    callbacks: PanelHostCallbacks
-    houdini: PanelHoudiniActions
-    management: PanelAssetManagement
+    callbacks: CallbacksPort
+    houdini: HoudiniActionsPort
+    management: AssetManagementPort
     models: AssetModelPort
     parent: QtWidgets.QWidget
     preference: Preference
     presentation: PresentationPort
     queries: LibraryQueryPort
     reload_library: Callable[[], None]
-    selection: PanelSelection
+    selection: SelectionPort
     services: PanelServices
     session: PanelSessionState
     team: Callable[[], MainLibraryIntegration]
@@ -130,7 +134,7 @@ But it didn't stop, so please wait a little longer.
         self.bindings.presentation.dragdrop_overlay_show(
             text="Create iHDA node\nPlease wait..."
         )
-        self.bindings.callbacks._wrapper_execute_deferred(
+        self.bindings.callbacks.wrapper_execute_deferred(
             lambda: self._make_houdini_node_to_ihda_node(
                 node_lst=node_lst, total_node_cnt=total_node_cnt
             )
@@ -224,7 +228,7 @@ But it didn't stop, so please wait a little longer.
                 msg=f'[{node_cnt + 1}/{total_node_cnt}] node dropped "{node_path}" ({node_cate})',
             )
         if is_declare:
-            self.bindings.selection._select_category(
+            self.bindings.selection.select_category(
                 category=self.bindings.selection.state.item_text
             )
 
@@ -457,7 +461,7 @@ But it didn't stop, so please wait a little longer.
                         f"Automatic reload failed: {reload_error}"
                     )
 
-        return self.bindings.management._asset_commands().capture_and_register(
+        return self.bindings.management.asset_commands().capture_and_register(
             service,
             payload,
             HoudiniRegistrationCapture(
@@ -474,7 +478,7 @@ But it didn't stop, so please wait a little longer.
             hkey_id=hda_key_id, thumb_filepath=result.thumb_filepath
         )
         self.bindings.models.update_item_row_data(
-            row=self.bindings.management._get_hda_id_row_map().get(hda_key_id),
+            row=self.bindings.management.get_hda_id_row_map().get(hda_key_id),
             row_data=result.asset,
         )
         self.bindings.models.add_pixmap_hist_thumbnail(
@@ -485,7 +489,7 @@ But it didn't stop, so please wait a little longer.
             hist_id=result.history_id,
             tags=result.asset.hda_tags,
         )
-        self.bindings.selection._set_hist_ihda_to_combobox(
+        self.bindings.selection.set_hist_ihda_to_combobox(
             hkey_id=hda_key_id, hda_name=payload.node_name
         )
 
@@ -529,10 +533,10 @@ But it didn't stop, so please wait a little longer.
         self.bindings.models.insert_ihda_history_data_model(
             data=result.history, hist_id=result.history_id, tags=[]
         )
-        self.bindings.selection._set_hist_ihda_to_combobox(
+        self.bindings.selection.set_hist_ihda_to_combobox(
             hkey_id=key_id, hda_name=payload.node_name
         )
-        self.bindings.houdini._hda_info_to_node_comment(
+        self.bindings.houdini.hda_info_to_node_comment(
             node=info_data.get(keys.Key.node),
             hda_name=payload.node_name,
             hda_ver=payload.version,

@@ -102,7 +102,7 @@ class PanelComposition:
                 tags=window.textEdit__tag,
                 status=window.label__metadata_status,
                 tag_status=window.label__tag_status,
-                show_tags=window.notes._set_label_tags,
+                show_tags=window.notes.set_label_tags,
                 saved=self._metadata_saved,
             ),
             window._services.tasks(window),
@@ -251,7 +251,7 @@ class PanelComposition:
         # signal & slot
         bootstrap.connect_signals()
         # initialize select model
-        window.selection._init_select_ihda_category_model()
+        window.selection.init_select_ihda_category_model()
         window.tools._setup_library_tools()
         self.lifetime.add(
             "registration_status",
@@ -290,10 +290,10 @@ class PanelComposition:
                 apply_snapshot=window._library_sync._apply_library_snapshot,
                 refresh=window.reload_library,
                 invalidate_ai=lambda: setattr(window._ai_actions, "target_id", -1),
-                show_assets=lambda: window.selection._slot_select_view(
+                show_assets=lambda: window.selection.slot_select_view(
                     index=window._ihda_view_idx
                 ),
-                show_video=lambda: window.selection._slot_select_view(
+                show_video=lambda: window.selection.slot_select_view(
                     index=window._video_view_idx
                 ),
                 personal_controls=(
@@ -600,5 +600,5 @@ class PanelComposition:
                 hkey_id=asset_id, key=Key.History.tags, val=tags
             )
             if window.selection.state.asset.id == asset_id:
-                window.notes._set_label_tags(tags)
+                window.notes.set_label_tags(tags)
         window.models.refresh_asset_search()

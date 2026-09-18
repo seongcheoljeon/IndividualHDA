@@ -286,20 +286,8 @@ SOFT_DELETE_UNFILTERED: dict[str, int] = {
 # their bindings (self.bindings.x._y) or the team integration (self.library._y).
 # Target: empty, once the bindings are typed as ports.
 CROSS_FEATURE_PRIVATE: dict[str, int] = {
-    "widgets.panel.ai_actions": 3,
-    "widgets.panel.asset_management": 10,
-    "widgets.panel.asset_registration": 7,
-    "widgets.panel.context_menus": 21,
-    "widgets.panel.host_callbacks": 2,
-    "widgets.panel.houdini_actions": 3,
-    "widgets.panel.library_queries": 2,
-    "widgets.panel.library_sync": 5,
     "widgets.panel.library_tools": 1,
-    "widgets.panel.model_binding": 1,
-    "widgets.panel.presentation": 2,
-    "widgets.panel.selection": 2,
-    "widgets.team_library.actions": 20,
-    "widgets.team_library.integration": 3,
+    "widgets.team_library.actions": 17,
 }
 # Debt: imports inside function bodies in libs/ and ihda_server/ (most hide an
 # import cycle). Target: only the ones that defer optional dependencies.

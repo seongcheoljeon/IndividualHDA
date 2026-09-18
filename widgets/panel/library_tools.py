@@ -18,9 +18,8 @@ if TYPE_CHECKING:
     from widgets.library_metadata.dialog import LibraryMetadataDialog
     from widgets.library_metadata.recovery import RegistrationRecoveryDialog
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.ports import AssetModelPort, LibraryQueryPort
+    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, SelectionPort
     from widgets.panel.scene_usage import SceneUsageIntegration
-    from widgets.panel.selection import PanelSelection
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState, PanelStatus, PanelViews
     from widgets.team_library.integration import MainLibraryIntegration
@@ -34,7 +33,7 @@ class PanelLibraryToolsBindings:
     queries: LibraryQueryPort
     reload_library: Callable[[], None]
     scene_usage: Callable[[], SceneUsageIntegration]
-    selection: PanelSelection
+    selection: SelectionPort
     services: PanelServices
     session: PanelSessionState
     stage_import: Callable[[Any], None]
@@ -75,7 +74,7 @@ class PanelLibraryTools:
         menu.addAction(
             QtGui.QIcon(":/main/icons/upload.png"),
             "Copy to team…",
-            self._open_copy_to_team,
+            self.open_copy_to_team,
         )
         self.actionRegistration_Recovery = menu.addAction(
             QtGui.QIcon(":/main/icons/ic_query_builder_white.png"),
@@ -114,7 +113,7 @@ class PanelLibraryTools:
         ):
             action = menu.addAction(QtGui.QIcon(icon), label)
             action.triggered.connect(
-                lambda checked=False, tab=index: self._open_library_tools(tab)
+                lambda checked=False, tab=index: self.open_library_tools(tab)
             )
 
     def _refresh_registration_status(self) -> None:
@@ -200,7 +199,7 @@ class PanelLibraryTools:
         elif not team.active:
             self.bindings.reload_library()
 
-    def _open_copy_to_team(self) -> None:
+    def open_copy_to_team(self) -> None:
         from libs.paths import Paths
         from libs.team.copy_source import PersonalCopySource
         from widgets.asset_copy.dialog import CopyAssetDialog
@@ -292,7 +291,7 @@ class PanelLibraryTools:
             self.tools_require_restart = False
             self.bindings.reload_library()
 
-    def _open_library_tools(self, tab: int = 0) -> None:
+    def open_library_tools(self, tab: int = 0) -> None:
         if self.bindings.tasks.busy or self.bindings.imported():
             return
         database, assets = (
@@ -407,7 +406,7 @@ class PanelLibraryTools:
                 self.bindings.parent, "Import version", str(error)
             )
 
-    def _capture_team_node(
+    def capture_team_node(
         self, selected_node: Any = None
     ) -> tuple[Path, dict[str, Any], Path | None]:
         import json
@@ -460,7 +459,7 @@ class PanelLibraryTools:
         metadata["_registration_job_id"] = job_id
         return directory / filename, metadata, thumbnail if has_thumbnail else None
 
-    def _import_team_asset(
+    def import_team_asset(
         self, path: Path, asset: dict[str, Any], target: tuple[Any, Any] | None = None
     ) -> None:
         from libs.houdini_api import HoudiniAPI

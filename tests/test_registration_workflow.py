@@ -282,7 +282,7 @@ def test_committed_display_failure_does_not_repeat_registration(
         management=owner,
         reload_library=owner.reload_library,
     )
-    owner._asset_commands = lambda: AssetCommandPresenter(owner, gateway)
+    owner.asset_commands = lambda: AssetCommandPresenter(owner, gateway)
     monkeypatch.setattr(houdini_api.HoudiniAPI, "find_node", lambda path: object())
     monkeypatch.setattr(
         "widgets.panel.asset_registration.HoudiniRegistrationCapture",

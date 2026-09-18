@@ -19,10 +19,10 @@ from widgets.panel.lifetime import PanelLifetime
 
 def detach_host_callbacks(window: IndividualHDA) -> None:
     if IS_HOUDINI:
-        window.callbacks._remove_event_loop_callback(
+        window.callbacks.remove_event_loop_callback(
             window.callbacks._wrapper_current_panetab
         )
-        window.callbacks._remove_event_loop_callback(
+        window.callbacks.remove_event_loop_callback(
             window.presentation._loading_counter
         )
         window.callbacks._remove_selection_callback(

@@ -24,8 +24,12 @@ if TYPE_CHECKING:
     from libs.task_controller import TaskController
     from widgets.make_video_info.make_video_info import MakeVideoInfo
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, PresentationPort
-    from widgets.panel.selection import PanelSelection
+    from widgets.panel.ports import (
+        AssetModelPort,
+        LibraryQueryPort,
+        PresentationPort,
+        SelectionPort,
+    )
     from widgets.panel.state import PanelSessionState, PanelStatus
     from widgets.preference.preference import Preference
     from widgets.team_library.integration import MainLibraryIntegration
@@ -40,7 +44,7 @@ class PanelMediaActionsBindings:
     preference: Preference
     presentation: PresentationPort
     queries: LibraryQueryPort
-    selection: PanelSelection
+    selection: SelectionPort
     sequence_pattern: Pattern[str]
     session: PanelSessionState
     status: PanelStatus
@@ -67,7 +71,7 @@ class PanelMediaActions:
                 )
         return is_del
 
-    def _slot_make_thumbnail(self) -> None:
+    def slot_make_thumbnail(self) -> None:
         if not self.bindings.host_enabled:
             return
         team = self.bindings.team()

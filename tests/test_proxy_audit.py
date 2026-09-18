@@ -262,7 +262,7 @@ def test_sorted_filtered_selection_maps_source_id(app: Any, tmp_path: Path) -> N
     proxy.sort(0)
     owner = SimpleNamespace(
         bindings=SimpleNamespace(
-            management=SimpleNamespace(_get_hda_id_row_map=lambda: {10: 0, 20: 1})
+            management=SimpleNamespace(get_hda_id_row_map=lambda: {10: 0, 20: 1})
         )
     )
     index = PanelLibraryQueries.find_hda_id_by_model_item(owner, proxy, 10)
@@ -345,20 +345,20 @@ def test_multi_delete_keeps_ids_after_proxy_reorders(app: Any, tmp_path: Path) -
                 record_proxy_model=SimpleNamespace(get_row_count=lambda: 0),
             ),
             selection=SimpleNamespace(
-                _initialize_current_attribs=lambda: None,
-                _initialize_hist_current_attribs=lambda: None,
+                initialize_current_attribs=lambda: None,
+                initialize_hist_current_attribs=lambda: None,
             ),
             notes=SimpleNamespace(
-                _clear_parms=lambda: None, _clear_hist_parms=lambda: None
+                clear_parms=lambda: None, clear_hist_parms=lambda: None
             ),
             ui=SimpleNamespace(
                 label__loc_record_count=SimpleNamespace(setText=lambda text: None)
             ),
         ),
-        _get_hda_id_row_map=lambda: {item.hda_id: row for row, item in enumerate(rows)},
+        get_hda_id_row_map=lambda: {item.hda_id: row for row, item in enumerate(rows)},
         _delete_ihda_item=remove,
     )
-    PanelAssetManagement._remove_hda_item(owner, selected)
+    PanelAssetManagement.remove_hda_item(owner, selected)
     assert deleted == [2, 1]
     assert [item.hda_id for item in rows] == [3]
 

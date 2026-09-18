@@ -264,6 +264,6 @@ def test_asset_row_lookup_uses_current_index_after_insertion() -> None:
     owner = PanelLibraryQueries()
     owner.bindings = SimpleNamespace(
         models=SimpleNamespace(assets=store),
-        management=SimpleNamespace(_get_hda_id_row_map=lambda: store.id_rows),
+        management=SimpleNamespace(get_hda_id_row_map=lambda: store.id_rows),
     )
     assert PanelLibraryQueries.get_ihda_data_by_id(owner, 1, "item_row") == 1
