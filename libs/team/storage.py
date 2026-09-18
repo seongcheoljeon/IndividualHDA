@@ -9,8 +9,7 @@ import tempfile
 from collections.abc import Iterable
 from pathlib import Path
 
-from libs.team.contracts import TeamError
-from libs.team.limits import DEFAULT_MAX_UPLOAD_BYTES
+from libs.team.contracts import DEFAULT_MAX_UPLOAD_BYTES, TeamError
 
 
 class FileBlobStore:

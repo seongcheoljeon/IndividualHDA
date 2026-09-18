@@ -32,6 +32,7 @@ from libs.library_metadata import new_identity, version_details
 from libs.search_limits import QUERY_TEXT_MAX, TEAM_PAGE_DEFAULT, TEAM_PAGE_MAX
 from libs.tags import normalize_tags
 from libs.team.contracts import (
+    DEFAULT_AUDIT_EVENT_LIMIT,
     Blob,
     Command,
     Conflict,
@@ -42,7 +43,6 @@ from libs.team.contracts import (
     TeamError,
     parse_blob,
 )
-from libs.team.limits import DEFAULT_AUDIT_EVENT_LIMIT
 
 
 class SqlCatalog:
@@ -233,6 +233,13 @@ class SqlCatalog:
         if offset < 0 or not 1 <= limit <= TEAM_PAGE_MAX or len(query) > QUERY_TEXT_MAX:
             raise TeamError("Invalid pagination or query")
         with self._engine.connect() as connection:
+            if connection.dialect.name == "postgresql":
+                # count, rows and revision must come from one snapshot: READ
+                # COMMITTED re-snapshots per statement and can pair rows with a
+                # newer revision, which clients use for optimistic locking.
+                connection = connection.execution_options(
+                    isolation_level="REPEATABLE READ"
+                )
             self.authorize(connection, project_id, user_id)
             criteria = [
                 tables.assets.c.project_id == project_id,

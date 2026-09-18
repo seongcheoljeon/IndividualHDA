@@ -9,8 +9,13 @@ from typing import Any, Protocol, cast
 from libs.database.lifecycle import PersonalLifecycle, inspect_files
 from libs.database.rows import named_query
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
-from libs.team.contracts import Command, ManagementCatalog, Operation, TeamError
-from libs.team.limits import DEFAULT_AUDIT_EVENT_LIMIT
+from libs.team.contracts import (
+    DEFAULT_AUDIT_EVENT_LIMIT,
+    Command,
+    ManagementCatalog,
+    Operation,
+    TeamError,
+)
 from libs.team.pending import PendingCommand
 
 

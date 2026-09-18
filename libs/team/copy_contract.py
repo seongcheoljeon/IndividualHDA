@@ -5,8 +5,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
-from libs.team.contracts import Command, TeamError
-from libs.team.limits import MAX_COPY_VERSIONS
+from libs.team.contracts import MAX_COPY_VERSIONS, Command, TeamError
 
 
 def validate_copy(values: dict[str, Any]) -> None:

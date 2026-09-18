@@ -31,6 +31,7 @@ from libs.repository import LibraryConflict, LibraryError, RegistrationPayload
 from libs.search_limits import QUERY_TEXT_MAX, TEAM_PAGE_DEFAULT, TEAM_PAGE_MAX
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
 from libs.team.contracts import (
+    DEFAULT_AUDIT_EVENT_LIMIT,
     Blob,
     Command,
     Conflict,
@@ -39,7 +40,6 @@ from libs.team.contracts import (
     TeamError,
     parse_blob,
 )
-from libs.team.limits import DEFAULT_AUDIT_EVENT_LIMIT
 from libs.team.storage import FileBlobStore
 
 

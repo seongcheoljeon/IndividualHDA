@@ -26,13 +26,14 @@ from libs.search_limits import TEAM_PAGE_DEFAULT
 from libs.team.contracts import (
     API_PREFIX,
     API_VERSION,
+    DEFAULT_MAX_UPLOAD_BYTES,
+    MAX_METADATA_BODY_BYTES,
     Command,
     Operation,
     Role,
     TeamError,
     Unauthorized,
 )
-from libs.team.limits import DEFAULT_MAX_UPLOAD_BYTES, MAX_METADATA_BODY_BYTES
 
 
 class CommandBody(BaseModel):

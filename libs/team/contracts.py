@@ -11,10 +11,17 @@ from uuid import UUID, uuid4
 
 from libs.file_integrity import FileContent
 from libs.search_limits import TEAM_PAGE_DEFAULT
-from libs.team.limits import MAX_COMMAND_BYTES
 
 API_VERSION = 2
 API_PREFIX = f"/v{API_VERSION}"
+
+# Protocol caps: the client validates them before sending and the server before
+# accepting, so they change together and live with the contract.
+MAX_COMMAND_BYTES = 256 * 1024
+MAX_METADATA_BODY_BYTES = 300 * 1024
+MAX_COPY_VERSIONS = 500
+DEFAULT_AUDIT_EVENT_LIMIT = 500
+DEFAULT_MAX_UPLOAD_BYTES = 1024**3
 Role = Literal["viewer", "editor", "owner"]
 Operation = Literal[
     "copy_asset",
