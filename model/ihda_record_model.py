@@ -19,7 +19,7 @@ from PySide6 import QtCore, QtGui
 from libs.item_paths import item_path
 from libs.model_columns import RecordColumn
 from libs.scene_contracts import SceneRecord
-from model.model_style import ModelStyleMixin
+from model.model_style import UNHANDLED, ModelStyleMixin, header_data
 from model.tree_nodes import Node
 
 with contextlib.suppress(ImportError):
@@ -457,23 +457,13 @@ class RecordModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         orientation: QtCore.Qt.Orientation,
         role: int = QtCore.Qt.ItemDataRole.DisplayRole,
     ) -> Any:
-        if role == QtCore.Qt.ItemDataRole.DisplayRole:
-            if orientation == QtCore.Qt.Orientation.Horizontal:
-                return RecordColumn(section).label
-        elif role == QtCore.Qt.ItemDataRole.DecorationRole:
-            return None
-        elif role == QtCore.Qt.ItemDataRole.FontRole:
-            font = QtGui.QFont()
-            # font.setFamily(self._font_style)
-            font.setPointSize(keys.UISetting.view_font_size)
-            return font
-        elif role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
+        if role == QtCore.Qt.ItemDataRole.TextAlignmentRole:
             return int(
                 QtCore.Qt.AlignmentFlag.AlignHCenter
                 | QtCore.Qt.AlignmentFlag.AlignVCenter
             )
-
-        return None
+        value = header_data(RecordColumn, section, orientation, role)
+        return None if value is UNHANDLED else value
 
     def node_from_index(
         self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex

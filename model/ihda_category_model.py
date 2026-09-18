@@ -6,7 +6,7 @@ from typing import Any, overload
 
 from PySide6 import QtCore, QtGui
 
-from model.model_style import ModelStyleMixin
+from model.model_style import UNHANDLED, ModelStyleMixin, header_data
 
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
@@ -212,16 +212,8 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         orientation: QtCore.Qt.Orientation,
         role: int = QtCore.Qt.ItemDataRole.DisplayRole,
     ) -> Any:
-        if role == QtCore.Qt.ItemDataRole.DisplayRole:
-            if orientation == QtCore.Qt.Orientation.Horizontal:
-                return self.__headers[section]
-        elif role == QtCore.Qt.ItemDataRole.DecorationRole:
-            return None
-        elif role == QtCore.Qt.ItemDataRole.FontRole:
-            font = QtGui.QFont()
-            font.setPointSize(keys.UISetting.view_font_size)
-            return font
-        return None
+        value = header_data(self.__headers, section, orientation, role)
+        return None if value is UNHANDLED else value
 
     def node_from_index(
         self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex

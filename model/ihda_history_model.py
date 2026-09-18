@@ -19,7 +19,7 @@ from model.item_media import PixmapSource, thumbnail
 # create date       : 2020.01.28 11:45
 # modify date       :
 # description       :
-from model.model_style import ModelStyleMixin
+from model.model_style import UNHANDLED, ModelStyleMixin, header_data
 
 with contextlib.suppress(ImportError):
     pass
@@ -100,15 +100,11 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         orientation: QtCore.Qt.Orientation,
         role: int = QtCore.Qt.ItemDataRole.DisplayRole,
     ) -> Any:
-        if role == QtCore.Qt.ItemDataRole.DisplayRole:
-            if orientation == QtCore.Qt.Orientation.Horizontal:
-                return f"{HistoryColumn(section).label}"
-            else:
-                return f"Hist {section + 1}"
-        if role == QtCore.Qt.ItemDataRole.FontRole:
-            font = QtGui.QFont()
-            font.setPointSize(keys.UISetting.view_font_size)
-            return font
+        value = header_data(
+            HistoryColumn, section, orientation, role, row_prefix="Hist"
+        )
+        if value is not UNHANDLED:
+            return value
         return QtCore.QAbstractTableModel.headerData(self, section, orientation, role)
 
     def rowCount(
