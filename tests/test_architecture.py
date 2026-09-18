@@ -323,7 +323,6 @@ LAZY_IMPORT_SITES: dict[str, int] = {
     "libs.team.copy_source": 1,
     "libs.team.panel_catalog": 1,
     "libs.team.pending": 3,
-    "libs.team.personal": 1,
     "libs.team.registration_recovery": 3,
     "libs.version_compare": 2,
 }

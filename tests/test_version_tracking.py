@@ -651,15 +651,8 @@ def test_copy_omits_empty_tracking_fields_for_an_older_server(
     assert result["name"] == "Water"
 
 
-def test_personal_catalog_returns_current_uuid_after_activity(
-    personal: Any, tmp_path: Path
-) -> None:
-    from support.names import Names
-
-    from libs.team.personal import PersonalCatalog
-
+def test_current_version_survives_a_compensating_history_row(personal: Any) -> None:
     database, repository, first, _ = personal
     uuid = repository.version_identity(first.asset.hda_id)
     repository.add_history_row(first.history)
-    backend = PersonalCatalog(database, tmp_path / "assets", "tester", Names)
-    assert backend.get_asset(first.asset.hda_id)["version_uuid"] == uuid
+    assert repository.version_identity(first.asset.hda_id) == uuid

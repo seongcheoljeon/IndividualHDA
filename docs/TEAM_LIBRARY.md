@@ -256,7 +256,6 @@ Houdini 노드 캡처의 임시 파일은 `workspace/staging/`에 남으므로 �
 | 기존 모델용 데이터 변환·검색 | `libs/team/presentation.py`, `libs/team/search.py` |
 | 선택·초안·저장·충돌·재시도 흐름 | `widgets/team_library/presenter.py` |
 | 명령·응답·오류·파일 참조 계약 | `libs/team/contracts.py` |
-| 개인 DB 어댑터 | `libs/team/personal.py` |
 | HTTP 어댑터·검증 캐시 | `libs/team/client.py` |
 | 불확실한 쓰기 보관 | `libs/team/pending.py` |
 | API 경계·입력 검증 | `ihda_server/app.py` |

@@ -19,7 +19,6 @@ from libs.team.contracts import (
     TeamError,
     Unauthorized,
 )
-from support.names import Names
 
 
 class TestTransport:
@@ -102,16 +101,8 @@ def server(tmp_path: Path) -> Iterator[Any]:
     engine.dispose()
 
 
-@pytest.fixture(params=["personal", "server"])
+@pytest.fixture(params=["server"])
 def backend(request: Any, tmp_path: Path) -> Any:
-    if request.param == "personal":
-        from libs.sqlite3_db_api import SQLite3DatabaseAPI
-        from libs.team.personal import PersonalCatalog
-
-        database = tmp_path / "personal.db"
-        with SQLite3DatabaseAPI(database):
-            pass
-        return PersonalCatalog(database, tmp_path / "assets", "tester", Names)
     client, _, _, _, token, project, _ = request.getfixturevalue("server")
     return HttpCatalog(
         TestTransport(client, token), project, BlobCache(tmp_path / "cache", project)

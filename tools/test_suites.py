@@ -44,7 +44,4 @@ def includes(suite: str, filename: str) -> bool:
         return True
     if suite == "postgres":
         return filename in POSTGRES
-    # Personal parametrizations of this shared contract require the Qt file lock.
-    if suite == "qt" and filename == "test_team_library.py":
-        return True
     return suite_for(filename) == suite

@@ -183,7 +183,7 @@ def guard(name, *args, **kwargs):
         raise AssertionError(name)
     return original(name, *args, **kwargs)
 builtins.__import__ = guard
-from libs.team.personal import PersonalCatalog
+from libs.team.panel_catalog import PanelCatalog
 from widgets.library_connection.dialog import ConnectionDialog
 from widgets.team_library.integration import MainLibraryIntegration
 """

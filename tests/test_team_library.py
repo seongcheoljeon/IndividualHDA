@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from support.names import Names
 from support.team import TestTransport, create_asset
 from support.team import backend as backend
 from support.team import server as server
@@ -90,29 +89,6 @@ def test_backend_contract_roundtrip_and_conflicts(backend: Any, tmp_path: Path) 
     assert removed["deleted"] and backend.list_assets().total == 0
     with pytest.raises(NotFound):
         backend.get_asset(asset["id"])
-
-
-def test_personal_revision_observes_original_ui_writes(tmp_path: Path) -> None:
-    from libs.database.sqlite_repository import SqliteLibraryRepository
-    from libs.sqlite3_db_api import SQLite3DatabaseAPI
-    from libs.team.personal import PersonalCatalog
-
-    database = tmp_path / "personal.db"
-    with SQLite3DatabaseAPI(database):
-        pass
-    backend = PersonalCatalog(database, tmp_path / "assets", "tester", Names)
-    _, asset = create_asset(backend, tmp_path)
-    SqliteLibraryRepository(database).set_note(asset["id"], "changed in original UI")
-    with pytest.raises(Conflict):
-        backend.execute(
-            Command(
-                "metadata",
-                asset_id=asset["id"],
-                expected_revision=asset["revision"],
-                values={"note": "stale"},
-            )
-        )
-    assert backend.get_asset(asset["id"])["note"] == "changed in original UI"
 
 
 def test_project_isolation_roles_revocation_and_last_owner(

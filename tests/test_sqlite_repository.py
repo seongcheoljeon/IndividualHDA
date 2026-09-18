@@ -235,3 +235,22 @@ def test_trashed_assets_are_invisible_to_reads_but_keep_their_name(
     assert repo.has_asset("tester", "sop", "Water")
     with pytest.raises(LibraryConflict, match="Trash"):
         repo.register_asset(payload(tmp_path, "Water"))
+
+
+def test_import_helpers_and_usage_count(tmp_path: Path) -> None:
+    database = tmp_path / "ihda.db"
+    with SQLite3DatabaseAPI(database):
+        pass
+    repo = SqliteLibraryRepository(database)
+    repo.ensure_user("tester")
+    registered = payload(tmp_path, "Water")
+    asset = repo.register_asset(registered).asset
+    assert repo.asset_available(asset.hda_id) and not repo.asset_available(999)
+    assert repo.import_note(asset.hda_id) is None
+    repo.set_note(asset.hda_id, "how to use it")
+    assert repo.import_note(asset.hda_id) == "how to use it"
+    assert repo.import_license(asset.hda_id, "1.0", "tester") == registered.hou_license
+    repo.record_use(asset.hda_id)
+    repo.record_use(asset.hda_id)
+    assert repo.list_assets()[0].hda_load_count == 2
+    repo.record_use(999)  # unknown asset: logged, never raised
