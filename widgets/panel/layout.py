@@ -71,6 +71,8 @@ class MainWindowLayout:
     lineEdit__search_hda: QtWidgets.QLineEdit
     label__hda_count: QtWidgets.QLabel
     pushButton__ai_suggest: QtWidgets.QPushButton
+    pushButton__ai_cancel: QtWidgets.QPushButton
+    label__ai_status: QtWidgets.QLabel
     actionOpen_Log_Folder: QAction
     actionLocal_AI_Models: QAction
 

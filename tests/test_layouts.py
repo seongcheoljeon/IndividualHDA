@@ -168,3 +168,64 @@ def test_tag_action_buttons_share_one_icon_size(
         assert panel.pushButton__ai_suggest.iconSize() == expected
     finally:
         panel.close()
+
+
+def test_qobject_panel_features_do_not_shadow_qt_api() -> None:
+    """A method named like a QObject member hides Qt's own and breaks wiring.
+
+    PanelAIActions.connect() shadowed QObject.connect, which PySide6 calls with
+    four arguments to hook up a signal: the panel failed to start in Houdini.
+    Houdini ships PySide6 6.5.3 while the tests run on 6.11.2, which tolerates
+    the shadowing -- so only a static check catches it. It lives here, not in
+    test_architecture.py, because the core suite runs without PySide6 installed.
+    """
+    import ast
+
+    from PySide6 import QtCore
+
+    reserved = {name for name in dir(QtCore.QObject) if not name.startswith("__")}
+    root = Path(__file__).resolve().parent.parent / "widgets" / "panel"
+    offenders: dict[str, list[str]] = {}
+    for source in sorted(root.glob("*.py")):
+        tree = ast.parse(source.read_text(encoding="utf-8"))
+        for cls in (node for node in tree.body if isinstance(node, ast.ClassDef)):
+            bases = {ast.unparse(base) for base in cls.bases}
+            if not bases & {"QtCore.QObject", "QObject"}:
+                continue
+            clashes = sorted(
+                node.name
+                for node in cls.body
+                if isinstance(node, ast.FunctionDef) and node.name in reserved
+            )
+            if clashes:
+                offenders[f"{source.stem}.{cls.name}"] = clashes
+    assert not offenders, f"these hide Qt's own members: {offenders}"
+
+
+def test_observation_equality_survives_a_node_deleted_in_houdini() -> None:
+    """A HOM node raises ObjectWasDeleted once the user deletes it.
+
+    The observation list is scanned with `in` on every import, so one deleted
+    node anywhere in it aborted the whole scene record with
+    "Imported asset; scene record could not be queued". Here rather than in
+    test_scene_repository.py: scene_usage imports Qt, the core suite has none.
+    """
+    from widgets.panel.scene_usage import SceneObservation
+
+    class DeletedNode:
+        def __eq__(self, other: object) -> bool:
+            raise RuntimeError("Attempt to access an object that no longer exists")
+
+        __hash__ = None  # type: ignore[assignment]
+
+    def observation(session_id: int) -> SceneObservation:
+        return SceneObservation(
+            node=DeletedNode(),
+            session_id=session_id,
+            version_uuid="v1",
+            namespace="tester",
+        )
+
+    observed = [observation(1)]
+    assert observation(2) not in observed  # must not raise
+    assert observation(1) in observed  # and dedup still works

@@ -122,9 +122,12 @@ class _WindowFontPropagation(QtCore.QObject):
     """
 
     def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
-        if event.type() == QtCore.QEvent.Type.ChildAdded:
+        # QChildEvent, not QEvent: only the subclass carries child().
+        if isinstance(event, QtCore.QChildEvent) and event.added():
+            # isinstance, not isWidgetType(): child() is typed QObject and
+            # setAttribute belongs to QWidget.
             child = event.child()
-            if child is not None and child.isWidgetType():
+            if isinstance(child, QtWidgets.QWidget):
                 child.setAttribute(QtCore.Qt.WidgetAttribute.WA_WindowPropagation, True)
                 child.installEventFilter(self)
         return False

@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import sqlite3
+import sys
 import uuid
 from collections.abc import Iterator
 from contextlib import closing, contextmanager
@@ -21,8 +22,10 @@ from libs.settings_store import save_json
 
 
 def sync_directory(directory: Path) -> None:
-    # Windows does not expose directory fsync via Python's os.open.
-    if os.name != "nt":
+    # Windows does not expose directory fsync via Python's os.open. Written as a
+    # sys.platform test, not os.name, because that is the form mypy narrows: it
+    # then skips this branch on Windows, where os.O_DIRECTORY does not exist.
+    if sys.platform != "win32":
         descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
         try:
             os.fsync(descriptor)
