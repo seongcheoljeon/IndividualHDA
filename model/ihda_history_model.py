@@ -4,15 +4,14 @@ from __future__ import annotations
 import contextlib
 from collections.abc import Sequence
 from dataclasses import replace
-from pathlib import Path
 from typing import Any
 
 from PySide6 import QtCore, QtGui
 
 from libs.asset_contracts import HistoryData, numbered
-from libs.item_paths import item_path, path_exists
+from libs.item_paths import item_path
 from libs.model_columns import HistoryColumn
-from libs.path_updates import PathMoves, relocated_path
+from libs.path_updates import PathMoves, relocate_history
 from model.item_media import PixmapSource, thumbnail
 
 # author            : SeongCheol Jeon
@@ -326,25 +325,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         for row, item in enumerate(self.__items):
             if item.hda_id != asset_id or not item.is_version:
                 continue
-            for directory_key, filename_key in (
-                ("ihda_dirpath", "ihda_filename"),
-                ("thumb_dirpath", "thumb_filename"),
-                ("video_dirpath", "video_filename"),
-            ):
-                directory, filename = (
-                    getattr(item, directory_key),
-                    getattr(item, filename_key),
-                )
-                if isinstance(directory, Path) and isinstance(filename, str):
-                    path = relocated_path(Path(directory) / filename, moves)
-                    changes: dict[str, Any] = {
-                        directory_key: path.parent,
-                        filename_key: path.name,
-                    }
-                    item = replace(item, **changes)
-            item = replace(
-                item, available=path_exists(item.ihda_dirpath, item.ihda_filename)
-            )
+            item = relocate_history(item, moves)
             self.__items[row] = item
             changed.append(item)
             self.dataChanged.emit(
