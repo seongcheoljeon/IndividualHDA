@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from libs.ui_icons import Icon
 from widgets.layout_helpers import make_font, size_policy
 from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 
@@ -121,9 +122,7 @@ class VideoPlayerLayout:
         self.pushButton__del_playlist.setCursor(
             QCursor(Qt.CursorShape.PointingHandCursor)
         )
-        self.pushButton__del_playlist.setIcon(
-            QIcon(":/video_player_main/icons/ic_delete_forever_white.png")
-        )
+        self.pushButton__del_playlist.setIcon(QIcon(Icon.VIDEO_IC_DELETE_FOREVER_WHITE))
         self.pushButton__del_playlist.setIconSize(
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
@@ -243,9 +242,7 @@ class VideoPlayerLayout:
         self.pushButton__stop = QPushButton(self.widget__playback_controls)
         self.pushButton__stop.setObjectName("pushButton__stop")
         self.pushButton__stop.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton__stop.setIcon(
-            QIcon(":/video_player_main/icons/ic_stop_white.png")
-        )
+        self.pushButton__stop.setIcon(QIcon(Icon.VIDEO_IC_STOP_WHITE))
         self.pushButton__stop.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
         self.pushButton__stop.setFlat(True)
         self.pushButton__stop.setToolTip(_translate("Stop"))

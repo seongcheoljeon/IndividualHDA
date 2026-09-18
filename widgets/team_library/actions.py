@@ -10,6 +10,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from libs.asset_contracts import HistoryData
 from libs.drag_payload import decode_drag_record
 from libs.scene_contracts import SceneRecord
+from libs.ui_icons import Icon
 
 if TYPE_CHECKING:
     from widgets.team_library.integration import MainLibraryIntegration
@@ -40,18 +41,18 @@ class MainAssetActions:
                 lambda: self.library.download(),
             )
             menu.addAction(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_movie_white.png")),
+                QtGui.QIcon(QtGui.QPixmap(Icon.IC_MOVIE_WHITE)),
                 "Play video",
                 lambda: self.library.download("video"),
             )
             assert self.library.presenter is not None
             menu.addAction(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_query_builder_white.png")),
+                QtGui.QIcon(QtGui.QPixmap(Icon.IC_QUERY_BUILDER_WHITE)),
                 "History",
                 self.library.presenter.history,
             )
             menu.addAction(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_format_quote_white.png")),
+                QtGui.QIcon(QtGui.QPixmap(Icon.IC_FORMAT_QUOTE_WHITE)),
                 "Details",
                 lambda: self.bindings.notes.detail_view_ihda_data(
                     self.bindings.selection.state.asset.data
@@ -59,12 +60,10 @@ class MainAssetActions:
             )
             menu.addSeparator()
             edits = menu.addMenu("Edit")
-            edits.setIcon(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_border_color_white.png"))
-            )
+            edits.setIcon(QtGui.QIcon(QtGui.QPixmap(Icon.IC_BORDER_COLOR_WHITE)))
             edits.setEnabled(self.library.writable and not self.library.busy)
             edits.addAction(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_border_color_white.png")),
+                QtGui.QIcon(QtGui.QPixmap(Icon.IC_BORDER_COLOR_WHITE)),
                 "Rename…",
                 self.rename,
             )
@@ -80,24 +79,24 @@ class MainAssetActions:
                 lambda: self.register_file(True),
             )
             edits.addAction(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_camera_alt_white.png")),
+                QtGui.QIcon(QtGui.QPixmap(Icon.IC_CAMERA_ALT_WHITE)),
                 "Attach thumbnail…",
                 lambda: self.attach("thumbnail"),
             )
             edits.addAction(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_videocam_white.png")),
+                QtGui.QIcon(QtGui.QPixmap(Icon.IC_VIDEOCAM_WHITE)),
                 "Attach video…",
                 lambda: self.attach("video"),
             )
             edits.addSeparator()
             edits.addAction(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_delete_forever_white.png")),
+                QtGui.QIcon(QtGui.QPixmap(Icon.IC_DELETE_FOREVER_WHITE)),
                 "Delete…",
                 self.remove,
             )
         else:
             action = menu.addAction(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_save_white.png")),
+                QtGui.QIcon(QtGui.QPixmap(Icon.IC_SAVE_WHITE)),
                 "Register file…",
                 self.register_file,
             )
@@ -244,12 +243,12 @@ class MainAssetActions:
             lambda: self.library.download(historical=item["document"]),
         )
         menu.addAction(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_movie_white.png")),
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_MOVIE_WHITE)),
             "Play video",
             lambda: self.library.download("video", item["document"]),
         )
         remove = menu.addAction(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_delete_forever_white.png")),
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_DELETE_FOREVER_WHITE)),
             "Delete version…",
             lambda: self._remove_history(item),
         )

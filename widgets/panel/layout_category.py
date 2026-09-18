@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from libs.ui_icons import Icon
 from widgets.layout_helpers import main_window_text
 from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 
@@ -64,9 +65,7 @@ def build_category_panel(layout: MainWindowLayout, window: QMainWindow) -> None:
     layout.checkBox__casesensitive_cate.setCursor(
         QCursor(Qt.CursorShape.PointingHandCursor)
     )
-    layout.checkBox__casesensitive_cate.setIcon(
-        QIcon(":/main/icons/case_sensitive.png")
-    )
+    layout.checkBox__casesensitive_cate.setIcon(QIcon(Icon.CASE_SENSITIVE))
     layout.checkBox__casesensitive_cate.setIconSize(
         QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
     )

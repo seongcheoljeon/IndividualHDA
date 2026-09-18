@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from libs.ui_icons import Icon
+
 if TYPE_CHECKING:
     from main import IndividualHDA
 
@@ -334,7 +336,7 @@ class PanelBootstrap:
         )
         window.actionHelp.triggered.connect(window.presentation._slot_help)
         window.actionOpen_Log_Folder = QtGui.QAction(
-            QtGui.QIcon(":/main/icons/ic_folder_white.png"), "Open log folder", window
+            QtGui.QIcon(Icon.IC_FOLDER_WHITE), "Open log folder", window
         )
         window.menuHelp.addAction(window.actionOpen_Log_Folder)
         window.actionOpen_Log_Folder.triggered.connect(
@@ -362,7 +364,7 @@ class PanelBootstrap:
         )
         window.actionPreference.triggered.connect(lambda: window._preference.show())
         window.actionLocal_AI_Models = QtGui.QAction(
-            QtGui.QIcon(":/main/icons/network_intelligence.png"),
+            QtGui.QIcon(Icon.NETWORK_INTELLIGENCE),
             "Local AI Models…",
             window,
         )

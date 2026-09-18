@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from libs.ui_icons import Icon
 from widgets.layout_helpers import main_window_text
 from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 
@@ -74,9 +75,7 @@ def build_scene_records(layout: MainWindowLayout, window: QMainWindow) -> None:
     layout.checkBox__record_only_current_ihda.setCursor(
         QCursor(Qt.CursorShape.PointingHandCursor)
     )
-    layout.checkBox__record_only_current_ihda.setIcon(
-        QIcon(":/main/icons/show_all.png")
-    )
+    layout.checkBox__record_only_current_ihda.setIcon(QIcon(Icon.SHOW_ALL))
     layout.checkBox__record_only_current_ihda.setIconSize(
         QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
     )
@@ -101,9 +100,7 @@ def build_scene_records(layout: MainWindowLayout, window: QMainWindow) -> None:
     layout.checkBox__record_only_current_hipfile.setCursor(
         QCursor(Qt.CursorShape.PointingHandCursor)
     )
-    layout.checkBox__record_only_current_hipfile.setIcon(
-        QIcon(":/main/icons/hipfile.png")
-    )
+    layout.checkBox__record_only_current_hipfile.setIcon(QIcon(Icon.HIPFILE))
     layout.checkBox__record_only_current_hipfile.setIconSize(
         QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
     )
@@ -132,7 +129,7 @@ def build_scene_records(layout: MainWindowLayout, window: QMainWindow) -> None:
     layout.pushButton__cleanup_hda_record.setCursor(
         QCursor(Qt.CursorShape.PointingHandCursor)
     )
-    layout.pushButton__cleanup_hda_record.setIcon(QIcon(":/main/icons/clear.png"))
+    layout.pushButton__cleanup_hda_record.setIcon(QIcon(Icon.CLEAR))
     layout.pushButton__cleanup_hda_record.setIconSize(
         QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
     )

@@ -14,6 +14,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from libs import keys, log_handler, note_syntax
 from libs.tags import normalize_tags
+from libs.ui_icons import Icon
 from widgets.asset_details.presenter import Field
 from widgets.detail_view import detail_view
 from widgets.ui_tokens import COMPACT_MARGIN, TAG_TEXT_COLOR
@@ -72,7 +73,7 @@ class PanelNotes:
         dialog = QtWidgets.QDialog(self.bindings.parent)
         dialog.setWindowTitle("iHDA note history")
         dialog.resize(840, 700)
-        icon = QtGui.QIcon(QtGui.QPixmap(":/main/icons/viewport_logo_trans.png"))
+        icon = QtGui.QIcon(QtGui.QPixmap(Icon.VIEWPORT_LOGO_TRANS))
         dialog.setWindowIcon(icon)
         font = QtGui.QFont()
         # if public.is_windows():

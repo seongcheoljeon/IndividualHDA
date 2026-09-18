@@ -15,6 +15,7 @@ from libs import keys, paths
 from libs.ai_provider import FIELDS, KINDS, PLACEHOLDERS, AISettings
 from libs.ffmpeg_api import FFmpegAPI
 from libs.runtime_settings import RuntimeSettings
+from libs.ui_icons import Icon
 from widgets.preference import preference_ui_settings
 from widgets.preference.layout import PreferenceLayout
 from widgets.preference.presenter import PreferencePresenter
@@ -229,10 +230,10 @@ class Preference(QtWidgets.QDialog, PreferenceLayout):
         dirpath = pathlib.Path(text.strip())
         self.__data_final_dirpath = paths.hda_base_dirpath(base_dirpath=dirpath)
         if dirpath.exists():
-            icon = ":/main/icons/ic_done_white.png"
+            icon = Icon.IC_DONE_WHITE
             self.lineEdit__result.setStyleSheet("")
         else:
-            icon = ":/main/icons/ic_clear_white.png"
+            icon = Icon.IC_CLEAR_WHITE
             self.lineEdit__result.setStyleSheet("background-color: red;color: gray;")
         self.label__valid_chk_pixmap.setPixmap(QtGui.QPixmap(icon))
         self.lineEdit__result.setText(self.__data_final_dirpath.as_posix())
@@ -243,10 +244,10 @@ class Preference(QtWidgets.QDialog, PreferenceLayout):
         # Match the gate the feature actually uses: a directory that merely exists
         # (or an empty field, which resolves to ".") is not a usable FFmpeg.
         if self.is_valid_ffmpeg_dirpath():
-            icon = ":/main/icons/ic_done_white.png"
+            icon = Icon.IC_DONE_WHITE
             self.lineEdit__ffmpeg_result.setStyleSheet("")
         else:
-            icon = ":/main/icons/ic_clear_white.png"
+            icon = Icon.IC_CLEAR_WHITE
             self.lineEdit__ffmpeg_result.setStyleSheet(
                 "background-color: red;color: gray;"
             )

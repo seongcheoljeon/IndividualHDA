@@ -9,6 +9,7 @@ from typing import Any
 # description:
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from libs.ui_icons import Icon
 from widgets.detail_view.layout import DetailViewLayout
 from widgets.detail_view.presenter import DetailContent, DetailPresenter
 
@@ -41,7 +42,7 @@ class DetailView(QtWidgets.QDialog, DetailViewLayout):
         if thumbnail_filepath is not None and thumbnail_filepath.is_file():
             pixmap = QtGui.QPixmap(thumbnail_filepath.as_posix())
         else:
-            pixmap = QtGui.QPixmap(":/main/icons/no_img_available.png")
+            pixmap = QtGui.QPixmap(Icon.NO_IMG_AVAILABLE)
         self.label__pixmap.resize(self.__pixmap_size, self.__pixmap_size)
         self.label__pixmap.setPixmap(
             pixmap.scaled(

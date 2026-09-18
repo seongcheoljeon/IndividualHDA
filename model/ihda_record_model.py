@@ -19,6 +19,7 @@ from PySide6 import QtCore, QtGui
 from libs.item_paths import item_path
 from libs.model_columns import RecordColumn
 from libs.scene_contracts import SceneRecord
+from libs.ui_icons import Icon
 from model.model_style import UNHANDLED, ModelStyleMixin, header_data
 from model.tree_nodes import Node
 
@@ -600,7 +601,7 @@ class RecordModel(QtCore.QAbstractItemModel, ModelStyleMixin):
                 if (node.ctime is None) or (node.mtime is None):
                     return None
                 else:
-                    pixmap = QtGui.QPixmap(":/main/icons/ic_query_builder_white.png")
+                    pixmap = QtGui.QPixmap(Icon.IC_QUERY_BUILDER_WHITE)
                 return pixmap.scaled(
                     QtCore.QSize(
                         int(self.__icon_size * 0.7), int(self.__icon_size * 0.7)

@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from libs.ui_icons import Icon
 from widgets.layout_helpers import make_font, size_policy
 from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 
@@ -66,7 +67,7 @@ class PreferenceLayout:
             window.setObjectName("Dialog__preference")
         window.resize(817, 889)
         window.setFont(make_font(point_size=11))
-        window.setWindowIcon(QIcon(":/main/icons/viewport_logo_trans.png"))
+        window.setWindowIcon(QIcon(Icon.VIEWPORT_LOGO_TRANS))
         window.setLocale(
             QLocale(QLocale.Language.English, QLocale.Country.UnitedStates)
         )
@@ -127,9 +128,7 @@ class PreferenceLayout:
         self.toolButton__select_data_dirpath.setCursor(
             QCursor(Qt.CursorShape.PointingHandCursor)
         )
-        self.toolButton__select_data_dirpath.setIcon(
-            QIcon(":/main/icons/ic_folder_white.png")
-        )
+        self.toolButton__select_data_dirpath.setIcon(QIcon(Icon.IC_FOLDER_WHITE))
         self.toolButton__select_data_dirpath.setIconSize(
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
@@ -175,9 +174,7 @@ class PreferenceLayout:
             )
         )
         self.label__valid_chk_pixmap.setMaximumSize(QSize(24, 24))
-        self.label__valid_chk_pixmap.setPixmap(
-            QPixmap(":/main/icons/ic_clear_white.png")
-        )
+        self.label__valid_chk_pixmap.setPixmap(QPixmap(Icon.IC_CLEAR_WHITE))
         self.label__valid_chk_pixmap.setScaledContents(True)
         self.label__valid_chk_pixmap.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label__valid_chk_pixmap.setToolTip(
@@ -241,9 +238,7 @@ class PreferenceLayout:
         self.toolButton__select_ffmpeg_dirpath.setCursor(
             QCursor(Qt.CursorShape.PointingHandCursor)
         )
-        self.toolButton__select_ffmpeg_dirpath.setIcon(
-            QIcon(":/main/icons/ic_folder_white.png")
-        )
+        self.toolButton__select_ffmpeg_dirpath.setIcon(QIcon(Icon.IC_FOLDER_WHITE))
         self.toolButton__select_ffmpeg_dirpath.setIconSize(
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
@@ -299,9 +294,7 @@ class PreferenceLayout:
             )
         )
         self.label__ffmpeg_valid_chk_pixmap.setMaximumSize(QSize(24, 24))
-        self.label__ffmpeg_valid_chk_pixmap.setPixmap(
-            QPixmap(":/main/icons/ic_clear_white.png")
-        )
+        self.label__ffmpeg_valid_chk_pixmap.setPixmap(QPixmap(Icon.IC_CLEAR_WHITE))
         self.label__ffmpeg_valid_chk_pixmap.setScaledContents(True)
         self.label__ffmpeg_valid_chk_pixmap.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label__ffmpeg_valid_chk_pixmap.setToolTip(
@@ -337,7 +330,7 @@ class PreferenceLayout:
             QCursor(Qt.CursorShape.PointingHandCursor)
         )
         self.pushButton__reset_default_app_properties.setIcon(
-            QIcon(":/main/icons/ic_refresh_white.png")
+            QIcon(Icon.IC_REFRESH_WHITE)
         )
         self.pushButton__reset_default_app_properties.setIconSize(QSize(50, 50))
         self.pushButton__reset_default_app_properties.setFlat(True)
@@ -1187,7 +1180,7 @@ class PreferenceLayout:
         )
         self.verticalLayout__text_settings.addWidget(self.groupBox__debug)
         self.tabWidget__view_settings.addTab(
-            self.tab__text, QIcon(":/main/icons/case_sensitive.png"), _translate("Text")
+            self.tab__text, QIcon(Icon.CASE_SENSITIVE), _translate("Text")
         )
         self.verticalLayout__view_settings.addWidget(self.tabWidget__view_settings)
         self.verticalLayout__appearance_groups.addWidget(self.groupBox__default_icon)

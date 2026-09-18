@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from libs.ui_icons import Icon
 from widgets.layout_helpers import make_font
 
 from . import icons_rc  # noqa: F401 (register bundled icons)
@@ -54,7 +55,7 @@ class VideoInfoLayout:
             window.setObjectName("Dialog__makevideoinfo")
         window.resize(642, 564)
         window.setFont(make_font(point_size=11))
-        window.setWindowIcon(QIcon(":/main/icons/viewport_logo_trans.png"))
+        window.setWindowIcon(QIcon(Icon.VIEWPORT_LOGO_TRANS))
         window.setWindowTitle(_translate("Make Video Information"))
 
     def _build_header(self, window: QDialog) -> None:
@@ -69,7 +70,7 @@ class VideoInfoLayout:
         self.label__company = QLabel(window)
         self.label__company.setObjectName("label__company")
         self.label__company.setMaximumSize(QSize(30, 30))
-        self.label__company.setPixmap(QPixmap(":/main/icons/viewport_logo_trans.png"))
+        self.label__company.setPixmap(QPixmap(Icon.VIEWPORT_LOGO_TRANS))
         self.label__company.setScaledContents(True)
         self.label__company.setText("")
         self.horizontalLayout__video_header.addWidget(self.label__company)

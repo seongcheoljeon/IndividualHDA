@@ -43,6 +43,7 @@ from PySide6.QtWidgets import (
 )
 
 import icons_rc  # noqa: F401 (register bundled icons)
+from libs.ui_icons import Icon
 from widgets.layout_helpers import main_window_text, make_font, size_policy
 from widgets.panel.layout_category import build_category_panel
 from widgets.panel.layout_history import (
@@ -174,17 +175,17 @@ class MainWindowLayout:
             window.setObjectName("MainWindow__individualHDA")
         window.resize(1472, 863)
         window.setFont(make_font(point_size=11))
-        window.setWindowIcon(QIcon(":/main/icons/viewport_logo_trans.png"))
+        window.setWindowIcon(QIcon(Icon.VIEWPORT_LOGO_TRANS))
         window.setWindowTitle(main_window_text("Individual HDA"))
 
     def _build_application_actions(self, window: QMainWindow) -> None:
         self.actionQuit = QAction(window)
         self.actionQuit.setObjectName("actionQuit")
-        self.actionQuit.setIcon(QIcon(":/main/icons/ic_clear_white.png"))
+        self.actionQuit.setIcon(QIcon(Icon.IC_CLEAR_WHITE))
         self.actionQuit.setText(main_window_text("Quit"))
         self.actionReload = QAction(window)
         self.actionReload.setObjectName("actionReload")
-        self.actionReload.setIcon(QIcon(":/main/icons/ic_refresh_white.png"))
+        self.actionReload.setIcon(QIcon(Icon.IC_REFRESH_WHITE))
         self.actionReload.setText(main_window_text("Reload"))
         self.actionReload.setToolTip(
             main_window_text("Reload the library from storage")
@@ -199,7 +200,7 @@ class MainWindowLayout:
         self.actionAbout.setText(main_window_text("About"))
         self.actionReset = QAction(window)
         self.actionReset.setObjectName("actionReset")
-        self.actionReset.setIcon(QIcon(":/main/icons/ic_restore_page_white.png"))
+        self.actionReset.setIcon(QIcon(Icon.IC_RESTORE_PAGE_WHITE))
         self.actionReset.setText(main_window_text("Reset"))
         self.actionReset.setStatusTip(main_window_text("Initialize the property"))
         self.actionDefault = QAction(window)
@@ -215,9 +216,7 @@ class MainWindowLayout:
         self.actionDark_blue.setStatusTip(main_window_text("Change to the dark blue"))
         self.actionOpen_the_hda_directory = QAction(window)
         self.actionOpen_the_hda_directory.setObjectName("actionOpen_the_hda_directory")
-        self.actionOpen_the_hda_directory.setIcon(
-            QIcon(":/main/icons/ic_folder_white.png")
-        )
+        self.actionOpen_the_hda_directory.setIcon(QIcon(Icon.IC_FOLDER_WHITE))
         self.actionOpen_the_hda_directory.setText(
             main_window_text("Open the HDA directory...")
         )
@@ -246,13 +245,13 @@ class MainWindowLayout:
         self.actioniHDA.setObjectName("actioniHDA")
         self.actioniHDA.setCheckable(True)
         self.actioniHDA.setChecked(True)
-        self.actioniHDA.setIcon(QIcon(":/main/icons/houdini_logo_white.png"))
+        self.actioniHDA.setIcon(QIcon(Icon.HOUDINI_LOGO_WHITE))
         self.actioniHDA.setText(main_window_text("iHDA"))
         self.actioniHDA.setStatusTip(main_window_text("Show iHDA window."))
         self.actionVideo_Player = QAction(window)
         self.actionVideo_Player.setObjectName("actionVideo_Player")
         self.actionVideo_Player.setCheckable(True)
-        self.actionVideo_Player.setIcon(QIcon(":/main/icons/ic_movie_white.png"))
+        self.actionVideo_Player.setIcon(QIcon(Icon.IC_MOVIE_WHITE))
         self.actionVideo_Player.setText(main_window_text("Video Player"))
         self.actionVideo_Player.setStatusTip(
             main_window_text("Show video player window.")
@@ -269,7 +268,7 @@ class MainWindowLayout:
         self.actionCreate_Account.setText(main_window_text("Create Account"))
         self.actionPreference = QAction(window)
         self.actionPreference.setObjectName("actionPreference")
-        self.actionPreference.setIcon(QIcon(":/main/icons/ic_build_white.png"))
+        self.actionPreference.setIcon(QIcon(Icon.IC_BUILD_WHITE))
         self.actionPreference.setText(main_window_text("Preference"))
         self.actionPreference.setStatusTip(main_window_text("Setting iHDA preference."))
         self.actionImport_Data = QAction(window)
@@ -279,7 +278,7 @@ class MainWindowLayout:
         self.actionImport_Data.setStatusTip(main_window_text("Import iHDA data."))
         self.actionExport_Data = QAction(window)
         self.actionExport_Data.setObjectName("actionExport_Data")
-        self.actionExport_Data.setIcon(QIcon(":/main/icons/ic_archive_white.png"))
+        self.actionExport_Data.setIcon(QIcon(Icon.IC_ARCHIVE_WHITE))
         self.actionExport_Data.setText(main_window_text("Export Data"))
         self.actionExport_Data.setStatusTip(main_window_text("Export iHDA data."))
         self.actionDownload_FFmpeg = QAction(window)
@@ -292,7 +291,7 @@ class MainWindowLayout:
         self.actionHistory = QAction(window)
         self.actionHistory.setObjectName("actionHistory")
         self.actionHistory.setCheckable(True)
-        self.actionHistory.setIcon(QIcon(":/main/icons/ic_query_builder_white.png"))
+        self.actionHistory.setIcon(QIcon(Icon.IC_QUERY_BUILDER_WHITE))
         self.actionHistory.setText(main_window_text("History"))
         self.actionHistory.setStatusTip(main_window_text("Show iHDA history"))
         self.actionUpdate = QAction(window)
@@ -301,7 +300,7 @@ class MainWindowLayout:
         self.actionUpdate.setText(main_window_text("Update..."))
         self.actionFFmpeg = QAction(window)
         self.actionFFmpeg.setObjectName("actionFFmpeg")
-        self.actionFFmpeg.setIcon(QIcon(":/main/icons/ic_movie_white.png"))
+        self.actionFFmpeg.setIcon(QIcon(Icon.IC_MOVIE_WHITE))
         self.actionFFmpeg.setText(main_window_text("FFmpeg"))
         self.actionFFmpeg.setToolTip(main_window_text("Download FFmpeg"))
         self.actionCodec = QAction(window)
@@ -311,7 +310,7 @@ class MainWindowLayout:
         self.actionCodec.setToolTip(main_window_text("Download Codec"))
         self.actionDelete_All = QAction(window)
         self.actionDelete_All.setObjectName("actionDelete_All")
-        self.actionDelete_All.setIcon(QIcon(":/main/icons/ic_delete_forever_white.png"))
+        self.actionDelete_All.setIcon(QIcon(Icon.IC_DELETE_FOREVER_WHITE))
         self.actionDelete_All.setText(main_window_text("Delete All"))
         self.actionDelete_All.setStatusTip(main_window_text("Delete all iHDA history."))
 
@@ -362,7 +361,7 @@ class MainWindowLayout:
         self.actionNull.setObjectName("actionNull")
         self.actionNull.setCheckable(True)
         self.actionNull.setChecked(True)
-        self.actionNull.setIcon(QIcon(":/main/icons/ic_clear_white.png"))
+        self.actionNull.setIcon(QIcon(Icon.IC_CLEAR_WHITE))
         self.actionNull.setText(main_window_text("Null"))
         self.actionNull.setToolTip(main_window_text("Do not connect"))
         self.actionNull.setStatusTip(
@@ -406,9 +405,7 @@ class MainWindowLayout:
             "actionCategory_Synchronization"
         )
         self.actionCategory_Synchronization.setCheckable(True)
-        self.actionCategory_Synchronization.setIcon(
-            QIcon(":/main/icons/ic_swap_horiz_white.png")
-        )
+        self.actionCategory_Synchronization.setIcon(QIcon(Icon.IC_SWAP_HORIZ_WHITE))
         self.actionCategory_Synchronization.setText(
             main_window_text("Category Synchronization")
         )
@@ -422,7 +419,7 @@ class MainWindowLayout:
         )
         self.actionCleanup = QAction(window)
         self.actionCleanup.setObjectName("actionCleanup")
-        self.actionCleanup.setIcon(QIcon(":/main/icons/clear.png"))
+        self.actionCleanup.setIcon(QIcon(Icon.CLEAR))
         self.actionCleanup.setText(main_window_text("Clean up"))
         self.actionCleanup.setStatusTip(
             main_window_text("Clean up unnecessary data from the database.")
@@ -533,7 +530,7 @@ class MainWindowLayout:
         self.label__tag_pixmap.setMaximumSize(
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
-        self.label__tag_pixmap.setPixmap(QPixmap(":/main/icons/ic_bookmark_white.png"))
+        self.label__tag_pixmap.setPixmap(QPixmap(Icon.IC_BOOKMARK_WHITE))
         self.label__tag_pixmap.setScaledContents(True)
         self.label__tag_pixmap.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label__tag_pixmap.setText("")
@@ -619,9 +616,7 @@ class MainWindowLayout:
         self.pushButton__hda_info = QPushButton(self.frame__hda_info)
         self.pushButton__hda_info.setObjectName("pushButton__hda_info")
         self.pushButton__hda_info.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton__hda_info.setIcon(
-            QIcon(":/main/icons/ic_border_color_white.png")
-        )
+        self.pushButton__hda_info.setIcon(QIcon(Icon.IC_BORDER_COLOR_WHITE))
         self.pushButton__hda_info.setIconSize(
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
@@ -666,9 +661,7 @@ class MainWindowLayout:
         self.pushButton__hda_inside_node_view.setCursor(
             QCursor(Qt.CursorShape.PointingHandCursor)
         )
-        self.pushButton__hda_inside_node_view.setIcon(
-            QIcon(":/main/icons/ic_find_in_page_white.png")
-        )
+        self.pushButton__hda_inside_node_view.setIcon(QIcon(Icon.IC_FIND_IN_PAGE_WHITE))
         self.pushButton__hda_inside_node_view.setIconSize(
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
@@ -753,7 +746,7 @@ class MainWindowLayout:
         self.pushButton__note_save = QPushButton(self.widget__note_editor)
         self.pushButton__note_save.setObjectName("pushButton__note_save")
         self.pushButton__note_save.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton__note_save.setIcon(QIcon(":/main/icons/ic_save_white.png"))
+        self.pushButton__note_save.setIcon(QIcon(Icon.IC_SAVE_WHITE))
         self.pushButton__note_save.setIconSize(
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
@@ -802,7 +795,7 @@ class MainWindowLayout:
         self.pushButton__tag_save = QPushButton(self.widget__tag_editor)
         self.pushButton__tag_save.setObjectName("pushButton__tag_save")
         self.pushButton__tag_save.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton__tag_save.setIcon(QIcon(":/main/icons/ic_save_white.png"))
+        self.pushButton__tag_save.setIcon(QIcon(Icon.IC_SAVE_WHITE))
         self.pushButton__tag_save.setIconSize(
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
@@ -900,7 +893,7 @@ class MainWindowLayout:
         self.menuData.setTitle(main_window_text("Data"))
         self.menuHistory = QMenu(self.menuData)
         self.menuHistory.setObjectName("menuHistory")
-        self.menuHistory.setIcon(QIcon(":/main/icons/ic_query_builder_white.png"))
+        self.menuHistory.setIcon(QIcon(Icon.IC_QUERY_BUILDER_WHITE))
         self.menuHistory.setTitle(main_window_text("History"))
         window.setMenuBar(self.menubar)
         self.statusbar = QStatusBar(window)

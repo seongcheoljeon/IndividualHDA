@@ -16,6 +16,7 @@ from libs import log_handler
 from libs.ai_backends import format_timings
 from libs.ai_features import Description, describe_asset
 from libs.item_paths import item_path
+from libs.ui_icons import Icon
 from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 
 if TYPE_CHECKING:
@@ -74,7 +75,7 @@ class PanelAIActions(QtCore.QObject):
             "Suggest a note and tags with the configured AI backend"
         )
         self.bindings.ui.pushButton__ai_suggest.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/network_intelligence.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.NETWORK_INTELLIGENCE))
         )
         # Without this the button falls back to the style's smaller default and
         # looks undersized beside its siblings in the tag action row.

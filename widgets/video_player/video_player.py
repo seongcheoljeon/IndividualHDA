@@ -18,6 +18,7 @@ from libs import dragdrop_overlay, ffmpeg_api, log_handler, paths
 from libs.media_playlist import MediaPlaylist
 from libs.process_job import ProcessJob
 from libs.resource_policy import MediaPolicy
+from libs.ui_icons import Icon
 from widgets.video_player import video_ui_settings, video_widget
 from widgets.video_player.layout import VideoPlayerLayout
 from widgets.video_player.presenter import VideoPresenter
@@ -429,11 +430,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
                 QtGui.QIcon(QtGui.QPixmap(f":/video_player_main/icons/{play_icon}"))
             )
             action_stop = context_menu.addAction("Stop")
-            action_stop.setIcon(
-                QtGui.QIcon(
-                    QtGui.QPixmap(":/video_player_main/icons/ic_stop_white.png")
-                )
-            )
+            action_stop.setIcon(QtGui.QIcon(QtGui.QPixmap(Icon.VIDEO_IC_STOP_WHITE)))
             if self.__is_playing() or self.__is_paused():
                 action_stop.setEnabled(True)
             else:
@@ -441,11 +438,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
             context_menu.addSeparator()
             action_remove = context_menu.addAction("Remove")
             action_remove.setIcon(
-                QtGui.QIcon(
-                    QtGui.QPixmap(
-                        ":/video_player_main/icons/ic_delete_forever_white.png"
-                    )
-                )
+                QtGui.QIcon(QtGui.QPixmap(Icon.VIDEO_IC_DELETE_FOREVER_WHITE))
             )
 
             action = context_menu.exec(self.listWidget__playlist.mapToGlobal(point))

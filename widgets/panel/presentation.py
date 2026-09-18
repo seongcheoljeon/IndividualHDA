@@ -15,6 +15,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from libs import host, houdini_api, ihda_system, keys, log_handler, platform_info
 from libs.app_metadata import FFMPEG_DOWNLOAD_URL, MINIMUM_HOUDINI_MAJOR, SUPPORT_URL
 from libs.domain import LibraryContext
+from libs.ui_icons import Icon
 
 
 def app_info(houdini_ver: Any = None) -> str:
@@ -553,7 +554,7 @@ class PanelPresentation:
         msgbox.setFont(self.get_default_font(font_size=15))
         msgbox.setWindowTitle("Individual HDA (Houdini built-in app)")
         msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
-        msgbox.setIconPixmap(QtGui.QPixmap(":/main/icons/viewport_logo_trans.png"))
+        msgbox.setIconPixmap(QtGui.QPixmap(Icon.VIEWPORT_LOGO_TRANS))
         msgbox.setText(app_info(MINIMUM_HOUDINI_MAJOR))
         msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
         msgbox.setDetailedText(license_info())

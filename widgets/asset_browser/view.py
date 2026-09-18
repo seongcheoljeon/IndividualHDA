@@ -9,6 +9,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 import icons_rc  # noqa: F401 (register bundled icons)
 from libs.browser_search import SearchRequest
 from libs.qt_helpers import wildcard_expression
+from libs.ui_icons import Icon
 from model.proxy_filters import AssetProxyModel
 from view.ihda_list_view import ListView
 from view.ihda_table_view import TableView
@@ -160,9 +161,7 @@ class AssetBrowserView(QtWidgets.QWidget):
         self.checkBox__casesensitive_hda = QtWidgets.QCheckBox(controls_widget)
         self.checkBox__casesensitive_hda.setObjectName("checkBox__casesensitive_hda")
         self.checkBox__casesensitive_hda.setToolTip("Word Case Sensitive")
-        self.checkBox__casesensitive_hda.setIcon(
-            QtGui.QIcon(":/main/icons/case_sensitive.png")
-        )
+        self.checkBox__casesensitive_hda.setIcon(QtGui.QIcon(Icon.CASE_SENSITIVE))
         self.checkBox__casesensitive_hda.setIconSize(
             QtCore.QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )

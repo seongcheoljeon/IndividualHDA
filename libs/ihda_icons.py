@@ -23,6 +23,7 @@ from libs.asset_contracts import AssetData, HistoryData, HistoryThumbnail
 from libs.houdini_api import HoudiniAPI
 from libs.resource_policy import ThumbnailPolicy
 from libs.thumbnail_cache import ThumbnailCache
+from libs.ui_icons import Icon
 
 
 class IHDAIcons:
@@ -35,7 +36,7 @@ class IHDAIcons:
                 method=logging.error, msg="icon zip file does not exist"
             )
         self.__pattern_icon_map = compile(r"(?P<dirname>^[A-Z_]+)(?P<filename>.+)")
-        self.__default_pixmap = QtGui.QPixmap(":/main/icons/no_img_available.png")
+        self.__default_pixmap = QtGui.QPixmap(Icon.NO_IMG_AVAILABLE)
         self.__pixmap_ihda_data: dict[int, QtGui.QPixmap] = {}
         self.__pixmap_cate_data: dict[str, QtGui.QPixmap] = {}
         self.__pixmap_thumbnail_data = ThumbnailCache(

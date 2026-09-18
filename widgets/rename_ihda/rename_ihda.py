@@ -7,6 +7,7 @@ from __future__ import annotations
 # description:
 from PySide6 import QtGui, QtWidgets
 
+from libs.ui_icons import Icon
 from widgets.rename_ihda.layout import RenameLayout
 from widgets.rename_ihda.presenter import NameValidation, RenamePresenter
 
@@ -82,9 +83,9 @@ class RenameIHDA(QtWidgets.QDialog, RenameLayout):
     def set_confirm_pixmap(self, flag: bool) -> None:
         if flag:
             self.label__confirm_ihda_name_pixmap.setPixmap(
-                QtGui.QPixmap(":/main/icons/ic_done_white.png")
+                QtGui.QPixmap(Icon.IC_DONE_WHITE)
             )
         else:
             self.label__confirm_ihda_name_pixmap.setPixmap(
-                QtGui.QPixmap(":/main/icons/ic_clear_white.png")
+                QtGui.QPixmap(Icon.IC_CLEAR_WHITE)
             )

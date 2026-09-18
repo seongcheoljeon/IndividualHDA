@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from libs.ui_icons import Icon
 from widgets.layout_helpers import main_window_text
 from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 
@@ -62,9 +63,7 @@ def build_inside_nodes(layout: MainWindowLayout, window: QMainWindow) -> None:
     layout.checkBox__hda_inside_connect_to_view.setCursor(
         QCursor(Qt.CursorShape.PointingHandCursor)
     )
-    layout.checkBox__hda_inside_connect_to_view.setIcon(
-        QIcon(":/main/icons/show_all.png")
-    )
+    layout.checkBox__hda_inside_connect_to_view.setIcon(QIcon(Icon.SHOW_ALL))
     layout.checkBox__hda_inside_connect_to_view.setIconSize(
         QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
     )
@@ -125,9 +124,7 @@ def build_inside_nodes(layout: MainWindowLayout, window: QMainWindow) -> None:
     layout.pushButton__hda_inside_node_refresh.setCursor(
         QCursor(Qt.CursorShape.PointingHandCursor)
     )
-    layout.pushButton__hda_inside_node_refresh.setIcon(
-        QIcon(":/main/icons/ic_refresh_white.png")
-    )
+    layout.pushButton__hda_inside_node_refresh.setIcon(QIcon(Icon.IC_REFRESH_WHITE))
     layout.pushButton__hda_inside_node_refresh.setIconSize(
         QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
     )

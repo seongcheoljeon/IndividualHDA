@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from libs.ui_icons import Icon
 from widgets.layout_helpers import main_window_text, size_policy
 from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 
@@ -110,9 +111,7 @@ def build_history_search(layout: MainWindowLayout, window: QMainWindow) -> None:
     layout.checkBox__casesensitive_hda_hist.setCursor(
         QCursor(Qt.CursorShape.PointingHandCursor)
     )
-    layout.checkBox__casesensitive_hda_hist.setIcon(
-        QIcon(":/main/icons/case_sensitive.png")
-    )
+    layout.checkBox__casesensitive_hda_hist.setIcon(QIcon(Icon.CASE_SENSITIVE))
     layout.checkBox__casesensitive_hda_hist.setIconSize(
         QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
     )
@@ -242,9 +241,7 @@ def build_history_results(layout: MainWindowLayout, window: QMainWindow) -> None
     layout.label__hist_tag_pixmap.setMaximumSize(
         QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
     )
-    layout.label__hist_tag_pixmap.setPixmap(
-        QPixmap(":/main/icons/ic_bookmark_white.png")
-    )
+    layout.label__hist_tag_pixmap.setPixmap(QPixmap(Icon.IC_BOOKMARK_WHITE))
     layout.label__hist_tag_pixmap.setScaledContents(True)
     layout.label__hist_tag_pixmap.setAlignment(Qt.AlignmentFlag.AlignCenter)
     layout.label__hist_tag_pixmap.setText("")

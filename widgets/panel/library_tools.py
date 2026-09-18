@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
+from libs.ui_icons import Icon
 from widgets.library_manager.dialog import LibraryManager
 
 if TYPE_CHECKING:
@@ -74,12 +75,12 @@ class PanelLibraryTools:
         )
         menu.addSeparator()
         menu.addAction(
-            QtGui.QIcon(":/main/icons/upload.png"),
+            QtGui.QIcon(Icon.UPLOAD),
             "Copy to team…",
             self.open_copy_to_team,
         )
         self.actionRegistration_Recovery = menu.addAction(
-            QtGui.QIcon(":/main/icons/ic_query_builder_white.png"),
+            QtGui.QIcon(Icon.IC_QUERY_BUILDER_WHITE),
             "Pending registrations…",
             self._open_registration_recovery,
         )
@@ -89,28 +90,28 @@ class PanelLibraryTools:
         menu.aboutToShow.connect(self._refresh_registration_status)
         QtCore.QTimer.singleShot(0, self._refresh_registration_status)
         menu.addAction(
-            QtGui.QIcon(":/main/icons/ic_refresh_white.png"),
+            QtGui.QIcon(Icon.IC_REFRESH_WHITE),
             "Retry scene reporting",
             lambda: self.bindings.scene_usage().flush(),
         )
         menu.addAction(
-            QtGui.QIcon(":/main/icons/ic_delete_forever_white.png"),
+            QtGui.QIcon(Icon.IC_DELETE_FOREVER_WHITE),
             "Trash…",
             lambda: self._open_metadata_tools(),
         )
         menu.addAction(
-            QtGui.QIcon(":/main/icons/ic_format_quote_white.png"),
+            QtGui.QIcon(Icon.IC_FORMAT_QUOTE_WHITE),
             "Version details…",
             self._open_selected_version_details,
         )
         for index, (label, icon) in enumerate(
             (
                 ("Library health…", ":/main/icons/monitor_heart.png"),
-                ("Backups and restore…", ":/main/icons/ic_archive_white.png"),
-                ("Repair moved paths…", ":/main/icons/ic_build_white.png"),
-                ("Compare versions…", ":/main/icons/ic_swap_horiz_white.png"),
-                ("Library explorer…", ":/main/icons/ic_find_in_page_white.png"),
-                ("Recovery files…", ":/main/icons/ic_restore_page_white.png"),
+                ("Backups and restore…", Icon.IC_ARCHIVE_WHITE),
+                ("Repair moved paths…", Icon.IC_BUILD_WHITE),
+                ("Compare versions…", Icon.IC_SWAP_HORIZ_WHITE),
+                ("Library explorer…", Icon.IC_FIND_IN_PAGE_WHITE),
+                ("Recovery files…", Icon.IC_RESTORE_PAGE_WHITE),
             )
         ):
             action = menu.addAction(QtGui.QIcon(icon), label)

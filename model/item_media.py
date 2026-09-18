@@ -8,6 +8,7 @@ from typing import Protocol
 from PySide6 import QtCore, QtGui
 
 from libs.item_paths import item_path
+from libs.ui_icons import Icon
 
 
 class PixmapSource(Protocol):
@@ -32,7 +33,7 @@ def thumbnail(
         if pixmap is not None and isinstance(source, dict) and identity is not None:
             source[identity] = pixmap
     if pixmap is None or pixmap.isNull():
-        pixmap = QtGui.QPixmap(":/main/icons/no_img_available.png")
+        pixmap = QtGui.QPixmap(Icon.NO_IMG_AVAILABLE)
     return pixmap.scaled(
         QtCore.QSize(size, size), QtCore.Qt.AspectRatioMode.KeepAspectRatio
     )

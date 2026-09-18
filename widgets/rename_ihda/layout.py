@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from libs.ui_icons import Icon
 from widgets.layout_helpers import make_font, size_policy
 
 from . import rename_ihda_icons_rc  # noqa: F401 (register bundled icons)
@@ -50,7 +51,7 @@ class RenameLayout:
             window.setObjectName("Dialog__rename_ihda")
         window.resize(577, 202)
         window.setFont(make_font(point_size=11))
-        window.setWindowIcon(QIcon(":/main/icons/viewport_logo_trans.png"))
+        window.setWindowIcon(QIcon(Icon.VIEWPORT_LOGO_TRANS))
         window.setWindowTitle(_translate("iHDA Rename"))
         self.verticalLayout__rename_dialog = QVBoxLayout(window)
         self.verticalLayout__rename_dialog.setObjectName(
@@ -168,9 +169,7 @@ class RenameLayout:
         )
         self.label__confirm_ihda_name_pixmap.setMinimumSize(QSize(22, 22))
         self.label__confirm_ihda_name_pixmap.setMaximumSize(QSize(24, 24))
-        self.label__confirm_ihda_name_pixmap.setPixmap(
-            QPixmap(":/main/icons/ic_clear_white.png")
-        )
+        self.label__confirm_ihda_name_pixmap.setPixmap(QPixmap(Icon.IC_CLEAR_WHITE))
         self.label__confirm_ihda_name_pixmap.setScaledContents(True)
         self.label__confirm_ihda_name_pixmap.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label__confirm_ihda_name_pixmap.setText("")

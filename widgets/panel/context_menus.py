@@ -14,6 +14,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 from libs import host, houdini_api, ihda_system, keys, log_handler
 from libs.item_paths import item_path
+from libs.ui_icons import Icon
 from model import (
     ihda_history_model,
     ihda_inside_model,
@@ -86,26 +87,24 @@ class PanelContextMenus:
         )
         action_open_context_ihda_folder = open_context_menu.addAction("iHDA Folder")
         action_open_context_ihda_folder.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_folder_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_FOLDER_WHITE))
         )
         # hip folder
         action_open_context_hip_folder = open_context_menu.addAction("HIP Folder")
         action_open_context_hip_folder.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_folder_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_FOLDER_WHITE))
         )
         open_context_menu.addSeparator()
         # hip file
         action_open_context_hip_file = open_context_menu.addAction("HIP File")
-        action_open_context_hip_file.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/hipfile.png"))
-        )
+        action_open_context_hip_file.setIcon(QtGui.QIcon(QtGui.QPixmap(Icon.HIPFILE)))
         action_context_menu_detail = context_menu.addAction("Detail")
         action_context_menu_detail.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_format_quote_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_FORMAT_QUOTE_WHITE))
         )
         action_context_menu_remove = context_menu.addAction("Delete")
         action_context_menu_remove.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_delete_forever_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_DELETE_FOREVER_WHITE))
         )
         context_menu.addMenu(open_context_menu)
         context_menu.addSeparator()
@@ -161,22 +160,18 @@ class PanelContextMenus:
         )
         action_open_context_ihda_folder = open_context_menu.addAction("iHDA Folder")
         action_open_context_ihda_folder.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_folder_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_FOLDER_WHITE))
         )
         action_open_context_hip_folder = open_context_menu.addAction("HIP Folder")
         action_open_context_hip_folder.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_folder_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_FOLDER_WHITE))
         )
         open_context_menu.addSeparator()
         action_open_context_hip_file = open_context_menu.addAction("HIP File")
-        action_open_context_hip_file.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/hipfile.png"))
-        )
+        action_open_context_hip_file.setIcon(QtGui.QIcon(QtGui.QPixmap(Icon.HIPFILE)))
 
         hda_context_menu = QtWidgets.QMenu("iHDA", self.bindings.parent)
-        hda_context_menu.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/houdini_logo_white.png"))
-        )
+        hda_context_menu.setIcon(QtGui.QIcon(QtGui.QPixmap(Icon.HOUDINI_LOGO_WHITE)))
 
         action_hda_context_menu_favorite = hda_context_menu.addAction("Favorite")
         favorite_icon = "ic_favorite_border_white.png"
@@ -187,20 +182,18 @@ class PanelContextMenus:
         )
 
         action_hda_context_menu_copy = hda_context_menu.addAction("Copy to team…")
-        action_hda_context_menu_copy.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/upload.png"))
-        )
+        action_hda_context_menu_copy.setIcon(QtGui.QIcon(QtGui.QPixmap(Icon.UPLOAD)))
         action_hda_context_menu_detail = hda_context_menu.addAction("Detail")
         action_hda_context_menu_detail.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_format_quote_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_FORMAT_QUOTE_WHITE))
         )
         action_hda_context_menu_ai = hda_context_menu.addAction("AI: Suggest Note/Tags")
         action_hda_context_menu_ai.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/network_intelligence.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.NETWORK_INTELLIGENCE))
         )
         action_hda_make_context_menu_rename = hda_context_menu.addAction("Rename")
         action_hda_make_context_menu_rename.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_border_color_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_BORDER_COLOR_WHITE))
         )
         hda_context_menu.addSeparator()
         hda_make_context_menu = QtWidgets.QMenu("Make", self.bindings.parent)
@@ -211,11 +204,11 @@ class PanelContextMenus:
             "Thumbnail"
         )
         action_hda_make_context_menu_thumbnail.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_camera_alt_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_CAMERA_ALT_WHITE))
         )
         action_hda_make_context_menu_video = hda_make_context_menu.addAction("Video")
         action_hda_make_context_menu_video.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_videocam_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_VIDEOCAM_WHITE))
         )
         for host_action in (
             action_hda_make_context_menu_thumbnail,
@@ -231,17 +224,17 @@ class PanelContextMenus:
         hda_context_menu.addSeparator()
         action_hda_context_menu_remove = hda_context_menu.addAction("Delete")
         action_hda_context_menu_remove.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_delete_forever_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_DELETE_FOREVER_WHITE))
         )
         # History
         hist_context_menu = QtWidgets.QMenu("History", self.bindings.parent)
         hist_context_menu.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_query_builder_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_QUERY_BUILDER_WHITE))
         )
         # history actions
         action_hist_context_menu_ihda_history = hist_context_menu.addAction("iHDA")
         action_hist_context_menu_ihda_history.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_find_in_page_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_FIND_IN_PAGE_WHITE))
         )
         action_hist_context_menu_note_history = hist_context_menu.addAction("Note")
         action_hist_context_menu_note_history.setIcon(
@@ -250,7 +243,7 @@ class PanelContextMenus:
         hist_context_menu.addSeparator()
         action_hist_context_menu_remove_history = hist_context_menu.addAction("Delete")
         action_hist_context_menu_remove_history.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_delete_forever_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_DELETE_FOREVER_WHITE))
         )
         context_menu.addMenu(open_context_menu)
         context_menu.addMenu(hda_context_menu)
@@ -442,14 +435,14 @@ class PanelContextMenus:
         # hip folder
         action_open_context_hip_folder = open_context_menu.addAction("HIP Folder")
         action_open_context_hip_folder.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_folder_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_FOLDER_WHITE))
         )
         # hip file
         action_open_context_hip_file = None
         if hip_filepath is not None:
             action_open_context_hip_file = open_context_menu.addAction("HIP File")
             action_open_context_hip_file.setIcon(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/hipfile.png"))
+                QtGui.QIcon(QtGui.QPixmap(Icon.HIPFILE))
             )
             open_context_menu.addSeparator()
         # iHDA folder
@@ -457,7 +450,7 @@ class PanelContextMenus:
         if hda_filepath is not None:
             action_open_context_ihda_folder = open_context_menu.addAction("iHDA Folder")
             action_open_context_ihda_folder.setIcon(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_folder_white.png"))
+                QtGui.QIcon(QtGui.QPixmap(Icon.IC_FOLDER_WHITE))
             )
         # go to network
         action_context_menu_go_to_network = None
@@ -472,12 +465,12 @@ class PanelContextMenus:
         if record_data is not None:
             action_context_menu_detail = context_menu.addAction("Detail")
             action_context_menu_detail.setIcon(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_format_quote_white.png"))
+                QtGui.QIcon(QtGui.QPixmap(Icon.IC_FORMAT_QUOTE_WHITE))
             )
             context_menu.addAction(action_context_menu_detail)
         action_context_menu_remove = context_menu.addAction("Delete")
         action_context_menu_remove.setIcon(
-            QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_delete_forever_white.png"))
+            QtGui.QIcon(QtGui.QPixmap(Icon.IC_DELETE_FOREVER_WHITE))
         )
         context_menu.addMenu(open_context_menu)
         context_menu.addSeparator()
@@ -532,13 +525,13 @@ class PanelContextMenus:
             # iHDA folder
             action_open_context_ihda_folder = open_context_menu.addAction("iHDA Folder")
             action_open_context_ihda_folder.setIcon(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_folder_white.png"))
+                QtGui.QIcon(QtGui.QPixmap(Icon.IC_FOLDER_WHITE))
             )
             open_context_menu.addSeparator()
             # iHDA video
             action_open_context_ihda_video = open_context_menu.addAction("iHDA Video")
             action_open_context_ihda_video.setIcon(
-                QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_movie_white.png"))
+                QtGui.QIcon(QtGui.QPixmap(Icon.IC_MOVIE_WHITE))
             )
             context_menu.addMenu(open_context_menu)
             context_menu.addSeparator()
