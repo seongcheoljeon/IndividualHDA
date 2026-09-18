@@ -7,6 +7,9 @@ from typing import Any
 import pytest
 
 from libs import houdini_api
+from libs.houdini import assets, editor, nodes, session
+
+HOST_MODULES = (houdini_api, assets, editor, nodes, session)
 
 
 def test_preview_restores_timeline_after_failure(
@@ -26,12 +29,13 @@ def test_preview_restores_timeline_after_failure(
         setFps=lambda value: state.update(fps=value),
         setFrame=lambda value: state.update(frame=value),
     )
-    monkeypatch.setattr(houdini_api, "hou", hou, raising=False)
+    for module in HOST_MODULES:
+        monkeypatch.setattr(module, "hou", hou, raising=False)
 
     def fail(**kwargs: Any) -> None:
         raise RuntimeError("viewport error")
 
-    monkeypatch.setattr(houdini_api.HoudiniAPI, "_HoudiniAPI__flipbook", fail)
+    monkeypatch.setattr(assets, "_flipbook", fail)
     with pytest.raises(RuntimeError):
         houdini_api.HoudiniAPI.create_preview(
             tmp_path / "test.jpg", [1001, 1010, 30], [400, 400]
@@ -80,7 +84,8 @@ def test_network_category_lookup_does_not_mutate_scene(
         ObjectWasDeleted=LookupError,
         OperationFailed=RuntimeError,
     )
-    monkeypatch.setattr(houdini_api, "hou", fake_hou, raising=False)
+    for module in HOST_MODULES:
+        monkeypatch.setattr(module, "hou", fake_hou, raising=False)
     # No createNode/currentNode API is provided: lookup needs only the native category.
     network = SimpleNamespace(
         childTypeCategory=lambda: SimpleNamespace(typeName=lambda: "Sop")

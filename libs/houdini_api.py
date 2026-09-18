@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
-import contextlib
 import logging
-import math
 import pathlib
 
 # author            : SeongCheol Jeon
@@ -11,16 +9,11 @@ import pathlib
 # create date       : 2020.01.28 02:34
 # modify date       :
 # description       :
-import re
-import shutil
-import tempfile
-from collections.abc import Callable
-from contextlib import nullcontext, suppress
+from contextlib import suppress
 from typing import Any
 
-from libs import keys, log_handler, paths
-from libs.asset_contracts import NodeConnection
-from libs.host import IS_HOUDINI
+from libs import keys, log_handler
+from libs.houdini import assets, editor, nodes, session
 
 with suppress(ImportError):
     import hou
@@ -32,115 +25,86 @@ except ImportError:  # not hosted by Houdini
 
 
 # (2020.03.14): hda_dirpath 파라미터의 들어오는 값은 pathlib.Path 객체이다.
+
+
 class HoudiniAPI:
-    # ---- host access used by the panel; neutral values outside Houdini --------
-    @staticmethod
-    def main_window() -> Any | None:
-        return hou.qt.mainWindow() if IS_HOUDINI else None
+    """One registered node's HDA facts, plus the host functions as static aliases.
 
-    @staticmethod
-    def help_server_url() -> Callable[[], str] | None:
-        return hou.helpServerUrl if IS_HOUDINI else None
+    The functions live in libs.houdini.{session,nodes,editor,assets}; the aliases
+    keep every caller and test patch (HoudiniAPI.name) working.
+    """
 
-    @staticmethod
-    def qt_library_dirpath() -> pathlib.Path | None:
-        """$HFS/bin -- where Houdini keeps the Qt DLLs its helper binaries need."""
-        return pathlib.Path(hou.expandString("$HFS"), "bin") if IS_HOUDINI else None
-
-    @staticmethod
-    def host_stylesheet() -> str:
-        return str(hou.qt.styleSheet()) if IS_HOUDINI else ""
-
-    @staticmethod
-    def host_icon(name: str, size: int = 128) -> Any | None:
-        """QPixmap of a Houdini icon, or None when unavailable."""
-        if not IS_HOUDINI:
-            return None
-        try:
-            return hou.qt.Icon(name).pixmap(size, size)
-        except (RuntimeError, hou.Error):
-            return None
-
-    @staticmethod
-    def scaled_size(value: int) -> int:
-        return int(hou.ui.scaledSize(int(value))) if IS_HOUDINI else int(value)
-
-    @staticmethod
-    def global_scale_factor() -> float:
-        return float(hou.ui.globalScaleFactor()) if IS_HOUDINI else 1.0
-
-    @staticmethod
-    def find_node(path: str | None) -> hou.Node | None:
-        if not IS_HOUDINI or path is None:
-            return None
-        return hou.node(path)
-
-    @staticmethod
-    def vector2(x: float, y: float) -> Any:
-        return hou.Vector2((x, y))
-
-    @staticmethod
-    def undo_group(name: str) -> Any:
-        return hou.undos.group(name) if IS_HOUDINI else nullcontext()
-
-    @staticmethod
-    def execute_deferred(func: Callable[[], object]) -> None:
-        """Run on the Houdini main loop later; immediately when not hosted."""
-        if hdefereval is not None:
-            hdefereval.executeDeferred(func)
-        else:
-            func()
-
-    @staticmethod
-    def pane_tab_under_cursor() -> Any | None:
-        if not IS_HOUDINI:
-            return None
-        return hou.ui.curDesktop().paneTabUnderCursor()
-
-    @staticmethod
-    def network_editor() -> Any | None:
-        if not IS_HOUDINI:
-            return None
-        return hou.ui.paneTabOfType(hou.paneTabType.NetworkEditor)
-
-    @staticmethod
-    def add_event_loop_callback(func: Callable[..., Any]) -> None:
-        if IS_HOUDINI and func not in hou.ui.eventLoopCallbacks():
-            hou.ui.addEventLoopCallback(func)
-
-    @staticmethod
-    def remove_event_loop_callback(func: Callable[..., Any]) -> None:
-        if IS_HOUDINI and func in hou.ui.eventLoopCallbacks():
-            hou.ui.removeEventLoopCallback(func)
-
-    @staticmethod
-    def has_event_loop_callback(func: Callable[..., Any]) -> bool:
-        return bool(IS_HOUDINI and func in hou.ui.eventLoopCallbacks())
-
-    @staticmethod
-    def add_selection_callback(func: Callable[..., Any]) -> None:
-        if IS_HOUDINI and func not in hou.ui.selectionCallbacks():
-            hou.ui.addSelectionCallback(func)
-
-    @staticmethod
-    def remove_selection_callback(func: Callable[..., Any]) -> None:
-        if IS_HOUDINI and func in hou.ui.selectionCallbacks():
-            hou.ui.removeSelectionCallback(func)
-
-    @staticmethod
-    def has_selection_callback(func: Callable[..., Any]) -> bool:
-        return bool(IS_HOUDINI and func in hou.ui.selectionCallbacks())
-
-    @staticmethod
-    def hda_definitions_in_file(path: pathlib.Path) -> Any:
-        return hou.hda.definitionsInFile(str(path))
-
-    @staticmethod
-    def hda_expand_to_directory(path: pathlib.Path, destination: pathlib.Path) -> None:
-        hou.hda.expandToDirectory(str(path), str(destination))
-
-    # undo import group name
-    __undo_name_import_ihda = "import_individual_hda"
+    main_window = staticmethod(session.main_window)
+    help_server_url = staticmethod(session.help_server_url)
+    qt_library_dirpath = staticmethod(session.qt_library_dirpath)
+    host_stylesheet = staticmethod(session.host_stylesheet)
+    host_icon = staticmethod(session.host_icon)
+    scaled_size = staticmethod(session.scaled_size)
+    global_scale_factor = staticmethod(session.global_scale_factor)
+    undo_group = staticmethod(session.undo_group)
+    execute_deferred = staticmethod(session.execute_deferred)
+    add_event_loop_callback = staticmethod(session.add_event_loop_callback)
+    remove_event_loop_callback = staticmethod(session.remove_event_loop_callback)
+    has_event_loop_callback = staticmethod(session.has_event_loop_callback)
+    current_hipfile = staticmethod(session.current_hipfile)
+    current_houdini_version = staticmethod(session.current_houdini_version)
+    current_houdini_license = staticmethod(session.current_houdini_license)
+    commercial_license = staticmethod(session.commercial_license)
+    is_houdini_commercial_license = staticmethod(session.is_houdini_commercial_license)
+    frame_info = staticmethod(session.frame_info)
+    vector2 = staticmethod(session.vector2)
+    find_node = staticmethod(nodes.find_node)
+    node_type_name = staticmethod(nodes.node_type_name)
+    node_category_type_name = staticmethod(nodes.node_category_type_name)
+    node_definition_description = staticmethod(nodes.node_definition_description)
+    node_icon_path_lst = staticmethod(nodes.node_icon_path_lst)
+    is_root_network = staticmethod(nodes.is_root_network)
+    is_subnet_nodetype = staticmethod(nodes.is_subnet_nodetype)
+    set_node_input_connections = staticmethod(nodes.set_node_input_connections)
+    set_node_output_connections = staticmethod(nodes.set_node_output_connections)
+    is_valid_node = staticmethod(nodes.is_valid_node)
+    is_valid_node_name = staticmethod(nodes.is_valid_node_name)
+    set_node_comment = staticmethod(nodes.set_node_comment)
+    get_node_comment = staticmethod(nodes.get_node_comment)
+    get_node_datetime = staticmethod(nodes.get_node_datetime)
+    create_sticky_note = staticmethod(nodes.create_sticky_note)
+    create_network_box = staticmethod(nodes.create_network_box)
+    get_hda_info_by_selection_node = staticmethod(nodes.get_hda_info_by_selection_node)
+    pane_tab_under_cursor = staticmethod(editor.pane_tab_under_cursor)
+    network_editor = staticmethod(editor.network_editor)
+    add_selection_callback = staticmethod(editor.add_selection_callback)
+    remove_selection_callback = staticmethod(editor.remove_selection_callback)
+    has_selection_callback = staticmethod(editor.has_selection_callback)
+    items_position = staticmethod(editor.items_position)
+    current_network_editor_type_name = staticmethod(
+        editor.current_network_editor_type_name
+    )
+    find_network_editor = staticmethod(editor.find_network_editor)
+    find_network_editor_by_cursor = staticmethod(editor.find_network_editor_by_cursor)
+    get_cursor_pos = staticmethod(editor.get_cursor_pos)
+    get_selected_nodes = staticmethod(editor.get_selected_nodes)
+    all_clear_selected = staticmethod(editor.all_clear_selected)
+    go_to_node = staticmethod(editor.go_to_node)
+    hda_definitions_in_file = staticmethod(assets.hda_definitions_in_file)
+    hda_expand_to_directory = staticmethod(assets.hda_expand_to_directory)
+    make_hda_filename = staticmethod(assets.make_hda_filename)
+    make_thumbnail_filename = staticmethod(assets.make_thumbnail_filename)
+    make_thumbnail_dirpath = staticmethod(assets.make_thumbnail_dirpath)
+    make_preview_filename = staticmethod(assets.make_preview_filename)
+    make_preview_dirpath = staticmethod(assets.make_preview_dirpath)
+    make_video_filename = staticmethod(assets.make_video_filename)
+    make_video_dirpath = staticmethod(assets.make_video_dirpath)
+    create_hda_file = staticmethod(assets.create_hda_file)
+    create_thumbnail = staticmethod(assets.create_thumbnail)
+    create_preview = staticmethod(assets.create_preview)
+    clean_hda_library = staticmethod(assets.clean_hda_library)
+    import_individual_hda_into_houdini = staticmethod(
+        assets.import_individual_hda_into_houdini
+    )
+    get_ihda_node_instance_data = staticmethod(assets.get_ihda_node_instance_data)
+    get_ihda_node_instance_nested_list = staticmethod(
+        assets.get_ihda_node_instance_nested_list
+    )
 
     def __init__(
         self,
@@ -194,590 +158,16 @@ class HoudiniAPI:
     def hda_filepath(self, val: Any) -> None:
         self.__hda_filepath = val
 
-    @staticmethod
-    def __node_type_path_list(node: hou.Node | None) -> list[str]:
-        if node is None:
-            return []
-        node_type_lst = []
-        node_type_lst.append(HoudiniAPI.node_type_name(node) or "")
-        return HoudiniAPI.__node_type_path_list(node.parent()) + node_type_lst
-
-    @staticmethod
-    def __node_category_path_list(node: hou.Node | None) -> list[str]:
-        if node is None:
-            return []
-        node_category_lst = []
-        node_category_lst.append(HoudiniAPI.node_category_type_name(node) or "")
-        return HoudiniAPI.__node_category_path_list(node.parent()) + node_category_lst
-
-    @staticmethod
-    def node_type_name(node: hou.Node | None) -> str | None:
-        if node is None:
-            return None
-        return node.type().name()
-
-    @staticmethod
-    def __node_type_description(node: hou.Node | None) -> str | None:
-        if node is None:
-            return None
-        return node.type().description()
-
-    @staticmethod
-    def node_category_type_name(node: hou.Node | None) -> str | None:
-        if node is None:
-            return None
-        # 원래 대문자로 나오지만, 소문자로 바꿈.
-        return node.type().category().typeName().lower()
-
-    @staticmethod
-    def node_icon_path_lst(node: hou.Node | None) -> list[str] | None:
-        if node is None:
-            return None
-        try:
-            if (
-                keys.Name.company_initial
-                in (HoudiniAPI.node_definition_description(node) or "").lower()
-            ):
-                return [
-                    keys.Name.company_icon_dirname,
-                    keys.Name.company_log_icon_filename,
-                ]
-            icon = node.type().definition().icon().strip()
-            if icon == "":
-                icon = node.type().icon().strip()
-        except AttributeError:
-            icon = node.type().icon().strip()
-        icon_lst = icon.split("_", 1)
-        find_idx = icon_lst[1].find("-")
-        if find_idx >= 0:
-            icon_lst[1] = icon_lst[1][:find_idx]
-        return icon_lst
-
-    @staticmethod
-    def node_definition_description(node: hou.Node | None) -> str | None:
-        if node is None:
-            return None
-        node_type = node.type()
-        try:
-            return node_type.definition().description()
-        except AttributeError:
-            return node_type.description()
-
-    @staticmethod
-    def __is_network_node(node: hou.Node | None) -> bool | None:
-        if node is None:
-            return None
-        return node.isNetwork()
-
-    @staticmethod
-    def __is_sub_network_node(node: hou.Node | None) -> bool | None:
-        if node is None:
-            return None
-        return node.isSubNetwork()
-
-    @staticmethod
-    def __set_node_general_connections(
-        connections: Any = None, target_node: hou.Node | None = None
-    ) -> None:
-        if connections is None:
-            return
-        for connect in connections:
-            input_idx = connect.inputItemOutputIndex()
-            input_node = connect.inputNode()
-            cur_idx = connect.inputIndex()
-            cur_node = connect.outputNode()
-            if target_node is not None:
-                cur_node = target_node
-            cur_node.setInput(cur_idx, input_node, input_idx)
-
-    @staticmethod
-    def __get_node_input_connections_lst(node: hou.Node) -> list[Any]:
-        conn_lst = []
-        for connect in node.inputConnections():
-            conn_node = connect.inputNode()
-            if conn_node is None:
-                continue
-            conn_idx = connect.inputItemOutputIndex()
-            cur_idx = connect.inputIndex()
-            conn_lst.append(
-                NodeConnection(
-                    port=cur_idx,
-                    node_name=conn_node.name(),
-                    node_type=conn_node.type().name(),
-                    peer_port=conn_idx,
-                )
-            )
-        return conn_lst
-
-    @staticmethod
-    def __get_node_output_connections_lst(node: hou.Node) -> list[Any]:
-        conn_lst = []
-        for connect in node.outputConnections():
-            conn_node = connect.outputNode()
-            if conn_node is None:
-                continue
-            cur_idx = connect.inputItemOutputIndex()
-            conn_idx = connect.inputIndex()
-            conn_lst.append(
-                NodeConnection(
-                    port=cur_idx,
-                    node_name=conn_node.name(),
-                    node_type=conn_node.type().name(),
-                    peer_port=conn_idx,
-                )
-            )
-        return conn_lst
-
-    @staticmethod
-    def set_node_input_connections(
-        node: hou.Node | None = None, connection_lst: Any = None
-    ) -> None:
-        if node is None:
-            return
-        if connection_lst is None:
-            return
-        if not len(connection_lst):
-            return
-        child_type_dict = HoudiniAPI.__get_child_type_by_name_dict(node)
-        child_node_name_lst = list(child_type_dict.keys())
-        with hou.undos.group(HoudiniAPI.__undo_name_import_ihda):
-            for conn_info in connection_lst:
-                node_idx = conn_info.port
-                conn_node_name = conn_info.node_name
-                conn_node_type = conn_info.node_type
-                conn_node_idx = conn_info.peer_port
-                if conn_node_name in child_node_name_lst:
-                    if conn_node_type == child_type_dict.get(conn_node_name):
-                        conn_node = hou.node(
-                            node.parent().path()
-                            + paths.Paths.houdini_path_sep
-                            + conn_node_name
-                        )
-                        node.setInput(int(node_idx), conn_node, int(conn_node_idx))
-
-    @staticmethod
-    def set_node_output_connections(
-        node: hou.Node | None = None, connection_lst: Any = None
-    ) -> None:
-        if node is None:
-            return
-        if connection_lst is None:
-            return
-        if not len(connection_lst):
-            return
-        child_type_dict = HoudiniAPI.__get_child_type_by_name_dict(node)
-        child_node_name_lst = list(child_type_dict.keys())
-        with hou.undos.group(HoudiniAPI.__undo_name_import_ihda):
-            for conn_info in connection_lst:
-                node_idx = conn_info.port
-                conn_node_name = conn_info.node_name
-                conn_node_type = conn_info.node_type
-                conn_node_idx = conn_info.peer_port
-                if conn_node_name in child_node_name_lst:
-                    if conn_node_type == child_type_dict.get(conn_node_name):
-                        conn_node = hou.node(
-                            node.parent().path()
-                            + paths.Paths.houdini_path_sep
-                            + conn_node_name
-                        )
-                        conn_node.setInput(int(conn_node_idx), node, int(node_idx))
-
-    @staticmethod
-    def __get_child_type_by_name_dict(node: hou.Node) -> dict[str, Any]:
-        parent_node = node.parent()
-        d = {}
-        for child in parent_node.children():
-            d[child.name()] = child.type().name()
-        return d
-
-    @staticmethod
-    def __get_between_node_length(node1: hou.Node, node2: hou.Node) -> float:
-        sub = node1.position() - node2.position()
-        return math.sqrt(math.pow(sub.x(), 2) + math.pow(sub.y(), 2))
-
     def get_individual_hda_data(self) -> dict[str, Any]:
         node = self.node
         if node is None:
             raise ValueError("Node no longer exists")
-        filename = HoudiniAPI.make_hda_filename(
+        filename = assets.make_hda_filename(
             name=node.name(), version=self.hda_version, with_suffix=True
         )
         self.hda_filename = filename
         self.hda_filepath = self.__hda_dirpath / filename
         return self.__info_dict_individual_node(node=self.node)
-
-    @staticmethod
-    def make_hda_filename(
-        name: str | None = None, version: str | None = None, with_suffix: bool = True
-    ) -> str:
-        if with_suffix:
-            _ext = keys.Extensions.ihda_file
-            return f"{keys.Name.hda_prefix_str}_{name}_v{version}{_ext}"
-        return f"{keys.Name.hda_prefix_str}_{name}_v{version}"
-
-    @staticmethod
-    def make_thumbnail_filename(
-        name: str | None = None, version: str | None = None
-    ) -> str:
-        return (
-            f"{keys.Name.hda_prefix_str}_{name}_thumb_v{version}{keys.Extensions.image}"
-        )
-
-    @staticmethod
-    def make_thumbnail_dirpath(hda_dirpath: pathlib.Path | None = None) -> pathlib.Path:
-        assert isinstance(hda_dirpath, pathlib.Path)
-        return hda_dirpath / keys.Name.thumbnail_dirname
-
-    @staticmethod
-    def make_preview_filename(
-        name: str | None = None, version: str | None = None
-    ) -> str:
-        return (
-            f"{keys.Name.hda_prefix_str}_{name}_v{version}.$F4{keys.Extensions.image}"
-        )
-
-    @staticmethod
-    def make_preview_dirpath(
-        hda_dirpath: pathlib.Path | None = None, version: str | None = None
-    ) -> pathlib.Path:
-        if version is None:
-            raise ValueError("A version is required")
-        assert isinstance(hda_dirpath, pathlib.Path)
-        return hda_dirpath / keys.Name.preview_dirname / version
-
-    @staticmethod
-    def make_video_filename(name: str | None = None, version: str | None = None) -> str:
-        return f"{keys.Name.hda_prefix_str}_{name}_v{version}{keys.Extensions.video}"
-
-    @staticmethod
-    def make_video_dirpath(hda_dirpath: pathlib.Path | None = None) -> pathlib.Path:
-        assert isinstance(hda_dirpath, pathlib.Path)
-        return hda_dirpath / keys.Name.video_dirname
-
-    @staticmethod
-    def is_root_network(node: hou.Node | None = None) -> bool:
-        return bool(HoudiniAPI.node_type_name(node) == keys.Type.root)
-
-    @staticmethod
-    def __is_shop_network(node: hou.Node | None = None) -> bool:
-        return bool(HoudiniAPI.node_category_type_name(node) == keys.Type.shop)
-
-    @staticmethod
-    def __is_vop_network(node: hou.Node | None = None) -> bool:
-        return bool(HoudiniAPI.node_category_type_name(node) == keys.Type.vop)
-
-    @staticmethod
-    def is_subnet_nodetype(node: hou.Node | None = None) -> bool:
-        return bool(HoudiniAPI.node_type_name(node) == keys.Type.subnet_node)
-
-    @staticmethod
-    def is_valid_node(node: hou.Node | None = None) -> bool:
-        if node is None:
-            return False
-        if HoudiniAPI.__is_shop_network(node=node):
-            if HoudiniAPI.__is_sub_network_node(node):
-                log_handler.LogHandler.log_msg(
-                    method=logging.error,
-                    msg="subnet node is not supported in the SHOP network",
-                )
-                return False
-        if HoudiniAPI.__is_vop_network(node=node):
-            node_descript = HoudiniAPI.node_definition_description(node)
-            node_type = HoudiniAPI.node_type_name(node) or ""
-            is_descript = node_descript in keys.InvalidNode.node_descript_list
-            is_type = node_type in keys.InvalidNode.node_type_list
-            if is_descript or is_type:
-                log_handler.LogHandler.log_msg(
-                    method=logging.error,
-                    msg=f'node "{node.name()}" cannot be registered because it is of type "{node_descript}"',
-                )
-                return False
-        if hasattr(node, "inputs") and len(node.inputs()) >= 5:
-            log_handler.LogHandler.log_msg(
-                method=logging.error,
-                msg=f'"{node.name()}" nodes have more than five inputs',
-            )
-            return False
-        return True
-
-    @staticmethod
-    def is_valid_node_name(node: hou.Node | None = None, verbose: bool = True) -> bool:
-        """
-        노드 이름이 유효한 이름인지
-        :param node: Houdini Node Instance
-        :param verbose: Display Error Message
-        :return: Bool
-        """
-        if node is None:
-            return False
-        node_name = node.name()
-        node_type = HoudiniAPI.node_type_name(node) or ""
-        if node_type.find(":") >= 0:
-            node_type = node_type.split(":")[0].strip()
-        if node_name == node_type:
-            if verbose:
-                log_handler.LogHandler.log_msg(
-                    method=logging.error,
-                    msg=f'the name "{node_name}" is the same as the current node type',
-                )
-            return False
-        wrong_name = f"{node_type}1"
-        if node_name == wrong_name:
-            if verbose:
-                log_handler.LogHandler.log_msg(
-                    method=logging.error,
-                    msg=f'"{node_name}" is a name that can cause errors in Houdini',
-                )
-            return False
-        return True
-
-    @staticmethod
-    def create_hda_file(
-        node: hou.Node | None = None,
-        hda_dirpath: pathlib.Path | None = None,
-        hda_filename: str | None = None,
-        hda_version: str | None = None,
-    ) -> bool:
-        if node is None or hda_filename is None:
-            return False
-        assert isinstance(hda_dirpath, pathlib.Path)
-        hda_filepath = hda_dirpath / hda_filename
-        if hda_filepath.exists():
-            logging.error("iHDA file already exists: %s", hda_filepath)
-            return False
-        hda_dirpath.mkdir(parents=True, exist_ok=True)
-        node_name = node.name()
-        # Stage on the destination filesystem; never delete shared temp/backup folders.
-        with tempfile.TemporaryDirectory(
-            prefix=".ihda-build-", dir=hda_dirpath
-        ) as staging:
-            tmp_filepath = pathlib.Path(staging) / hda_filename
-            copied = subnet = hda = None
-            with hou.undos.disabler():
-                try:
-                    copied = hou.copyNodesTo((node,), node.parent())[0]
-                    node.setName("__org__", unique_name=True)
-                    copied.setName(node_name, unique_name=True)
-                    subnet = (
-                        copied
-                        if HoudiniAPI.__is_shop_network(node=node)
-                        else copied.parent().collapseIntoSubnet((copied,))
-                    )
-                    subnet.setName("__hull__", unique_name=True)
-                    if not subnet.canCreateDigitalAsset():
-                        return False
-                    hda = subnet.createDigitalAsset(
-                        name=node_name,
-                        description=node_name.replace("_", " ").strip().title(),
-                        hda_file_name=tmp_filepath.as_posix(),
-                        version=hda_version,
-                        ignore_external_references=True,
-                        create_backup=False,
-                    )
-                    if hda is None or not HoudiniAPI.__set_hda_options(hda=hda):
-                        return False
-                    tmp_filepath.replace(hda_filepath)
-                    return True
-                except (hou.Error, OSError) as error:
-                    logging.error("Failed to register %s: %s", node_name, error)
-                    return False
-                finally:
-                    for temporary_node in (hda, subnet, copied):
-                        if temporary_node is not None:
-                            with contextlib.suppress(hou.ObjectWasDeleted):
-                                temporary_node.destroy()
-                    node.setName(node_name, unique_name=True)
-                    if tmp_filepath.as_posix() in hou.hda.loadedFiles():
-                        hou.hda.uninstallFile(tmp_filepath.as_posix())
-
-    @staticmethod
-    def __set_hda_options(hda: hou.Node | None = None) -> bool:
-        if hda is None:
-            return False
-        definition = hda.type().definition()
-        if definition is None:
-            hda.destroy()
-            return False
-        hda_filepath = definition.libraryFilePath()
-        options = definition.options()
-        options.setUnlockNewInstances(True)
-        options.setSaveSpareParms(True)
-        options.setSaveInitialParmsAndContents(True)
-        definition.setOptions(options)
-        definition.save(
-            hda_filepath, template_node=hda, options=options, create_backup=False
-        )
-        definition.updateFromNode(hda)
-        hda.destroy()
-        hou.hda.uninstallFile(hda_filepath)
-        return True
-
-    @staticmethod
-    def create_thumbnail(output_filepath: pathlib.Path | None = None) -> bool:
-        assert isinstance(output_filepath, pathlib.Path)
-        frame = hou.frame()
-        return HoudiniAPI.__flipbook(
-            filepath=output_filepath,
-            frame_range=(frame, frame),
-            resolution=keys.Value.thumbnail_resolution,
-        )
-
-    @staticmethod
-    def create_preview(
-        output_filepath: pathlib.Path | None = None,
-        frame_info: tuple[float, float, float] | list[float] | None = None,
-        resolution: tuple[int, int] | list[int] | None = None,
-        is_beautypass_only: bool = False,
-        is_init_sim: bool = False,
-        is_motionblur: bool = False,
-        is_crop_out_mask: bool = True,
-    ) -> bool:
-        if frame_info is None or len(frame_info) != 3 or resolution is None:
-            raise ValueError("Frame start, end, FPS and resolution are required")
-        assert isinstance(output_filepath, pathlib.Path)
-        original_fps = hou.fps()
-        original_frame = hou.frame()
-        original_global_range = tuple(hou.playbar.frameRange())
-        original_playback_range = tuple(hou.playbar.playbackRange())
-        try:
-            hou.setFps(frame_info[2])
-            HoudiniAPI.__set_frame_range_for_scene(
-                sf=frame_info[0], ef=frame_info[1], fps=frame_info[2]
-            )
-            return HoudiniAPI.__flipbook(
-                filepath=output_filepath,
-                frame_range=(frame_info[0], frame_info[1]),
-                resolution=resolution,
-                is_beautypass_only=is_beautypass_only,
-                is_init_sim=is_init_sim,
-                is_motionblur=is_motionblur,
-                is_crop_out_mask=is_crop_out_mask,
-            )
-        finally:
-            hou.setFps(original_fps)
-            hou.playbar.setFrameRange(*original_global_range)
-            hou.playbar.setPlaybackRange(*original_playback_range)
-            hou.setFrame(original_frame)
-
-    @staticmethod
-    def __flipbook(
-        filepath: pathlib.Path | None = None,
-        frame_range: tuple[float, float] | None = None,
-        resolution: tuple[int, int] | list[int] | None = None,
-        is_beautypass_only: bool = False,
-        is_init_sim: bool = False,
-        is_motionblur: bool = False,
-        is_crop_out_mask: bool = False,
-    ) -> bool:
-        assert isinstance(filepath, pathlib.Path)
-        assert isinstance(frame_range, (tuple, list))
-        curt_desktop = hou.ui.curDesktop()
-        scene_viewer = curt_desktop.paneTabOfType(hou.paneTabType.SceneViewer)
-        if not scene_viewer:
-            log_handler.LogHandler.log_msg(
-                method=logging.error,
-                msg="could not find scene viewer pane tab, please create it and try again",
-            )
-            return False
-        viewports_persp = [
-            vp
-            for vp in scene_viewer.viewports()
-            if vp.type() == hou.geometryViewportType.Perspective
-        ]
-        # perpective 뷰 포트를 찾을 수 없다면
-        if not len(viewports_persp):
-            # log_handler.LogHandler.log_msg(method=logging.warning, msg='could not find the "Perspective" viewport')
-            viewport = scene_viewer.viewports()[-1]
-        # perpective 뷰 포트가 존재한다면
-        else:
-            # perspective 뷰 포트중 하나만 취한다.
-            viewport = viewports_persp[-1]
-        log_handler.LogHandler.log_msg(
-            method=logging.info,
-            msg=f"currently active viewport is {viewport.name()}",
-        )
-        # viewport의 카메라들
-        # print viewport.camera()
-        #
-        # pane = scene_viewer.pane()
-        # 원래의 pane 상태 (확장되었는지)
-        # is_max_pane = pane.isMaximized()
-        # get the display settings
-        # settings = scene_viewer.curViewport().settings()
-        # get the GeometryViewportDisplaySet for obejcts
-        # dp_set = settings.displaySet(hou.displaySetType.SceneObject)
-        # 원래의 display mode 저장
-        # original_display_mode = dp_set.shadedMode()
-        # display mode를 smooth wire모드로 변경
-        # dp_set.setShadedMode(hou.glShadingType.SmoothWire)
-        # pane 확장이 안되어있다면 pane 확장
-        # if not is_max_pane:
-        #     pane.setIsMaximized(True)
-        #
-        flipbook_options = scene_viewer.flipbookSettings().stash()
-        # 뷰티패스를 true로 하면, 핸드, 그리드, 가이드, 뷰포트 배경 이미지 등이 렌더 되지 않는다.
-        flipbook_options.outputToMPlay(False)
-        flipbook_options.beautyPassOnly(is_beautypass_only)
-        # 뷰포트의 모든 것을 렌더한다. 이것을 활성화하면 썸네일 만들 때, 200x200가 되지 않아 주석처리함.
-        # flipbook_options.renderAllViewports(not is_beautypass_only)
-        flipbook_options.initializeSimulations(is_init_sim)
-        flipbook_options.useMotionBlur(is_motionblur)
-        flipbook_options.cropOutMaskOverlay(is_crop_out_mask)
-        flipbook_options.frameRange(frame_range)
-        flipbook_options.frameIncrement(1)
-        flipbook_options.antialias(hou.flipbookAntialias.UseViewportSetting)
-        flipbook_options.useResolution(True)
-        flipbook_options.resolution(resolution)
-        flipbook_options.output(filepath.as_posix())
-        scene_viewer.flipbook(scene_viewer.curViewport(), flipbook_options)
-        # 원래의 display mode로 되돌리기
-        # dp_set.setShadedMode(original_display_mode)
-        # 원래의 pane 확장 되돌리기
-        # pane.setIsMaximized(is_max_pane)
-        return True
-
-    @staticmethod
-    def __set_frame_range_for_scene(
-        sf: float = 1001, ef: float = 1240, fps: float = 24
-    ) -> None:
-        hou.playbar.setFrameRange(sf, ef)
-        hou.playbar.setPlaybackRange(sf, ef)
-        hou.setFrame(int(sf))
-
-    @staticmethod
-    def frame_info() -> list[float]:
-        sf, ef = map(int, hou.playbar.playbackRange())
-        fps = hou.fps()
-        return [sf, ef, fps]
-
-    # 현재 후디니가 상업용 라이센스인지
-    @staticmethod
-    def is_houdini_commercial_license() -> bool:
-        return HoudiniAPI.commercial_license() == HoudiniAPI.current_houdini_license()
-
-    @staticmethod
-    def commercial_license() -> str:
-        return hou.licenseCategoryType.Commercial.name()
-
-    @staticmethod
-    def current_houdini_license() -> str:
-        if IS_HOUDINI:
-            return hou.licenseCategory().name()
-        return "unknown"
-
-    @staticmethod
-    def current_houdini_version() -> str:
-        return hou.applicationVersionString()
-
-    @staticmethod
-    def current_hipfile() -> pathlib.Path:
-        return pathlib.Path(hou.hipFile.path())
-
-    @staticmethod
-    def __delete_dir(dirpath: pathlib.Path | None = None) -> None:
-        assert isinstance(dirpath, pathlib.Path)
-        if dirpath.exists() and dirpath.is_dir():
-            shutil.rmtree(dirpath.as_posix())
 
     def __info_dict_individual_node(
         self, node: hou.Node | None = None
@@ -792,386 +182,25 @@ class HoudiniAPI:
         # hda file name
         d[keys.Key.hda_filename] = self.hda_filename
         # node type path list
-        d[keys.Key.node_type_path_list] = HoudiniAPI.__node_type_path_list(node)
+        d[keys.Key.node_type_path_list] = nodes._node_type_path_list(node)
         # node category path list
-        d[keys.Key.node_cate_path_list] = HoudiniAPI.__node_category_path_list(node)
+        d[keys.Key.node_cate_path_list] = nodes._node_category_path_list(node)
         # node type name
-        d[keys.Key.node_type_name] = HoudiniAPI.node_type_name(node)
+        d[keys.Key.node_type_name] = nodes.node_type_name(node)
         # node category type name
-        d[keys.Key.node_cate_name] = HoudiniAPI.node_category_type_name(node)
+        d[keys.Key.node_cate_name] = nodes.node_category_type_name(node)
         # node definition description
-        d[keys.Key.node_def_desc] = HoudiniAPI.node_definition_description(node)
+        d[keys.Key.node_def_desc] = nodes.node_definition_description(node)
         # node icon path list
-        d[keys.Key.node_icon_path_list] = HoudiniAPI.node_icon_path_lst(node)
+        d[keys.Key.node_icon_path_list] = nodes.node_icon_path_lst(node)
         # node is network
-        d[keys.Key.is_network] = HoudiniAPI.__is_network_node(node)
+        d[keys.Key.is_network] = nodes._is_network_node(node)
         # node is sub network
-        d[keys.Key.is_sub_network] = HoudiniAPI.__is_sub_network_node(node)
+        d[keys.Key.is_sub_network] = nodes._is_sub_network_node(node)
         # node input connections
-        d[keys.Key.node_input_connections] = (
-            HoudiniAPI.__get_node_input_connections_lst(node)
-        )
+        d[keys.Key.node_input_connections] = nodes._get_node_input_connections_lst(node)
         # node output connections
-        d[keys.Key.node_output_connections] = (
-            HoudiniAPI.__get_node_output_connections_lst(node)
+        d[keys.Key.node_output_connections] = nodes._get_node_output_connections_lst(
+            node
         )
         return d
-
-    @staticmethod
-    def __hide_parms(node: hou.Node | None = None) -> None:
-        if node is None:
-            return
-        group = node.parmTemplateGroup()
-        for parm in group.entries():
-            group.hideFolder(parm.label(), True)
-        node.setParmTemplateGroup(group)
-
-    @staticmethod
-    def clean_hda_library(hda_base_dirpath: pathlib.Path | None = None) -> None:
-        assert isinstance(hda_base_dirpath, pathlib.Path)
-        root = hda_base_dirpath.resolve()
-        for hda_filepath in hou.hda.loadedFiles():
-            if hda_filepath == "Embedded":
-                continue
-            if pathlib.Path(hda_filepath).resolve().is_relative_to(root):
-                definitions = hou.hda.definitionsInFile(hda_filepath)
-                if definitions and not any(
-                    definition.nodeType().instances() for definition in definitions
-                ):
-                    hou.hda.uninstallFile(hda_filepath)
-
-    # (2020.04.17): 원래는 ihda directory에 ihda 파일을 다이렉트로 불러왔지만 temp 디렉토리를 한번 거치고 불러오는
-    # 것으로 바꿨다.
-    # 즉, 안전성 및 암호화를 위하여 temp 디렉토리에 ihda data를 복사하고 그 파일을 Houdini에서 불러온다.
-    @staticmethod
-    def import_individual_hda_into_houdini(
-        node_filepath: pathlib.Path | None = None,
-        parent_node: hou.Node | None = None,
-        position: hou.Vector2 | None = None,
-        node_name: str | None = None,
-        node_type_name: str | None = None,
-    ) -> hou.Node | None:
-        if parent_node is None:
-            raise ValueError("A parent node is required")
-        assert isinstance(node_filepath, pathlib.Path)
-        with tempfile.TemporaryDirectory(
-            prefix="ihda-import-", dir=paths.Paths.tmp_dirpath
-        ) as staging:
-            staged = pathlib.Path(staging) / node_filepath.name
-            shutil.copyfile(node_filepath, staged)
-            hda_node = node = None
-            try:
-                hou.hda.installFile(
-                    str(staged), change_oplibraries_file=False, force_use_assets=False
-                )
-                definitions = hou.hda.definitionsInFile(str(staged))
-                if not definitions:
-                    raise ValueError("File contains no HDA definition")
-                with hou.undos.group(HoudiniAPI.__undo_name_import_ihda):
-                    hda_node = parent_node.createNode(definitions[0].nodeTypeName())
-                    if HoudiniAPI.__is_shop_network(node=hda_node):
-                        node = hda_node.changeNodeType(
-                            node_type_name,
-                            keep_name=True,
-                            keep_parms=True,
-                            keep_network_contents=True,
-                            force_change_on_node_type_match=False,
-                        )
-                    else:
-                        extracted = hda_node.extractAndDelete()
-                        node = next(
-                            (
-                                item
-                                for item in extracted
-                                if item.type().name() == node_type_name
-                            ),
-                            extracted[0],
-                        )
-                        # Houdini 21 creates output connectors for the wrapper asset.
-                        # They must not leak into the artist's parent network.
-                        for item in extracted:
-                            if item != node and item.type().name() == "output":
-                                item.destroy()
-                    if node_name != node.name():
-                        node.setName(node_name, unique_name=True)
-                    node.setUserData("nodeshape", "cloud")
-                    node.setColor(hou.Color(0.24, 0.12, 0.85))
-                    node.setPosition(position)
-                    return node
-            except (hou.Error, OSError, ValueError) as error:
-                for created in (node, hda_node):
-                    if created is not None:
-                        with contextlib.suppress(hou.ObjectWasDeleted):
-                            created.destroy()
-                logging.error("Could not import asset: %s", error)
-                return None
-            finally:
-                if (
-                    str(staged) in hou.hda.loadedFiles()
-                    or staged.as_posix() in hou.hda.loadedFiles()
-                ):
-                    hou.hda.uninstallFile(str(staged))
-
-    # (2020.05.24): is_unpack_subnet 추가했다. unpack하지 않은 서브넷은 자식노드들까지 코멘트 들어가지 않도록
-    @staticmethod
-    def set_node_comment(
-        node: hou.Node | None = None,
-        contents: str = "",
-        show_comments: bool = False,
-        is_unpack_subnet: bool = False,
-    ) -> None:
-        if node is None:
-            return
-        if not len(contents):
-            return
-        with hou.undos.disabler():
-            if hasattr(node, "setComment") and hasattr(node, "setGenericFlag"):
-                node.setComment(contents)
-                node.setGenericFlag(hou.nodeFlag.DisplayComment, show_comments)
-            if HoudiniAPI.is_subnet_nodetype(node=node) and is_unpack_subnet:
-                for child in node.children():
-                    if hasattr(child, "setComment") and hasattr(
-                        child, "setGenericFlag"
-                    ):
-                        child.setComment(contents)
-                        child.setGenericFlag(hou.nodeFlag.DisplayComment, show_comments)
-
-    @staticmethod
-    def create_sticky_note(
-        node: hou.Node | None = None, contents: str = ""
-    ) -> hou.StickyNote | None:
-        if node is None:
-            return None
-        if not len(contents):
-            return None
-        with hou.undos.disabler():
-            sticky = node.createStickyNote(keys.Name.hda_prefix_str)
-            sticky.setText(contents)
-            sticky.setTextSize(0.35)
-            sticky.setTextColor(hou.Color(0.85, 0.85, 0.85))
-            # sticky.resize(sticky.size())
-            sticky.setColor(hou.Color(0.1, 0.8, 0.45))
-            sticky.setDrawBackground(False)
-            return sticky
-
-    @staticmethod
-    def items_position(items: Any = ()) -> hou.Vector2:
-        pos = hou.Vector2(0, 0)
-        num = 0
-        for item in items:
-            if isinstance(item, hou.SubnetIndirectInput):
-                continue
-            pos += item.position()
-            num += 1
-        if num:
-            pos /= num
-        return pos + hou.Vector2(-5, 0)
-
-    @staticmethod
-    def create_network_box(
-        node: hou.Node | None = None, comment: str | None = "", items: Any = ()
-    ) -> hou.NetworkBox | None:
-        if node is None:
-            return None
-        with hou.undos.disabler():
-            if len(items):
-                net_box = node.createNetworkBox()
-                for item in items:
-                    if isinstance(item, hou.SubnetIndirectInput):
-                        continue
-                    net_box.addItem(item)
-            else:
-                items = node.allItems()
-                net_box = node.createNetworkBox()
-                for item in items:
-                    if isinstance(item, hou.SubnetIndirectInput):
-                        continue
-                    net_box.addItem(item)
-            net_box.setColor(hou.Color(0.3, 0.3, 0.3))
-            net_box.fitAroundContents()
-            padding = hou.Vector2(1, 1)
-            bbox = hou.BoundingRect(
-                net_box.position()[0] - padding[0],
-                net_box.position()[1] - padding[1],
-                net_box.position()[0] + net_box.size()[0] + padding[0],
-                net_box.position()[1] + net_box.size()[1] + padding[1],
-            )
-            net_box.setBounds(bbox)
-            net_box.setComment(comment)
-            return net_box
-
-    @staticmethod
-    def current_network_editor_type_name(
-        network_editor: hou.NetworkEditor | None = None,
-        not_have_null_node_context_lst: Any = None,
-    ) -> str | None:
-        """Read the network category without creating temporary scene nodes."""
-        if network_editor is None or isinstance(network_editor, hou.PythonPanel):
-            return None
-        try:
-            category = network_editor.pwd().childTypeCategory()
-            return category.typeName().lower() if category is not None else None
-        except (AttributeError, hou.ObjectWasDeleted, hou.OperationFailed):
-            return None
-
-    @staticmethod
-    def find_network_editor() -> hou.NetworkEditor | None:
-        for pane_tab in hou.ui.currentPaneTabs():
-            if hou.paneTabType.NetworkEditor != pane_tab.type():
-                continue
-            try:
-                node = pane_tab.currentNode()
-                if node.isSelected():
-                    return pane_tab
-            except AttributeError:
-                pass
-        return hou.ui.curDesktop().paneTabOfType(hou.paneTabType.NetworkEditor)
-
-    @staticmethod
-    def find_network_editor_by_cursor() -> hou.NetworkEditor | None:
-        desk = hou.ui.curDesktop()
-        cur_pane_tab = desk.paneTabUnderCursor()
-        try:
-            if hou.paneTabType.NetworkEditor != cur_pane_tab.type():
-                return None
-        except AttributeError:
-            return None
-        return cur_pane_tab
-
-    @staticmethod
-    def get_cursor_pos(
-        network_editor: hou.NetworkEditor | None = None,
-    ) -> hou.Vector2 | None:
-        if network_editor is None:
-            return None
-        return network_editor.cursorPosition()
-
-    @staticmethod
-    def get_selected_nodes() -> tuple[hou.Node, ...] | None:
-        nodes = hou.selectedNodes()
-        if len(nodes):
-            return nodes
-        return None
-
-    @staticmethod
-    def get_node_comment(node: hou.Node | None = None) -> None | str:
-        if node is None:
-            return None
-        if not hasattr(node, "comment"):
-            return None
-        comment = node.comment()
-        if (not len(comment)) or (comment is None):
-            return None
-        return comment.strip()
-
-    @staticmethod
-    def all_clear_selected(node: hou.Node | None = None) -> None:
-        if node is None:
-            return
-        node.setSelected(False, clear_all_selected=True)
-
-    @staticmethod
-    def __is_exist_ihda_node(parent_node: hou.Node | None = None) -> bool:
-        if parent_node is None:
-            return False
-        is_found = False
-        try:
-            leaves = parent_node.children()
-        except hou.Error:
-            if parent_node is None:
-                return False
-            hda_info = HoudiniAPI.get_hda_info_by_selection_node(node=parent_node)
-            return hda_info is not None
-        if len(leaves) == 0:
-            hda_info = HoudiniAPI.get_hda_info_by_selection_node(node=parent_node)
-            if hda_info is not None:
-                return True
-        else:
-            for child_node in leaves:
-                hda_info = HoudiniAPI.get_hda_info_by_selection_node(node=child_node)
-                if hda_info is not None:
-                    return True
-                is_found |= HoudiniAPI.__is_exist_ihda_node(parent_node=child_node)
-        return is_found
-
-    @staticmethod
-    def get_ihda_node_instance_data(
-        parent_node: hou.Node | None = None,
-    ) -> dict[str, Any]:
-        if parent_node is None:
-            return {}
-        node_data: dict[str, Any] = {}
-        for child_node in parent_node.children():
-            hda_info = HoudiniAPI.get_hda_info_by_selection_node(node=child_node)
-            is_exist = HoudiniAPI.__is_exist_ihda_node(parent_node=child_node)
-            if not is_exist and hda_info is None:
-                continue
-            node_data[child_node] = {}
-            if hasattr(child_node, "isLockedHDA"):
-                if child_node.isLockedHDA():
-                    continue
-            result = HoudiniAPI.get_ihda_node_instance_data(parent_node=child_node)
-            if len(result):
-                node_data[child_node].update(result)
-        return node_data
-
-    @staticmethod
-    def get_ihda_node_instance_nested_list(
-        parent_node: hou.Node | None = None,
-    ) -> list[Any]:
-        if parent_node is None:
-            return []
-        node_data = []
-        for child_node in parent_node.children():
-            hda_info = HoudiniAPI.get_hda_info_by_selection_node(node=child_node)
-            is_exist = HoudiniAPI.__is_exist_ihda_node(parent_node=child_node)
-            if not is_exist and hda_info is None:
-                continue
-            node_data.append(child_node)
-            if hasattr(child_node, "isLockedHDA"):
-                if child_node.isLockedHDA():
-                    continue
-            result = HoudiniAPI.get_ihda_node_instance_nested_list(
-                parent_node=child_node
-            )
-            if len(result):
-                node_data.append(result)
-        return node_data
-
-    @staticmethod
-    def get_hda_info_by_selection_node(
-        node: hou.Node | None = None,
-    ) -> None | dict[str, Any]:
-        comment = HoudiniAPI.get_node_comment(node=node)
-        if comment is None:
-            return None
-        regex_is_valid = re.compile(rf"{keys.Key.Comment.ihda_id}")
-        search_comment = regex_is_valid.search(comment)
-        if search_comment is None:
-            return None
-        hda_info_lst = []
-        for info in comment.split("\n"):
-            hda_info_lst.append([x.strip() for x in info.split(":")])
-        hda_info_dat: dict[str, Any] = dict(hda_info_lst)
-        hda_info_dat[keys.Key.Comment.ihda_id] = int(
-            hda_info_dat[keys.Key.Comment.ihda_id]
-        )
-        return hda_info_dat
-
-    @staticmethod
-    def go_to_node(node: hou.Node | None = None) -> None:
-        if node is None:
-            return
-        node.setSelected(True, clear_all_selected=True)
-        network_editor = HoudiniAPI.find_network_editor()
-        if network_editor is None:
-            return
-        network_editor.setIsCurrentTab()
-        network_editor.setPwd(node.parent())
-        network_editor.homeToSelection()
-
-    @staticmethod
-    def get_node_datetime(node: hou.Node | None = None) -> tuple[Any, Any]:
-        if node is None:
-            raise ValueError("A node is required")
-        return node.creationTime(), node.modificationTime()

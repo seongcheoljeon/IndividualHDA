@@ -156,18 +156,15 @@ def test_dark_resources_and_host_theme_roundtrip(
     window.actionDark_blue = QtGui.QAction(window)
     window.actionDark_blue.setCheckable(True)
     settings = ui_settings.UISettings(window)
-    from libs import host, houdini_api
+    from libs import host
+    from libs.houdini import session
 
-    monkeypatch.setattr(host, "IS_HOUDINI", True)
-    monkeypatch.setattr(houdini_api, "IS_HOUDINI", True)
-    monkeypatch.setattr(
-        houdini_api,
-        "hou",
-        SimpleNamespace(
-            qt=SimpleNamespace(styleSheet=lambda: "QWidget { color: #abcdef; }")
-        ),
-        raising=False,
+    fake_hou = SimpleNamespace(
+        qt=SimpleNamespace(styleSheet=lambda: "QWidget { color: #abcdef; }")
     )
+    for module in (host, session):  # host_stylesheet reads its own module globals
+        monkeypatch.setattr(module, "IS_HOUDINI", True)
+        monkeypatch.setattr(module, "hou", fake_hou, raising=False)
     original = app.styleSheet()
     for _ in range(2):
         settings.set_theme(public.Name.darkblue_theme)

@@ -18,7 +18,15 @@ SKIP_PARTS = {"tests", "benchmarks", ".venv", "__pycache__"}
 GENERATED = ("_rc.py",)
 
 # Modules allowed to import hou/hdefereval at runtime (the host boundary).
-HOST_BOUNDARY = {"libs.host", "libs.houdini_api"}
+HOST_BOUNDARY = {
+    "libs.host",
+    "libs.houdini_api",
+    "libs.houdini",
+    "libs.houdini.assets",
+    "libs.houdini.editor",
+    "libs.houdini.nodes",
+    "libs.houdini.session",
+}
 # Debt: modules that still import hou directly. Target: empty.
 HOU_IMPORTERS: set[str] = set()
 # Debt: modules that reach the god module `public` instead of its real homes.
