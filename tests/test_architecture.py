@@ -267,3 +267,32 @@ def test_scene_ui_does_not_open_storage_connections() -> None:
             assert not (node.module or "").startswith(
                 ("libs.database", "libs.sqlite3_db_api")
             )
+
+
+def test_qobject_panel_features_do_not_shadow_qt_api() -> None:
+    """A method named like a QObject member hides Qt's own and breaks wiring.
+
+    PanelAIActions.connect() shadowed QObject.connect, which PySide6 calls with
+    four arguments to hook up a signal: the panel failed to start in Houdini.
+    Houdini ships PySide6 6.5.3 while the tests run on 6.11.2, which tolerates
+    the shadowing -- so only a static check catches this.
+    """
+    from PySide6 import QtCore
+
+    reserved = {name for name in dir(QtCore.QObject) if not name.startswith("__")}
+    offenders: dict[str, list[str]] = {}
+    for module, tree in MODULES.items():
+        if not module.startswith("widgets.panel."):
+            continue
+        for cls in (node for node in tree.body if isinstance(node, ast.ClassDef)):
+            bases = {ast.unparse(base) for base in cls.bases}
+            if not bases & {"QtCore.QObject", "QObject"}:
+                continue
+            clashes = sorted(
+                node.name
+                for node in cls.body
+                if isinstance(node, ast.FunctionDef) and node.name in reserved
+            )
+            if clashes:
+                offenders[f"{module}.{cls.name}"] = clashes
+    assert not offenders, f"these hide Qt's own members: {offenders}"

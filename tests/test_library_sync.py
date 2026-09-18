@@ -115,8 +115,11 @@ def test_ai_suggest_fills_editors_without_saving(
     prompts: list[Prompt] = []
 
     class Fake:
-        def complete(self, prompt: Prompt) -> str:
+        def complete(self, prompt: Prompt, *, progress: Any = None) -> str:
             prompts.append(prompt)
+            if progress is not None:
+                progress(1)
+                progress(2)
             return '{"summary": "Water sim.", "tags": ["water", "sim"]}'
 
     panel = IndividualHDA(services=PanelServices(ai=lambda settings: Fake()))
@@ -137,6 +140,85 @@ def test_ai_suggest_fills_editors_without_saving(
         "물",
     ]
     assert repo.list_assets()[0].hda_note is None  # nothing saved without a click
+    # The progress line and its cancel button only exist while a request runs.
+    assert not panel.label__ai_status.isVisible()
+    assert not panel.pushButton__ai_cancel.isVisible()
+    assert panel.label__ai_status.text() == ""
+    # The GUI slot formats what the worker emitted; no thread needed to check it.
+    panel._ai_actions.progress.emit(95)
+    app.processEvents()
+    assert "95 tokens" in panel.label__ai_status.text()
     assert panel.pushButton__ai_suggest.isEnabled()
     panel.close()
     app.processEvents()
+
+
+def test_ai_cancel_discards_the_answer_and_is_not_an_error(
+    app: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Cancel is an exception raised from the progress callback.
+
+    BackgroundJob routes it to the result channel, so the editors must stay
+    untouched and the log must not call it a failure.
+    """
+    from libs.ai_features import Description
+    from libs.ai_provider import AISettings, Prompt
+    from main import IndividualHDA
+    from widgets.panel.ai_actions import _Cancelled
+    from widgets.panel.services import PanelServices
+    from widgets.preference.preference import Preference
+    from widgets.web_view.web_view import WebView
+
+    monkeypatch.setattr(
+        WebView,
+        "_WebView__set_init_load",
+        lambda self: self.lineEdit__address.setText("about:blank"),
+    )
+    monkeypatch.setattr(public.Paths, "json_pref_filepath", tmp_path / "prefs.json")
+    preference = Preference()
+    preference.data_dirpath = str(tmp_path)
+    preference.ai_settings = AISettings(kind="local", endpoint="http://x", model="m")
+    preference._Preference__pref_settings.save_cfg_dict_to_file()
+    preference.close()
+    root = public.hda_base_dirpath(tmp_path) / "tester"
+    with SQLite3DatabaseAPI(tmp_path / "ihda.db"):
+        pass
+    repo = SqliteLibraryRepository(tmp_path / "ihda.db")
+    repo.ensure_user("tester")
+    repo.register_asset(payload(root, "Water"))
+
+    captured: list[Any] = []
+
+    class Fake:
+        def complete(self, prompt: Prompt, *, progress: Any = None) -> str:
+            captured.append(progress)
+            return '{"summary": "should never arrive", "tags": []}'
+
+    panel = IndividualHDA(services=PanelServices(ai=lambda settings: Fake()))
+    try:
+        panel.selection.state.asset.id = 1
+        panel.selection.state.asset.data = panel.models.assets.rows[0]
+        panel._slot_ai_suggest()
+        for _ in range(300):
+            app.processEvents()
+            if not panel._ai_tasks.busy:
+                break
+            QtTest.QTest.qWait(10)
+        app.processEvents()
+
+        # The fake answered immediately, so start from a known editor state and
+        # then cancel: what matters is that nothing lands afterwards.
+        panel.textEdit__note.setPlainText("hand written")
+        panel.pushButton__ai_cancel.click()
+
+        # The callback the worker was handed now refuses to continue -- this is
+        # the cancel, no token crosses into libs/.
+        with pytest.raises(_Cancelled):
+            captured[0](5)
+        # A result that beat the cancel is dropped rather than applied.
+        panel._ai_actions.describe_done(Description("should never arrive", ()))
+        assert panel.textEdit__note.toPlainText() == "hand written"
+        # And the cancel is reported as such, never through the failure branch.
+        panel._ai_actions.result(None, _Cancelled())
+    finally:
+        panel.close()

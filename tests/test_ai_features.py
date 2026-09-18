@@ -92,10 +92,13 @@ def test_describe_asset_round_trip(tmp_path: Path) -> None:
     thumb = tmp_path / "t.png"
     thumb.write_bytes(PNG)
     seen: list[Prompt] = []
+    ticks: list[int] = []
 
     class Fake:
-        def complete(self, prompt: Prompt) -> str:
+        def complete(self, prompt: Prompt, *, progress: Any = None) -> str:
             seen.append(prompt)
+            if progress is not None:
+                progress(1)
             return '{"summary": "Scatters points.", "tags": ["points", "scatter"]}'
 
     asset: dict[str, Any] = {
@@ -111,8 +114,10 @@ def test_describe_asset_round_trip(tmp_path: Path) -> None:
         thumbnail=thumb,
         vocabulary=["점", "smoke"],
         language="ko",
+        progress=ticks.append,
     )
     assert result == Description("Scatters points.", ("points", "scatter"))
+    assert ticks == [1]  # the callback reaches the provider, for the progress line
     assert (
         seen[0].images == (PNG,)
         and "기존 노트" in seen[0].text

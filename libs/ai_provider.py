@@ -8,6 +8,7 @@ pass a timeout; nothing is installed into Houdini's Python.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -51,13 +52,20 @@ class Prompt:
 
 
 class AIProvider(Protocol):
-    def complete(self, prompt: Prompt) -> str: ...
+    # progress: called once per streamed chunk with the running token count, on
+    # the worker thread. Raising from it aborts the request -- that is how the
+    # panel cancels.
+    def complete(
+        self, prompt: Prompt, *, progress: Callable[[int], None] | None = None
+    ) -> str: ...
 
 
 class NullProvider:
     """Default backend: every request completes immediately with no text."""
 
-    def complete(self, prompt: Prompt) -> str:
+    def complete(
+        self, prompt: Prompt, *, progress: Callable[[int], None] | None = None
+    ) -> str:
         return ""
 
 

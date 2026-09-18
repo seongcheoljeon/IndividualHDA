@@ -221,7 +221,8 @@ def test_ollama_provider_request_shape(monkeypatch: pytest.MonkeyPatch) -> None:
         "_open",
         opener({"http://h:11434/api/chat": TimeoutError("timed out")}, calls),
     )
-    with pytest.raises(AIError, match="request failed: timed out"):
+    # "timed out" alone sent people hunting the network; name the usual cause.
+    with pytest.raises(AIError, match="still loading or the GPU is busy"):
         provider.complete(Prompt("x"))
     # A stream that keeps trickling past the overall ceiling is abandoned.
     trickle = b"\n".join(
@@ -360,3 +361,43 @@ def test_answer_made_only_of_thinking_is_an_error(
         ai_backends, "_open", opener({"http://h:11434/api/chat": empty}, calls)
     )
     assert provider.complete(Prompt("describe")) == ""
+
+
+def test_stream_reports_progress_and_a_raising_callback_aborts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The panel's progress line and its cancel button both ride this callback.
+
+    Cancel is a plain exception raised from the callback -- no cancel token has
+    to cross into libs/ -- so it must escape complete() rather than be swallowed
+    by stream_json's URLError/OSError handler.
+    """
+    reply = b"\n".join(
+        json.dumps(chunk).encode()
+        for chunk in (
+            {"message": {"content": "O"}, "done": False},
+            {"message": {"content": "K"}, "done": False},
+            {"message": {"content": ""}, "done": True},
+        )
+    )
+    show = {"details": {"family": "gemma4"}, "capabilities": ["thinking"]}
+    routes = {"http://h/api/chat": reply, "http://h/api/show": show}
+    provider = ai_backends.OllamaProvider(
+        AISettings(kind="local", endpoint="http://h", model="m")
+    )
+
+    calls: list[Any] = []
+    monkeypatch.setattr(ai_backends, "_open", opener(routes, calls))
+    counts: list[int] = []
+    assert provider.complete(Prompt("describe"), progress=counts.append) == "OK"
+    assert counts == [1, 2]  # the done event breaks before ticking
+
+    class Boom(Exception):
+        pass
+
+    def explode(count: int) -> None:
+        raise Boom
+
+    monkeypatch.setattr(ai_backends, "_open", opener(routes, calls))
+    with pytest.raises(Boom):
+        provider.complete(Prompt("describe"), progress=explode)

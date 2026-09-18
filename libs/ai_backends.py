@@ -11,13 +11,16 @@ import json
 import time
 import urllib.error
 import urllib.request
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Any
 
 from libs.ai_defaults import OLLAMA_ENDPOINT
 from libs.ai_provider import AIProvider, AISettings, Prompt
 
-TIMEOUT_SEC = 60.0  # silence between chunks
+# Ollama sends nothing while it loads a model into VRAM, so this budget covers a
+# cold start, not only a stall mid-answer. A wedged server stays bounded by
+# TOTAL_TIMEOUT_SEC below.
+TIMEOUT_SEC = 180.0  # silence before the first chunk, and between chunks
 # Whole-request ceiling for a stream that keeps trickling: a model offloaded to
 # the CPU can answer at one token per second and would otherwise never finish
 # from the user's point of view.
@@ -45,6 +48,21 @@ def mime_type(data: bytes) -> str:
     raise AIError("only PNG and JPEG images can be sent to the model")
 
 
+def _is_timeout(error: BaseException) -> bool:
+    """A socket timeout reaches us bare or wrapped in ``URLError.reason``."""
+    return isinstance(error, TimeoutError) or isinstance(
+        getattr(error, "reason", None), TimeoutError
+    )
+
+
+def _timeout_message(timeout: float) -> str:
+    """Name the usual cause; "timed out" alone sends people hunting the network."""
+    return (
+        f"no answer for {timeout:.0f} s; the model is still loading or the GPU is "
+        "busy (Houdini and other apps share it). Free VRAM or pick a smaller model."
+    )
+
+
 def post_json(
     url: str,
     payload: dict[str, Any],
@@ -64,6 +82,8 @@ def post_json(
         excerpt = error.read()[:500].decode("utf-8", "replace")
         raise AIError(f"HTTP {error.code}: {excerpt}", status=error.code) from error
     except (urllib.error.URLError, TimeoutError, OSError) as error:
+        if _is_timeout(error):
+            raise AIError(_timeout_message(timeout)) from error
         raise AIError(f"request failed: {error}") from error
     try:
         result = json.loads(raw.decode("utf-8"))
@@ -116,6 +136,8 @@ def stream_json(
         excerpt = error.read()[:500].decode("utf-8", "replace")
         raise AIError(f"HTTP {error.code}: {excerpt}", status=error.code) from error
     except (urllib.error.URLError, TimeoutError, OSError) as error:
+        if _is_timeout(error):
+            raise AIError(_timeout_message(timeout)) from error
         raise AIError(f"request failed: {error}") from error
 
 
@@ -152,7 +174,9 @@ class OllamaProvider:
         # eval_duration * 1e9).
         self.last_timings: dict[str, float] = {}
 
-    def complete(self, prompt: Prompt) -> str:
+    def complete(
+        self, prompt: Prompt, *, progress: Callable[[int], None] | None = None
+    ) -> str:
         if not self.model:
             raise AIError("choose a model in Preferences (AI) first")
         for image in prompt.images:
@@ -181,7 +205,11 @@ class OllamaProvider:
         thinking_chars = 0
         done_reason = ""
         self.last_timings = {}
-        for event in stream_json(f"{self.endpoint}/api/chat", payload):
+        # enumerate, not eval_count: the token total only arrives with the final
+        # event, so a live counter has to count the chunks themselves.
+        for tokens, event in enumerate(
+            stream_json(f"{self.endpoint}/api/chat", payload), start=1
+        ):
             if "error" in event:
                 raise AIError(str(event["error"]))
             message = event.get("message") or {}
@@ -191,6 +219,8 @@ class OllamaProvider:
                 done_reason = str(event.get("done_reason", ""))
                 self.last_timings = _timings(event)
                 break
+            if progress is not None:
+                progress(tokens)
         text = "".join(parts)
         if not text.strip() and thinking_chars:
             raise AIError(_only_thinking_message(self.model, prompt, done_reason))

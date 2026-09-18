@@ -101,6 +101,7 @@ class PanelComposition:
                 note=window.textEdit__note,
                 tags=window.textEdit__tag,
                 status=window.label__metadata_status,
+                tag_status=window.label__tag_status,
                 show_tags=window.notes._set_label_tags,
                 saved=self._metadata_saved,
             ),
@@ -259,7 +260,7 @@ class PanelComposition:
         )
         self.lifetime.add("sync", lambda: window._library_sync._stop_library_sync(), 10)
         window._library_sync._init_library_sync()
-        window._ai_actions.connect()
+        window._ai_actions.setup_ai_actions()
         from widgets.team_library.integration import (
             MainLibraryIntegration,
             TeamBindings,
@@ -310,6 +311,7 @@ class PanelComposition:
                 label__hist_cnt=window.label__hist_cnt,
                 label__hist_tags=window.label__hist_tags,
                 label__metadata_status=window.label__metadata_status,
+                label__tag_status=window.label__tag_status,
                 lineEdit__search_hda=window.lineEdit__search_hda,
                 pushButton__ai_suggest=window.pushButton__ai_suggest,
                 pushButton__note_save=window.pushButton__note_save,

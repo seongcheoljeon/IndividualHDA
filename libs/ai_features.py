@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -155,6 +155,7 @@ def describe_asset(
     vocabulary: Sequence[str] = (),
     language: str = "en",
     structure: dict[str, Any] | None = None,
+    progress: Callable[[int], None] | None = None,
 ) -> Description:
     """Runs on a worker thread: read the image, ask the model, parse the answer."""
     prompt = build_describe_prompt(
@@ -166,4 +167,4 @@ def describe_asset(
         language=language,
         image=read_thumbnail(thumbnail),
     )
-    return parse_describe(provider.complete(prompt))
+    return parse_describe(provider.complete(prompt, progress=progress))
