@@ -99,7 +99,7 @@ class LocalModelsDialog(QtWidgets.QDialog):
         installed = QtWidgets.QGroupBox("Installed models")
         installed_layout = QtWidgets.QVBoxLayout(installed)
         self.installed_list = QtWidgets.QListWidget()
-        self.installed_list.itemSelectionChanged.connect(self._sync_buttons)
+        self.installed_list.itemSelectionChanged.connect(self._installed_chosen)
         installed_layout.addWidget(self.installed_list)
         remove_row = QtWidgets.QHBoxLayout()
         remove_row.addStretch(1)
@@ -137,7 +137,7 @@ class LocalModelsDialog(QtWidgets.QDialog):
             )
             item.setData(0, QtCore.Qt.ItemDataRole.UserRole, choice.name)
             self.tree.addTopLevelItem(item)
-        self.tree.itemSelectionChanged.connect(self._sync_buttons)
+        self.tree.itemSelectionChanged.connect(self._catalog_chosen)
         rec_layout.addWidget(self.tree)
         custom_row = QtWidgets.QHBoxLayout()
         custom_row.addWidget(QtWidgets.QLabel("Other model"))
@@ -194,6 +194,24 @@ class LocalModelsDialog(QtWidgets.QDialog):
             return str(items[0].data(0, QtCore.Qt.ItemDataRole.UserRole))
         chosen = self.installed_list.selectedItems()
         return chosen[0].text().split("  ")[0] if chosen else ""
+
+    def _installed_chosen(self) -> None:
+        """The installed list and the catalog name the same single model.
+
+        selected_model() reads the catalog first, and a refresh preselects the
+        recommended row there, so without dropping that selection an installed
+        model could never be applied.
+        """
+        if self.installed_list.selectedItems():
+            with QtCore.QSignalBlocker(self.tree):
+                self.tree.clearSelection()
+        self._sync_buttons()
+
+    def _catalog_chosen(self) -> None:
+        if self.tree.selectedItems():
+            with QtCore.QSignalBlocker(self.installed_list):
+                self.installed_list.clearSelection()
+        self._sync_buttons()
 
     def _sync_buttons(self) -> None:
         model = self.selected_model()

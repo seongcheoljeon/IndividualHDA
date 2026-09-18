@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
-from PySide6 import QtTest
+from PySide6 import QtCore, QtTest
 
 from libs import ollama
 from libs.ai_provider import AISettings
@@ -244,3 +244,35 @@ def test_followup_refresh_waits_for_controller_idle(
     finally:
         release.set()
         dialog.shutdown()
+
+
+def test_installed_model_can_be_applied_over_the_recommendation(app: Any) -> None:
+    """Picking from the installed list must win over the auto-selected catalog row.
+
+    A refresh preselects the recommended catalog model, and selected_model() reads
+    the catalog before the installed list, so clicking an installed model left
+    "Use as AI backend" disabled whenever the recommendation was not installed.
+    """
+    dialog = LocalModelsDialog(client=fake_client("0.12.1", ["qwen3-vl:4b"], 12.0))
+    wait_tasks(app, dialog)
+    recommended = dialog.selected_model()
+    assert recommended and recommended != "qwen3-vl:4b", (
+        "this test needs a recommendation that is not the installed model"
+    )
+    assert not dialog.use_button.isEnabled()
+
+    dialog.installed_list.setCurrentRow(0)
+    assert dialog.selected_model() == "qwen3-vl:4b"
+    assert dialog.use_button.isEnabled()
+
+    chosen: list[Any] = []
+    dialog.settingsChosen.connect(chosen.append)
+    dialog.use_selected()
+    assert [settings.model for settings in chosen] == ["qwen3-vl:4b"]
+
+    # And back: the catalog must win again when it is the one clicked.
+    item = dialog.tree.topLevelItem(0)
+    assert item is not None
+    dialog.tree.setCurrentItem(item)
+    assert dialog.selected_model() == item.data(0, QtCore.Qt.ItemDataRole.UserRole)
+    dialog.close()

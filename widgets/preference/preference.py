@@ -240,7 +240,9 @@ class Preference(QtWidgets.QDialog, PreferenceLayout):
     def __slot_ffmpeg_textchanged(self, text: str) -> None:
         dirpath = pathlib.Path(text.strip())
         self.__ffmpeg_final_dirpath = dirpath
-        if dirpath.exists():
+        # Match the gate the feature actually uses: a directory that merely exists
+        # (or an empty field, which resolves to ".") is not a usable FFmpeg.
+        if self.is_valid_ffmpeg_dirpath():
             icon = ":/main/icons/ic_done_white.png"
             self.lineEdit__ffmpeg_result.setStyleSheet("")
         else:
