@@ -1,5 +1,74 @@
 # Changelog
 
+## 2.1.1 (unreleased) — registration durability and panel typography
+
+- **Registration on Windows.** Flush staged capture files through a writable
+  handle. `os.fsync()` on a read-only descriptor maps to EBADF there, which
+  failed every node registration with "[Errno 9] Bad file descriptor". The same
+  call in the PostgreSQL backup adapter is corrected, and the platform rule now
+  lives in one place.
+- **Registration thumbnails.** Stage captures under their destination filenames.
+  Houdini selects the flipbook image format from the path suffix, so the former
+  extension-less `thumbnail` staging name produced no file and assets committed
+  without a thumbnail. A capture that yields no optional file is now logged
+  instead of passing silently.
+- **Bundled panel font.** Ship MaruBuri in `resource/fonts` and apply it to the
+  panel subtree, including the windows it opens. The host application font is
+  left alone so Houdini keeps its own look, and an explicit font still wins so
+  the Preferences font choices keep working.
+- **Library Tools menu placement.** Insert the menu before Help instead of
+  appending after it.
+- **Scene records survive a deleted node.** The imported-node list is scanned
+  with `in` on every import, and a HOM node raises ObjectWasDeleted once the
+  user deletes it -- so one deleted node aborted the whole record with
+  "Imported asset; scene record could not be queued". Observations now compare
+  on the node's session id and never on the node itself.
+- **Quiet video playback.** Stop logging the player's window title. Buffering
+  and track changes fire several times a second and each one wrote the same
+  string the title already showed, burying everything else in the panel log. A
+  decode or backend failure reached the log only inside one of those lines, at
+  info level; it is now reported as an error.
+- **AI suggestion progress and cancel.** The request reports its running token
+  count and elapsed time beside the AI button, and a cancel button stops it. The
+  provider gains an optional plain callback -- Qt stays out of `libs/` -- and
+  cancelling is that callback refusing to continue, so no cancel token has to
+  cross the boundary. A cancelled request is logged as cancelled, never as a
+  failure, and its answer never reaches the editors.
+- **Separate unsaved indicators for the note and the tags.** Each editor has its
+  own save button but they shared one "Unsaved changes" label, sitting under the
+  note; editing tags lit it there, and an AI suggestion fills both at once. The
+  note line keeps the shared statuses (saving, save errors, team conflict links)
+  and a new label under the tag editor carries tag dirtiness alone.
+- **Applying a downloaded AI model.** Selecting a model in the installed list now
+  clears the catalog selection. A refresh preselects the recommended catalog row
+  and the catalog was read first, so "Use as AI backend" stayed disabled whenever
+  the recommendation was not the model actually installed — leaving every request
+  to fail with "choose a model in Preferences (AI) first". The AI button in the
+  tag row also pins the shared icon size instead of the style default, which made
+  it smaller than its neighbours.
+- **Menu icons.** Give the Library Tools menu and the team library context menus
+  the icons they never had, and fill the remaining gaps in the menu bar. Three
+  entries pointed at `_18dp`/`_48dp` resource names that exist in no .qrc and so
+  drew nothing; they now use the names that are actually bundled. A test walks
+  every literal icon resource in the source and fails on one that does not
+  resolve.
+- **Web view rendering on Windows.** Add `$HFS/bin` to PATH before the help
+  browser starts. Houdini keeps QtWebEngineProcess.exe in `$HFS/qt/bin` with no
+  Qt DLLs beside it and does not put `$HFS/bin` on PATH, so Chromium's helper
+  process exited with STATUS_DLL_NOT_FOUND and every page failed to load. A dead
+  helper and a failed load now report themselves separately in the log.
+- **Web view start page.** Stop persisting the Houdini help server address. Its
+  loopback port is assigned per launch, so restoring it pointed the next session
+  at a dead port. Addresses the user navigated to are still restored, an existing
+  stale entry is dropped on load, and a failed load now records the URL it
+  requested rather than the page still on screen.
+- **Video playback without FFmpeg.** Remove the FFmpeg check from the two
+  double-click playback paths. Playback runs through QMediaPlayer and never
+  shells out, so an unset FFmpeg directory silently blocked videos that already
+  existed. Video *creation* still requires FFmpeg, and the Preferences indicator
+  now reports the same condition that gates it instead of merely testing that the
+  directory exists.
+
 ## 2.1.0 (unreleased) — shared-library foundations
 
 Personal and Team library foundations, with additive tracking and recovery.
