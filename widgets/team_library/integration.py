@@ -145,6 +145,31 @@ class MainLibraryIntegration(QtCore.QObject):
     def writable(self) -> bool:
         return self.project.get("role") in {"owner", "editor"}
 
+    # Read-only surface for the action class; it must not depend on how the
+    # integration stores its caches or runs its jobs.
+    @property
+    def busy(self) -> bool:
+        return self._tasks.busy
+
+    @property
+    def closing(self) -> bool:
+        return self._closing
+
+    @property
+    def pending(self) -> PendingCommand | None:
+        return self._pending
+
+    def document(self, asset_id: int) -> dict[str, Any] | None:
+        return self._documents.get(asset_id)
+
+    def history(self, history_id: int) -> dict[str, Any] | None:
+        return self._histories.get(history_id)
+
+    def start_task(
+        self, operation: Callable[[], Any], finished: Callable[..., Any]
+    ) -> None:
+        self._tasks.start(operation, finished)
+
     def _source_changed(self, index: int) -> None:
         action = self.source.itemData(index)
         if action == "connect":

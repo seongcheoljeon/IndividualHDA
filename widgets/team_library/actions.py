@@ -62,7 +62,7 @@ class MainAssetActions:
             edits.setIcon(
                 QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_border_color_white.png"))
             )
-            edits.setEnabled(self.library.writable and not self.library._tasks.busy)
+            edits.setEnabled(self.library.writable and not self.library.busy)
             edits.addAction(
                 QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_border_color_white.png")),
                 "Rename…",
@@ -73,7 +73,7 @@ class MainAssetActions:
                 "Favorite",
                 self.favorite,
             )
-            favorite.setEnabled(not self.library._tasks.busy)
+            favorite.setEnabled(not self.library.busy)
             edits.addAction(
                 QtGui.QIcon(QtGui.QPixmap(":/main/icons/asterisk.png")),
                 "Add version…",
@@ -101,7 +101,7 @@ class MainAssetActions:
                 "Register file…",
                 self.register_file,
             )
-            action.setEnabled(self.library.writable and not self.library._tasks.busy)
+            action.setEnabled(self.library.writable and not self.library.busy)
         menu.exec(view.mapToGlobal(point))
 
     def rename(self) -> None:
@@ -118,11 +118,7 @@ class MainAssetActions:
 
     def favorite(self) -> None:
         selected_id = self.bindings.selection.state.asset.id
-        asset = (
-            self.library._documents.get(selected_id)
-            if selected_id is not None
-            else None
-        )
+        asset = self.library.document(selected_id) if selected_id is not None else None
         if asset and self.library.presenter:
             self.library.presenter.mutate(
                 "preference", {"favorite": not asset.get("favorite", False)}
@@ -140,7 +136,7 @@ class MainAssetActions:
         from libs.library_management import RemoteManagement
         from widgets.library_metadata.dependency_warning import dependency_message
 
-        if self.library._tasks.busy:
+        if self.library.busy:
             return
         gateway = RemoteManagement(self.library.catalog)
 
@@ -148,7 +144,7 @@ class MainAssetActions:
             def confirm() -> None:
                 if self.bindings.status.closing:
                     return
-                if self.library._tasks.busy:
+                if self.library.busy:
                     QtCore.QTimer.singleShot(
                         self.library.callbacks.retry_delay_ms, confirm
                     )
@@ -166,13 +162,13 @@ class MainAssetActions:
 
             QtCore.QTimer.singleShot(0, confirm)
 
-        self.library._tasks.start(lambda: gateway.dependents(item), ready)
+        self.library.start_task(lambda: gateway.dependents(item), ready)
 
     def register_file(self, new_version: bool = False) -> None:
         if (
             self.library.presenter is None
             or not self.library.writable
-            or self.library._tasks.busy
+            or self.library.busy
         ):
             return
         path, _ = QtWidgets.QFileDialog.getOpenFileName(
@@ -227,7 +223,7 @@ class MainAssetActions:
             from model.ihda_history_model import HistoryModel
 
             index = self.bindings.views.history.currentIndex()
-            item = self.library._histories.get(index.data(HistoryModel.hist_id_role))
+            item = self.library.history(index.data(HistoryModel.hist_id_role))
             if item is not None:
                 self.library.download("video", item["document"])
         else:
@@ -238,7 +234,7 @@ class MainAssetActions:
 
         view = self.bindings.views.history
         index = view.indexAt(point)
-        item = self.library._histories.get(index.data(HistoryModel.hist_id_role))
+        item = self.library.history(index.data(HistoryModel.hist_id_role))
         if item is None:
             return
         menu = QtWidgets.QMenu(self.bindings.parent)
@@ -257,7 +253,7 @@ class MainAssetActions:
             "Delete version…",
             lambda: self._remove_history(item),
         )
-        remove.setEnabled(self.library.writable and not self.library._tasks.busy)
+        remove.setEnabled(self.library.writable and not self.library.busy)
         menu.exec(view.mapToGlobal(point))
 
     def _remove_history(self, item: dict[str, Any]) -> None:
@@ -292,7 +288,7 @@ class MainAssetActions:
         if (
             self.library.presenter is None
             or not self.library.writable
-            or self.library._tasks.busy
+            or self.library.busy
         ):
             return
         if not self._allow_batch(len(nodes) if nodes else 0, "Register"):
@@ -305,10 +301,10 @@ class MainAssetActions:
         self._imports.clear()
 
     def next(self) -> None:
-        if not self.library.active or self.library._closing:
+        if not self.library.active or self.library.closing:
             self.clear()
             return
-        if self.library._tasks.busy:
+        if self.library.busy:
             return
         if self._imports:
             self.library.download(
@@ -334,7 +330,7 @@ class MainAssetActions:
 
     def import_drop(self, drop_data: Any) -> None:
 
-        if self.library._tasks.busy:
+        if self.library.busy:
             self.bindings.presentation.dragdrop_overlay_close()
             return
         action, items = drop_data
@@ -355,7 +351,7 @@ class MainAssetActions:
                 return
             history_id = data.hist_id if isinstance(data, HistoryData) else None
             historical = (
-                self.library._histories.get(history_id)
+                self.library.history(history_id)
                 if isinstance(history_id, int)
                 else None
             )
@@ -363,7 +359,7 @@ class MainAssetActions:
             document = (
                 historical["document"]
                 if historical
-                else self.library._documents.get(asset_id)
+                else self.library.document(asset_id)
                 if isinstance(asset_id, int)
                 else None
             )

@@ -285,10 +285,7 @@ SOFT_DELETE_UNFILTERED: dict[str, int] = {
 # Debt: features reaching into another feature's underscore members through
 # their bindings (self.bindings.x._y) or the team integration (self.library._y).
 # Target: empty, once the bindings are typed as ports.
-CROSS_FEATURE_PRIVATE: dict[str, int] = {
-    "widgets.panel.library_tools": 1,
-    "widgets.team_library.actions": 17,
-}
+CROSS_FEATURE_PRIVATE: dict[str, int] = {}
 # Debt: imports inside function bodies in libs/ and ihda_server/ (most hide an
 # import cycle). Target: only the ones that defer optional dependencies.
 LAZY_IMPORT_SITES: dict[str, int] = {

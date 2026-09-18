@@ -157,7 +157,7 @@ class PanelLibraryTools:
 
         recovery: RegistrationRecovery | TeamRegistrationRecovery
         team = self.bindings.team()
-        if self.bindings.tasks.busy or team._tasks.busy:
+        if self.bindings.tasks.busy or team.busy:
             return
         if team.active:
             assert team.catalog is not None
@@ -169,7 +169,7 @@ class PanelLibraryTools:
             )
 
             def retry(identity: str) -> Any:
-                return team_recovery.retry(identity, team.catalog, team._pending)
+                return team_recovery.retry(identity, team.catalog, team.pending)
 
             recovery = team_recovery
         else:
@@ -204,7 +204,7 @@ class PanelLibraryTools:
         from libs.team.copy_source import PersonalCopySource
         from widgets.asset_copy.dialog import CopyAssetDialog
 
-        if self.bindings.tasks.busy or self.bindings.team()._tasks.busy:
+        if self.bindings.tasks.busy or self.bindings.team().busy:
             return
         asset_id = self.bindings.selection.state.asset.id
         if (
@@ -246,12 +246,12 @@ class PanelLibraryTools:
         from widgets.library_metadata.dialog import LibraryMetadataDialog
 
         team = self.bindings.team()
-        if self.bindings.tasks.busy or team._tasks.busy:
+        if self.bindings.tasks.busy or team.busy:
             return
         if team.active:
             assert team.catalog is not None
             gateway: RemoteManagement | LocalManagement = RemoteManagement(
-                team.catalog, team._pending
+                team.catalog, team.pending
             )
             writable, owner = team.writable, team.project.get("role") == "owner"
         else:
