@@ -15,6 +15,7 @@ from pathlib import Path
 
 from libs.archive_service import create_archive, extract_archive, prepare_database
 from libs.library_maintenance import check_cancel, read_database, references
+from libs.library_metadata import file_stamp
 from libs.operation_journal import operation_lock
 
 
@@ -88,7 +89,7 @@ def auto_backup(
 
     from libs.database_migrations import backup_database
 
-    stamp = now.strftime("%Y%m%dT%H%M%SZ")
+    stamp = file_stamp()
     target = database.with_name(f"{AUTO_BACKUP_PREFIX}{stamp}.bak")
     with closing(sqlite3.connect(str(database), timeout=5.0)) as connection:
         backup_database(connection, target)
@@ -99,7 +100,7 @@ def auto_backup(
 
 def create_backup(database: Path, assets: Path, reason: str) -> Path:
     with operation_lock(database.parent):
-        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+        stamp = file_stamp()
         return create_archive(
             database,
             assets,
@@ -216,7 +217,7 @@ def cleanup_recovery(
                 raise RuntimeError(
                     f"Recovery file changed or is referenced: {entry.path}"
                 )
-        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+        stamp = file_stamp()
         backup = database.parent / "backup" / f"recovery-{stamp}.zip"
         backup.parent.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(backup, "x", compression=zipfile.ZIP_DEFLATED) as archive:

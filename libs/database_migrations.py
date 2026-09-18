@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import UTC, datetime
 from pathlib import Path
 
 from libs.database_migrations_v4 import backup_database
 from libs.database_migrations_v4 import migrate as migrate_v4
 from libs.database_v5 import install as install_v5
 from libs.database_v6 import install as install_v6
+from libs.library_metadata import file_stamp
 
 SCHEMA_VERSION = 6
 
@@ -32,7 +32,7 @@ def migrate(connection: sqlite3.Connection, filepath: Path) -> None:
         version = 4
     if connection.execute("PRAGMA quick_check").fetchone()[0] != "ok":
         raise sqlite3.DatabaseError("Library integrity check failed")
-    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    stamp = file_stamp()
     if original_version >= 4:
         backup_database(
             connection, filepath.with_name(f"{filepath.name}.pre-v6-{stamp}.bak")

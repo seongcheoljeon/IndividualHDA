@@ -11,6 +11,11 @@ def utc_now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def file_stamp() -> str:
+    """UTC timestamp for file names: sortable, no separators, microseconds."""
+    return datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+
+
 def new_identity() -> str:
     return str(uuid4())
 

@@ -31,7 +31,7 @@ class ArchiveTransfer:
         self._limits = limits
 
     def create_backup_file(self) -> Path | None:
-        stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
+        stamp = _local_stamp()
         output = self.directory / "backup" / f"bak_data_{stamp}_iHDA.zip"
         try:
             return create_archive(self.directory / "ihda.db", self.assets, output)
@@ -101,8 +101,13 @@ class ArchiveTransfer:
 
     def export_ihda_data(self, destination: str | Path) -> Path:
         destination = Path(destination)
-        stamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
+        stamp = _local_stamp()
         create_archive(
             self.directory / "ihda.db", self.assets, destination / f"{stamp}_iHDA.zip"
         )
         return destination
+
+
+def _local_stamp() -> str:
+    """Local-time stamp kept for the user-visible archive names."""
+    return datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")

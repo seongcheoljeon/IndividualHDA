@@ -7,10 +7,10 @@ import sqlite3
 import uuid
 from collections.abc import Iterator
 from contextlib import closing
-from datetime import UTC, datetime
 from pathlib import Path
 
 from libs.database_rebuild import rebuild_base_tables
+from libs.library_metadata import file_stamp
 from model.sqlite3_db_schema import category_cleanup_trigger, db_schema
 
 SCHEMA_VERSION = 4
@@ -54,7 +54,7 @@ def migrate(connection: sqlite3.Connection, filepath: pathlib.Path) -> None:
             raise sqlite3.DatabaseError(
                 "Library integrity check failed; original database retained"
             )
-        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+        stamp = file_stamp()
         backup_database(
             connection,
             Path(filepath).with_name(

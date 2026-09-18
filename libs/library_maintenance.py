@@ -7,11 +7,11 @@ import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from libs.database.rows import named_query
 from libs.database_migrations import backup_database
+from libs.library_metadata import file_stamp
 from libs.operation_journal import operation_lock
 
 # table, directory, filename; HIP files are source references, not library assets.
@@ -182,7 +182,7 @@ def apply_paths(database: Path, changes: list[PathChange]) -> Path:
     with operation_lock(database.parent):
         connection = sqlite3.connect(database)
         try:
-            stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+            stamp = file_stamp()
             backup = database.with_name(f"{database.name}.paths-{stamp}.bak")
             backup_database(connection, backup)
             connection.execute("PRAGMA foreign_keys=ON")
