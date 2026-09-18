@@ -18,6 +18,11 @@
   the Preferences font choices keep working.
 - **Library Tools menu placement.** Insert the menu before Help instead of
   appending after it.
+- **History says what it recorded again.** A refactor swapped the INSERT/UPDATE
+  marker written into the history comment for the payload's change description,
+  which is empty unless the user asks to add one, so every row since went blank.
+  The kind is intrinsic to the operation and is recorded again, with the
+  description appended when there is one. Rows already written stay as they are.
 - **Scene records survive a deleted node.** The imported-node list is scanned
   with `in` on every import, and a HOM node raises ObjectWasDeleted once the
   user deletes it -- so one deleted node aborted the whole record with

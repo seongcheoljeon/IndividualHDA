@@ -23,7 +23,8 @@ def test_repository_roundtrip(tmp_path: Path) -> None:
     result = repo.register_asset(payload(tmp_path, "Water"))
     asset = result.asset
     assert asset.hda_id == 1 and asset.hda_name == "Water" and asset.hda_tags == ()
-    assert result.history.comment == "" and result.history_id == 1
+    # The row says what happened; a blank comment made every history opaque.
+    assert result.history.comment == "NODE (INSERT)" and result.history_id == 1
     assert result.thumb_filepath.is_file()
     assert repo.revision() >= first
     with pytest.raises(LibraryConflict):
@@ -52,7 +53,7 @@ def test_repository_roundtrip(tmp_path: Path) -> None:
         "fire",
     )
     assert second.asset.hda_note == "note 2"
-    assert second.history.comment == "" and second.history_id == 2
+    assert second.history.comment == "NODE (UPDATE)" and second.history_id == 2
     histories = repo.histories(1, owner="tester")
     assert [h.version for h in histories] == ["1.0", "1.1"] or len(histories) == 2
     assert repo.is_latest_history(1, 2) and not repo.is_latest_history(1, 1)
@@ -126,3 +127,32 @@ def test_missing_database_is_reported(tmp_path: Path) -> None:
     assert repo.search_asset_ids("a") == [] and repo.revision() == 0
     with pytest.raises(LibraryUnavailable):
         repo.set_note(1, "x")
+
+
+def test_history_comment_keeps_the_kind_and_appends_the_description(
+    tmp_path: Path,
+) -> None:
+    """A refactor swapped the INSERT/UPDATE marker for the optional description.
+
+    The description is empty unless the user ticks "Add a change description",
+    so every history row went blank and no longer said what it recorded.
+    """
+    from dataclasses import replace
+
+    database = tmp_path / "ihda.db"
+    with SQLite3DatabaseAPI(database):
+        pass
+    repo = SqliteLibraryRepository(database)
+    repo.ensure_user("tester")
+
+    added = repo.register_asset(payload(tmp_path, "Water"))
+    assert added.history.comment == "NODE (INSERT)"
+
+    updated = repo.add_version(
+        added.asset.hda_id,
+        replace(
+            payload(tmp_path, "Water", "1.1"),
+            description="reduced the substep count",
+        ),
+    )
+    assert updated.history.comment == "NODE (UPDATE) reduced the substep count"

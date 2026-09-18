@@ -50,6 +50,16 @@ from libs.sqlite3_db_api import SQLite3DatabaseAPI
 log = logging.getLogger(__name__)
 
 
+def _history_comment(kind: str, description: str) -> str:
+    """What happened, then the user's note about it.
+
+    The kind is intrinsic to the operation and the only thing that says whether a
+    row added a node or updated one; the description is optional and usually
+    empty. Recording only the description left every history row blank.
+    """
+    return f"NODE ({kind}) {description}".rstrip()
+
+
 class SqliteLibraryRepository:
     def __init__(
         self,
@@ -523,7 +533,9 @@ class SqliteLibraryRepository:
                             info_id=info_id, node_output_connect_lst=p.output_conn
                         ),
                     ]
-                    history = self._history_data(key_id, p.description, p, None, None)
+                    history = self._history_data(
+                        key_id, _history_comment("INSERT", p.description), p, None, None
+                    )
                     ok.append(db.insert_hda_history(data=history))
                     history_id = db.get_last_insert_id
                     if any(value is None for value in ok):
@@ -621,7 +633,11 @@ class SqliteLibraryRepository:
                     video_dirpath = before.video_dirpath
                     video_filename = before.video_filename
                     history = self._history_data(
-                        asset_id, p.description, p, video_filename, video_dirpath
+                        asset_id,
+                        _history_comment("UPDATE", p.description),
+                        p,
+                        video_filename,
+                        video_dirpath,
                     )
                     if db.insert_hda_history(data=history) is None:
                         raise sqlite3.DatabaseError("Could not write asset history")
