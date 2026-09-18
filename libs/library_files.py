@@ -46,6 +46,14 @@ def cleanup(
                         "DELETE FROM file_cleanup WHERE path=:stored",
                         {"stored": stored},
                     )
+                    for directory in _prune_empty_directories(path.parent, root):
+                        results.append(
+                            {
+                                "path": str(directory),
+                                "bytes": 0,
+                                "status": "removed directory",
+                            }
+                        )
                 except OSError as exception:
                     error = str(exception)
             if apply and error:
@@ -61,6 +69,28 @@ def cleanup(
                 }
             )
     return results
+
+
+def _prune_empty_directories(start: Path, root: Path) -> list[Path]:
+    """Remove ``start`` and its parents while they are empty, stopping at ``root``.
+
+    A purged asset leaves ``<asset>/thumbnail`` and ``<asset>/`` behind once its
+    files are gone; every writer recreates directories with parents=True, so an
+    empty user or category directory can go too. The root itself always stays.
+    """
+    removed: list[Path] = []
+    directory = start
+    while (
+        directory.resolve() != root
+        and directory.resolve().is_relative_to(root)
+        and directory.is_dir()
+        and not directory.is_symlink()
+        and not any(directory.iterdir())
+    ):
+        directory.rmdir()
+        removed.append(directory)
+        directory = directory.parent
+    return removed
 
 
 def main() -> None:

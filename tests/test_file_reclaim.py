@@ -52,6 +52,13 @@ def test_reclaim_previews_then_deletes_only_unreferenced_library_files(
     applied = gateway.reclaim(True)
     assert {row["path"] for row in applied if row["status"] == "removed"} == candidates
     assert not hda.exists() and not thumbnail.exists() and stray.exists()
+    # Empty directories go with the files, up to (not including) the asset root.
+    assert not hda.parent.exists() and not thumbnail.parent.exists()
+    assert not root.exists() and root.parent.exists()
+    assert {row["path"] for row in applied if row["status"] == "removed directory"} >= {
+        str(hda.parent),
+        str(thumbnail.parent),
+    }
     assert gateway.reclaim(False) == [
         {
             "path": str(stray),
