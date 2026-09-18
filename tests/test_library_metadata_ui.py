@@ -58,3 +58,52 @@ def test_metadata_and_trash_use_existing_local_data(app: Any, tmp_path: Path) ->
     assert repository.list_assets()
     trash.close()
     parent.close()
+
+
+def test_activity_lines_name_the_rename_and_the_video_change() -> None:
+    import json
+
+    from widgets.library_metadata.dialog import LibraryMetadataDialog
+
+    line = LibraryMetadataDialog._activity
+    team_rename = {
+        "operation": "rename",
+        "actor": "u1",
+        "actor_name": "Kim",
+        "occurred_at": "2026-09-17T05:57:11+00:00",
+        "changes": {"name": {"before": "fire_presets1", "after": "preset_tmp"}},
+    }
+    assert line(team_rename).endswith('· Kim · Renamed "fire_presets1" → "preset_tmp"')
+    personal_rename = {
+        "operation": "hda_key.update",
+        "actor": "tester",
+        "occurred_at": "2026-09-17T05:57:11.123Z",
+        "changes": json.dumps(
+            {
+                "before": {"name": "a", "category": "sop"},
+                "after": {"name": "b", "category": "sop"},
+            }
+        ),
+    }
+    assert line(personal_rename).endswith('· tester · Renamed "a" → "b"')
+    category_only = {
+        **personal_rename,
+        "changes": json.dumps(
+            {
+                "before": {"name": "a", "category": "sop"},
+                "after": {"name": "a", "category": "obj"},
+            }
+        ),
+    }
+    assert line(category_only).endswith("· Name or category changed")
+    assert line({**personal_rename, "operation": "video_info.insert"}).endswith(
+        "· Video attached"
+    )
+    team_video = {
+        "operation": "media",
+        "actor": "0b3e6d7e-1d0e-4b7a-9d7d-2d2a7f1b6c11",
+        "actor_name": None,
+        "occurred_at": "2026-09-17T05:57:11+00:00",
+        "changes": {"files": {"before": {"video": "v1"}, "after": {"video": "v2"}}},
+    }
+    assert line(team_video).endswith("· Former member · Video replaced")

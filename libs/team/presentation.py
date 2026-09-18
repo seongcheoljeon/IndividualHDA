@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from libs.asset_contracts import AssetData, HistoryData
+from libs.history_activity import local_time
 
 
 def display_time(value: str) -> str:
-    try:
-        return datetime.fromisoformat(value).strftime("%Y-%m-%d %H:%M:%S")
-    except (ValueError, TypeError):
-        return ""
+    # Local time, like the personal library, so mixed rows sort and filter alike.
+    return local_time(value)
 
 
 def asset_row(document: dict[str, Any], cache_root: Path) -> AssetData:

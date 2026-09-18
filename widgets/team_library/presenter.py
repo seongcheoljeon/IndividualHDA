@@ -26,6 +26,7 @@ class WorkspaceBackend(AssetCatalog, Protocol):
 
     def upload(self, path: Path) -> Blob: ...
     def download(self, blob: Blob) -> Path: ...
+    def events(self, asset_uuid: str) -> list[dict[str, Any]]: ...
 
 
 class WorkspaceView(Protocol):
@@ -34,7 +35,9 @@ class WorkspaceView(Protocol):
     def show_error(self, message: str) -> None: ...
     def show_status(self, message: str) -> None: ...
     def show_busy(self, busy: bool) -> None: ...
-    def show_history(self, items: list[dict[str, Any]]) -> None: ...
+    def show_history(
+        self, items: list[dict[str, Any]], events: list[dict[str, Any]]
+    ) -> None: ...
     def file_ready(self, path: Path, asset: dict[str, Any]) -> None: ...
 
 
@@ -310,17 +313,26 @@ class WorkspacePresenter:
 
     def history(self) -> bool:
         try:
-            asset_id = self._selection()["id"]
+            asset = self._selection()
         except TeamError as error:
             self._view.show_error(str(error))
             return False
+        asset_id, asset_uuid = asset["id"], asset.get("asset_uuid", "")
         generation = self._selection_generation
 
-        def ready(items: list[dict[str, Any]]) -> None:
-            if self._selected == asset_id and self._selection_generation == generation:
-                self._view.show_history(items)
+        def load() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+            items = self._backend.histories(asset_id)
+            try:
+                events = self._backend.events(asset_uuid) if asset_uuid else []
+            except TeamError:
+                events = []  # activity is decoration; never hide the versions
+            return items, events
 
-        return self._run(lambda: self._backend.histories(asset_id), ready)
+        def ready(result: tuple[list[dict[str, Any]], list[dict[str, Any]]]) -> None:
+            if self._selected == asset_id and self._selection_generation == generation:
+                self._view.show_history(*result)
+
+        return self._run(load, ready)
 
     def delete_history(self, asset_id: int, history_id: int) -> None:
         asset = self._assets.get(asset_id)

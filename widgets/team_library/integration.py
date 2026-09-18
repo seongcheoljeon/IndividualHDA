@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import partial
 from html import escape
@@ -12,7 +12,9 @@ from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from libs.asset_contracts import AssetIcon, LibrarySnapshot
+from libs.asset_contracts import AssetData, AssetIcon, HistoryData, LibrarySnapshot
+from libs.domain import ItemSelection
+from libs.history_activity import activity_rows, merge_history_rows
 from libs.host import IS_HOUDINI
 from libs.paths import Paths
 from libs.tags import normalize_tags
@@ -630,7 +632,9 @@ class MainLibraryIntegration(QtCore.QObject):
         # Mark as loaded only when the current response has actually arrived.
         self.presenter.history()
 
-    def show_history(self, items: list[dict[str, Any]]) -> None:
+    def show_history(
+        self, items: list[dict[str, Any]], events: Sequence[dict[str, Any]] = ()
+    ) -> None:
         assert self.catalog is not None
         self._history_owner = (
             items[0]["document"]["id"]
@@ -639,12 +643,47 @@ class MainLibraryIntegration(QtCore.QObject):
         )
         self._histories = {item["id"]: item for item in items}
         rows = [history_row(item, self.catalog.backend.cache.root) for item in items]
+        if self._history_owner is not None:
+            asset = self.bindings.selection.state.asset
+            rows = merge_history_rows(rows, self._activity_rows(events, asset, items))
         self.bindings.icons.make_pixmap_hist_thumbnail_data(rows)
         self._prepare_previews(
             [(item["id"], item["document"]) for item in items], history=True
         )
         self.bindings.models.history_model.reload(rows)
         self.bindings.label__hist_cnt.setText(str(len(rows)))
+
+    def _activity_rows(
+        self,
+        events: Sequence[dict[str, Any]],
+        asset: ItemSelection[AssetData],
+        items: list[dict[str, Any]],
+    ) -> list[HistoryData]:
+        """Server events as rows of the selected asset.
+
+        The server joins ``actor_name`` (None once a member left); the personal
+        fallback backend only has ``actor``.
+        """
+        library_id = items[0]["document"].get("project_id", "") if items else ""
+        return activity_rows(
+            (
+                {
+                    **event,
+                    "hda_id": self._history_owner,
+                    "org_hda_name": asset.name or "",
+                    "node_category": asset.cate or "",
+                    "actor": (
+                        event.get("actor_name")
+                        if "actor_name" in event
+                        else event.get("actor")
+                    )
+                    or "Former member",
+                }
+                for event in events
+            ),
+            remote=True,
+            library_id=library_id,
+        )
 
     def file_ready(self, path: Path, asset: dict[str, Any]) -> None:
         try:

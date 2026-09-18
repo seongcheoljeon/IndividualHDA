@@ -123,6 +123,8 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         assert writes and writes[-1] is not main_thread()
         from PySide6 import QtCore
 
+        from model.ihda_history_model import HistoryModel
+
         index = panel.models.list_proxy_model.index(0, 0)
         assert index.flags() & QtCore.Qt.ItemFlag.ItemIsDragEnabled
         assert not index.data(QtCore.Qt.ItemDataRole.FontRole).strikeOut()
@@ -131,6 +133,42 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         assert panel.models.history_model.rowCount() == 1
         history_index = panel.models.history_model.index(0, 0)
         assert not history_index.data(QtCore.Qt.ItemDataRole.FontRole).strikeOut()
+        # A rename on the server shows up as an activity row, not a version.
+        backend.execute(
+            Command(
+                "rename",
+                asset_id=remote_asset["id"],
+                expected_revision=backend.get_asset(remote_asset["id"])["revision"],
+                values={"name": "TeamWater2"},
+            )
+        )
+        team._history_owner = None
+        team.request_history()
+        wait_panel(app, panel)
+        rows = [
+            panel.models.history_model.index(row, 0).data(HistoryModel.data_role)
+            for row in range(panel.models.history_model.rowCount())
+        ]
+        assert [row.kind for row in rows] == ["version", "rename"]
+        assert rows[1].comment == "NAME (CHANGE) TeamWater → TeamWater2"
+        assert rows[1].remote and rows[1].hist_id == 0 and rows[1].userid
+        assert not (
+            panel.models.history_model.index(1, 0).flags()
+            & QtCore.Qt.ItemFlag.ItemIsDragEnabled
+        )
+        # Activity is decoration: when the events call fails the versions still load.
+        original_events = team.catalog.events
+        monkeypatch.setattr(
+            team.catalog,
+            "events",
+            lambda asset_uuid: (_ for _ in ()).throw(Unavailable("events down")),
+        )
+        team._history_owner = None
+        team.request_history()
+        wait_panel(app, panel)
+        assert team._history_owner == remote_asset["id"]
+        assert panel.models.history_model.rowCount() == 1
+        monkeypatch.setattr(team.catalog, "events", original_events)
         # A failed history request must not poison the loaded-owner cache.
         original_histories = team.catalog.histories
 
@@ -150,8 +188,8 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         team.refresh()
         panel.actionHistory.trigger()
         wait_panel(app, panel)
-        assert panel.models.history_model.rowCount() == 1
-        assert panel.selection.state.asset.name == "TeamWater"
+        assert panel.models.history_model.rowCount() == 2  # version + rename row
+        assert panel.selection.state.asset.name == "TeamWater2"
         panel.selection._slot_select_view(index=panel._ihda_view_idx)
 
         panel.comboBox__search_type.setCurrentText("Note")

@@ -94,7 +94,7 @@ def test_reload_rebuilds_all_selection_fields_and_preserves_historical_version()
 def test_team_history_discards_stale_response(tmp_path: Path, change: str) -> None:
     presenter, view, backend, executor, _ = workspace(tmp_path)
     shown: list[Any] = []
-    view.show_history = shown.append
+    view.show_history = lambda items, events=(): shown.append(items)
     backend.histories = lambda identifier: [{"document": {"id": identifier}}]
     assert presenter.history()
     if change == "close":
@@ -115,7 +115,7 @@ def test_team_history_discards_stale_response(tmp_path: Path, change: str) -> No
 def test_team_history_busy_and_failure_can_retry(tmp_path: Path) -> None:
     presenter, view, backend, executor, _ = workspace(tmp_path)
     shown: list[Any] = []
-    view.show_history = shown.append
+    view.show_history = lambda items, events=(): shown.append(items)
 
     def fail(identifier: int) -> Any:
         raise RuntimeError("offline")
