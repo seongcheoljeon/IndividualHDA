@@ -7,7 +7,10 @@
 
 | 화면 | UI 파일 | 먼저 볼 메서드 |
 | --- | --- | --- |
-| 메인 창·카테고리·상세·이력·메뉴 | `widgets/panel/layout.py` | `MainWindowLayout.build_ui()` |
+| 메인 창·상세·메뉴 | `widgets/panel/layout.py` | `MainWindowLayout.build_ui()` |
+| 카테고리 트리 | `widgets/panel/layout_category.py` | `build_category_panel()` |
+| 이력 페이지 | `widgets/panel/layout_history.py` | `build_history_search()`, `build_history_date_filter()`, `build_history_results()` |
+| 씬 레코드 / 인사이드 노드 | `widgets/panel/layout_scene_records.py`, `layout_inside_nodes.py` | `build_scene_records()`, `build_inside_nodes()` |
 | 검색·에셋 목록·확대·화면 전환 | `widgets/asset_browser/view.py` | `_build_toolbar()`, `_build_search_row()` |
 | 개인 / 팀 라이브러리 선택 | `widgets/asset_browser/view.py` | `_build_toolbar()`의 `comboBox__library_source` |
 | 팀 연결 / 구성원 설정 | `widgets/library_connection/dialog.py`, `members.py` | 각 설정 대화상자의 생성 메서드 |
@@ -22,7 +25,9 @@
 
 `build_ui()`에는 화면을 만드는 순서가 있습니다. 해당 `_build_*` 메서드에서
 위젯 생성, 이름, 텍스트, 크기, 배치가 함께 보이도록 구성했습니다.
-예를 들어 이력 날짜 검색은 `_build_history_date_filter()`에서 수정합니다.
+예를 들어 이력 날짜 검색은 `layout_history.py`의 `build_history_date_filter()`에서 수정합니다.
+큰 페이지는 자기 모듈의 `build_*(layout, window)` 함수에 있고, 위젯은 여전히
+`MainWindowLayout`의 속성으로 선언됩니다.
 
 ## 이름 규칙
 

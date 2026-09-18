@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
@@ -23,3 +24,8 @@ def size_policy(
     policy = QSizePolicy(horizontal, vertical)
     policy.setHeightForWidth(widget.sizePolicy().hasHeightForWidth())
     return policy
+
+
+def main_window_text(text: str) -> str:
+    """Translatable text in the main window's context."""
+    return QCoreApplication.translate("MainWindow__individualHDA", text)
