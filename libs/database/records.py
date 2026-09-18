@@ -66,30 +66,31 @@ class RecordsOperations(DatabaseSession):
                 "node_ver": node_ver,
             }
             try:
-                cursor = self._cursor.execute(query, query_params)
-                if version_uuid is not None:
-                    if not self._connect.execute(
-                        "SELECT 1 FROM version_identity v JOIN hda_history h ON h.id=v.history_id WHERE v.uuid=:version_uuid AND h.hda_key_id=:hda_key_id AND v.deleted_at IS NULL",
-                        {"version_uuid": version_uuid, "hda_key_id": hda_key_id},
-                    ).fetchone():
-                        raise ValueError("Scene version does not belong to this asset")
-                    self._connect.execute(
-                        """UPDATE hda_node_location_record SET library_uuid=(SELECT uuid FROM library_identity),asset_uuid=(SELECT uuid FROM asset_identity WHERE asset_id=:hda_key_id),version_uuid=:version_uuid,link_status='resolved'
-                        WHERE hda_key_id=:hda_key_id AND hip_filename=:hip_filename AND hip_dirpath=:hip_dirpath AND parent_node_path=:parent_node_path AND node_name=:node_name AND node_version=:node_ver""",
-                        {
-                            "hda_key_id": hda_key_id,
-                            "version_uuid": version_uuid,
-                            "hip_filename": hip_filename,
-                            "hip_dirpath": hip_dirpath.as_posix(),
-                            "parent_node_path": parent_node_path,
-                            "node_name": node_name,
-                            "node_ver": node_ver,
-                        },
-                    )
-                self._commit()
+                with self.transaction():
+                    cursor = self._cursor.execute(query, query_params)
+                    if version_uuid is not None:
+                        if not self._connect.execute(
+                            "SELECT 1 FROM version_identity v JOIN hda_history h ON h.id=v.history_id WHERE v.uuid=:version_uuid AND h.hda_key_id=:hda_key_id AND v.deleted_at IS NULL",
+                            {"version_uuid": version_uuid, "hda_key_id": hda_key_id},
+                        ).fetchone():
+                            raise ValueError(
+                                "Scene version does not belong to this asset"
+                            )
+                        self._connect.execute(
+                            """UPDATE hda_node_location_record SET library_uuid=(SELECT uuid FROM library_identity),asset_uuid=(SELECT uuid FROM asset_identity WHERE asset_id=:hda_key_id),version_uuid=:version_uuid,link_status='resolved'
+                            WHERE hda_key_id=:hda_key_id AND hip_filename=:hip_filename AND hip_dirpath=:hip_dirpath AND parent_node_path=:parent_node_path AND node_name=:node_name AND node_version=:node_ver""",
+                            {
+                                "hda_key_id": hda_key_id,
+                                "version_uuid": version_uuid,
+                                "hip_filename": hip_filename,
+                                "hip_dirpath": hip_dirpath.as_posix(),
+                                "parent_node_path": parent_node_path,
+                                "node_name": node_name,
+                                "node_ver": node_ver,
+                            },
+                        )
                 return cursor.rowcount
             except Exception as err:
-                self._rollback()
                 logging.error("*** hda_node_location_record (update) ***")
                 logging.error(err)
                 return None
@@ -102,48 +103,49 @@ class RecordsOperations(DatabaseSession):
                 (SELECT DATETIME('now', 'localtime')), (SELECT DATETIME('now', 'localtime')))"""
             query_params = {}
             try:
-                dat: dict[str, Any] = {
-                    "hda_key_id": hda_key_id,
-                    "hip_filename": hip_filename,
-                    "hip_dirpath": hip_dirpath.as_posix(),
-                    "hda_filename": hda_filename,
-                    "hda_dirpath": hda_dirpath.as_posix(),
-                    "parent_node_path": parent_node_path,
-                    "node_type": node_type,
-                    "node_cate": node_cate,
-                    "node_name": node_name,
-                    "node_ver": node_ver,
-                    "hou_version": hou_version,
-                    "hou_license": hou_license,
-                    "operating_sys": operating_sys,
-                    "sf": sf,
-                    "ef": ef,
-                    "fps": fps,
-                }
-                cursor = self._cursor.execute(query, dat)
-                if version_uuid is not None:
-                    if not self._connect.execute(
-                        "SELECT 1 FROM version_identity v JOIN hda_history h ON h.id=v.history_id WHERE v.uuid=:version_uuid AND h.hda_key_id=:hda_key_id AND v.deleted_at IS NULL",
-                        {"version_uuid": version_uuid, "hda_key_id": hda_key_id},
-                    ).fetchone():
-                        raise ValueError("Scene version does not belong to this asset")
-                    self._connect.execute(
-                        """UPDATE hda_node_location_record SET library_uuid=(SELECT uuid FROM library_identity),asset_uuid=(SELECT uuid FROM asset_identity WHERE asset_id=:hda_key_id),version_uuid=:version_uuid,link_status='resolved'
-                        WHERE hda_key_id=:hda_key_id AND hip_filename=:hip_filename AND hip_dirpath=:hip_dirpath AND parent_node_path=:parent_node_path AND node_name=:node_name AND node_version=:node_ver""",
-                        {
-                            "hda_key_id": hda_key_id,
-                            "version_uuid": version_uuid,
-                            "hip_filename": hip_filename,
-                            "hip_dirpath": hip_dirpath.as_posix(),
-                            "parent_node_path": parent_node_path,
-                            "node_name": node_name,
-                            "node_ver": node_ver,
-                        },
-                    )
-                self._commit()
+                with self.transaction():
+                    dat: dict[str, Any] = {
+                        "hda_key_id": hda_key_id,
+                        "hip_filename": hip_filename,
+                        "hip_dirpath": hip_dirpath.as_posix(),
+                        "hda_filename": hda_filename,
+                        "hda_dirpath": hda_dirpath.as_posix(),
+                        "parent_node_path": parent_node_path,
+                        "node_type": node_type,
+                        "node_cate": node_cate,
+                        "node_name": node_name,
+                        "node_ver": node_ver,
+                        "hou_version": hou_version,
+                        "hou_license": hou_license,
+                        "operating_sys": operating_sys,
+                        "sf": sf,
+                        "ef": ef,
+                        "fps": fps,
+                    }
+                    cursor = self._cursor.execute(query, dat)
+                    if version_uuid is not None:
+                        if not self._connect.execute(
+                            "SELECT 1 FROM version_identity v JOIN hda_history h ON h.id=v.history_id WHERE v.uuid=:version_uuid AND h.hda_key_id=:hda_key_id AND v.deleted_at IS NULL",
+                            {"version_uuid": version_uuid, "hda_key_id": hda_key_id},
+                        ).fetchone():
+                            raise ValueError(
+                                "Scene version does not belong to this asset"
+                            )
+                        self._connect.execute(
+                            """UPDATE hda_node_location_record SET library_uuid=(SELECT uuid FROM library_identity),asset_uuid=(SELECT uuid FROM asset_identity WHERE asset_id=:hda_key_id),version_uuid=:version_uuid,link_status='resolved'
+                            WHERE hda_key_id=:hda_key_id AND hip_filename=:hip_filename AND hip_dirpath=:hip_dirpath AND parent_node_path=:parent_node_path AND node_name=:node_name AND node_version=:node_ver""",
+                            {
+                                "hda_key_id": hda_key_id,
+                                "version_uuid": version_uuid,
+                                "hip_filename": hip_filename,
+                                "hip_dirpath": hip_dirpath.as_posix(),
+                                "parent_node_path": parent_node_path,
+                                "node_name": node_name,
+                                "node_ver": node_ver,
+                            },
+                        )
                 return cursor.rowcount
             except Exception as err:
-                self._rollback()
                 logging.error("*** hda_node_location_record (insert) ***")
                 logging.error(err)
                 return None

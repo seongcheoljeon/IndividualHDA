@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from libs.database.rows import LIVE_ASSET_IDS
 from libs.database.session import DatabaseSession
 
 
@@ -102,10 +103,10 @@ class CatalogOperations(DatabaseSession):
     def get_hda_category(self, user_id: str | None = None) -> list[str]:
         # Only categories with a live asset: a trashed asset keeps its hda_key row
         # until it is purged, so the cleanup trigger alone leaves the tree stale.
-        query = """
+        query = f"""
         SELECT c.category FROM hda_category c WHERE c.user_id = :user_id AND EXISTS (
-            SELECT 1 FROM hda_key k JOIN asset_identity a ON a.asset_id = k.id
-            WHERE k.user_id = c.user_id AND k.category = c.category AND a.deleted_at IS NULL)
+            SELECT 1 FROM hda_key k
+            WHERE k.user_id = c.user_id AND k.category = c.category AND k.id {LIVE_ASSET_IDS})
         ORDER BY c.category
         """
         query_params: dict[str, Any] = {"user_id": user_id}
@@ -121,10 +122,10 @@ class CatalogOperations(DatabaseSession):
     ) -> list[int] | None:
         filters = [("user_id", user_id), ("category", category), ("name", name)]
         selected = [(column, value) for column, value in filters if value is not None]
-        query = "SELECT id FROM hda_key"
+        query = f"SELECT id FROM hda_key WHERE id {LIVE_ASSET_IDS}"
         query_params = dict(selected)
         if selected:
-            query += " WHERE " + " AND ".join(
+            query += " AND " + " AND ".join(
                 column + " = :" + column for column, _ in selected
             )
         cursor = self._cursor.execute(query, query_params)
@@ -141,7 +142,7 @@ class CatalogOperations(DatabaseSession):
     ) -> int:
         filters = {"name": name, "category": category, "user_id": user_id}
         selected = [(key, value) for key, value in filters.items() if value is not None]
-        query = "SELECT COUNT(*) FROM hda_key"
+        query = f"SELECT COUNT(*) FROM hda_key WHERE id {LIVE_ASSET_IDS}"
         if selected:
-            query += " WHERE " + " AND ".join(key + " = :" + key for key, _ in selected)
+            query += " AND " + " AND ".join(key + " = :" + key for key, _ in selected)
         return self._cursor.execute(query, dict(selected)).fetchone()[0]

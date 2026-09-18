@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from libs.asset_contracts import AssetBeforeUpdate, AssetData, AssetIcon, AssetName
-from libs.database.rows import asset_data, named_query
+from libs.database.rows import LIVE_ASSET_IDS, asset_data, named_query
 from libs.database.session import DatabaseSession
 from libs.database.values import DatabaseValues, normalize_tags
 from libs.keys import Key, Type
@@ -297,27 +297,29 @@ class AssetsOperations(DatabaseSession):
                 "hda_key_id": hda_key_id,
             }
         try:
-            res_cnt = 0
-            cursor_hda_key = self._cursor.execute(query_hda_key, query_hda_key_params)
-            cursor_hda_info = self._cursor.execute(
-                query_hda_info, query_hda_info_params
-            )
-            cursor_hou_node_info = self._cursor.execute(
-                query_hou_node_info, query_hou_node_info_params
-            )
-            rows_thumb_info = 0
-            rows_video_info = 0
-            if query_thumb_info is not None:
-                cursor_thumb_info = self._cursor.execute(
-                    query_thumb_info, query_thumb_info_params
+            with self.transaction():
+                res_cnt = 0
+                cursor_hda_key = self._cursor.execute(
+                    query_hda_key, query_hda_key_params
                 )
-                rows_thumb_info = cursor_thumb_info.rowcount
-            if query_video_info is not None:
-                cursor_video_info = self._cursor.execute(
-                    query_video_info, query_video_info_params
+                cursor_hda_info = self._cursor.execute(
+                    query_hda_info, query_hda_info_params
                 )
-                rows_video_info = cursor_video_info.rowcount
-            self._commit()
+                cursor_hou_node_info = self._cursor.execute(
+                    query_hou_node_info, query_hou_node_info_params
+                )
+                rows_thumb_info = 0
+                rows_video_info = 0
+                if query_thumb_info is not None:
+                    cursor_thumb_info = self._cursor.execute(
+                        query_thumb_info, query_thumb_info_params
+                    )
+                    rows_thumb_info = cursor_thumb_info.rowcount
+                if query_video_info is not None:
+                    cursor_video_info = self._cursor.execute(
+                        query_video_info, query_video_info_params
+                    )
+                    rows_video_info = cursor_video_info.rowcount
             res_cnt += (
                 cursor_hda_key.rowcount
                 + cursor_hda_info.rowcount
@@ -326,7 +328,6 @@ class AssetsOperations(DatabaseSession):
             res_cnt += rows_thumb_info + rows_video_info
             return res_cnt
         except Exception as err:
-            self._rollback()
             logging.error("*** hda_name (update) ***")
             logging.error(err)
             return None
@@ -579,7 +580,7 @@ class AssetsOperations(DatabaseSession):
         user_id: str | None = None,
         with_id: bool = False,
     ) -> list[AssetName]:
-        query = "SELECT id AS asset_id, name FROM hda_key WHERE user_id=:user_id"
+        query = f"SELECT id AS asset_id, name FROM hda_key WHERE user_id=:user_id AND id {LIVE_ASSET_IDS}"
         parameters: dict[str, Any] = {"user_id": user_id}
         if category is not None:
             query += " AND category=:category"
@@ -590,11 +591,11 @@ class AssetsOperations(DatabaseSession):
         ]
 
     def get_all_hda_fileinfo(self, user_id: str | None = None) -> list[tuple[Any, ...]]:
-        query = """
+        query = f"""
         SELECT hinfo.hda_key_id, hinfo.dirpath, hinfo.filename, hkey.category FROM hda_info AS hinfo
         INNER JOIN hda_key AS hkey
         ON hinfo.hda_key_id = hkey.id
-        WHERE hkey.user_id = :user_id
+        WHERE hkey.user_id = :user_id AND hkey.id {LIVE_ASSET_IDS}
         """
         query_params: dict[str, Any] = {"user_id": user_id}
         cursor = self._cursor.execute(query, query_params)
@@ -654,18 +655,12 @@ class AssetsOperations(DatabaseSession):
         return dat
 
     def get_icon_info_by_user(self, user_id: str | None = None) -> list[AssetIcon]:
-        if user_id is None:
-            query = """
-            SELECT hkey.id, (SELECT icon FROM icon_info WHERE hda_key_id = hkey.id) AS icon
-            FROM hda_key AS hkey
-            """
-            query_params: dict[str, Any] = {}
-        else:
-            query = """
-            SELECT hkey.id, (SELECT icon FROM icon_info WHERE hda_key_id = hkey.id) AS icon
-            FROM hda_key AS hkey WHERE user_id = :user_id
-            """
-            query_params = {"user_id": user_id}
+        query = f"""
+        SELECT hkey.id, (SELECT icon FROM icon_info WHERE hda_key_id = hkey.id) AS icon
+        FROM hda_key AS hkey
+        WHERE (:user_id IS NULL OR hkey.user_id = :user_id) AND hkey.id {LIVE_ASSET_IDS}
+        """
+        query_params: dict[str, Any] = {"user_id": user_id}
         cursor = named_query(self._connect, query, query_params)
         fetch_dat = cursor.fetchall()
         return [
@@ -700,10 +695,10 @@ class AssetsOperations(DatabaseSession):
 
     def distinct_tags(self, user_id: str | None = None) -> list[str]:
         """Vocabulary for completion and AI prompts; reads the trigger-maintained index."""
-        query = """
+        query = f"""
         SELECT DISTINCT t.tag FROM asset_tags AS t
         JOIN hda_key AS k ON k.id = t.hda_key_id
-        WHERE (:user_id IS NULL OR k.user_id = :user_id)
+        WHERE (:user_id IS NULL OR k.user_id = :user_id) AND k.id {LIVE_ASSET_IDS}
         ORDER BY t.tag COLLATE NOCASE
         """
         cursor = self._cursor.execute(query, {"user_id": user_id})

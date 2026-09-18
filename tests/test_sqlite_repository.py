@@ -201,3 +201,34 @@ def test_activity_rows_come_from_audit_events_not_history(tmp_path: Path) -> Non
     assert [row.comment for row in repo.histories(1, "tester")] == ["NODE (INSERT)"]
     assert repo.history_counts().versions == 1
     assert repo.activity("someone-else") == []
+
+
+def test_trashed_assets_are_invisible_to_reads_but_keep_their_name(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "ihda.db"
+    with SQLite3DatabaseAPI(database):
+        pass
+    repo = SqliteLibraryRepository(database)
+    repo.ensure_user("tester")
+    asset = repo.register_asset(payload(tmp_path, "Water")).asset
+    repo.set_tags(asset.hda_id, ["fire"])
+    assert repo.distinct_tags() == ["fire"]
+    assert [row.asset_id for row in repo.asset_icons(owner="tester")] == [1]
+    assert len(repo.history_thumbnails(owner="tester")) == 1
+
+    repo.delete_asset(asset.hda_id, asset.hda_dirpath)
+
+    # Every read that lists assets or their parts forgets the trashed one...
+    assert repo.distinct_tags() == []
+    assert repo.asset_icons(owner="tester") == []
+    assert repo.history_thumbnails(owner="tester") == []
+    assert repo.asset_names(owner="tester") == []
+    assert repo.categories(owner="tester") == []
+    with SQLite3DatabaseAPI(database) as db:
+        assert db.get_hda_key_id(category="sop", name="Water", user_id="tester") is None
+        assert db.get_count_hda_key(user_id="tester") == 0
+    # ...but the name stays taken (UNIQUE survives until purge) and says why.
+    assert repo.has_asset("tester", "sop", "Water")
+    with pytest.raises(LibraryConflict, match="Trash"):
+        repo.register_asset(payload(tmp_path, "Water"))

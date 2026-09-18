@@ -486,16 +486,33 @@ class SqliteLibraryRepository:
             with suppress(OSError):  # only when nothing else lives there
                 directory.rmdir()
 
+    @staticmethod
+    def _name_conflict(db: SQLite3DatabaseAPI, p: RegistrationPayload) -> str:
+        """Why a name cannot be registered; live and trashed assets differ.
+
+        hda_key keeps UNIQUE(name, category, user_id) until a purge, so a name in
+        the Trash is taken as well -- the user needs to know which case this is.
+        """
+        live = db.get_hda_key_id(category=p.cate_name, name=p.node_name, user_id=p.user)
+        if live:
+            return f"{p.node_name} already exists in {p.cate_name}"
+        return (
+            f"{p.node_name} is in the Trash; restore or purge it before "
+            f"registering it again in {p.cate_name}"
+        )
+
     def _register_asset(self, payload: RegistrationPayload) -> RegistrationResult:
         p = payload
         thumb_filepath = p.thumb_dirpath / p.thumb_filename
         with self._session() as db:
-            if db.is_exist_hda_name(
-                user_id=p.user, category=p.cate_name, hda_name=p.node_name
-            ):
-                raise LibraryConflict(f"{p.node_name} already exists in {p.cate_name}")
             try:
                 with db.transaction():
+                    # Inside the transaction so no other writer can register the
+                    # same name between this check and the INSERT below.
+                    if db.is_exist_hda_name(
+                        user_id=p.user, category=p.cate_name, hda_name=p.node_name
+                    ):
+                        raise LibraryConflict(self._name_conflict(db, p))
                     if (
                         db.insert_hda_category(category=p.cate_name, user_id=p.user)
                         is None
@@ -697,20 +714,28 @@ class SqliteLibraryRepository:
         )
 
     def set_note(self, asset_id: int, note: str) -> None:
-        with self._session() as db:
-            if db.is_exist_note(hda_key_id=asset_id):
-                done = db.update_note_info(hda_key_id=asset_id, note=note)
-            else:
-                done = db.insert_note_info(hda_key_id=asset_id, note=note)
+        # Existence check and write in one transaction: without it, statements
+        # auto-commit and a concurrent writer can make the INSERT collide.
+        try:
+            with self._session() as db, db.transaction():
+                if db.is_exist_note(hda_key_id=asset_id):
+                    done = db.update_note_info(hda_key_id=asset_id, note=note)
+                else:
+                    done = db.insert_note_info(hda_key_id=asset_id, note=note)
+        except sqlite3.Error as error:  # e.g. the trigger refusing a trashed asset
+            raise LibraryError(f"note was not saved: {error}") from error
         if done != 1:
             raise LibraryError("note was not saved")
 
     def set_tags(self, asset_id: int, tags: Sequence[str]) -> None:
-        with self._session() as db:
-            if db.is_exist_tag(hda_key_id=asset_id):
-                done = db.update_tag_info(hda_key_id=asset_id, tag_lst=list(tags))
-            else:
-                done = db.insert_tag_info(hda_key_id=asset_id, tag_lst=list(tags))
+        try:
+            with self._session() as db, db.transaction():
+                if db.is_exist_tag(hda_key_id=asset_id):
+                    done = db.update_tag_info(hda_key_id=asset_id, tag_lst=list(tags))
+                else:
+                    done = db.insert_tag_info(hda_key_id=asset_id, tag_lst=list(tags))
+        except sqlite3.Error as error:
+            raise LibraryError(f"tags were not saved: {error}") from error
         if done != 1:
             raise LibraryError("tags were not saved")
 

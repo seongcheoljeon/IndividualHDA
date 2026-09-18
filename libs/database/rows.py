@@ -11,6 +11,15 @@ from libs.asset_contracts import AssetData, HistoryData
 from libs.record_codec import decode_record
 from libs.tags import normalize_tags
 
+# Soft deletes live in asset_identity / version_identity, not in the rows they
+# hide. Every read of hda_key or hda_history must apply one of these, e.g.
+# ``WHERE k.id {LIVE_ASSET_IDS}``; writing the subquery by hand is how trashed
+# assets kept leaking into tags, icons and the category tree.
+LIVE_ASSET_IDS = "IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL)"
+LIVE_HISTORY_IDS = (
+    "IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL)"
+)
+
 
 def named_query(
     connection: sqlite3.Connection,

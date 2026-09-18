@@ -8,7 +8,12 @@ from dataclasses import asdict
 from typing import Any
 
 from libs.asset_contracts import HistoryData, HistoryThumbnail, NoteHistory
-from libs.database.rows import history_record, named_query
+from libs.database.rows import (
+    LIVE_ASSET_IDS,
+    LIVE_HISTORY_IDS,
+    history_record,
+    named_query,
+)
 from libs.database.session import DatabaseSession
 from libs.database.values import DatabaseValues
 from libs.keys import Key
@@ -165,20 +170,19 @@ class HistoryOperations(DatabaseSession):
         # UPDATE hda_history SET comment = '{0}' WHERE id = {1}
         # '''.format('NAME (CHANGE)', most_recent_hist_id)
         try:
-            res_cnt = 0
-            dirpath_cursor = self._cursor.execute(
-                query_whole_dirpath, query_whole_dirpath_params
-            )
-            filename_cursor = self._cursor.execute(
-                query_filename_by_ver, query_filename_by_ver_params
-            )
-            # comment_cursor = self._cursor.execute(query_comment, query_comment_params)
-            self._commit()
+            with self.transaction():
+                res_cnt = 0
+                dirpath_cursor = self._cursor.execute(
+                    query_whole_dirpath, query_whole_dirpath_params
+                )
+                filename_cursor = self._cursor.execute(
+                    query_filename_by_ver, query_filename_by_ver_params
+                )
+                # comment_cursor = self._cursor.execute(query_comment, query_comment_params)
             # res_cnt += (dirpath_cursor.rowcount + filename_cursor.rowcount + comment_cursor.rowcount)
             res_cnt += dirpath_cursor.rowcount + filename_cursor.rowcount
             return res_cnt
         except Exception as err:
-            self._rollback()
             logging.error("*** hda_name_to_history (update) ***")
             logging.error(err)
             return None
@@ -370,11 +374,13 @@ class HistoryOperations(DatabaseSession):
     def get_thumbnail_by_hda_history(
         self, user_id: str | None = None
     ) -> list[HistoryThumbnail]:
-        query = """
+        query = f"""
         SELECT id AS hist_id,
             thumb_dirpath AS thumb_dirpath,
             thumb_filename AS thumb_filename
-        FROM hda_history WHERE userid = :user_id ORDER BY id
+        FROM hda_history
+        WHERE id {LIVE_HISTORY_IDS} AND hda_key_id {LIVE_ASSET_IDS} AND userid = :user_id
+        ORDER BY id
         """
         query_params: dict[str, Any] = {"user_id": user_id}
         cursor = named_query(self._connect, query, query_params)
