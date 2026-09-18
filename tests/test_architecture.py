@@ -267,3 +267,193 @@ def test_scene_ui_does_not_open_storage_connections() -> None:
             assert not (node.module or "").startswith(
                 ("libs.database", "libs.sqlite3_db_api")
             )
+
+
+# --- ratchets added by the SOLID/SQL audit -----------------------------------
+# Debt: raw reads of hda_key/hda_history without a live-row filter
+# (rows.LIVE_ASSET_IDS / LIVE_HISTORY_IDS or an explicit deleted_at test),
+# per module. Per-id lookups of a known-live asset are tolerated here; list
+# reads must filter. Target: only the per-id ones.
+SOFT_DELETE_UNFILTERED: dict[str, int] = {
+    "libs/database/assets.py": 5,
+    "libs/database/catalog.py": 3,
+    "libs/database/history.py": 12,
+    "libs/database/lifecycle.py": 3,
+    "libs/database/records.py": 2,
+    "libs/database/sqlite_repository.py": 1,
+}
+# Debt: features reaching into another feature's underscore members through
+# their bindings (self.bindings.x._y) or the team integration (self.library._y).
+# Target: empty, once the bindings are typed as ports.
+CROSS_FEATURE_PRIVATE: dict[str, int] = {
+    "widgets.panel.ai_actions": 3,
+    "widgets.panel.archive_actions": 2,
+    "widgets.panel.asset_management": 39,
+    "widgets.panel.asset_registration": 25,
+    "widgets.panel.context_menus": 32,
+    "widgets.panel.host_callbacks": 2,
+    "widgets.panel.houdini_actions": 18,
+    "widgets.panel.library_queries": 2,
+    "widgets.panel.library_sync": 7,
+    "widgets.panel.library_tools": 14,
+    "widgets.panel.media_actions": 9,
+    "widgets.panel.model_binding": 27,
+    "widgets.panel.notes": 4,
+    "widgets.panel.presentation": 3,
+    "widgets.panel.selection": 18,
+    "widgets.team_library.actions": 24,
+    "widgets.team_library.integration": 5,
+}
+# Debt: imports inside function bodies in libs/ and ihda_server/ (most hide an
+# import cycle). Target: only the ones that defer optional dependencies.
+LAZY_IMPORT_SITES: dict[str, int] = {
+    "libs.ai_provider": 1,
+    "libs.data_stream": 2,
+    "libs.database.assets": 3,
+    "libs.database.lifecycle": 1,
+    "libs.database.session": 1,
+    "libs.database.sqlite_repository": 5,
+    "libs.database.tracking": 3,
+    "libs.library_backups": 3,
+    "libs.library_management": 5,
+    "libs.operation_journal": 1,
+    "libs.qt_helpers": 1,
+    "libs.registration_recovery": 7,
+    "libs.settings_store": 1,
+    "libs.sqlite3_db_api": 3,
+    "libs.team.client": 1,
+    "libs.team.contracts": 2,
+    "libs.team.copy_contract": 1,
+    "libs.team.copy_destination": 2,
+    "libs.team.copy_source": 1,
+    "libs.team.panel_catalog": 1,
+    "libs.team.pending": 3,
+    "libs.team.personal": 1,
+    "libs.team.registration_recovery": 3,
+    "libs.version_compare": 2,
+    "ihda_server.backup_cli": 4,
+    "ihda_server.backup_files": 1,
+    "ihda_server.backup_postgres": 2,
+    "ihda_server.catalog": 8,
+    "ihda_server.cli": 6,
+    "ihda_server.database": 2,
+    "ihda_server.lifecycle": 3,
+    "ihda_server.migrations": 2,
+    "ihda_server.storage_lock": 2,
+    "ihda_server.tracking": 4,
+}
+# Debt: LibraryRepository size and its methods without a production caller.
+REPOSITORY_METHODS = 48
+DEAD_REPOSITORY_METHODS = {
+    "add_history_row",
+    "delete_note_history",
+    "has_note_history",
+    "is_latest_version",
+}
+# Debt: personal features branching on the team integration being active.
+TEAM_ACTIVE_BRANCHES = 21
+
+
+def _sql_reads_without_live_filter(tree: ast.AST) -> int:
+    def raw(sql: str, formatted: list[str]) -> bool:
+        return bool(
+            re.search(r"\bSELECT\b", sql)
+            and re.search(r"\b(FROM|JOIN)\s+hda_(key|history)\b", sql)
+            and "deleted_at" not in sql
+            and not any(name.startswith("LIVE_") for name in formatted)
+        )
+
+    count = 0
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            count += raw(node.value, [])
+        elif isinstance(node, ast.JoinedStr):
+            text = "".join(v.value for v in node.values if isinstance(v, ast.Constant))
+            names = [
+                getattr(v.value, "id", "")
+                for v in node.values
+                if isinstance(v, ast.FormattedValue)
+            ]
+            count += raw(text, names)
+    return count
+
+
+def test_soft_delete_filter_sites_only_shrink() -> None:
+    now = {}
+    for path in sorted((ROOT / "libs" / "database").glob("*.py")):
+        count = _sql_reads_without_live_filter(
+            ast.parse(path.read_text(encoding="utf-8"))
+        )
+        if count:
+            now[path.relative_to(ROOT).as_posix()] = count
+    assert now == SOFT_DELETE_UNFILTERED, (
+        "reads of hda_key/hda_history must apply rows.LIVE_ASSET_IDS / "
+        f"LIVE_HISTORY_IDS (or update the constant when debt is paid): {now}"
+    )
+
+
+def test_cross_feature_private_access_only_shrinks() -> None:
+    now = {}
+    for folder in ("widgets/panel", "widgets/team_library"):
+        for path in sorted((ROOT / folder).glob("*.py")):
+            source = path.read_text(encoding="utf-8")
+            count = len(re.findall(r"self\.bindings\.\w+(?:\(\))?\._\w+", source))
+            count += len(re.findall(r"self\.library\._\w+", source))
+            if count:
+                now[".".join(path.with_suffix("").relative_to(ROOT).parts)] = count
+    assert now == CROSS_FEATURE_PRIVATE, (
+        f"expose the member on a port instead of reaching for _name: {now}"
+    )
+
+
+def test_lazy_import_sites_only_shrink() -> None:
+    now = {}
+    for module, tree in MODULES.items():
+        if not module.startswith(("libs.", "ihda_server.")):
+            continue
+        count = 0
+        for function in ast.walk(tree):
+            if isinstance(function, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                count += sum(
+                    isinstance(node, (ast.Import, ast.ImportFrom))
+                    for node in ast.walk(function)
+                )
+        if count:
+            now[module] = count
+    assert now == LAZY_IMPORT_SITES, (
+        f"a function-level import usually hides a cycle; break it instead: {now}"
+    )
+
+
+def test_repository_protocol_only_shrinks_and_is_used() -> None:
+    protocol = next(
+        node
+        for node in MODULES["libs.repository"].body
+        if isinstance(node, ast.ClassDef) and node.name == "LibraryRepository"
+    )
+    methods = {node.name for node in protocol.body if isinstance(node, ast.FunctionDef)}
+    assert len(methods) == REPOSITORY_METHODS, (
+        f"LibraryRepository has {len(methods)} methods; split roles, do not grow it"
+    )
+    used = set()
+    for module, tree in MODULES.items():
+        if module in {"libs.repository", "libs.database.sqlite_repository"}:
+            continue
+        used.update(
+            node.attr for node in ast.walk(tree) if isinstance(node, ast.Attribute)
+        )
+    dead = methods - used
+    assert dead == DEAD_REPOSITORY_METHODS, (
+        f"repository methods without a production caller changed: {sorted(dead)}"
+    )
+
+
+def test_team_active_branches_only_shrink() -> None:
+    now = sum(
+        len(re.findall(r"team(?:\(\))?\.active", path.read_text(encoding="utf-8")))
+        for path in (ROOT / "widgets" / "panel").glob("*.py")
+    )
+    assert now == TEAM_ACTIVE_BRANCHES, (
+        "personal features should depend on a library port, not on team.active "
+        f"(now {now})"
+    )
