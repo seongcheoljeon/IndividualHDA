@@ -325,13 +325,8 @@ LAZY_IMPORT_SITES: dict[str, int] = {
     "ihda_server.tracking": 4,
 }
 # Debt: LibraryRepository size and its methods without a production caller.
-REPOSITORY_METHODS = 48
-DEAD_REPOSITORY_METHODS = {
-    "add_history_row",
-    "delete_note_history",
-    "has_note_history",
-    "is_latest_version",
-}
+REPOSITORY_METHODS = 44
+DEAD_REPOSITORY_METHODS: set[str] = set()
 # Debt: personal features branching on the team integration being active.
 TEAM_ACTIVE_BRANCHES = 21
 
@@ -408,12 +403,23 @@ def test_lazy_import_sites_only_shrink() -> None:
 
 
 def test_repository_protocol_only_shrinks_and_is_used() -> None:
-    protocol = next(
-        node
+    classes = {
+        node.name: node
         for node in MODULES["libs.repository"].body
-        if isinstance(node, ast.ClassDef) and node.name == "LibraryRepository"
-    )
-    methods = {node.name for node in protocol.body if isinstance(node, ast.FunctionDef)}
+        if isinstance(node, ast.ClassDef)
+    }
+    protocol = classes["LibraryRepository"]
+    roles = [protocol] + [
+        classes[ast.unparse(base)]
+        for base in protocol.bases
+        if ast.unparse(base) in classes
+    ]
+    methods = {
+        node.name
+        for role in roles
+        for node in role.body
+        if isinstance(node, ast.FunctionDef)
+    }
     assert len(methods) == REPOSITORY_METHODS, (
         f"LibraryRepository has {len(methods)} methods; split roles, do not grow it"
     )

@@ -9,7 +9,7 @@ from typing import Any, Protocol, cast
 from libs.database.lifecycle import PersonalLifecycle, inspect_files
 from libs.database.rows import named_query
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
-from libs.team.contracts import Command, Operation, TeamError
+from libs.team.contracts import Command, ManagementCatalog, Operation, TeamError
 from libs.team.limits import DEFAULT_AUDIT_EVENT_LIMIT
 from libs.team.pending import PendingCommand
 
@@ -192,7 +192,9 @@ class LocalManagement:
 
 
 class RemoteManagement:
-    def __init__(self, catalog: Any, pending: PendingCommand | None = None) -> None:
+    def __init__(
+        self, catalog: ManagementCatalog, pending: PendingCommand | None = None
+    ) -> None:
         self.catalog = catalog
         self.pending = pending
 

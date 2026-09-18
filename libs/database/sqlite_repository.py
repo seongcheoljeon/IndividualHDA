@@ -194,12 +194,6 @@ class SqliteLibraryRepository:
                 db.is_most_recent_ihda_history(hda_key_id=asset_id, hist_id=history_id)
             )
 
-    def is_latest_version(self, asset_id: int, version: str) -> bool:
-        with self._session() as db:
-            return bool(
-                db.is_ihda_lastest_version(hda_key_id=asset_id, version=version)
-            )
-
     # --- lookups the panel used to make on the facade directly -----------
     def has_asset(self, owner: str, category: str, name: str) -> bool:
         with self._session() as db:
@@ -239,10 +233,6 @@ class SqliteLibraryRepository:
     def has_history(self, asset_id: int) -> bool:
         with self._session() as db:
             return bool(db.is_exist_hda_history(hda_key_id=asset_id))
-
-    def has_note_history(self, asset_id: int) -> bool:
-        with self._session() as db:
-            return bool(db.is_exist_hda_note_history(hda_key_id=asset_id))
 
     def note_history(self, asset_id: int) -> list[NoteHistory]:
         with self._session() as db:
@@ -354,11 +344,6 @@ class SqliteLibraryRepository:
         if history_id is None:
             raise LibraryError("history row has no id")
         return int(history_id)
-
-    def delete_note_history(self, asset_id: int | None = None) -> None:
-        with self._session() as db:
-            if db.delete_hda_note_history(hda_key_id=asset_id) is None:
-                raise LibraryError("note history was not deleted")
 
     def scene_record_files(self, user: str) -> list[SceneRecordFiles]:
         with self._session() as db:

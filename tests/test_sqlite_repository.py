@@ -57,7 +57,9 @@ def test_repository_roundtrip(tmp_path: Path) -> None:
     histories = repo.histories(1, owner="tester")
     assert [h.version for h in histories] == ["1.0", "1.1"] or len(histories) == 2
     assert repo.is_latest_history(1, 2) and not repo.is_latest_history(1, 1)
-    assert repo.is_latest_version(1, "1.1") and not repo.is_latest_version(1, "1.0")
+    with SQLite3DatabaseAPI(database) as db:
+        assert db.is_ihda_lastest_version(hda_key_id=1, version="1.1")
+        assert not db.is_ihda_lastest_version(hda_key_id=1, version="1.0")
     assert repo.history_videos(1) == []
     assert repo.video_matches_version(1, "1.1") is False
 
@@ -73,7 +75,7 @@ def test_repository_roundtrip(tmp_path: Path) -> None:
         AssetName(asset_id=1, name="Water")
     ]
     assert repo.asset_filepath(1) == tmp_path / "sop" / "Water" / "Water.hda"
-    assert repo.has_history(1) and repo.has_note_history(1)
+    assert repo.has_history(1)
     assert len(repo.note_history(1)) == 2
     assert repo.history_counts() == HistoryCounts(versions=2, notes=2)
     assert repo.latest_video(1, "1.1") is None
@@ -107,8 +109,9 @@ def test_repository_roundtrip(tmp_path: Path) -> None:
     )
     assert repo.add_history_row(history_row) == 3
     assert repo.record_detail(1) is None
-    repo.delete_note_history(1)
-    assert not repo.has_note_history(1)
+    with SQLite3DatabaseAPI(database) as db:
+        db.delete_hda_note_history(1)
+    assert repo.note_history(1) == []
 
     with pytest.raises(LibraryConflict):
         repo.delete_history(1, 2, [])

@@ -138,7 +138,7 @@ class MainAssetActions:
 
         if self.library.busy:
             return
-        gateway = RemoteManagement(self.library.catalog)
+        gateway = RemoteManagement(self.library.require_catalog())
 
         def ready(rows: list[dict[str, Any]]) -> None:
             def confirm() -> None:
