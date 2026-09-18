@@ -240,6 +240,8 @@ def test_named_boundaries_do_not_regress_to_row_lists_or_whole_windows() -> None
     for filename in (
         "libs/database/assets.py",
         "libs/database/history.py",
+        "libs/database/media.py",
+        "libs/database/metadata.py",
         "libs/database/nodes.py",
         "libs/database/records.py",
     ):
@@ -275,10 +277,11 @@ def test_scene_ui_does_not_open_storage_connections() -> None:
 # per module. Per-id lookups of a known-live asset are tolerated here; list
 # reads must filter. Target: only the per-id ones.
 SOFT_DELETE_UNFILTERED: dict[str, int] = {
-    "libs/database/assets.py": 5,
+    "libs/database/assets.py": 3,
     "libs/database/catalog.py": 3,
     "libs/database/history.py": 12,
     "libs/database/lifecycle.py": 3,
+    "libs/database/metadata.py": 2,
     "libs/database/records.py": 2,
     "libs/database/sqlite_repository.py": 1,
 }

@@ -3,6 +3,8 @@
 from libs.database.assets import AssetsOperations
 from libs.database.catalog import CatalogOperations
 from libs.database.history import HistoryOperations
+from libs.database.media import MediaOperations
+from libs.database.metadata import MetadataOperations
 from libs.database.nodes import NodesOperations
 from libs.database.records import RecordsOperations
 from libs.database.session import DatabaseSession
@@ -15,6 +17,8 @@ class SQLite3DatabaseAPI(
     NodesOperations,
     CatalogOperations,
     AssetsOperations,
+    MetadataOperations,
+    MediaOperations,
     DatabaseValues,
     DatabaseSession,
 ):
