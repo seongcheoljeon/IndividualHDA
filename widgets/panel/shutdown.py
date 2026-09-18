@@ -82,11 +82,11 @@ class PanelShutdown:
             window._archives.commit_import()
             self._save_settings()
             if IS_HOUDINI:
-                window.presentation._loading_close()
-                window.presentation._dragdrop_overlay_close()
-                if window.queries._hda_base_dirpath is not None:
+                window.presentation.loading_close()
+                window.presentation.dragdrop_overlay_close()
+                if window.queries.hda_base_dirpath is not None:
                     houdini_api.HoudiniAPI.clean_hda_library(
-                        window.queries._hda_base_dirpath
+                        window.queries.hda_base_dirpath
                     )
                 else:
                     directory = window._preference.get_data_dirpath_from_saved()

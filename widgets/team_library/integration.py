@@ -39,10 +39,9 @@ if TYPE_CHECKING:
     from widgets.asset_details.integration import AssetDetailsIntegration
     from widgets.panel.library_sync import PanelLibrarySync
     from widgets.panel.library_tools import PanelLibraryTools
-    from widgets.panel.model_binding import PanelModelBinding
     from widgets.panel.notes import PanelNotes
     from widgets.panel.policy import PanelPolicy
-    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.ports import AssetModelPort, PresentationPort
     from widgets.panel.selection import PanelSelection
     from widgets.panel.state import PanelSessionState, PanelStatus, PanelViews
     from widgets.video_player import UnavailableVideoPlayer
@@ -62,9 +61,9 @@ class TeamBindings:
     icons: IHDAIcons
     sync: PanelLibrarySync
     video_player: VideoPlayer | UnavailableVideoPlayer
-    models: PanelModelBinding
+    models: AssetModelPort
     notes: PanelNotes
-    presentation: PanelPresentation
+    presentation: PresentationPort
     selection: PanelSelection
     session: PanelSessionState
     status: PanelStatus
@@ -352,7 +351,7 @@ class MainLibraryIntegration(QtCore.QObject):
             self.refresh()
         elif self._history_pending:
             self._history_pending = False
-            if self.bindings.presentation._is_ihda_history_view:
+            if self.bindings.presentation.is_ihda_history_view:
                 self.request_history()
 
     def show_page(self, page: Page) -> None:
@@ -362,7 +361,7 @@ class MainLibraryIntegration(QtCore.QObject):
         self._documents = {item["id"]: item for item in page.items}
         self._histories.clear()
         self._history_owner = None
-        self._history_pending = self.bindings.presentation._is_ihda_history_view
+        self._history_pending = self.bindings.presentation.is_ihda_history_view
         rows = [asset_row(item, self.catalog.cache_root) for item in page.items]
         categories = sorted({item.hda_cate for item in rows})
         icons = tuple(AssetIcon(asset_id=row.hda_id, icon=row.hda_icon) for row in rows)

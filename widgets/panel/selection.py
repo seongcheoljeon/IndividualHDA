@@ -31,10 +31,8 @@ from widgets.ui_tokens import ASSET_COMBO_ICON_SIZE
 if TYPE_CHECKING:
     from libs.ihda_icons import IHDAIcons
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.library_queries import PanelLibraryQueries
-    from widgets.panel.model_binding import PanelModelBinding
     from widgets.panel.notes import PanelNotes
-    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, PresentationPort
     from widgets.panel.state import PanelSessionState, PanelViews
     from widgets.preference.preference import Preference
     from widgets.team_library.integration import MainLibraryIntegration
@@ -45,11 +43,11 @@ if TYPE_CHECKING:
 @dataclass(frozen=True, slots=True)
 class PanelSelectionBindings:
     icons: IHDAIcons
-    models: PanelModelBinding
+    models: AssetModelPort
     notes: PanelNotes
     preference: Preference
-    presentation: PanelPresentation
-    queries: PanelLibraryQueries
+    presentation: PresentationPort
+    queries: LibraryQueryPort
     session: PanelSessionState
     team: Callable[[], MainLibraryIntegration]
     ui: MainWindowLayout
@@ -213,7 +211,7 @@ class PanelSelection:
     def _slot_set_view_mode(self) -> None:
         layout = (
             self.bindings.ui.verticalLayout__listview
-            if self.bindings.presentation._is_icon_mode
+            if self.bindings.presentation.is_icon_mode
             else self.bindings.ui.verticalLayout__tableview
         )
         page = layout.parentWidget()
@@ -222,13 +220,13 @@ class PanelSelection:
 
     @QtCore.Slot(bool)
     def _slot_checkbox_hda_cate_casesensitive(self, idx: bool) -> None:
-        self.bindings.models._search_filter_regexp_hda_cate(
+        self.bindings.models.search_filter_regexp_hda_cate(
             self.bindings.ui.lineEdit__search_cate.text().strip()
         )
 
     @QtCore.Slot(bool)
     def _slot_checkbox_hist_hda_item_casesensitive(self, idx: bool) -> None:
-        self.bindings.models._search_filter_regexp_hist_hda_item(
+        self.bindings.models.search_filter_regexp_hist_hda_item(
             self.bindings.ui.lineEdit__search_hda_hist.text().strip()
         )
 
@@ -289,7 +287,7 @@ class PanelSelection:
         root_idx = self.bindings.models.category_proxy_model.index(
             0, 0, QtCore.QModelIndex()
         )
-        find_idx = self.bindings.queries._find_tree_element_model(
+        find_idx = self.bindings.queries.find_tree_element_model(
             index=root_idx, find_name=category or ""
         )
         if find_idx is None:
@@ -299,7 +297,7 @@ class PanelSelection:
     def _select_model_item_by_hda_id(self, hda_id: int | None = None) -> None:
         model_hda: QtCore.QAbstractProxyModel
         view_hda: QtWidgets.QAbstractItemView
-        if self.bindings.presentation._is_ihda_history_view:
+        if self.bindings.presentation.is_ihda_history_view:
             # history가 존재하지 않으면
             if not self.bindings.models.history_model.is_exist_ihda_item_from_model(
                 hkey_id=hda_id
@@ -307,13 +305,13 @@ class PanelSelection:
                 return
             self._select_hist_ihda_combobox_item(hkey_id=hda_id)
         else:
-            if self.bindings.presentation._is_icon_mode:
+            if self.bindings.presentation.is_icon_mode:
                 model_hda = self.bindings.models.list_proxy_model
                 view_hda = self.bindings.views.assets_list
             else:
                 model_hda = self.bindings.models.table_proxy_model
                 view_hda = self.bindings.views.assets_table
-            find_idx = self.bindings.queries._find_hda_id_by_model_item(
+            find_idx = self.bindings.queries.find_hda_id_by_model_item(
                 model_hda=model_hda, find_hda_id=hda_id
             )
             if find_idx is None:
@@ -356,12 +354,12 @@ class PanelSelection:
     def _refresh_current_attribs(self) -> None:
         view = (
             self.bindings.views.assets_list
-            if self.bindings.presentation._is_icon_mode
+            if self.bindings.presentation.is_icon_mode
             else self.bindings.views.assets_table
         )
         roles = (
             ihda_list_model.ListModel
-            if self.bindings.presentation._is_icon_mode
+            if self.bindings.presentation.is_icon_mode
             else ihda_table_model.TableModel
         )
         index = view.currentIndex()
@@ -436,7 +434,7 @@ class PanelSelection:
         )
 
     def _slot_thumbnails(self) -> None:
-        if self.bindings.presentation._is_show_thumbnail:
+        if self.bindings.presentation.is_show_thumbnail:
             thumb_icon = "ic_photo_white.png"
             self.bindings.models.list_model.show_thumbnail = True
             self.bindings.models.table_model.show_thumbnail = True
@@ -453,7 +451,7 @@ class PanelSelection:
         self.bindings.ui.pushButton__thumbnail.setIcon(
             QtGui.QIcon(QtGui.QPixmap(f":/main/icons/{thumb_icon}"))
         )
-        self.bindings.presentation._set_view_item_icon_size(
+        self.bindings.presentation.set_view_item_icon_size(
             self.bindings.ui.doubleSpinBox__zoom.value()
         )
 
@@ -552,7 +550,7 @@ class PanelSelection:
         if index is None or not index.isValid():
             return
         # self._selected_ihda_item(index=index)
-        if self.bindings.presentation._is_ihda_history_view:
+        if self.bindings.presentation.is_ihda_history_view:
             video_dirpath = self.state.history.require_data().video_dirpath
             ihda_ver = self.state.history.require_data().version
             hist_id = self.state.history.require_data().hist_id
@@ -592,7 +590,7 @@ class PanelSelection:
     def _selected_ihda_item(self, index: QtCore.QModelIndex | None = None) -> None:
         if index is None or not index.isValid():
             return
-        if self.bindings.presentation._is_ihda_history_view:
+        if self.bindings.presentation.is_ihda_history_view:
             roles: (
                 type[ihda_history_model.HistoryModel]
                 | type[ihda_list_model.ListModel]
@@ -606,7 +604,7 @@ class PanelSelection:
         else:
             roles = (
                 ihda_list_model.ListModel
-                if self.bindings.presentation._is_icon_mode
+                if self.bindings.presentation.is_icon_mode
                 else ihda_table_model.TableModel
             )
             self.presenter.select_asset(
@@ -644,7 +642,7 @@ class PanelSelection:
                 model_idx
             )
             item_text = str(index_item.data()).strip()
-            par_lst = self.bindings.queries._get_all_category_parent_by_selected_item(
+            par_lst = self.bindings.queries.get_all_category_parent_by_selected_item(
                 index_item
             )
             self.state.select_category(model_idx.column(), item_text, par_lst)
@@ -657,7 +655,7 @@ class PanelSelection:
                 str(self.bindings.models.list_proxy_model.rowCount())
             )
             self.bindings.ui.label__cate_count.setText(
-                str(self.bindings.models._get_category_count())
+                str(self.bindings.models.get_category_count())
             )
         except AttributeError:
             # log_handler.LogHandler.log_msg(method=logging.warning, msg='search results do not exist')

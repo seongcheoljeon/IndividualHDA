@@ -20,17 +20,16 @@ from widgets.ui_tokens import COMPACT_MARGIN, TAG_TEXT_COLOR
 
 if TYPE_CHECKING:
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.model_binding import PanelModelBinding
-    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.ports import AssetModelPort, PresentationPort
     from widgets.panel.selection import PanelSelection
     from widgets.panel.state import PanelSessionState
 
 
 @dataclass(frozen=True, slots=True)
 class PanelNotesBindings:
-    models: PanelModelBinding
+    models: AssetModelPort
     parent: QtWidgets.QWidget
-    presentation: PanelPresentation
+    presentation: PresentationPort
     selection: PanelSelection
     session: PanelSessionState
     ui: MainWindowLayout
@@ -86,7 +85,7 @@ class PanelNotes:
         plain_textedit = QtWidgets.QPlainTextEdit(dialog)
         note_syntax.NoteHighLighter(plain_textedit)
         plain_textedit.setReadOnly(True)
-        font_size, font_style = self.bindings.presentation._get_font_properties(
+        font_size, font_style = self.bindings.presentation.get_font_properties(
             keys.Name.PreferenceUI.spb_note_font_size,
             keys.Name.PreferenceUI.cmb_note_font_style,
         )
@@ -122,14 +121,14 @@ class PanelNotes:
             str(self.bindings.models.list_proxy_model.rowCount())
         )
         self.bindings.ui.label__cate_count.setText(
-            str(self.bindings.models._get_category_count())
+            str(self.bindings.models.get_category_count())
         )
         self.bindings.session.actions.select(None, None)
 
     def _detail_view_ihda_data(self, data: Any = None) -> None:
         detailview = detail_view.DetailView(parent=self.bindings.parent)
         detailview.show_detail_ihda_data(
-            data=data, is_histview=self.bindings.presentation._is_ihda_history_view
+            data=data, is_histview=self.bindings.presentation.is_ihda_history_view
         )
 
     def _detail_view_record_data(self, record_data: Any = None) -> None:
@@ -190,7 +189,7 @@ class PanelNotes:
             )
             return
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.bindings.presentation._get_default_font())
+        msgbox.setFont(self.bindings.presentation.get_default_font())
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setWindowTitle(f"Save iHDA {choice}s")
         msgbox.setText(

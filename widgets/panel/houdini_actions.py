@@ -23,6 +23,8 @@ from libs.scene_contracts import SceneRecord, SceneRecordInput
 if TYPE_CHECKING:
     import hou
 
+    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, PresentationPort
+
 
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -32,9 +34,6 @@ if TYPE_CHECKING:
     from widgets.panel.asset_management import PanelAssetManagement
     from widgets.panel.host_callbacks import PanelHostCallbacks
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.library_queries import PanelLibraryQueries
-    from widgets.panel.model_binding import PanelModelBinding
-    from widgets.panel.presentation import PanelPresentation
     from widgets.panel.scene_usage import SceneUsageIntegration
     from widgets.panel.selection import PanelSelection
     from widgets.panel.services import PanelServices
@@ -52,10 +51,10 @@ class ImportedNode:
 class PanelHoudiniActionsBindings:
     callbacks: PanelHostCallbacks
     management: PanelAssetManagement
-    models: PanelModelBinding
+    models: AssetModelPort
     parent: QtWidgets.QWidget
-    presentation: PanelPresentation
-    queries: PanelLibraryQueries
+    presentation: PresentationPort
+    queries: LibraryQueryPort
     scene_usage: Callable[[], SceneUsageIntegration]
     selection: PanelSelection
     services: PanelServices
@@ -80,30 +79,30 @@ class PanelHoudiniActions:
             log_handler.LogHandler.log_msg(
                 method=logging.warning, msg="please drag from houdini"
             )
-            self.bindings.presentation._dragdrop_overlay_close()
+            self.bindings.presentation.dragdrop_overlay_close()
             return
         drop_action, model_data_lst = drop_data
         assert isinstance(model_data_lst, list)
         if drop_action != QtCore.Qt.DropAction.IgnoreAction:
-            self.bindings.presentation._dragdrop_overlay_close()
+            self.bindings.presentation.dragdrop_overlay_close()
             return
         network_editor = houdini_api.HoudiniAPI.find_network_editor_by_cursor()
         if network_editor is None:
             log_handler.LogHandler.log_msg(
                 method=logging.error, msg="houdini network not found"
             )
-            self.bindings.presentation._dragdrop_overlay_close()
+            self.bindings.presentation.dragdrop_overlay_close()
             return
         total_node_cnt = len(model_data_lst)
         if not total_node_cnt:
             log_handler.LogHandler.log_msg(
                 method=logging.error, msg="imported iHDA data is empty"
             )
-            self.bindings.presentation._dragdrop_overlay_close()
+            self.bindings.presentation.dragdrop_overlay_close()
             return
         if total_node_cnt > self.bindings.services.policy.maximum_node_batch:
             msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation._get_default_font())
+            msgbox.setFont(self.bindings.presentation.get_default_font())
             msgbox.setWindowTitle("Import iHDA Node")
             msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setText("Too many nodes to import")
@@ -119,7 +118,7 @@ class PanelHoudiniActions:
             return
         if total_node_cnt > self.bindings.services.policy.warn_node_batch:
             msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation._get_default_font())
+            msgbox.setFont(self.bindings.presentation.get_default_font())
             msgbox.setWindowTitle("Import iHDA Node")
             msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setText(
@@ -142,7 +141,7 @@ class PanelHoudiniActions:
                 log_handler.LogHandler.log_msg(
                     method=logging.info, msg="importing iHDA nodes was canceled"
                 )
-                self.bindings.presentation._dragdrop_overlay_close()
+                self.bindings.presentation.dragdrop_overlay_close()
                 return
         # 기존에 선택된 노드가 존재한다면 모두 선택 해제
         old_selected_nodes = houdini_api.HoudiniAPI.get_selected_nodes()
@@ -227,7 +226,7 @@ class PanelHoudiniActions:
                         hda_id, hda_ver, self.bindings.session.user
                     )
                     hda_note = repository.import_note(hda_id, hda_ver)
-                    item_row = self.bindings.queries._get_ihda_data_by_id(
+                    item_row = self.bindings.queries.get_ihda_data_by_id(
                         hda_id=hda_id, key=keys.Key.item_row
                     )
             if not repository.asset_available(
@@ -254,7 +253,7 @@ class PanelHoudiniActions:
             else:
                 self.bindings.selection.state.select_asset(
                     (
-                        self.bindings.queries._get_ihda_data_by_id(hda_id=hda_id)
+                        self.bindings.queries.get_ihda_data_by_id(hda_id=hda_id)
                         if isinstance(model_data, SceneRecord)
                         else model_data
                     ),
@@ -271,7 +270,7 @@ class PanelHoudiniActions:
                     msg=f'[{node_cnt + 1}/{total_node_cnt}] houdini license and "{hda_name} (v{hda_ver})" iHDA license are different',
                 )
                 msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-                msgbox.setFont(self.bindings.presentation._get_default_font())
+                msgbox.setFont(self.bindings.presentation.get_default_font())
                 msgbox.setWindowTitle("Import iHDA Node")
                 msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
                 msgbox.setText(
@@ -385,7 +384,7 @@ class PanelHoudiniActions:
                 last_hda_record_id = repository.record_scene_usage(usage)
             except LibraryError:
                 logging.exception("Imported node, but scene usage could not be saved")
-                self.bindings.presentation._dragdrop_overlay_close()
+                self.bindings.presentation.dragdrop_overlay_close()
                 return
             val_datetime = datetime.today().strftime(keys.Value.datetime_fmt_str)
             record_data = decode_record(
@@ -418,10 +417,10 @@ class PanelHoudiniActions:
                 msg=f'[{node_cnt + 1}/{total_node_cnt}] imported "{hda_name} (v{hda_ver})" iHDA node',
             )
             num_count += 1
-        self.bindings.presentation._dragdrop_overlay_close()
+        self.bindings.presentation.dragdrop_overlay_close()
 
     def _insert_hda_node_loc_record(self, record_data: SceneRecord) -> None:
-        self.bindings.models._add_record_item(data=record_data)
+        self.bindings.models.add_record_item(data=record_data)
 
     @staticmethod
     def _hda_note_to_sticky_note(
@@ -492,7 +491,7 @@ class PanelHoudiniActions:
             log_handler.LogHandler.log_msg(method=logging.error, msg="")
             return None
         # 임포트하려는 노드이름이 현재 네트워크에 존재한다면
-        self.bindings.presentation._change_org_node_name(
+        self.bindings.presentation.change_org_node_name(
             parent_node=parent_node, node_name=hda_name
         )
         node = self.bindings.services.host_scene.import_individual_hda_into_houdini(
@@ -507,7 +506,7 @@ class PanelHoudiniActions:
         if not isinstance(data, HistoryData):
             row = self.bindings.models.assets.id_rows.get(hda_id)
             if row is not None:
-                self.bindings.queries._change_hda_data(
+                self.bindings.queries.change_hda_data(
                     row=row,
                     key=keys.Key.hda_load_count,
                     val=self.bindings.models.assets.rows[row].hda_load_count + 1,

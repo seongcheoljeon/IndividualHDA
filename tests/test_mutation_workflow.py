@@ -254,8 +254,8 @@ def test_rename_overlay_closes_on_exception() -> None:
                 is_valid_ihda_name=True, final_ihda_name="Stream"
             ),
             presentation=SimpleNamespace(
-                _dragdrop_overlay_show=lambda **kwargs: events.append("show"),
-                _dragdrop_overlay_close=lambda: events.append("close"),
+                dragdrop_overlay_show=lambda **kwargs: events.append("show"),
+                dragdrop_overlay_close=lambda: events.append("close"),
             ),
         ),
         _change_ihda_name=fail,

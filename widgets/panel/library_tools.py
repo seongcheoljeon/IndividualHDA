@@ -18,8 +18,7 @@ if TYPE_CHECKING:
     from widgets.library_metadata.dialog import LibraryMetadataDialog
     from widgets.library_metadata.recovery import RegistrationRecoveryDialog
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.library_queries import PanelLibraryQueries
-    from widgets.panel.model_binding import PanelModelBinding
+    from widgets.panel.ports import AssetModelPort, LibraryQueryPort
     from widgets.panel.scene_usage import SceneUsageIntegration
     from widgets.panel.selection import PanelSelection
     from widgets.panel.services import PanelServices
@@ -30,9 +29,9 @@ if TYPE_CHECKING:
 @dataclass(frozen=True, slots=True)
 class PanelLibraryToolsBindings:
     imported: Callable[[], bool]
-    models: PanelModelBinding
+    models: AssetModelPort
     parent: QtWidgets.QWidget
-    queries: PanelLibraryQueries
+    queries: LibraryQueryPort
     reload_library: Callable[[], None]
     scene_usage: Callable[[], SceneUsageIntegration]
     selection: PanelSelection
@@ -135,11 +134,11 @@ class PanelLibraryTools:
             )
         else:
             if (
-                self.bindings.queries._db_filepath is None
-                or not self.bindings.queries._db_filepath.is_file()
+                self.bindings.queries.db_filepath is None
+                or not self.bindings.queries.db_filepath.is_file()
             ):
                 return
-            recovery = RegistrationRecovery(self.bindings.queries._db_filepath)
+            recovery = RegistrationRecovery(self.bindings.queries.db_filepath)
 
         def loaded(rows: list[dict[str, Any]]) -> None:
             count = sum(row["phase"] not in {"committed", "discarded"} for row in rows)
@@ -175,9 +174,9 @@ class PanelLibraryTools:
 
             recovery = team_recovery
         else:
-            if self.bindings.queries._db_filepath is None:
+            if self.bindings.queries.db_filepath is None:
                 return
-            local_recovery = RegistrationRecovery(self.bindings.queries._db_filepath)
+            local_recovery = RegistrationRecovery(self.bindings.queries.db_filepath)
             writer = self.bindings.services.lifecycle(
                 self.bindings.session.require_repository(), self.bindings.services.names
             )
@@ -212,7 +211,7 @@ class PanelLibraryTools:
         if (
             self.bindings.team().active
             or asset_id is None
-            or self.bindings.queries._db_filepath is None
+            or self.bindings.queries.db_filepath is None
         ):
             QtWidgets.QMessageBox.information(
                 self.bindings.parent,
@@ -221,7 +220,7 @@ class PanelLibraryTools:
             )
             return
         dialog = CopyAssetDialog(
-            PersonalCopySource(self.bindings.queries._db_filepath, asset_id),
+            PersonalCopySource(self.bindings.queries.db_filepath, asset_id),
             Paths.config_dirpath / "workspace",
             self.bindings.parent,
             runtime=self.bindings.services.runtime,
@@ -258,11 +257,11 @@ class PanelLibraryTools:
             writable, owner = team.writable, team.project.get("role") == "owner"
         else:
             if (
-                self.bindings.queries._db_filepath is None
-                or not self.bindings.queries._db_filepath.is_file()
+                self.bindings.queries.db_filepath is None
+                or not self.bindings.queries.db_filepath.is_file()
             ):
                 return
-            gateway = LocalManagement(self.bindings.queries._db_filepath)
+            gateway = LocalManagement(self.bindings.queries.db_filepath)
             writable = owner = True
         dialog = LibraryMetadataDialog(
             gateway,
@@ -297,8 +296,8 @@ class PanelLibraryTools:
         if self.bindings.tasks.busy or self.bindings.imported():
             return
         database, assets = (
-            self.bindings.queries._db_filepath,
-            self.bindings.queries._hda_base_dirpath,
+            self.bindings.queries.db_filepath,
+            self.bindings.queries.hda_base_dirpath,
         )
         if database is None or assets is None or not database.is_file():
             QtWidgets.QMessageBox.information(
@@ -345,7 +344,7 @@ class PanelLibraryTools:
             (self.bindings.models.list_proxy_model, self.bindings.views.assets_list),
             (self.bindings.models.table_proxy_model, self.bindings.views.assets_table),
         ):
-            index = self.bindings.queries._find_hda_id_by_model_item(model, asset_id)
+            index = self.bindings.queries.find_hda_id_by_model_item(model, asset_id)
             if index is not None and index.isValid():
                 view.setCurrentIndex(index)
                 view.scrollTo(index)

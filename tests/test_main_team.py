@@ -103,7 +103,7 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         assert team.active, panel.label__metadata_status.text()
         assert panel.views.assets_list is original_view
         assert panel.models.assets.rows[0].hda_name == "TeamWater"
-        assert panel.session.repository is None and panel.queries._db_filepath is None
+        assert panel.session.repository is None and panel.queries.db_filepath is None
         assert panel._browser.view.comboBox__library_source.currentText() == "Studio"
         panel.views.assets_list.setCurrentIndex(
             panel.models.list_proxy_model.index(0, 0)

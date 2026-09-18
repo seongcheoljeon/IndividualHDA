@@ -25,8 +25,8 @@ if TYPE_CHECKING:
     from libs.task_controller import TaskController
     from widgets.asset_details.integration import AssetDetailsIntegration
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.model_binding import PanelModelBinding
     from widgets.panel.notes import PanelNotes
+    from widgets.panel.ports import AssetModelPort
     from widgets.panel.selection import PanelSelection
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState, PanelStatus, PanelViews
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 class PanelLibrarySyncBindings:
     details: AssetDetailsIntegration
     icons: IHDAIcons
-    models: PanelModelBinding
+    models: AssetModelPort
     notes: PanelNotes
     parent: QtWidgets.QWidget
     selection: PanelSelection
@@ -244,12 +244,12 @@ class PanelLibrarySync:
         del selection_blockers
         self.bindings.notes._set_hda_info_to_parms()
         self.bindings.notes._set_hda_hist_info_to_parms()
-        self.bindings.models._refresh_asset_search()
+        self.bindings.models.refresh_asset_search()
         self.bindings.ui.label__hda_count.setText(
             str(self.bindings.models.list_proxy_model.rowCount())
         )
         self.bindings.ui.label__cate_count.setText(
-            str(self.bindings.models._get_category_count())
+            str(self.bindings.models.get_category_count())
         )
         self.bindings.ui.label__hist_cnt.setText(
             str(self.bindings.models.history_proxy_model.rowCount())

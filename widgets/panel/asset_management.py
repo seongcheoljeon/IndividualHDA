@@ -15,6 +15,7 @@ from libs.scene_record_cleanup import RecordCleanupResult, SceneRecordCleanup
 
 if TYPE_CHECKING:
     from libs.sqlite3_db_api import SQLite3DatabaseAPI
+    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, PresentationPort
     from widgets.video_player import UnavailableVideoPlayer
     from widgets.video_player.video_player import VideoPlayer
 import logging
@@ -35,11 +36,8 @@ if TYPE_CHECKING:
     from libs.ihda_icons import IHDAIcons
     from widgets.asset_details.integration import AssetDetailsIntegration
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.library_queries import PanelLibraryQueries
     from widgets.panel.library_tools import PanelLibraryTools
-    from widgets.panel.model_binding import PanelModelBinding
     from widgets.panel.notes import PanelNotes
-    from widgets.panel.presentation import PanelPresentation
     from widgets.panel.selection import PanelSelection
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState, PanelViews
@@ -51,11 +49,11 @@ if TYPE_CHECKING:
 class PanelAssetManagementBindings:
     details: AssetDetailsIntegration
     icons: IHDAIcons
-    models: PanelModelBinding
+    models: AssetModelPort
     notes: PanelNotes
     parent: QtWidgets.QWidget
-    presentation: PanelPresentation
-    queries: PanelLibraryQueries
+    presentation: PresentationPort
+    queries: LibraryQueryPort
     reload_library: Callable[[], None]
     rename_dialog: RenameIHDA
     selection: PanelSelection
@@ -94,7 +92,7 @@ class PanelAssetManagement:
 
     def _slot_cleanup_hda_record(self) -> None:
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.bindings.presentation._get_default_font())
+        msgbox.setFont(self.bindings.presentation.get_default_font())
         msgbox.setWindowTitle("Cleanup iHDA Record")
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setText(
@@ -138,8 +136,8 @@ class PanelAssetManagement:
                 f"Records were deleted, but the view could not be updated: {error}"
             )
             try:
-                data = self.bindings.queries._get_hda_loc_record_data(
-                    self.bindings.queries._db_filepath
+                data = self.bindings.queries.get_hda_loc_record_data(
+                    self.bindings.queries.db_filepath
                 )
                 if data is None:
                     raise RuntimeError("Scene records could not be reloaded")
@@ -181,7 +179,7 @@ class PanelAssetManagement:
             str(self.bindings.models.list_proxy_model.rowCount())
         )
         self.bindings.ui.label__cate_count.setText(
-            str(self.bindings.models._get_category_count())
+            str(self.bindings.models.get_category_count())
         )
         if is_favorite_nodes:
             favorite_icon = "ic_favorite_white.png"
@@ -210,12 +208,12 @@ class PanelAssetManagement:
         if not self.bindings.rename_dialog.is_valid_ihda_name:
             return
         new_name = self.bindings.rename_dialog.final_ihda_name
-        self.bindings.presentation._dragdrop_overlay_show(text="Change iHDA Node Name")
+        self.bindings.presentation.dragdrop_overlay_show(text="Change iHDA Node Name")
         try:
             if self._change_ihda_name(new_hda_name=new_name):
                 self.bindings.rename_dialog.close()
         finally:
-            self.bindings.presentation._dragdrop_overlay_close()
+            self.bindings.presentation.dragdrop_overlay_close()
 
     def _change_ihda_name(self, new_hda_name: str | None = None) -> bool:
         data = (
@@ -287,35 +285,35 @@ class PanelAssetManagement:
         )
         if bool(is_update_hda_name):
             val_datetime = datetime.today().strftime(keys.Value.datetime_fmt_str)
-            self.bindings.queries._change_hda_data(
+            self.bindings.queries.change_hda_data(
                 row=row, key=keys.Key.hda_name, val=new_hda_name
             )
-            self.bindings.queries._change_hda_data(
+            self.bindings.queries.change_hda_data(
                 row=row, key=keys.Key.hda_filename, val=new_hda_filename
             )
-            self.bindings.queries._change_hda_data(
+            self.bindings.queries.change_hda_data(
                 row=row, key=keys.Key.hda_dirpath, val=new_hda_dirpath
             )
-            self.bindings.queries._change_hda_data(
+            self.bindings.queries.change_hda_data(
                 row=row, key=keys.Key.node_old_path, val=new_node_old_path
             )
-            self.bindings.queries._change_hda_data(
+            self.bindings.queries.change_hda_data(
                 row=row, key=keys.Key.hda_mtime, val=val_datetime
             )
             if new_thumbnail_dirpath is not None:
-                self.bindings.queries._change_hda_data(
+                self.bindings.queries.change_hda_data(
                     row=row, key=keys.Key.thumbnail_dirpath, val=new_thumbnail_dirpath
                 )
-                self.bindings.queries._change_hda_data(
+                self.bindings.queries.change_hda_data(
                     row=row,
                     key=keys.Key.thumbnail_filename,
                     val=new_thumbnail_filename,
                 )
             if new_video_dirpath is not None:
-                self.bindings.queries._change_hda_data(
+                self.bindings.queries.change_hda_data(
                     row=row, key=keys.Key.video_dirpath, val=new_video_dirpath
                 )
-                self.bindings.queries._change_hda_data(
+                self.bindings.queries.change_hda_data(
                     row=row, key=keys.Key.video_filename, val=new_video_filename
                 )
             if new_thumbnail_dirpath is not None and new_thumbnail_filename:
@@ -327,7 +325,7 @@ class PanelAssetManagement:
                 row,
                 self.bindings.selection.state.asset.field,
             )
-            self.bindings.models._refresh_asset_search()
+            self.bindings.models.refresh_asset_search()
             # record 데이터 갱신 함수 호출. 이 함수만 하면 data는 바뀌지만 뷰에서는 바뀌지 않늗 문제가 있다.
             self.bindings.models.record_model.rename_record_item(
                 hda_id=hda_id,
@@ -383,7 +381,7 @@ class PanelAssetManagement:
         counts = self.bindings.session.require_repository().history_counts()
         cnt_hda_hist, cnt_hda_note_hist = counts.versions, counts.notes
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.bindings.presentation._get_default_font())
+        msgbox.setFont(self.bindings.presentation.get_default_font())
         msgbox.setWindowTitle("Delete all iHDA history")
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setText(
@@ -448,7 +446,7 @@ iHDA note history: {cnt_hda_note_hist}
             key = keys.Key.is_favorite_hda
             val = self.bindings.selection.state.asset.require_data().is_favorite_hda ^ 1
             hda_name = self.bindings.selection.state.asset.name
-            self.bindings.queries._change_hda_data(row=row, key=key, val=val)
+            self.bindings.queries.change_hda_data(row=row, key=key, val=val)
             if val:
                 log_handler.LogHandler.log_msg(
                     method=logging.info,
@@ -471,7 +469,7 @@ iHDA note history: {cnt_hda_note_hist}
         identities = self.bindings.models.record_model.selected_record_ids(index)
         record_data_name = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.bindings.presentation._get_default_font())
+        msgbox.setFont(self.bindings.presentation.get_default_font())
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setWindowTitle("Remove iHDA Record Information")
         msgbox.setText(
@@ -501,7 +499,7 @@ iHDA note history: {cnt_hda_note_hist}
             )
             return
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.bindings.presentation._get_default_font())
+        msgbox.setFont(self.bindings.presentation.get_default_font())
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
         msgbox.setWindowTitle("Remove iHDA History Node")
         msgbox.setText(
@@ -537,7 +535,7 @@ iHDA note history: {cnt_hda_note_hist}
         self.bindings.video_player.player_stop()
         role = (
             ihda_list_model.ListModel.data_role
-            if self.bindings.presentation._is_icon_mode
+            if self.bindings.presentation.is_icon_mode
             else ihda_table_model.TableModel.data_role
         )
         selected = {
@@ -611,7 +609,7 @@ iHDA note history: {cnt_hda_note_hist}
     ) -> None:
         self.bindings.details.presenter.forget(hda_id)
         self._delete_video_playlist(video_filepath_list=video_paths)
-        self.bindings.models._remove_hda_data(
+        self.bindings.models.remove_hda_data(
             item_row=self.bindings.models.assets.id_rows.get(hda_id)
         )
         histories = (
@@ -621,12 +619,12 @@ iHDA note history: {cnt_hda_note_hist}
         )
         for history in sorted(histories, key=lambda item: item.item_row, reverse=True):
             self.bindings.models.history_model.remove_item(row=history.item_row)
-            self.bindings.models._remove_pixmap_hist_thumbnail(hist_id=history.hist_id)
+            self.bindings.models.remove_pixmap_hist_thumbnail(hist_id=history.hist_id)
         self._delete_hist_combobox_ihda_item(hkey_id=hda_id)
         self.bindings.models.record_model.remove_record_item_by_hda_id(hda_id=hda_id)
-        self.bindings.models._remove_pixmap_ihda(hkey_id=hda_id)
-        self.bindings.models._remove_pixmap_thumbnail(hkey_id=hda_id)
-        self.bindings.models._remove_category_item(
+        self.bindings.models.remove_pixmap_ihda(hkey_id=hda_id)
+        self.bindings.models.remove_pixmap_thumbnail(hkey_id=hda_id)
+        self.bindings.models.remove_category_item(
             category=category,
             category_list=self.bindings.session.require_repository().categories(
                 owner=self.bindings.session.user
@@ -652,12 +650,12 @@ iHDA note history: {cnt_hda_note_hist}
             )
         self._restore_history_selection_data()
         self.bindings.notes._clear_hist_parms()
-        self.bindings.models._refresh_asset_search()
+        self.bindings.models.refresh_asset_search()
         self.bindings.ui.label__hda_count.setText(
             str(self.bindings.models.list_proxy_model.rowCount())
         )
         self.bindings.ui.label__cate_count.setText(
-            str(self.bindings.models._get_category_count())
+            str(self.bindings.models.get_category_count())
         )
         self.bindings.ui.label__loc_record_count.setText(
             str(self.bindings.models.record_proxy_model.get_row_count())
@@ -710,7 +708,7 @@ iHDA note history: {cnt_hda_note_hist}
                 self.bindings.models.history_model.remove_item(row=row)
                 break
         self._delete_hist_combobox_ihda_item(hkey_id=hda_id)
-        self.bindings.models._remove_pixmap_hist_thumbnail(hist_id=hist_id)
+        self.bindings.models.remove_pixmap_hist_thumbnail(hist_id=hist_id)
         if self.bindings.selection.state.history.hist_id == hist_id:
             self.bindings.selection._initialize_hist_current_attribs()
             self.bindings.notes._set_hda_hist_info_to_parms()

@@ -74,8 +74,7 @@ if TYPE_CHECKING:
     from widgets.make_video_info.make_video_info import MakeVideoInfo
     from widgets.panel.host_callbacks import PanelHostCallbacks
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.library_queries import PanelLibraryQueries
-    from widgets.panel.model_binding import PanelModelBinding
+    from widgets.panel.ports import AssetModelPort, LibraryQueryPort
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState, PanelStatus, PanelViews
     from widgets.preference.preference import Preference
@@ -91,10 +90,10 @@ class PanelPresentationBindings:
     details: AssetDetailsIntegration
     drag_overlay: DragOverlay
     loading: Overlay
-    models: PanelModelBinding
+    models: AssetModelPort
     parent: QtWidgets.QWidget
     preference: Preference
-    queries: PanelLibraryQueries
+    queries: LibraryQueryPort
     rename_dialog: RenameIHDA
     services: PanelServices
     session: PanelSessionState
@@ -111,7 +110,7 @@ class PanelPresentation:
     bindings: PanelPresentationBindings
 
     @staticmethod
-    def _get_default_font(font_size: int | None = None) -> QtGui.QFont:
+    def get_default_font(font_size: int | None = None) -> QtGui.QFont:
         font = QtGui.QFont()
         font.setFamily(keys.UISetting.dft_font_style)
         if font_size is None:
@@ -128,7 +127,7 @@ class PanelPresentation:
         font.setPointSize(font_size)
         textedit.setFont(font)
 
-    def _get_font_properties(self, size_key: Any, style_key: Any) -> list[Any]:
+    def get_font_properties(self, size_key: Any, style_key: Any) -> list[Any]:
         font_size = keys.UISetting.view_font_size
         if host.IS_HOUDINI:
             font_size = houdini_api.HoudiniAPI.scaled_size(int(font_size))
@@ -139,14 +138,14 @@ class PanelPresentation:
             font_style = properties_data.get(style_key, font_style)
         return [font_size, font_style]
 
-    def _get_padding_properties(self, dft_pad: Any, pad_key: Any) -> int:
+    def get_padding_properties(self, dft_pad: Any, pad_key: Any) -> int:
         padding = dft_pad
         properties_data = self.bindings.preference.get_properties_data()
         if properties_data is not None and pad_key in properties_data:
             padding = properties_data.get(pad_key)
         return int(padding)
 
-    def _get_treeview_properties(self) -> int:
+    def get_treeview_properties(self) -> int:
         icon_size = keys.UISetting.treeview_node_icon_size
         properties_data = self.bindings.preference.get_properties_data()
         if properties_data is not None:
@@ -158,7 +157,7 @@ class PanelPresentation:
                     icon_size = houdini_api.HoudiniAPI.scaled_size(int(icon_size))
         return icon_size
 
-    def _get_listview_properties(self, zoom_val: float) -> list[Any]:
+    def get_listview_properties(self, zoom_val: float) -> list[Any]:
         size_ratio = self._get_ratio_icon_size(zoom_val)
         icon_size = keys.UISetting.listview_node_icon_size * size_ratio
         thumb_scale = keys.UISetting.listview_thumbnail_scale
@@ -177,7 +176,7 @@ class PanelPresentation:
         thumb_size = icon_size * thumb_scale
         return [icon_size, thumb_size]
 
-    def _get_tableview_properties(self, zoom_val: float) -> list[Any]:
+    def get_tableview_properties(self, zoom_val: float) -> list[Any]:
         size_ratio = self._get_ratio_icon_size(zoom_val)
         icon_size = keys.UISetting.tableview_node_icon_size * size_ratio
         thumb_scale = keys.UISetting.tableview_thumbnail_scale
@@ -214,7 +213,7 @@ class PanelPresentation:
         self.bindings.ui.label__logged_id.setHidden(True)
         self.bindings.ui.label__logged_id_pixmap.setHidden(True)
 
-    def _dragdrop_overlay_show(
+    def dragdrop_overlay_show(
         self, text: str | None = None, fontsize: int | None = None
     ) -> None:
         self.bindings.drag_overlay.text = text
@@ -222,15 +221,15 @@ class PanelPresentation:
             self.bindings.drag_overlay.fontsize = 30
         self.bindings.drag_overlay.show()
 
-    def _dragdrop_overlay_close(self) -> None:
+    def dragdrop_overlay_close(self) -> None:
         self.bindings.drag_overlay.close()
 
-    def _loading_show(self) -> None:
+    def loading_show(self) -> None:
         if host.IS_HOUDINI:
             self.bindings.callbacks._add_event_loop_callback(self._loading_counter)
         self.bindings.loading.show()
 
-    def _loading_close(self) -> None:
+    def loading_close(self) -> None:
         if host.IS_HOUDINI:
             self.bindings.callbacks._remove_event_loop_callback(self._loading_counter)
         self.bindings.loading.close()
@@ -252,15 +251,15 @@ class PanelPresentation:
             if i != inst:
                 i.setChecked(False)
 
-    def _resizing_listview(self) -> None:
+    def resizing_listview(self) -> None:
         self.bindings.views.assets_list.setResizeMode(
             QtWidgets.QListView.ResizeMode.Adjust
         )
         self.bindings.views.assets_list.setSpacing(3)
 
-    def _open_houdini_file(self, hip_filepath: pathlib.Path | None = None) -> None:
+    def open_houdini_file(self, hip_filepath: pathlib.Path | None = None) -> None:
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self._get_default_font())
+        msgbox.setFont(self.get_default_font())
         msgbox.setWindowTitle("Open Houdini File")
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setText("""
@@ -297,7 +296,7 @@ class PanelPresentation:
         if self.bindings.session.context is not None:
             self.bindings.session.context.asset_root.mkdir(parents=True, exist_ok=True)
             # DB 파일이 존재하지 않는다면 생성
-            db_filepath = self.bindings.queries._db_filepath
+            db_filepath = self.bindings.queries.db_filepath
             assert isinstance(db_filepath, pathlib.Path)
             if not db_filepath.exists():
                 db_api = self.bindings.services.open_database(db_filepath)
@@ -312,13 +311,13 @@ class PanelPresentation:
                     )
                     return
                 msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-                msgbox.setFont(self._get_default_font())
+                msgbox.setFont(self.get_default_font())
                 msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
                 msgbox.setWindowTitle("Individual iHDA")
                 msgbox.setText("Please restart the app.")
                 _ = msgbox.exec()
         # app properties
-        font_size, font_style = self._get_font_properties(
+        font_size, font_style = self.get_font_properties(
             keys.Name.PreferenceUI.spb_view_font_size,
             keys.Name.PreferenceUI.cmb_view_font_style,
         )
@@ -328,27 +327,27 @@ class PanelPresentation:
         self.bindings.models.category_model.set_font(style=font_style, size=font_size)
         self.bindings.models.record_model.set_font(style=font_style, size=font_size)
         self.bindings.models.inside_model.set_font(style=font_style, size=font_size)
-        treeview_icon_size = self._get_treeview_properties()
+        treeview_icon_size = self.get_treeview_properties()
         self._set_tree_view_item_icon_size(treeview_icon_size)
-        self._set_view_item_icon_size(self.bindings.ui.doubleSpinBox__zoom.value())
+        self.set_view_item_icon_size(self.bindings.ui.doubleSpinBox__zoom.value())
         # text view의 font size, style 적용
         self._set_font_properties(
             self.bindings.ui.textEdit__note,
-            self._get_font_properties(
+            self.get_font_properties(
                 keys.Name.PreferenceUI.spb_note_font_size,
                 keys.Name.PreferenceUI.cmb_note_font_style,
             ),
         )
         self._set_font_properties(
             self.bindings.ui.textEdit__tag,
-            self._get_font_properties(
+            self.get_font_properties(
                 keys.Name.PreferenceUI.spb_tags_font_size,
                 keys.Name.PreferenceUI.cmb_tags_font_style,
             ),
         )
         self._set_font_properties(
             self.bindings.ui.textBrowser__debug,
-            self._get_font_properties(
+            self.get_font_properties(
                 keys.Name.PreferenceUI.spb_debug_font_size,
                 keys.Name.PreferenceUI.cmb_debug_font_style,
             ),
@@ -397,7 +396,7 @@ class PanelPresentation:
             self.bindings.ui.toolBar.setEnabled(True)
 
     @staticmethod
-    def _change_org_node_name(parent_node: Any = None, node_name: Any = None) -> None:
+    def change_org_node_name(parent_node: Any = None, node_name: Any = None) -> None:
         for child in parent_node.children():
             if child.name() == node_name:
                 child.setName(child.name() + "_", unique_name=True)
@@ -421,7 +420,7 @@ class PanelPresentation:
         self.bindings.ui.doubleSpinBox__zoom.setValue(zoom_val)
 
     def _slot_zoom_value(self, zoom_val: float) -> None:
-        self._set_view_item_icon_size(zoom_val)
+        self.set_view_item_icon_size(zoom_val)
         log_handler.LogHandler.log_msg(
             method=logging.info, msg=f"zoom value: {zoom_val} %"
         )
@@ -436,24 +435,24 @@ class PanelPresentation:
         self.bindings.views.inside.expandAll()
 
     def _set_view_padding(self, val: Any) -> None:
-        tableview_icon_size, tableview_thumb_size = self._get_tableview_properties(val)
+        tableview_icon_size, tableview_thumb_size = self.get_tableview_properties(val)
         # get padding
-        pad_listview = self._get_padding_properties(
+        pad_listview = self.get_padding_properties(
             keys.UISetting.padding_listview, keys.Name.PreferenceUI.pad_listview
         )
-        pad_tableview = self._get_padding_properties(
+        pad_tableview = self.get_padding_properties(
             keys.UISetting.padding_tableview, keys.Name.PreferenceUI.pad_tableview
         )
-        pad_history = self._get_padding_properties(
+        pad_history = self.get_padding_properties(
             keys.UISetting.padding_history, keys.Name.PreferenceUI.pad_history
         )
-        pad_category = self._get_padding_properties(
+        pad_category = self.get_padding_properties(
             keys.UISetting.padding_category, keys.Name.PreferenceUI.pad_category
         )
-        pad_record = self._get_padding_properties(
+        pad_record = self.get_padding_properties(
             keys.UISetting.padding_record, keys.Name.PreferenceUI.pad_record
         )
-        pad_inside = self._get_padding_properties(
+        pad_inside = self.get_padding_properties(
             keys.UISetting.padding_inside, keys.Name.PreferenceUI.pad_inside
         )
         # set padding
@@ -463,7 +462,7 @@ class PanelPresentation:
         self.bindings.models.inside_model.set_padding(pad_inside)
         # inside model 구현 되면 추가
         # tableview
-        if self._is_show_thumbnail:
+        if self.is_show_thumbnail:
             vertical_cell_size = tableview_thumb_size
         else:
             vertical_cell_size = tableview_icon_size
@@ -474,9 +473,9 @@ class PanelPresentation:
             tableview_thumb_size + pad_history
         )
 
-    def _set_view_item_icon_size(self, val: Any) -> None:
-        listview_icon_size, listview_thumb_size = self._get_listview_properties(val)
-        tableview_icon_size, tableview_thumb_size = self._get_tableview_properties(val)
+    def set_view_item_icon_size(self, val: Any) -> None:
+        listview_icon_size, listview_thumb_size = self.get_listview_properties(val)
+        tableview_icon_size, tableview_thumb_size = self.get_tableview_properties(val)
         self.bindings.models.list_model.set_icon_size(
             icon_size=listview_icon_size, thumb_size=listview_thumb_size
         )
@@ -487,7 +486,7 @@ class PanelPresentation:
             icon_size=tableview_icon_size, thumb_size=tableview_thumb_size
         )
         # tableview
-        if self._is_show_thumbnail:
+        if self.is_show_thumbnail:
             vertical_cell_size = tableview_thumb_size
         else:
             vertical_cell_size = tableview_icon_size
@@ -499,7 +498,7 @@ class PanelPresentation:
         )
 
     @property
-    def _is_show_thumbnail(self) -> bool:
+    def is_show_thumbnail(self) -> bool:
         return self.bindings.ui.pushButton__thumbnail.isChecked()
 
     @staticmethod
@@ -507,11 +506,11 @@ class PanelPresentation:
         return val / 100.0
 
     @property
-    def _is_icon_mode(self) -> bool:
+    def is_icon_mode(self) -> bool:
         return self.bindings.ui.pushButton__icon_mode.isChecked()
 
     @property
-    def _is_ihda_history_view(self) -> bool:
+    def is_ihda_history_view(self) -> bool:
         return (
             self.bindings.ui.stackedWidget__whole.currentIndex()
             == self.bindings.ui.stackedWidget__whole.indexOf(
@@ -521,7 +520,7 @@ class PanelPresentation:
 
     def _slot_cfg_reset(self) -> None:
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self._get_default_font())
+        msgbox.setFont(self.get_default_font())
         msgbox.setWindowTitle("iHDA Reset APP Properties")
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
         msgbox.setText("Do you want to reset app properties?")
@@ -540,7 +539,7 @@ class PanelPresentation:
             method=logging.debug, msg="initialized application properties"
         )
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self._get_default_font())
+        msgbox.setFont(self.get_default_font())
         msgbox.setWindowTitle("iHDA Reset APP Properties")
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
         msgbox.setText("App property initialization is complete. Please start again.")
@@ -552,7 +551,7 @@ class PanelPresentation:
 
     def _slot_about(self) -> None:
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self._get_default_font(font_size=15))
+        msgbox.setFont(self.get_default_font(font_size=15))
         msgbox.setWindowTitle("Individual HDA (Houdini built-in app)")
         msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
         msgbox.setIconPixmap(QtGui.QPixmap(":/main/icons/viewport_logo_trans.png"))
@@ -582,7 +581,7 @@ QTextEdit {
 
     def _slot_help(self) -> None:
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self._get_default_font(font_size=15))
+        msgbox.setFont(self.get_default_font(font_size=15))
         msgbox.setWindowTitle("Individual HDA Help")
         msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
@@ -602,7 +601,7 @@ QTextEdit {
 
     def _slot_submit_bug_report(self) -> None:
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self._get_default_font(font_size=15))
+        msgbox.setFont(self.get_default_font(font_size=15))
         msgbox.setWindowTitle("Submit Bug Report")
         msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
@@ -617,7 +616,7 @@ QTextEdit {
 
     def _slot_submit_feedback(self) -> None:
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self._get_default_font(font_size=15))
+        msgbox.setFont(self.get_default_font(font_size=15))
         msgbox.setWindowTitle("Submit Feedback")
         msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)

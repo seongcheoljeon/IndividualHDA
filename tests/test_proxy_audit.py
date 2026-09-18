@@ -265,10 +265,10 @@ def test_sorted_filtered_selection_maps_source_id(app: Any, tmp_path: Path) -> N
             management=SimpleNamespace(_get_hda_id_row_map=lambda: {10: 0, 20: 1})
         )
     )
-    index = PanelLibraryQueries._find_hda_id_by_model_item(owner, proxy, 10)
+    index = PanelLibraryQueries.find_hda_id_by_model_item(owner, proxy, 10)
     assert index.data(ListModel.id_role) == 10 and index.row() == 1
     proxy.setFilterRegularExpression("Alpha")
-    assert PanelLibraryQueries._find_hda_id_by_model_item(owner, proxy, 10) is None
+    assert PanelLibraryQueries.find_hda_id_by_model_item(owner, proxy, 10) is None
 
 
 def test_source_change_rechecks_active_filter(app: Any) -> None:
@@ -295,7 +295,7 @@ def test_source_change_rechecks_active_filter(app: Any) -> None:
     store.reset(rows)
     store.rows = rows
     owner = SimpleNamespace(assets=store, list_model=first, table_model=second)
-    PanelModelBinding._update_item_row_data(owner, 0, replace(rows[0], hda_name="New"))
+    PanelModelBinding.update_item_row_data(owner, 0, replace(rows[0], hda_name="New"))
     assert all(proxy.rowCount() == 1 for proxy in proxies)
 
 
@@ -334,7 +334,7 @@ def test_multi_delete_keeps_ids_after_proxy_reorders(app: Any, tmp_path: Path) -
         bindings=SimpleNamespace(
             team=lambda: None,
             video_player=SimpleNamespace(player_stop=lambda: None),
-            presentation=SimpleNamespace(_is_icon_mode=True),
+            presentation=SimpleNamespace(is_icon_mode=True),
             models=SimpleNamespace(
                 assets=SimpleNamespace(
                     id_rows={item.hda_id: row for row, item in enumerate(rows)}

@@ -589,7 +589,7 @@ class PanelComposition:
         row = window.models.assets.id_rows.get(asset_id)
         if row is None:
             return
-        window.queries._change_hda_data(
+        window.queries.change_hda_data(
             row=row,
             key=Key.hda_note if field == "note" else Key.hda_tags,
             val=value if field == "note" else tuple(normalize_tags(value)),
@@ -601,4 +601,4 @@ class PanelComposition:
             )
             if window.selection.state.asset.id == asset_id:
                 window.notes._set_label_tags(tags)
-        window.models._refresh_asset_search()
+        window.models.refresh_asset_search()

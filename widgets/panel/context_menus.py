@@ -27,12 +27,10 @@ if TYPE_CHECKING:
     from widgets.panel.asset_management import PanelAssetManagement
     from widgets.panel.host_callbacks import PanelHostCallbacks
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.library_queries import PanelLibraryQueries
     from widgets.panel.library_tools import PanelLibraryTools
     from widgets.panel.media_actions import PanelMediaActions
-    from widgets.panel.model_binding import PanelModelBinding
     from widgets.panel.notes import PanelNotes
-    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, PresentationPort
     from widgets.panel.selection import PanelSelection
     from widgets.panel.state import PanelSessionState, PanelViews
     from widgets.rename_ihda.rename_ihda import RenameIHDA
@@ -47,11 +45,11 @@ class PanelContextMenusBindings:
     callbacks: PanelHostCallbacks
     management: PanelAssetManagement
     media: PanelMediaActions
-    models: PanelModelBinding
+    models: AssetModelPort
     notes: PanelNotes
     parent: QtWidgets.QWidget
-    presentation: PanelPresentation
-    queries: PanelLibraryQueries
+    presentation: PresentationPort
+    queries: LibraryQueryPort
     rename_dialog: RenameIHDA
     selection: PanelSelection
     session: PanelSessionState
@@ -77,7 +75,7 @@ class PanelContextMenus:
             return
         if not index.data(ihda_history_model.HistoryModel.data_role).is_version:
             return  # activity rows own no file to open, detail or delete
-        if not self.bindings.queries._is_valid_hist_current_item_data:
+        if not self.bindings.queries.is_valid_hist_current_item_data:
             return
         context_menu = QtWidgets.QMenu(self.bindings.parent)
         open_context_menu = QtWidgets.QMenu("Open", self.bindings.parent)
@@ -131,7 +129,7 @@ class PanelContextMenus:
                 hip_dirpath,
                 self.bindings.selection.state.history.require_data().hip_filename,
             )
-            self.bindings.presentation._open_houdini_file(hip_filepath=hip_filepath)
+            self.bindings.presentation.open_houdini_file(hip_filepath=hip_filepath)
         elif action == action_context_menu_detail:
             self.bindings.notes._detail_view_ihda_data(
                 data=self.bindings.selection.state.history.data
@@ -148,13 +146,13 @@ class PanelContextMenus:
             return
         view = (
             self.bindings.views.assets_list
-            if self.bindings.presentation._is_icon_mode
+            if self.bindings.presentation.is_icon_mode
             else self.bindings.views.assets_table
         )
         index = view.indexAt(point)
         if not index.isValid():
             return
-        if not self.bindings.queries._is_valid_current_hda_item_data:
+        if not self.bindings.queries.is_valid_current_hda_item_data:
             return
         context_menu = QtWidgets.QMenu(self.bindings.parent)
         open_context_menu = QtWidgets.QMenu("Open", self.bindings.parent)
@@ -278,7 +276,7 @@ class PanelContextMenus:
                 hip_dirpath,
                 self.bindings.selection.state.asset.require_data().hip_filename,
             )
-            self.bindings.presentation._open_houdini_file(hip_filepath=hip_filepath)
+            self.bindings.presentation.open_houdini_file(hip_filepath=hip_filepath)
         elif action == action_hda_context_menu_copy:
             self.bindings.tools._open_copy_to_team()
         elif action == action_hda_context_menu_favorite:
@@ -307,7 +305,7 @@ class PanelContextMenus:
             )
             self.bindings.rename_dialog.show()
         elif action == action_hda_context_menu_remove:
-            if self.bindings.presentation._is_icon_mode:
+            if self.bindings.presentation.is_icon_mode:
                 indexes = self.bindings.views.assets_list.selectedIndexes()
             else:
                 # table 모델은 이렇게 해야한다. 왜냐면 cell 선택시 모든 cell을 선택되어지도록 했는데
@@ -321,7 +319,7 @@ class PanelContextMenus:
                 )
                 return
             msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation._get_default_font())
+            msgbox.setFont(self.bindings.presentation.get_default_font())
             msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
             msgbox.setWindowTitle("Remove iHDA Node")
             msgbox.setText(
@@ -365,7 +363,7 @@ class PanelContextMenus:
                 hist_note_data=hist_note_data, hda_name=hda_name
             )
         elif action == action_hist_context_menu_remove_history:
-            if self.bindings.presentation._is_icon_mode:
+            if self.bindings.presentation.is_icon_mode:
                 indexes = self.bindings.views.assets_list.selectedIndexes()
             else:
                 # table 모델은 이렇게 해야한다. 왜냐면 cell 선택시 모든 cell을 선택되어지도록 했는데
@@ -379,7 +377,7 @@ class PanelContextMenus:
                 )
                 return
             msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation._get_default_font())
+            msgbox.setFont(self.bindings.presentation.get_default_font())
             msgbox.setWindowTitle("Delete iHDA node history")
             msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
             msgbox.setText(
@@ -398,7 +396,7 @@ class PanelContextMenus:
             for index in sorted(indexes, key=lambda x: x.row(), reverse=True):
                 if not index.isValid():
                     continue
-                if self.bindings.presentation._is_icon_mode:
+                if self.bindings.presentation.is_icon_mode:
                     hda_id = index.data(ihda_list_model.ListModel.id_role)
                     hda_name = index.data(ihda_list_model.ListModel.name_role)
                 else:
@@ -491,7 +489,7 @@ class PanelContextMenus:
         elif action == action_open_context_hip_folder:
             ihda_system.IHDASystem.open_folder(dirpath=hip_dirpath)
         elif action == action_open_context_hip_file:
-            self.bindings.presentation._open_houdini_file(hip_filepath=hip_filepath)
+            self.bindings.presentation.open_houdini_file(hip_filepath=hip_filepath)
         elif action == action_context_menu_go_to_network:
             self.bindings.selection._go_to_houdini_node(node_path=pnode_path)
         elif action == action_context_menu_detail:

@@ -21,6 +21,8 @@ from widgets.asset_lifecycle.capture import HoudiniRegistrationCapture
 if TYPE_CHECKING:
     import hou
 
+    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, PresentationPort
+
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -30,9 +32,6 @@ if TYPE_CHECKING:
     from widgets.panel.host_callbacks import PanelHostCallbacks
     from widgets.panel.houdini_actions import PanelHoudiniActions
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.library_queries import PanelLibraryQueries
-    from widgets.panel.model_binding import PanelModelBinding
-    from widgets.panel.presentation import PanelPresentation
     from widgets.panel.selection import PanelSelection
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState
@@ -45,11 +44,11 @@ class PanelAssetRegistrationBindings:
     callbacks: PanelHostCallbacks
     houdini: PanelHoudiniActions
     management: PanelAssetManagement
-    models: PanelModelBinding
+    models: AssetModelPort
     parent: QtWidgets.QWidget
     preference: Preference
-    presentation: PanelPresentation
-    queries: PanelLibraryQueries
+    presentation: PresentationPort
+    queries: LibraryQueryPort
     reload_library: Callable[[], None]
     selection: PanelSelection
     services: PanelServices
@@ -88,7 +87,7 @@ class PanelAssetRegistration:
         total_node_cnt = len(node_lst)
         if total_node_cnt > self.bindings.services.policy.maximum_node_batch:
             msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation._get_default_font())
+            msgbox.setFont(self.bindings.presentation.get_default_font())
             msgbox.setWindowTitle("iHDA Node Registration")
             msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setText("Too many nodes to register")
@@ -104,7 +103,7 @@ Total Nodes: {total_node_cnt}
             return
         if total_node_cnt > self.bindings.services.policy.warn_node_batch:
             msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation._get_default_font())
+            msgbox.setFont(self.bindings.presentation.get_default_font())
             msgbox.setWindowTitle("iHDA Node Registration")
             msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setText(
@@ -128,7 +127,7 @@ But it didn't stop, so please wait a little longer.
                     method=logging.info, msg="Node registration has been canceled"
                 )
                 return
-        self.bindings.presentation._dragdrop_overlay_show(
+        self.bindings.presentation.dragdrop_overlay_show(
             text="Create iHDA node\nPlease wait..."
         )
         self.bindings.callbacks._wrapper_execute_deferred(
@@ -145,7 +144,7 @@ But it didn't stop, so please wait a little longer.
         try:
             self._register_dropped_nodes(node_lst or (), total_node_cnt or 0)
         finally:
-            self.bindings.presentation._dragdrop_overlay_close()
+            self.bindings.presentation.dragdrop_overlay_close()
 
     def _register_dropped_nodes(self, node_lst: Any, total_node_cnt: int) -> None:
         is_declare = False
@@ -218,7 +217,7 @@ But it didn't stop, so please wait a little longer.
                     msg=f'[{node_cnt + 1}/{total_node_cnt}] "{node_name}" node DB input failed',
                 )
                 continue
-            self.bindings.models._add_category_item(category=node_cate)
+            self.bindings.models.add_category_item(category=node_cate)
             is_declare = True
             log_handler.LogHandler.log_msg(
                 method=logging.debug,
@@ -262,7 +261,7 @@ But it didn't stop, so please wait a little longer.
             )
             # 업데이트 할 것인지 물어 본 다음 업데이트 진행
             msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation._get_default_font())
+            msgbox.setFont(self.bindings.presentation.get_default_font())
             msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
             msgbox.setWindowTitle("Update iHDA Node")
             msgbox.setText(
@@ -350,7 +349,7 @@ But it didn't stop, so please wait a little longer.
         node: hou.Node | None = None,
         version: str | None = None,
     ) -> dict[str, Any] | None:
-        base = self.bindings.queries._hda_base_dirpath
+        base = self.bindings.queries.hda_base_dirpath
         if base is None or node is None or key_lst is None or version is None:
             return None
         hda_dirpath = base.joinpath("/".join(key_lst))
@@ -471,17 +470,17 @@ But it didn't stop, so please wait a little longer.
     def _apply_registered_version(
         self, hda_key_id: int, payload: RegistrationPayload, result: RegistrationResult
     ) -> None:
-        self.bindings.models._update_pixmap_thumbnail(
+        self.bindings.models.update_pixmap_thumbnail(
             hkey_id=hda_key_id, thumb_filepath=result.thumb_filepath
         )
-        self.bindings.models._update_item_row_data(
+        self.bindings.models.update_item_row_data(
             row=self.bindings.management._get_hda_id_row_map().get(hda_key_id),
             row_data=result.asset,
         )
-        self.bindings.models._add_pixmap_hist_thumbnail(
+        self.bindings.models.add_pixmap_hist_thumbnail(
             hist_id=result.history_id, thumb_filepath=result.thumb_filepath
         )
-        self.bindings.models._insert_ihda_history_data_model(
+        self.bindings.models.insert_ihda_history_data_model(
             data=result.history,
             hist_id=result.history_id,
             tags=result.asset.hda_tags,
@@ -510,24 +509,24 @@ But it didn't stop, so please wait a little longer.
         result: RegistrationResult,
     ) -> None:
         key_id = result.asset.hda_id
-        self.bindings.models._add_pixmap_ihda(
+        self.bindings.models.add_pixmap_ihda(
             hkey_id=key_id, icon_lst=list(payload.icon_path_lst)
         )
-        self.bindings.models._add_pixmap_thumbnail(
+        self.bindings.models.add_pixmap_thumbnail(
             hkey_id=key_id, thumb_filepath=result.thumb_filepath
         )
-        self.bindings.models._add_pixmap_hist_thumbnail(
+        self.bindings.models.add_pixmap_hist_thumbnail(
             hist_id=result.history_id, thumb_filepath=result.thumb_filepath
         )
-        self.bindings.models._insert_ihda_data_model(data=result.asset)
-        self.bindings.models._refresh_asset_search()
+        self.bindings.models.insert_ihda_data_model(data=result.asset)
+        self.bindings.models.refresh_asset_search()
         self.bindings.ui.label__hda_count.setText(
             str(self.bindings.models.list_proxy_model.rowCount())
         )
         self.bindings.ui.label__cate_count.setText(
-            str(self.bindings.models._get_category_count())
+            str(self.bindings.models.get_category_count())
         )
-        self.bindings.models._insert_ihda_history_data_model(
+        self.bindings.models.insert_ihda_history_data_model(
             data=result.history, hist_id=result.history_id, tags=[]
         )
         self.bindings.selection._set_hist_ihda_to_combobox(

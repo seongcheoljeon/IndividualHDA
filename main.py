@@ -242,7 +242,7 @@ class IndividualHDA(QtWidgets.QMainWindow, MainWindowLayout):
         if event.mimeData().hasText():
             event.acceptProposedAction()
         elif event.mimeData().hasFormat(Type.mime_type):
-            self.presentation._dragdrop_overlay_show(
+            self.presentation.dragdrop_overlay_show(
                 text="Drop the iHDA node onto the network", fontsize=15
             )
             event.setDropAction(QtCore.Qt.DropAction.CopyAction)

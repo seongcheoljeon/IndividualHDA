@@ -26,7 +26,7 @@ class MainAssetActions:
     def context_menu(self, point: QtCore.QPoint) -> None:
         view = (
             self.bindings.views.assets_list
-            if self.bindings.presentation._is_icon_mode
+            if self.bindings.presentation.is_icon_mode
             else self.bindings.views.assets_table
         )
         index = view.indexAt(point)
@@ -223,7 +223,7 @@ class MainAssetActions:
             self.library.presenter.attach_media(Path(path), kind)
 
     def play_video(self) -> None:
-        if self.bindings.presentation._is_ihda_history_view:
+        if self.bindings.presentation.is_ihda_history_view:
             from model.ihda_history_model import HistoryModel
 
             index = self.bindings.views.history.currentIndex()
@@ -335,10 +335,10 @@ class MainAssetActions:
     def import_drop(self, drop_data: Any) -> None:
 
         if self.library._tasks.busy:
-            self.bindings.presentation._dragdrop_overlay_close()
+            self.bindings.presentation.dragdrop_overlay_close()
             return
         action, items = drop_data
-        self.bindings.presentation._dragdrop_overlay_close()
+        self.bindings.presentation.dragdrop_overlay_close()
         if action != QtCore.Qt.DropAction.IgnoreAction or not items:
             return
         if not self._allow_batch(len(items), "Import"):

@@ -207,7 +207,7 @@ def test_overlay_closes_after_batch_error() -> None:
         _register_dropped_nodes=fail,
         bindings=SimpleNamespace(
             presentation=SimpleNamespace(
-                _dragdrop_overlay_close=lambda: closed.append(True)
+                dragdrop_overlay_close=lambda: closed.append(True)
             )
         ),
     )

@@ -24,9 +24,7 @@ if TYPE_CHECKING:
     from libs.task_controller import TaskController
     from widgets.make_video_info.make_video_info import MakeVideoInfo
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.library_queries import PanelLibraryQueries
-    from widgets.panel.model_binding import PanelModelBinding
-    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, PresentationPort
     from widgets.panel.selection import PanelSelection
     from widgets.panel.state import PanelSessionState, PanelStatus
     from widgets.preference.preference import Preference
@@ -37,11 +35,11 @@ if TYPE_CHECKING:
 class PanelMediaActionsBindings:
     capture: HostCapturePort
     host_enabled: bool
-    models: PanelModelBinding
+    models: AssetModelPort
     parent: QtWidgets.QWidget
     preference: Preference
-    presentation: PanelPresentation
-    queries: PanelLibraryQueries
+    presentation: PresentationPort
+    queries: LibraryQueryPort
     selection: PanelSelection
     sequence_pattern: Pattern[str]
     session: PanelSessionState
@@ -114,14 +112,14 @@ class PanelMediaActions:
     ) -> None:
         # model에서 새로운 파일을 새롭게 읽을 수 있도록 thumb_filepath인자에 값을 배정하지 않았다.
         # self._update_pixmap_thumbnail(hkey_id=hda_id, thumb_filepath=pathlib.Path())
-        self.bindings.models._update_pixmap_thumbnail(
+        self.bindings.models.update_pixmap_thumbnail(
             hkey_id=hda_id, thumb_filepath=thumb_filepath
         )
         hist_id = self.bindings.models.history_model.get_history_id_from_model(
             hkey_id=hda_id, version=hda_version
         )
         if hist_id is not None:
-            self.bindings.models._update_pixmap_hist_thumbnail(
+            self.bindings.models.update_pixmap_hist_thumbnail(
                 hist_id=hist_id, thumb_filepath=thumb_filepath
             )
         if is_update_thumb:
@@ -159,7 +157,7 @@ class PanelMediaActions:
                 method=logging.error, msg="frame range is wrong"
             )
             return
-        self.bindings.presentation._loading_show()
+        self.bindings.presentation.loading_show()
         data = self.bindings.selection.state.asset.require_data()
         hda_dirpath = data.hda_dirpath
         hda_name = data.hda_name
@@ -183,7 +181,7 @@ class PanelMediaActions:
         )
         if preview_filepath is None:
             self._remove_preview_dir(preview_dirpath=preview_dirpath)
-            self.bindings.presentation._loading_close()
+            self.bindings.presentation.loading_close()
             return
         # $F4 --> %04d
         preview_filepath = preview_filepath.with_name(
@@ -224,7 +222,7 @@ class PanelMediaActions:
             )
         except (OSError, ValueError) as error:
             logging.error("Cannot start video encoding: %s", error)
-            self.bindings.presentation._loading_close()
+            self.bindings.presentation.loading_close()
             return
         self.bindings.ui.centralwidget.setEnabled(False)
         self.bindings.ui.toolBar.setEnabled(False)
@@ -244,7 +242,7 @@ class PanelMediaActions:
                 logging.error("Cannot finish video creation: %s", error)
             finally:
                 temporary.unlink(missing_ok=True)
-                self.bindings.presentation._loading_close()
+                self.bindings.presentation.loading_close()
                 self.bindings.ui.centralwidget.setEnabled(True)
                 self.bindings.ui.toolBar.setEnabled(True)
                 self.bindings.ui.menubar.setEnabled(True)
@@ -273,17 +271,17 @@ class PanelMediaActions:
             request, lambda kind: self._apply_video(row, request, kind)
         ):
             self._remove_preview_dir(preview_dirpath=preview_dirpath)
-        self.bindings.presentation._loading_close()
+        self.bindings.presentation.loading_close()
 
     def _apply_video(self, row: int, request: MediaRequest, kind: str) -> None:
         video_dirpath, video_filename = request.directory, request.filename
         log_handler.LogHandler.log_msg(
             method=logging.info, msg=f"video {kind} complete"
         )
-        self.bindings.queries._change_hda_data(
+        self.bindings.queries.change_hda_data(
             row=row, key=keys.Key.video_dirpath, val=video_dirpath
         )
-        self.bindings.queries._change_hda_data(
+        self.bindings.queries.change_hda_data(
             row=row, key=keys.Key.video_filename, val=video_filename
         )
         # history

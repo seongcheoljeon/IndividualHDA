@@ -48,7 +48,7 @@ def test_cleanup_preserves_inaccessible_records_and_deduplicates_deletion(
 
 def seed_records(panel: Any, tmp_path: Path) -> list[int]:
     asset = panel.session.repository.list_assets()[0]
-    with SQLite3DatabaseAPI(panel.queries._db_filepath) as db:
+    with SQLite3DatabaseAPI(panel.queries.db_filepath) as db:
         for index in range(3):
             hip = tmp_path / f"scene{index}.hip"
             hip.write_text("scene")

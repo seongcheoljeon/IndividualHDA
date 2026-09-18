@@ -135,7 +135,7 @@ def test_legacy_history_input_is_validated_and_ui_does_not_mutate_it(
     feature.history_model = Mock()
     feature.history_proxy_model = SimpleNamespace(rowCount=lambda: 1)
     feature.bindings = SimpleNamespace(ui=SimpleNamespace(label__hist_cnt=Mock()))
-    feature._insert_ihda_history_data_model(data=row, hist_id=9, tags=["물"])
+    feature.insert_ihda_history_data_model(data=row, hist_id=9, tags=["물"])
     assert row.hist_id == 0 and row.tags == ()
     appended = feature.history_model.append_item.call_args.args[0]
     assert appended.hist_id == 9 and appended.tags == ("물",)

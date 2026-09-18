@@ -44,8 +44,7 @@ if TYPE_CHECKING:
     from libs.ihda_icons import IHDAIcons
     from widgets.asset_browser.integration import AssetBrowserIntegration
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.library_queries import PanelLibraryQueries
-    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.ports import LibraryQueryPort, PresentationPort
     from widgets.panel.selection import PanelSelection
     from widgets.panel.state import PanelSessionState, PanelViews
 
@@ -54,8 +53,8 @@ if TYPE_CHECKING:
 class PanelModelBindingBindings:
     browser: AssetBrowserIntegration
     icons: IHDAIcons
-    presentation: PanelPresentation
-    queries: PanelLibraryQueries
+    presentation: PresentationPort
+    queries: LibraryQueryPort
     selection: PanelSelection
     session: PanelSessionState
     ui: MainWindowLayout
@@ -98,20 +97,20 @@ class PanelModelBinding:
         self.bindings.views.history.viewport().update()
 
     def _init_set_ihda_category_model(self) -> None:
-        font_size, font_style = self.bindings.presentation._get_font_properties(
+        font_size, font_style = self.bindings.presentation.get_font_properties(
             keys.Name.PreferenceUI.spb_view_font_size,
             keys.Name.PreferenceUI.cmb_view_font_style,
         )
-        icon_size = self.bindings.presentation._get_treeview_properties()
-        padding = self.bindings.presentation._get_padding_properties(
+        icon_size = self.bindings.presentation.get_treeview_properties()
+        padding = self.bindings.presentation.get_padding_properties(
             keys.UISetting.padding_category, keys.Name.PreferenceUI.pad_category
         )
         self.bindings.ui.stackedWidget__category.setCurrentIndex(0)
         # tree model
         self.category_model = ihda_category_model.CategoryModel(
-            data=self.bindings.queries._get_hda_category(
+            data=self.bindings.queries.get_hda_category(
                 user_id=self.bindings.session.user,
-                db_filepath=self.bindings.queries._db_filepath,
+                db_filepath=self.bindings.queries.db_filepath,
             ),
             pixmap_cate_data=self.bindings.icons.pixmap_cate_data,
             font_size=font_size,
@@ -125,14 +124,14 @@ class PanelModelBinding:
         self.bindings.views.category.expandAll()
 
     def _init_set_ihda_list_model(self) -> None:
-        font_size, font_style = self.bindings.presentation._get_font_properties(
+        font_size, font_style = self.bindings.presentation.get_font_properties(
             keys.Name.PreferenceUI.spb_view_font_size,
             keys.Name.PreferenceUI.cmb_view_font_style,
         )
-        icon_size, thumb_size = self.bindings.presentation._get_listview_properties(
+        icon_size, thumb_size = self.bindings.presentation.get_listview_properties(
             self.bindings.ui.doubleSpinBox__zoom.value()
         )
-        padding = self.bindings.presentation._get_padding_properties(
+        padding = self.bindings.presentation.get_padding_properties(
             keys.UISetting.padding_listview, keys.Name.PreferenceUI.pad_listview
         )
         # ihda list model
@@ -152,17 +151,17 @@ class PanelModelBinding:
         )
         self.list_proxy_model.setSourceModel(self.list_model)
         self.bindings.views.assets_list.setModel(self.list_proxy_model)
-        self.bindings.presentation._resizing_listview()
+        self.bindings.presentation.resizing_listview()
 
     def _init_set_ihda_table_model(self) -> None:
-        font_size, font_style = self.bindings.presentation._get_font_properties(
+        font_size, font_style = self.bindings.presentation.get_font_properties(
             keys.Name.PreferenceUI.spb_view_font_size,
             keys.Name.PreferenceUI.cmb_view_font_style,
         )
-        icon_size, thumb_size = self.bindings.presentation._get_tableview_properties(
+        icon_size, thumb_size = self.bindings.presentation.get_tableview_properties(
             self.bindings.ui.doubleSpinBox__zoom.value()
         )
-        padding = self.bindings.presentation._get_padding_properties(
+        padding = self.bindings.presentation.get_padding_properties(
             keys.UISetting.padding_tableview, keys.Name.PreferenceUI.pad_tableview
         )
         # table model
@@ -187,7 +186,7 @@ class PanelModelBinding:
         self.bindings.views.assets_table.resizeColumnToContents(AssetColumn.MODIFIED)
         self.bindings.views.assets_table.resizeColumnToContents(AssetColumn.HOUDINI)
         self.bindings.views.assets_table.resizeColumnToContents(AssetColumn.LICENSE)
-        if self.bindings.presentation._is_show_thumbnail:
+        if self.bindings.presentation.is_show_thumbnail:
             self.bindings.views.assets_table.verticalHeader().setDefaultSectionSize(
                 thumb_size + padding
             )
@@ -197,20 +196,20 @@ class PanelModelBinding:
             )
 
     def _init_set_ihda_history_model(self) -> None:
-        font_size, font_style = self.bindings.presentation._get_font_properties(
+        font_size, font_style = self.bindings.presentation.get_font_properties(
             keys.Name.PreferenceUI.spb_view_font_size,
             keys.Name.PreferenceUI.cmb_view_font_style,
         )
-        icon_size, thumb_size = self.bindings.presentation._get_tableview_properties(
+        icon_size, thumb_size = self.bindings.presentation.get_tableview_properties(
             self.bindings.ui.doubleSpinBox__zoom.value()
         )
-        padding = self.bindings.presentation._get_padding_properties(
+        padding = self.bindings.presentation.get_padding_properties(
             keys.UISetting.padding_history, keys.Name.PreferenceUI.pad_history
         )
         # ihda history model
-        get_data = self.bindings.queries._get_hda_hist_data(
+        get_data = self.bindings.queries.get_hda_hist_data(
             user_id=self.bindings.session.user,
-            db_filepath=self.bindings.queries._db_filepath,
+            db_filepath=self.bindings.queries.db_filepath,
         )
         self.history_model = ihda_history_model.HistoryModel(
             items=get_data,
@@ -244,18 +243,18 @@ class PanelModelBinding:
         )
 
     def _init_set_ihda_record_model(self) -> None:
-        font_size, font_style = self.bindings.presentation._get_font_properties(
+        font_size, font_style = self.bindings.presentation.get_font_properties(
             keys.Name.PreferenceUI.spb_view_font_size,
             keys.Name.PreferenceUI.cmb_view_font_style,
         )
-        icon_size = self.bindings.presentation._get_treeview_properties()
-        padding = self.bindings.presentation._get_padding_properties(
+        icon_size = self.bindings.presentation.get_treeview_properties()
+        padding = self.bindings.presentation.get_padding_properties(
             keys.UISetting.padding_record, keys.Name.PreferenceUI.pad_record
         )
         # tree model
         self.record_model = ihda_record_model.RecordModel(
-            data=self.bindings.queries._get_hda_loc_record_data(
-                self.bindings.queries._db_filepath
+            data=self.bindings.queries.get_hda_loc_record_data(
+                self.bindings.queries.db_filepath
             ),
             pixmap_cate_data=self.bindings.icons.pixmap_cate_data,
             pixmap_ihda_data=self.bindings.icons.pixmap_ihda_data,
@@ -276,12 +275,12 @@ class PanelModelBinding:
         )
 
     def _init_set_ihda_inside_model(self) -> None:
-        font_size, font_style = self.bindings.presentation._get_font_properties(
+        font_size, font_style = self.bindings.presentation.get_font_properties(
             keys.Name.PreferenceUI.spb_view_font_size,
             keys.Name.PreferenceUI.cmb_view_font_style,
         )
-        icon_size = self.bindings.presentation._get_treeview_properties()
-        padding = self.bindings.presentation._get_padding_properties(
+        icon_size = self.bindings.presentation.get_treeview_properties()
+        padding = self.bindings.presentation.get_padding_properties(
             keys.UISetting.padding_inside, keys.Name.PreferenceUI.pad_inside
         )
         self.inside_model = ihda_inside_model.InsideModel(
@@ -301,7 +300,7 @@ class PanelModelBinding:
         for column, width in INSIDE_TREE_COLUMN_WIDTHS:
             self.bindings.views.inside.header().resizeSection(column, width)
 
-    def _insert_ihda_history_data_model(
+    def insert_ihda_history_data_model(
         self,
         data: HistoryData,
         hist_id: int | None = None,
@@ -321,11 +320,11 @@ class PanelModelBinding:
             str(self.history_proxy_model.rowCount())
         )
 
-    def _insert_ihda_data_model(self, data: AssetData) -> None:
+    def insert_ihda_data_model(self, data: AssetData) -> None:
         self.assets.observe(QtAssetNotifications(self.list_model, self.table_model))
         self.assets.insert(data)
 
-    def _update_item_row_data(
+    def update_item_row_data(
         self, row: int | None = None, row_data: AssetData | None = None
     ) -> None:
         if row is not None and row_data is not None:
@@ -333,7 +332,7 @@ class PanelModelBinding:
             self.assets.update(row, row_data)
 
     @QtCore.Slot(str)
-    def _search_filter_regexp_hist_hda_item(self, text: str) -> None:
+    def search_filter_regexp_hist_hda_item(self, text: str) -> None:
         if self.bindings.ui.checkBox__casesensitive_hda_hist.isChecked():
             casesensitivity = QtCore.Qt.CaseSensitivity.CaseSensitive
         else:
@@ -347,20 +346,20 @@ class PanelModelBinding:
     def _asset_search_failed_message(self, message: str) -> None:
         log_handler.LogHandler.log_msg(method=logging.error, msg=message)
 
-    def _refresh_asset_search(self) -> None:
+    def refresh_asset_search(self) -> None:
         """Re-run the current query after edits so the ID filter is not stale."""
         if self.bindings.ui.lineEdit__search_hda.text().strip():
             self.bindings.browser.refresh()
 
     @QtCore.Slot(str)
-    def _search_filter_regexp_hda_cate(self, text: str) -> None:
+    def search_filter_regexp_hda_cate(self, text: str) -> None:
         if self.bindings.ui.checkBox__casesensitive_cate.isChecked():
             casesensitivity = QtCore.Qt.CaseSensitivity.CaseSensitive
         else:
             casesensitivity = QtCore.Qt.CaseSensitivity.CaseInsensitive
         regexp = wildcard_expression(text.strip(), casesensitivity)
         self.category_proxy_model.setFilterRegularExpression(regexp)
-        self.bindings.ui.label__cate_count.setText(str(self._get_category_count()))
+        self.bindings.ui.label__cate_count.setText(str(self.get_category_count()))
         self.bindings.views.category.expandAll()
 
     @QtCore.Slot(str)
@@ -388,12 +387,12 @@ class PanelModelBinding:
     def _add_pixmap_category(self, category: str | None = None) -> None:
         self.bindings.icons.add_pixmap_cate_data(category=category)
 
-    def _add_pixmap_ihda(
+    def add_pixmap_ihda(
         self, hkey_id: int | None = None, icon_lst: list[str] | None = None
     ) -> None:
         self.bindings.icons.add_pixmap_ihda_data(hkey_id=hkey_id, icon_lst=icon_lst)
 
-    def _add_pixmap_thumbnail(
+    def add_pixmap_thumbnail(
         self, hkey_id: int | None = None, thumb_filepath: pathlib.Path | None = None
     ) -> None:
         if hkey_id is None or thumb_filepath is None:
@@ -403,7 +402,7 @@ class PanelModelBinding:
             hkey_id=hkey_id, thumb_filepath=thumb_filepath
         )
 
-    def _add_pixmap_hist_thumbnail(
+    def add_pixmap_hist_thumbnail(
         self, hist_id: int | None = None, thumb_filepath: pathlib.Path | None = None
     ) -> None:
         if hist_id is None or thumb_filepath is None:
@@ -413,7 +412,7 @@ class PanelModelBinding:
             hist_id=hist_id, thumb_filepath=thumb_filepath
         )
 
-    def _update_pixmap_thumbnail(
+    def update_pixmap_thumbnail(
         self, hkey_id: int | None = None, thumb_filepath: pathlib.Path | None = None
     ) -> None:
         if hkey_id is None or thumb_filepath is None:
@@ -423,7 +422,7 @@ class PanelModelBinding:
             hkey_id=hkey_id, thumb_filepath=thumb_filepath
         )
 
-    def _update_pixmap_hist_thumbnail(
+    def update_pixmap_hist_thumbnail(
         self, hist_id: int | None = None, thumb_filepath: pathlib.Path | None = None
     ) -> None:
         if hist_id is None or thumb_filepath is None:
@@ -436,27 +435,27 @@ class PanelModelBinding:
     def _remove_pixmap_category(self, category: str | None = None) -> None:
         self.bindings.icons.remove_pixmap_cate_data(category=category)
 
-    def _remove_pixmap_ihda(self, hkey_id: int | None = None) -> None:
+    def remove_pixmap_ihda(self, hkey_id: int | None = None) -> None:
         self.bindings.icons.remove_pixmap_ihda_data(hkey_id=hkey_id)
 
-    def _remove_pixmap_thumbnail(self, hkey_id: int | None = None) -> None:
+    def remove_pixmap_thumbnail(self, hkey_id: int | None = None) -> None:
         self.bindings.icons.remove_pixmap_thumbnail_data(hkey_id=hkey_id)
 
-    def _remove_pixmap_hist_thumbnail(self, hist_id: int | None = None) -> None:
+    def remove_pixmap_hist_thumbnail(self, hist_id: int | None = None) -> None:
         self.bindings.icons.remove_pixmap_hist_thumbnail_data(hist_id=hist_id)
 
-    def _add_record_item(self, data: Any = None) -> None:
+    def add_record_item(self, data: Any = None) -> None:
         self.record_model.insert_record_data(data=data)
         self.record_model.reload()
         self.bindings.views.record.expandAll()
 
-    def _add_category_item(self, category: str | None = None) -> None:
+    def add_category_item(self, category: str | None = None) -> None:
         self._add_pixmap_category(category=category)
         self.category_model.add_item(data={category: None})
         self.category_model.reload()
         self.bindings.views.category.expandAll()
 
-    def _remove_category_item(
+    def remove_category_item(
         self, category: str | None = None, category_list: Any = None
     ) -> None:
         if category_list is None:
@@ -470,12 +469,12 @@ class PanelModelBinding:
                 self.category_model.reload()
                 self.bindings.views.category.expandAll()
 
-    def _get_category_count(self) -> int:
+    def get_category_count(self) -> int:
         return self.category_proxy_model.rowCount(
             self.category_proxy_model.index(0, 0, QtCore.QModelIndex())
         )
 
-    def _remove_hda_data(self, item_row: int | None = None) -> None:
+    def remove_hda_data(self, item_row: int | None = None) -> None:
         if item_row is not None:
             self.assets.observe(QtAssetNotifications(self.list_model, self.table_model))
             self.assets.remove(item_row)

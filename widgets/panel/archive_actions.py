@@ -18,8 +18,7 @@ from libs import ihda_system
 if TYPE_CHECKING:
     from libs.task_controller import TaskController
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.library_queries import PanelLibraryQueries
-    from widgets.panel.presentation import PanelPresentation
+    from widgets.panel.ports import LibraryQueryPort, PresentationPort
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState, PanelStatus
     from widgets.video_player import UnavailableVideoPlayer
@@ -29,8 +28,8 @@ if TYPE_CHECKING:
 @dataclass(frozen=True, slots=True)
 class PanelArchivesBindings:
     parent: QtWidgets.QWidget
-    presentation: PanelPresentation
-    queries: PanelLibraryQueries
+    presentation: PresentationPort
+    queries: LibraryQueryPort
     services: PanelServices
     session: PanelSessionState
     status: PanelStatus
@@ -51,7 +50,7 @@ class PanelArchives:
     ) -> None:
         if self.bindings.tasks.busy:
             return
-        self.bindings.presentation._loading_show()
+        self.bindings.presentation.loading_show()
         self.bindings.ui.centralwidget.setEnabled(False)
         self.bindings.ui.toolBar.setEnabled(False)
         self.bindings.ui.menubar.setEnabled(False)
@@ -62,7 +61,7 @@ class PanelArchives:
 
     @QtCore.Slot(object, object)
     def result(self, result: Any, error: Exception | None) -> None:
-        self.bindings.presentation._loading_close()
+        self.bindings.presentation.loading_close()
         self.bindings.ui.centralwidget.setEnabled(True)
         self.bindings.ui.toolBar.setEnabled(True)
         self.bindings.ui.menubar.setEnabled(True)

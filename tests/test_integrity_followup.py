@@ -229,9 +229,9 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
         _assets=store,
         _selection=selection,
         _repository=repository,
-        _change_hda_data=lambda **kwargs: rows.append(kwargs["row"]),
+        change_hda_data=lambda **kwargs: rows.append(kwargs["row"]),
         _remove_preview_dir=lambda **kwargs: True,
-        _loading_close=lambda: None,
+        loading_close=lambda: None,
     )
     owner.bindings = SimpleNamespace(
         models=SimpleNamespace(assets=store),
@@ -239,8 +239,8 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
         session=SimpleNamespace(
             repository=repository, require_repository=lambda: repository
         ),
-        queries=SimpleNamespace(_change_hda_data=owner._change_hda_data),
-        presentation=SimpleNamespace(_loading_close=lambda: None),
+        queries=SimpleNamespace(change_hda_data=owner.change_hda_data),
+        presentation=SimpleNamespace(loading_close=lambda: None),
     )
     PanelMediaActions._finish_video(
         owner, 1, "1.0", tmp_path, "encoded.mp4", tmp_path / "preview"
@@ -266,4 +266,4 @@ def test_asset_row_lookup_uses_current_index_after_insertion() -> None:
         models=SimpleNamespace(assets=store),
         management=SimpleNamespace(_get_hda_id_row_map=lambda: store.id_rows),
     )
-    assert PanelLibraryQueries._get_ihda_data_by_id(owner, 1, "item_row") == 1
+    assert PanelLibraryQueries.get_ihda_data_by_id(owner, 1, "item_row") == 1

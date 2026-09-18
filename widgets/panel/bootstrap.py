@@ -43,7 +43,7 @@ class PanelBootstrap:
             )
             window._preference.show()
         else:
-            db_filepath = window.queries._db_filepath
+            db_filepath = window.queries.db_filepath
             assert isinstance(db_filepath, pathlib.Path)
             try:
                 recover_operations(db_filepath.parent)
@@ -74,27 +74,23 @@ class PanelBootstrap:
         window.presentation._hide_parms()
         window.models.assets.reset(
             window.queries._get_hda_data(
-                user_id=window.session.user, db_filepath=window.queries._db_filepath
+                user_id=window.session.user, db_filepath=window.queries.db_filepath
             )
             or []
         )
         # combobox - search type
         window.comboBox__search_field_hist.addItems(["Name", "Tags", "Type"])
         # default font
-        window.comboBox__search_type.setFont(window.presentation._get_default_font())
+        window.comboBox__search_type.setFont(window.presentation.get_default_font())
         window.comboBox__search_field_hist.setFont(
-            window.presentation._get_default_font()
+            window.presentation.get_default_font()
         )
-        window.comboBox__hist_ihda_node.setFont(window.presentation._get_default_font())
-        window.comboBox__hda_inside_node.setFont(
-            window.presentation._get_default_font()
-        )
+        window.comboBox__hist_ihda_node.setFont(window.presentation.get_default_font())
+        window.comboBox__hda_inside_node.setFont(window.presentation.get_default_font())
         window.dateEdit__hist_search_start.setFont(
-            window.presentation._get_default_font()
+            window.presentation.get_default_font()
         )
-        window.dateEdit__hist_search_end.setFont(
-            window.presentation._get_default_font()
-        )
+        window.dateEdit__hist_search_end.setFont(window.presentation.get_default_font())
         # main default icon size
         window.presentation._set_main_default_icon_size()
         window.doubleSpinBox__zoom.setMinimum(UISetting.min_zoom_value)
@@ -103,21 +99,21 @@ class PanelBootstrap:
         note_syntax.NoteHighLighter(window.textEdit__tag)
         window.presentation._set_font_properties(
             window.textEdit__note,
-            window.presentation._get_font_properties(
+            window.presentation.get_font_properties(
                 Name.PreferenceUI.spb_note_font_size,
                 Name.PreferenceUI.cmb_note_font_style,
             ),
         )
         window.presentation._set_font_properties(
             window.textEdit__tag,
-            window.presentation._get_font_properties(
+            window.presentation.get_font_properties(
                 Name.PreferenceUI.spb_tags_font_size,
                 Name.PreferenceUI.cmb_tags_font_style,
             ),
         )
         window.presentation._set_font_properties(
             window.textBrowser__debug,
-            window.presentation._get_font_properties(
+            window.presentation.get_font_properties(
                 Name.PreferenceUI.spb_debug_font_size,
                 Name.PreferenceUI.cmb_debug_font_style,
             ),
@@ -259,7 +255,7 @@ class PanelBootstrap:
         from libs.debounce import DebouncedText
 
         window._history_search_debounce = DebouncedText(
-            window.models._search_filter_regexp_hist_hda_item,
+            window.models.search_filter_regexp_hist_hda_item,
             window,
             delay=window._services.policy.search.delay_ms,
             immediate=lambda: (
@@ -271,7 +267,7 @@ class PanelBootstrap:
             window._history_search_debounce.submit
         )
         window.lineEdit__search_cate.textChanged.connect(
-            window.models._search_filter_regexp_hda_cate
+            window.models.search_filter_regexp_hda_cate
         )
         window.pushButton__note_save.clicked.connect(
             lambda: window.notes._slot_save_note_tags(choice="note")
@@ -348,7 +344,7 @@ class PanelBootstrap:
         window.actionReset.triggered.connect(window.presentation._slot_cfg_reset)
         window.actionOpen_the_hda_directory.triggered.connect(
             lambda: ihda_system.IHDASystem.open_folder(
-                dirpath=window.queries._hda_base_dirpath
+                dirpath=window.queries.hda_base_dirpath
             )
         )
         window.actionQuit.triggered.connect(window.close)
