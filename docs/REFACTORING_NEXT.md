@@ -85,19 +85,28 @@ type-check exclusions. A plugin system is not needed for ordinary contributions.
 - Purge offers to free the queued files and empty directories.
 - Six only-shrink guards in `tests/test_architecture.py` (see CONTRIBUTING.md).
 
-## Next bounded slice (remaining audit items)
+## Completed after the audit slice
 
-- Optional protocol members still found with `getattr` (`show_failure`,
-  `asset_committed`, `inspect`, `last_timings`): declare them.
-- String switches left: tracking `kind`, `_file_kind`, AI `settings.kind`.
-- Dead code candidates from the audit (verify references before deleting).
-- `SOFT_DELETE_UNFILTERED` 26 → 0 by using the constants in per-id queries too.
-- `TaskController` generation counter so dialogs stop retrying around the
-  result-before-finished race.
-- `SqlCatalog._apply` operation chain → per-operation handlers; then the label map
-  and `history_activity` share the operation list.
-- `HoudiniAPI` (95 methods) split by concern; other large classes only when their
-  area grows.
+- Optional collaborator members are declared on their protocols
+  (`show_failure`, `asset_committed`, `inspects_files`/`inspect`, `last_timings`).
+- File kinds, tracking pages and the AI backend kind are `Literal` types with
+  validation at the boundaries where text arrives.
+- Sixteen unreferenced definitions removed; entry points called by name
+  (pypanel, Qt overrides, urllib hooks) stay.
+- Every raw `hda_key`/`hda_history` read filters trashed rows or says why not in
+  the SQL; the counter is `{}`.
+- `TaskController` queues a start requested from a completion callback.
+- Team operations are handlers in `ihda_server/operations.py`; `_apply` loads,
+  persists and audits.
+- `HoudiniAPI` is a facade over `libs/houdini/{session,nodes,editor,assets}.py`.
+- Purge offers to free queued files and the directories they leave empty.
+
+## Next bounded slice
+
+Nothing from the audit remains. Candidates when their area grows: split
+`VideoPlayer`, `PanelSelection`, `PreferenceLayout` and `MainLibraryIntegration`
+the way the main-window layout was split; move model resets to row operations
+where selection state matters.
 
 ## Operational limits
 
