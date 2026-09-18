@@ -19,6 +19,7 @@ from libs.file_integrity import FileContent, measure_file
 from libs.search_limits import TEAM_PAGE_DEFAULT
 from libs.team.contracts import (
     API_PREFIX,
+    DEFAULT_AUDIT_EVENT_LIMIT,
     Blob,
     Command,
     Conflict,
@@ -268,10 +269,17 @@ class HttpCatalog:
     def trash(self) -> list[dict[str, Any]]:
         return list(self.transport.request("GET", self._base + "/trash"))
 
-    def events(self, asset_uuid: str) -> list[dict[str, Any]]:
+    def events(
+        self, asset_uuid: str, offset: int = 0, limit: int = DEFAULT_AUDIT_EVENT_LIMIT
+    ) -> list[dict[str, Any]]:
         return list(
             self.transport.request(
-                "GET", self._base + "/events/" + urllib.parse.quote(asset_uuid, safe="")
+                "GET",
+                self._base
+                + "/events/"
+                + urllib.parse.quote(asset_uuid, safe="")
+                + "?"
+                + urllib.parse.urlencode({"offset": offset, "limit": limit}),
             )
         )
 

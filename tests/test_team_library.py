@@ -391,3 +391,26 @@ def test_real_http_transport_upload_download_and_retry(
         except subprocess.TimeoutExpired:
             process.kill()
             process.communicate(timeout=5)
+
+
+def test_events_page_with_offset_and_limit(backend: Any, tmp_path: Path) -> None:
+    from libs.team.contracts import TeamError
+
+    command, asset = create_asset(backend, tmp_path)
+    backend.execute(command)
+    for note in ("first", "second"):
+        current = backend.get_asset(asset["id"])
+        backend.execute(
+            Command(
+                "metadata",
+                asset_id=asset["id"],
+                expected_revision=current["revision"],
+                values={"note": note, "tags": []},
+            )
+        )
+    everything = backend.events(asset["asset_uuid"])
+    assert len(everything) >= 3
+    assert backend.events(asset["asset_uuid"], offset=1, limit=1) == [everything[1]]
+    assert backend.events(asset["asset_uuid"], offset=len(everything), limit=5) == []
+    with pytest.raises(TeamError):
+        backend.events(asset["asset_uuid"], limit=0)

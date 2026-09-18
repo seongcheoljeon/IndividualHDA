@@ -26,6 +26,7 @@ from libs.search_limits import TEAM_PAGE_DEFAULT
 from libs.team.contracts import (
     API_PREFIX,
     API_VERSION,
+    DEFAULT_AUDIT_EVENT_LIMIT,
     DEFAULT_MAX_UPLOAD_BYTES,
     MAX_METADATA_BODY_BYTES,
     Command,
@@ -162,9 +163,13 @@ def make_app(
 
     @application.get(API_PREFIX + "/projects/{project_id}/events/{asset_uuid}")
     def events(
-        project_id: str, asset_uuid: str, user: str = Depends(actor)
+        project_id: str,
+        asset_uuid: str,
+        offset: int = 0,
+        limit: int = DEFAULT_AUDIT_EVENT_LIMIT,
+        user: str = Depends(actor),
     ) -> list[dict[str, Any]]:
-        return service.catalog.events(project_id, user, asset_uuid)
+        return service.catalog.events(project_id, user, asset_uuid, offset, limit)
 
     @application.post(API_PREFIX + "/projects", status_code=201)
     def create_project(body: ProjectBody, user: str = Depends(actor)) -> dict[str, Any]:

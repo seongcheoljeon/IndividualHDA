@@ -8,7 +8,13 @@ from typing import Any
 
 from libs.search_limits import TEAM_PAGE_DEFAULT
 from libs.team.client import HttpCatalog, Transport
-from libs.team.contracts import Blob, Command, Page, Unavailable
+from libs.team.contracts import (
+    DEFAULT_AUDIT_EVENT_LIMIT,
+    Blob,
+    Command,
+    Page,
+    Unavailable,
+)
 
 
 class PanelCatalog:
@@ -66,8 +72,10 @@ class PanelCatalog:
     def trash(self) -> list[dict[str, Any]]:
         return self.backend.trash()
 
-    def events(self, asset_uuid: str) -> list[dict[str, Any]]:
-        return self.backend.events(asset_uuid)
+    def events(
+        self, asset_uuid: str, offset: int = 0, limit: int = DEFAULT_AUDIT_EVENT_LIMIT
+    ) -> list[dict[str, Any]]:
+        return self.backend.events(asset_uuid, offset, limit)
 
     def upload(self, path: Path) -> Blob:
         return self.backend.upload(path)

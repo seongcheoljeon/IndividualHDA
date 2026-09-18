@@ -286,15 +286,16 @@ class PersonalCatalog:
                 ).fetchone()[0]
             return items
 
-    def events(self, asset_uuid: str) -> list[dict[str, Any]]:
+    def events(
+        self, asset_uuid: str, offset: int = 0, limit: int = DEFAULT_AUDIT_EVENT_LIMIT
+    ) -> list[dict[str, Any]]:
+        if offset < 0 or not 1 <= limit <= DEFAULT_AUDIT_EVENT_LIMIT:
+            raise TeamError("Invalid pagination")
         with SQLite3DatabaseAPI(self.database) as db:
             cursor = named_query(
                 db._connect,
-                "SELECT * FROM audit_events WHERE asset_uuid=:asset_uuid ORDER BY occurred_at DESC LIMIT :DEFAULT_AUDIT_EVENT_LIMIT",
-                {
-                    "asset_uuid": asset_uuid,
-                    "DEFAULT_AUDIT_EVENT_LIMIT": DEFAULT_AUDIT_EVENT_LIMIT,
-                },
+                "SELECT * FROM audit_events WHERE asset_uuid=:asset_uuid ORDER BY occurred_at DESC LIMIT :limit OFFSET :offset",
+                {"asset_uuid": asset_uuid, "limit": limit, "offset": offset},
             )
             return [dict(row) for row in cursor.fetchall()]
 

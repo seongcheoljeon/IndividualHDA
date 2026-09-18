@@ -8,7 +8,7 @@ from typing import Any, Protocol
 
 from ihda_server.storage_lock import storage_lock
 from libs.search_limits import TEAM_PAGE_DEFAULT
-from libs.team.contracts import Command, NotFound, Page, Role
+from libs.team.contracts import DEFAULT_AUDIT_EVENT_LIMIT, Command, NotFound, Page, Role
 
 
 class CatalogStore(Protocol):
@@ -41,7 +41,12 @@ class CatalogStore(Protocol):
     ) -> list[dict[str, Any]]: ...
     def trash(self, project_id: str, user_id: str) -> list[dict[str, Any]]: ...
     def events(
-        self, project_id: str, user_id: str, asset_uuid: str
+        self,
+        project_id: str,
+        user_id: str,
+        asset_uuid: str,
+        offset: int = 0,
+        limit: int = DEFAULT_AUDIT_EVENT_LIMIT,
     ) -> list[dict[str, Any]]: ...
     def require_access(
         self, project_id: str, user_id: str, write: bool = False

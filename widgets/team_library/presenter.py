@@ -10,6 +10,7 @@ from typing import Any, Protocol
 from libs.search_limits import TEAM_PAGE_DEFAULT, TEAM_PAGE_MAX
 from libs.tags import normalize_tags
 from libs.team.contracts import (
+    DEFAULT_AUDIT_EVENT_LIMIT,
     AssetCatalog,
     Blob,
     Command,
@@ -26,7 +27,9 @@ class WorkspaceBackend(AssetCatalog, Protocol):
 
     def upload(self, path: Path) -> Blob: ...
     def download(self, blob: Blob) -> Path: ...
-    def events(self, asset_uuid: str) -> list[dict[str, Any]]: ...
+    def events(
+        self, asset_uuid: str, offset: int = 0, limit: int = DEFAULT_AUDIT_EVENT_LIMIT
+    ) -> list[dict[str, Any]]: ...
 
 
 class WorkspaceView(Protocol):

@@ -265,8 +265,15 @@ class CatalogQueries(ProjectAccess):
             return rows
 
     def events(
-        self, project_id: str, user_id: str, asset_uuid: str
+        self,
+        project_id: str,
+        user_id: str,
+        asset_uuid: str,
+        offset: int = 0,
+        limit: int = DEFAULT_AUDIT_EVENT_LIMIT,
     ) -> list[dict[str, Any]]:
+        if offset < 0 or not 1 <= limit <= DEFAULT_AUDIT_EVENT_LIMIT:
+            raise TeamError("Invalid pagination")
         with self.reading(project_id, user_id) as connection:
             return [
                 dict(row)
@@ -278,7 +285,8 @@ class CatalogQueries(ProjectAccess):
                         state.audit.c.asset_uuid == asset_uuid,
                     )
                     .order_by(state.audit.c.occurred_at.desc())
-                    .limit(DEFAULT_AUDIT_EVENT_LIMIT)
+                    .offset(offset)
+                    .limit(limit)
                 ).mappings()
             ]
 
