@@ -24,6 +24,7 @@ from sqlalchemy.exc import IntegrityError
 
 from ihda_server import lifecycle_schema as state
 from ihda_server import schema as tables
+from ihda_server.operations import HANDLERS, Mutation
 from ihda_server.queries import CatalogQueries
 from ihda_server.tracking import team_tracking
 from libs.library_metadata import new_identity, version_details
@@ -227,47 +228,11 @@ class SqlCatalog(CatalogQueries):
         before: dict[str, Any] = {}
         audit_snapshot: tuple[dict[str, Any], dict[str, Any]] | None = None
         if operation == "create":
-            document = {
-                "project_id": project_id,
-                "name": values["name"],
-                "category": values["category"],
-                "version": values["version"],
-                "revision": 1,
-                "note": values.get("note", ""),
-                "tags": normalize_tags(values.get("tags", [])),
-                "metadata": values.get("metadata", {}),
-                "files": values["files"],
-                "created_at": now,
-                "updated_at": now,
-                "created_by": user_id,
-                "updated_by": user_id,
-                "asset_uuid": new_identity(),
-                "version_uuid": new_identity(),
-                "deleted_at": None,
-                **version_details(values),
-            }
-            result = connection.execute(
-                insert(tables.assets).values(
-                    project_id=project_id,
-                    name=document["name"],
-                    name_key=document["name"].casefold(),
-                    category=document["category"],
-                    revision=1,
-                    document=document,
-                )
-            )
-            assert result.inserted_primary_key is not None
-            asset_id = result.inserted_primary_key[0]
-            document["id"] = asset_id
-            connection.execute(
-                insert(state.asset_state).values(
-                    asset_id=asset_id,
-                    uuid=document["asset_uuid"],
-                    current_version_uuid=document["version_uuid"],
-                    provenance={},
-                )
+            asset_id, document = self._create(
+                connection, project_id, user_id, values, now
             )
         else:
+            assert command.asset_id is not None  # validate() guarantees it
             asset_id = command.asset_id
             row = (
                 connection.execute(
@@ -296,108 +261,19 @@ class SqlCatalog(CatalogQueries):
             document.update(
                 revision=document["revision"] + 1, updated_at=now, updated_by=user_id
             )
-            if operation in {
-                "delete",
-                "restore",
-                "purge",
-                "delete_history",
-                "restore_history",
-                "purge_history",
-            }:
-                if "history_id" in values:
-                    target = connection.execute(
-                        select(state.version_state.c.uuid, tables.history.c.version)
-                        .join(tables.history)
-                        .where(
-                            tables.history.c.id == values["history_id"],
-                            tables.history.c.asset_id == asset_id,
-                        )
-                    ).first()
-                    if target is not None:
-                        identity = {
-                            "asset_uuid": document["asset_uuid"],
-                            "version_uuid": target[0],
-                            "version": target[1],
-                        }
-                        audit_snapshot = (
-                            {**identity, "deleted": operation != "delete_history"},
-                            {
-                                **identity,
-                                "deleted": operation == "delete_history",
-                                "purged": operation == "purge_history",
-                            },
-                        )
-                document = self.lifecycle.change_lifecycle(
-                    connection, project_id, user_id, command, document
-                )
-            elif operation == "rename":
-                document["name"] = values["name"]
-            elif operation == "metadata":
-                document.update(values)
-                document["tags"] = normalize_tags(document["tags"])
-            elif operation == "version":
-                document.update(
-                    version=values["version"],
-                    metadata=values.get("metadata", {}),
-                    files=values["files"],
-                    version_uuid=new_identity(),
-                    **version_details(values),
-                )
-                connection.execute(
-                    update(state.asset_state)
-                    .where(state.asset_state.c.asset_id == asset_id)
-                    .values(current_version_uuid=document["version_uuid"])
-                )
-            elif operation in {"media", "version_details"}:
-                criteria = [tables.history.c.asset_id == asset_id]
-                if operation == "media":
-                    criteria.append(
-                        state.version_state.c.uuid == info["current_version_uuid"]
-                    )
-                else:
-                    criteria.append(tables.history.c.id == values["history_id"])
-                historical = (
-                    connection.execute(
-                        select(tables.history)
-                        .join(state.version_state)
-                        .where(*criteria, state.version_state.c.deleted_at.is_(None))
-                    )
-                    .mappings()
-                    .first()
-                )
-                if historical is None:
-                    raise NotFound("Version does not exist")
-                snapshot = deepcopy(historical["document"])
-                if operation == "media":
-                    snapshot["files"][values["kind"]] = values["file"]
-                    document["files"][values["kind"]] = values["file"]
-                    self.lifecycle.sync_files(connection, historical["id"], snapshot)
-                else:
-                    details = {
-                        **version_details(snapshot),
-                        **{k: v for k, v in values.items() if k != "history_id"},
-                    }
-                    tracking = team_tracking(connection, project_id)
-                    tracking.replace_dependencies(
-                        snapshot["version_uuid"], details.get("dependencies", [])
-                    )
-                    details["dependencies"] = tracking.dependencies(
-                        snapshot["version_uuid"]
-                    )
-                    snapshot.update(details)
-                    connection.execute(
-                        update(state.version_state)
-                        .where(state.version_state.c.history_id == historical["id"])
-                        .values(details=details)
-                    )
-                    if snapshot["version_uuid"] == document["version_uuid"]:
-                        document.update(details)
-                connection.execute(
-                    update(tables.history)
-                    .where(tables.history.c.id == historical["id"])
-                    .values(document=snapshot)
-                )
-                audit_snapshot = (dict(historical["document"]), snapshot)
+            mutation = Mutation(
+                connection=connection,
+                project_id=project_id,
+                user_id=user_id,
+                command=command,
+                values=values,
+                asset_id=asset_id,
+                info=info,
+                document=document,
+                lifecycle=self.lifecycle,
+            )
+            document = HANDLERS[operation](mutation)
+            audit_snapshot = mutation.audit_snapshot
         if operation != "purge":
             connection.execute(
                 update(tables.assets)
@@ -437,6 +313,56 @@ class SqlCatalog(CatalogQueries):
             command.request_id,
         )
         return self.lifecycle.decorate(connection, document, user_id)
+
+    def _create(
+        self,
+        connection: Connection,
+        project_id: str,
+        user_id: str,
+        values: dict[str, Any],
+        now: str,
+    ) -> tuple[int, dict[str, Any]]:
+        document = {
+            "project_id": project_id,
+            "name": values["name"],
+            "category": values["category"],
+            "version": values["version"],
+            "revision": 1,
+            "note": values.get("note", ""),
+            "tags": normalize_tags(values.get("tags", [])),
+            "metadata": values.get("metadata", {}),
+            "files": values["files"],
+            "created_at": now,
+            "updated_at": now,
+            "created_by": user_id,
+            "updated_by": user_id,
+            "asset_uuid": new_identity(),
+            "version_uuid": new_identity(),
+            "deleted_at": None,
+            **version_details(values),
+        }
+        result = connection.execute(
+            insert(tables.assets).values(
+                project_id=project_id,
+                name=document["name"],
+                name_key=document["name"].casefold(),
+                category=document["category"],
+                revision=1,
+                document=document,
+            )
+        )
+        assert result.inserted_primary_key is not None
+        asset_id = result.inserted_primary_key[0]
+        document["id"] = asset_id
+        connection.execute(
+            insert(state.asset_state).values(
+                asset_id=asset_id,
+                uuid=document["asset_uuid"],
+                current_version_uuid=document["version_uuid"],
+                provenance={},
+            )
+        )
+        return asset_id, document
 
     def tracking_execute(
         self, project_id: str, user_id: str, body: dict[str, Any]

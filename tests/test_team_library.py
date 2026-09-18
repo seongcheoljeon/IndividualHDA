@@ -390,3 +390,14 @@ def test_events_page_with_offset_and_limit(backend: Any, tmp_path: Path) -> None
     assert backend.events(asset["asset_uuid"], offset=len(everything), limit=5) == []
     with pytest.raises(TeamError):
         backend.events(asset["asset_uuid"], limit=0)
+
+
+def test_every_operation_has_exactly_one_home() -> None:
+    from typing import get_args
+
+    from ihda_server.operations import EXPLICIT_OPERATIONS, HANDLERS
+    from libs.team.contracts import Operation
+
+    declared = set(get_args(Operation))
+    assert set(HANDLERS) | EXPLICIT_OPERATIONS == declared
+    assert not set(HANDLERS) & EXPLICIT_OPERATIONS
