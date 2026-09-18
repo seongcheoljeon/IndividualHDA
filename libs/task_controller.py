@@ -30,6 +30,9 @@ class TaskController(QObject):
         self._video_job: ProcessJob | None = None
         self._completion: Callable[[Any], None] | None = None
         self._delivered = False
+        # A start requested from a completion callback: the result is delivered
+        # but QThread.finished has not run yet, so the job still counts as busy.
+        self._queued: tuple[Callable[[], Any], Callable[[Any], None]] | None = None
         self._file_factory = file_factory
         self._process_factory = process_factory
 
@@ -87,8 +90,13 @@ class TaskController(QObject):
     def start(
         self, operation: Callable[[], Any], completion: Callable[[Any], None]
     ) -> bool:
-        if self.busy:
+        if self._video_job is not None:
             return False
+        if self._file_job is not None:
+            if not self._delivered or self._queued is not None:
+                return False
+            self._queued = (operation, completion)
+            return True
         job = self._file_factory(operation, QCoreApplication.instance())
         self._file_job = job
         self._completion = completion
@@ -129,10 +137,15 @@ class TaskController(QObject):
             self._file_job = None
             self._completion = None
             job.deleteLater()
-            self.idle.emit()
+            queued, self._queued = self._queued, None
+            if queued is not None:
+                self.start(*queued)  # chained work; idle waits for the last job
+            else:
+                self.idle.emit()
 
     def drain(self) -> None:
         """Houdini onDestroyInterface cannot defer widget destruction."""
+        self._queued = None  # shutting down: chained work is dropped
         job = self.file_job
         if job is not None:
             job.result.disconnect(self._receive)

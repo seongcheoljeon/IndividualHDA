@@ -145,12 +145,11 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
     def _run(
         self, operation: Callable[[], Any], callback: Callable[[Any], None]
     ) -> None:
-        if self._tasks.busy or self._closing:
+        if self._closing or not self._tasks.start(operation, lambda _: None):
             return
         self._callback = callback
         self.setEnabled(False)
         self.label__status.setText("Working…")
-        self._tasks.start(operation, lambda _: None)
 
     def _finished(self, result: Any, error: Exception | None) -> None:
         self.setEnabled(True)
@@ -366,20 +365,7 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
 
     def _purged(self, result: Any) -> None:
         self._saved(result)
-        self._when_idle(
-            lambda: self._run(lambda: self.gateway.reclaim(False), self._offer_reclaim)
-        )
-
-    def _when_idle(self, action: Callable[[], None]) -> None:
-        # A result can arrive before the worker clears busy; wait, do not drop it.
-        if self._closing:
-            return
-        if self._tasks.busy:
-            QtCore.QTimer.singleShot(
-                self.callbacks.retry_delay_ms, lambda: self._when_idle(action)
-            )
-            return
-        action()
+        self._run(lambda: self.gateway.reclaim(False), self._offer_reclaim)
 
     def _offer_reclaim(self, rows: list[dict[str, Any]]) -> None:
         """Purge only dropped rows; ask before the queued files leave the disk."""

@@ -160,3 +160,28 @@ def test_qt_model_empty_population_and_unsupported_drop(app: Any, name: str) -> 
         QtCore.QMimeData(), QtCore.Qt.DropAction.CopyAction, 0, 0, QtCore.QModelIndex()
     )
     assert model.rowCount() == 1
+
+
+def test_start_from_a_completion_callback_runs_after_the_current_job(app: Any) -> None:
+    """A result reaches its callback before QThread.finished; chaining must not drop."""
+
+    class SyncJob(BackgroundJob):
+        def start(self) -> None:
+            self.run()  # delivers the result first, like the real thread...
+            self.finished.emit()  # ...and only then reports the thread finished
+
+    controller = TaskController(file_factory=SyncJob)
+    idles: list[bool] = []
+    controller.idle.connect(lambda: idles.append(True))
+    done: list[Any] = []
+
+    def first_done(value: Any) -> None:
+        assert value == "first" and controller.busy
+        assert controller.start(lambda: "second", done.append)  # queued, not refused
+        assert not controller.start(lambda: "third", done.append)  # one at a time
+
+    assert controller.start(lambda: "first", first_done)
+    assert done == ["second"]
+    assert not controller.busy
+    assert idles == [True]  # one idle for the chain, at its end
+    controller.deleteLater()
