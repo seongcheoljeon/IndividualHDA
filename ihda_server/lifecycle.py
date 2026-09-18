@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any
 
@@ -44,8 +45,27 @@ class LifecycleStore:
     def decorate(
         self, connection: Connection, document: dict[str, Any], user_id: str
     ) -> dict[str, Any]:
+        return self.apply_preference(
+            document, self.preference(connection, document["id"], user_id)
+        )
+
+    @staticmethod
+    def preference_row(row: Mapping[Any, Any], user_id: str) -> dict[str, Any]:
+        """A joined preferences row (all None when the user never set one)."""
+        return {
+            "asset_id": row["document"]["id"],
+            "user_id": user_id,
+            "favorite": bool(row["favorite"]),
+            "revision": row["revision"] or 0,
+            "use_count": row["use_count"] or 0,
+            "last_used_at": row["last_used_at"],
+        }
+
+    @staticmethod
+    def apply_preference(
+        document: dict[str, Any], preference: Mapping[str, Any]
+    ) -> dict[str, Any]:
         result = deepcopy(document)
-        preference = self.preference(connection, document["id"], user_id)
         result.update(
             favorite=bool(preference["favorite"]),
             preference_revision=preference["revision"],

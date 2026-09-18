@@ -6,6 +6,7 @@ from sqlalchemy import (
     JSON,
     Column,
     ForeignKey,
+    Index,
     Integer,
     MetaData,
     String,
@@ -52,6 +53,11 @@ assets = Table(
     Column("revision", Integer, nullable=False),
     Column("document", JSON, nullable=False),
     UniqueConstraint("project_id", "category", "name_key"),
+)
+# Listing orders by name_key within a project; the unique constraint leads with
+# category, so it cannot serve that sort.
+assets_order_index = Index(
+    "ix_team_assets_order", assets.c.project_id, assets.c.name_key
 )
 history = Table(
     "team_history",

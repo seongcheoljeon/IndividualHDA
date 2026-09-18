@@ -12,7 +12,17 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import Connection, Engine, delete, func, insert, or_, select, update
+from sqlalchemy import (
+    Connection,
+    Engine,
+    and_,
+    delete,
+    func,
+    insert,
+    or_,
+    select,
+    update,
+)
 from sqlalchemy.exc import IntegrityError
 
 from ihda_server import lifecycle_schema as state
@@ -250,15 +260,32 @@ class SqlCatalog:
             total = connection.execute(
                 select(func.count()).select_from(tables.assets).where(*criteria)
             ).scalar_one()
+            # One LEFT JOIN instead of a preference SELECT per listed asset.
+            mine = state.preferences
             rows = (
                 connection.execute(
-                    select(tables.assets.c.document)
+                    select(
+                        tables.assets.c.document,
+                        mine.c.favorite,
+                        mine.c.revision,
+                        mine.c.use_count,
+                        mine.c.last_used_at,
+                    )
+                    .select_from(
+                        tables.assets.outerjoin(
+                            mine,
+                            and_(
+                                mine.c.asset_id == tables.assets.c.id,
+                                mine.c.user_id == user_id,
+                            ),
+                        )
+                    )
                     .where(*criteria)
                     .order_by(tables.assets.c.name_key, tables.assets.c.id)
                     .offset(offset)
                     .limit(limit)
                 )
-                .scalars()
+                .mappings()
                 .all()
             )
             revision = connection.execute(
@@ -267,7 +294,12 @@ class SqlCatalog:
                 )
             ).scalar_one()
             return Page(
-                [self.lifecycle.decorate(connection, row, user_id) for row in rows],
+                [
+                    self.lifecycle.apply_preference(
+                        row["document"], self.lifecycle.preference_row(row, user_id)
+                    )
+                    for row in rows
+                ],
                 total,
                 offset,
                 limit,
@@ -332,11 +364,14 @@ class SqlCatalog:
             from ihda_server.tracking import team_tracking
 
             tracking = team_tracking(connection, project_id)
+            dependencies = tracking.dependencies_many(
+                [row["document"]["version_uuid"] for row in rows]
+            )
             for row in rows:
                 row["document"] = {
                     **row["document"],
-                    "dependencies": tracking.dependencies(
-                        row["document"]["version_uuid"]
+                    "dependencies": dependencies.get(
+                        row["document"]["version_uuid"], []
                     ),
                 }
             return rows

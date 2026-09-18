@@ -145,8 +145,25 @@ def test_server_v1_upgrade_preserves_documents_and_seeds_members(
     )
     upgrade(catalog._engine)
     assert backend.get_asset(asset["id"]) == upgraded
+    from sqlalchemy import inspect
+
+    from ihda_server.database import SCHEMA_VERSION
+
     with catalog._engine.connect() as connection:
-        assert connection.execute(select(tables.versions.c.version)).scalar_one() == 3
+        assert (
+            connection.execute(select(tables.versions.c.version)).scalar_one()
+            == SCHEMA_VERSION
+        )
+        # v4 indexes are created by the upgrade, not by create_all on old tables.
+        names = {
+            index["name"] for index in inspect(connection).get_indexes("team_assets")
+        }
+        assert "ix_team_assets_order" in names
+        names = {
+            index["name"]
+            for index in inspect(connection).get_indexes("team_audit_events")
+        }
+        assert "ix_team_audit_lookup" in names
 
 
 def test_legacy_pending_requires_review_and_keeps_file(tmp_path: Path) -> None:

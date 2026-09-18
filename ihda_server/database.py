@@ -9,7 +9,7 @@ from ihda_server import lifecycle_schema, tracking_schema  # noqa: F401
 from ihda_server.database_policy import DatabaseTimeouts
 from ihda_server.schema import metadata, versions
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 
 def make_engine(url: str, *, timeouts: DatabaseTimeouts | None = None) -> Engine:

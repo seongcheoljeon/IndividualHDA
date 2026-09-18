@@ -429,6 +429,7 @@ def test_server_v2_migration_backfills_dependencies(
 
     from ihda_server import lifecycle_schema as state
     from ihda_server import schema as tables
+    from ihda_server.database import SCHEMA_VERSION
     from ihda_server.migrations import upgrade
     from ihda_server.tracking import ServerTrackingConnection
     from ihda_server.tracking_schema import TABLES
@@ -458,7 +459,10 @@ def test_server_v2_migration_backfills_dependencies(
         == asset["version_uuid"]
     )
     with catalog._engine.connect() as connection:
-        assert connection.execute(select(tables.versions.c.version)).scalar_one() == 3
+        assert (
+            connection.execute(select(tables.versions.c.version)).scalar_one()
+            == SCHEMA_VERSION
+        )
 
 
 def test_tracking_form_and_recovery_dialog(app: Any, personal: Any) -> None:

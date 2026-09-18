@@ -1,6 +1,6 @@
 """Additive v2 tables. Legacy v1 table definitions remain migration inputs."""
 
-from sqlalchemy import JSON, Column, ForeignKey, Integer, String, Table
+from sqlalchemy import JSON, Column, ForeignKey, Index, Integer, String, Table
 
 from ihda_server.schema import metadata
 
@@ -53,6 +53,10 @@ audit = Table(
     Column("request_id", String(36)),
     Column("operation", String(40), nullable=False),
     Column("changes", JSON, nullable=False),
+)
+# events(): WHERE project_id AND asset_uuid ORDER BY occurred_at DESC LIMIT n.
+audit_lookup_index = Index(
+    "ix_team_audit_lookup", audit.c.project_id, audit.c.asset_uuid, audit.c.occurred_at
 )
 file_refs = Table(
     "team_version_files",

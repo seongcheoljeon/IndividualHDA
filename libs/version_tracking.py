@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Any, Protocol
 from uuid import UUID
@@ -207,10 +207,21 @@ class VersionTracking:
             )
 
     def dependencies(self, uuid: str) -> list[dict[str, Any]]:
-        result = []
+        return self.dependencies_many([uuid]).get(uuid, [])
+
+    def dependencies_many(
+        self, uuids: Sequence[str]
+    ) -> dict[str, list[dict[str, Any]]]:
+        """Dependencies of several versions in two queries instead of two per version."""
+        result: dict[str, list[dict[str, Any]]] = {uuid: [] for uuid in uuids}
+        if not uuids:
+            return result
+        keys = [f"source_{index}" for index in range(len(result))]
         rows = self.connection.rows(
-            "SELECT * FROM version_dependencies WHERE scope_id=:scope AND source_uuid=:uuid ORDER BY ordinal",
-            {"scope": self.scope, "uuid": uuid},
+            "SELECT * FROM version_dependencies WHERE scope_id=:scope AND source_uuid IN ("
+            + ",".join(":" + key for key in keys)
+            + ") ORDER BY source_uuid, ordinal",
+            {"scope": self.scope, **dict(zip(keys, result, strict=True))},
         )
         live = {
             v["version_uuid"]: v
@@ -224,7 +235,7 @@ class VersionTracking:
             if v["active"]
         }
         for row in rows:
-            result.append(
+            result.setdefault(row["source_uuid"], []).append(
                 {
                     "kind": row["kind"],
                     "target": row["target"],

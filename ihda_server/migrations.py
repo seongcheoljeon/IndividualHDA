@@ -2,10 +2,11 @@
 
 from copy import deepcopy
 
-from sqlalchemy import Engine, insert, select, update
+from sqlalchemy import Connection, Engine, insert, select, update
 
 from ihda_server import lifecycle_schema as lifecycle
 from ihda_server import schema as tables
+from ihda_server.database import SCHEMA_VERSION
 from libs.library_metadata import new_identity, version_details
 
 
@@ -14,13 +15,16 @@ def upgrade(engine: Engine) -> None:
         installed = connection.execute(
             select(tables.versions.c.version).with_for_update()
         ).scalar_one()
+        if installed == SCHEMA_VERSION:
+            return
         if installed == 3:
+            _install_v4(connection)
             return
         if installed == 2:
             from ihda_server.tracking import install
 
             install(connection)
-            connection.execute(update(tables.versions).values(version=3))
+            _install_v4(connection)
             return
         if installed != 1:
             raise RuntimeError(f"Unsupported schema {installed}")
@@ -96,4 +100,11 @@ def upgrade(engine: Engine) -> None:
         from ihda_server.tracking import install
 
         install(connection)
-        connection.execute(update(tables.versions).values(version=3))
+        _install_v4(connection)
+
+
+def _install_v4(connection: Connection) -> None:
+    """v4 adds indexes only; create_all never adds indexes to existing tables."""
+    for index in (tables.assets_order_index, lifecycle.audit_lookup_index):
+        index.create(connection, checkfirst=True)
+    connection.execute(update(tables.versions).values(version=SCHEMA_VERSION))
