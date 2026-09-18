@@ -6,6 +6,7 @@ if TYPE_CHECKING:
     from widgets.web_view.web_view import WebView
 
 import copy
+import ipaddress
 
 # author:           seongcheol jeon
 # email:            saelly55@gmail.com
@@ -13,12 +14,29 @@ import copy
 # modified date:
 # description:
 import os
+import urllib.parse
 
 from PySide6 import QtCore
 
 from libs import keys, paths
 from libs.qt_helpers import center_on_screen
 from libs.settings_store import apply_settings, load_json, save_json
+
+
+def _is_loopback(url: Any) -> bool:
+    """Is this a session-scoped address that must not outlive the session?
+
+    Houdini's help server listens on a loopback port that changes per launch, so
+    persisting it makes the next session restore a dead URL and render Chromium's
+    error page. Addresses the user navigated to are kept as before.
+    """
+    if not isinstance(url, str):
+        return False
+    hostname = urllib.parse.urlsplit(url).hostname or ""
+    try:
+        return ipaddress.ip_address(hostname).is_loopback
+    except ValueError:
+        return hostname == "localhost"
 
 
 class WebUISettings:
@@ -31,9 +49,9 @@ class WebUISettings:
         self.__cfg_dict: dict[str, Any] = {}
 
     def save_cfg_dict_to_file(self) -> None:
-        self.__cfg_dict[keys.Name.WebUI.url_addr] = (
-            self.__window.lineEdit__address.text()
-        )
+        address = self.__window.lineEdit__address.text()
+        if not _is_loopback(address):
+            self.__cfg_dict[keys.Name.WebUI.url_addr] = address
         #
         if not paths.Paths.config_dirpath.exists():
             os.makedirs(paths.Paths.config_dirpath.as_posix())
@@ -67,6 +85,10 @@ class WebUISettings:
         self.__cfg_dict = copy.copy(load_json(self.__setting_json))
         if not self.__cfg_dict:
             return
+        # Drop a stale help-server address so it is neither restored nor re-saved;
+        # apply_settings leaves a missing key at its widget default.
+        if _is_loopback(self.__cfg_dict.get(keys.Name.WebUI.url_addr)):
+            self.__cfg_dict.pop(keys.Name.WebUI.url_addr)
         apply_settings(
             self.__cfg_dict,
             [(keys.Name.WebUI.url_addr, self.__window.lineEdit__address.setText)],

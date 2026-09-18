@@ -63,6 +63,9 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
         self.webEngineView__webview.loadStarted.connect(self.__load_started)
         self.webEngineView__webview.loadProgress.connect(self.__load_progress)
         self.webEngineView__webview.loadFinished.connect(self.__load_finished)
+        self.webEngineView__webview.page().renderProcessTerminated.connect(
+            self.__render_process_terminated
+        )
         # self.webEngineView__webview.page().fullScreenRequested.connect(self.__full_screen)
         #
         self.pushButton__back_page.clicked.connect(self.__back)
@@ -148,9 +151,27 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
                 method=logging.info, msg="iHDA webview loading ends"
             )
         else:
+            # requestedUrl(), not url(): a navigation that fails never commits,
+            # so url() still reports the page already on screen (about:blank on
+            # the first attempt) rather than the address that could not load.
             log_handler.LogHandler.log_msg(
-                method=logging.error, msg="iHDA webview loading ends failed"
+                method=logging.error,
+                msg=f"iHDA webview loading ends failed: "
+                f"{self.webEngineView__webview.page().requestedUrl().toString()}",
             )
+
+    @QtCore.Slot(object, int)
+    def __render_process_terminated(self, status: Any, exit_code: int) -> None:
+        """A dead render process fails every navigation, not just one address.
+
+        Chromium runs the page in a helper process (QtWebEngineProcess). When the
+        helper cannot start, loadFinished(False) is all that surfaces, which looks
+        identical to an unreachable site. Naming the termination separates the two.
+        """
+        log_handler.LogHandler.log_msg(
+            method=logging.error,
+            msg=f"iHDA webview render process terminated: {status} (exit {exit_code})",
+        )
 
     def __back(self) -> None:
         self.webEngineView__webview.back()

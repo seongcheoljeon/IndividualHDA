@@ -43,6 +43,11 @@ class HoudiniAPI:
         return hou.helpServerUrl if IS_HOUDINI else None
 
     @staticmethod
+    def qt_library_dirpath() -> pathlib.Path | None:
+        """$HFS/bin -- where Houdini keeps the Qt DLLs its helper binaries need."""
+        return pathlib.Path(hou.expandString("$HFS"), "bin") if IS_HOUDINI else None
+
+    @staticmethod
     def host_stylesheet() -> str:
         return str(hou.qt.styleSheet()) if IS_HOUDINI else ""
 
