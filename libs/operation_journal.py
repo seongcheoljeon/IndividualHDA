@@ -30,13 +30,23 @@ def sync_directory(directory: Path) -> None:
             os.close(descriptor)
 
 
+def sync_file(path: Path) -> None:
+    """Flush a file this process did not open for writing.
+
+    Windows implements os.fsync with _commit(), which calls FlushFileBuffers();
+    that API requires GENERIC_WRITE, so fsync on a descriptor opened "rb" fails
+    with OSError [Errno 9] Bad file descriptor. Open for update instead.
+    """
+    with path.open("rb+") as stream:
+        os.fsync(stream.fileno())
+
+
 def sync_tree(root: Path) -> None:
     """Flush staged archive content on its worker before activation."""
     for directory, _, filenames in os.walk(root, topdown=False):
         parent = Path(directory)
         for filename in filenames:
-            with (parent / filename).open("rb+") as stream:
-                os.fsync(stream.fileno())
+            sync_file(parent / filename)
         sync_directory(parent)
 
 

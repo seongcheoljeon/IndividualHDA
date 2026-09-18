@@ -19,6 +19,7 @@ from sqlalchemy.engine import make_url
 from ihda_server import lifecycle_schema as state
 from ihda_server import schema as tables
 from ihda_server.database import SCHEMA_VERSION
+from libs.operation_journal import sync_file
 
 # Stable across processes and releases: changing this permits concurrent restores.
 RESTORE_ADVISORY_LOCK_KEY = 7248335901
@@ -205,8 +206,7 @@ class PostgresBackup:
                 "--file=" + str(output),
             ],
         )
-        with output.open("rb") as stream:
-            os.fsync(stream.fileno())
+        sync_file(output)
 
     @contextmanager
     def restore_target(self) -> Iterator[None]:

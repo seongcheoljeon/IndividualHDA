@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import shutil
 import sqlite3
@@ -246,23 +247,32 @@ class RegistrationRecovery:
                 "Capture was interrupted; recapture the Houdini node in a new request"
             )
         stage = Path(document["stage"])
+        # Houdini picks the flipbook image format from the suffix, so the staged
+        # names must keep the destination filenames, not generic "asset"/"thumbnail".
         files = (
             CaptureFile(
-                source=stage / "asset",
+                source=stage / payload.hda_filename,
                 destination=payload.hda_dirpath / payload.hda_filename,
                 capture=capture.asset,
                 required=True,
             ),
             CaptureFile(
-                source=stage / "thumbnail",
+                source=stage / payload.thumb_filename,
                 destination=payload.thumb_dirpath / payload.thumb_filename,
                 capture=capture.thumbnail,
             ),
         )
-        if len({file.destination for file in files}) != len(files) or any(
-            file.destination.exists() or file.destination.is_symlink() for file in files
+        if (
+            len({file.source for file in files}) != len(files)
+            or len({file.destination for file in files}) != len(files)
+            or any(
+                file.destination.exists() or file.destination.is_symlink()
+                for file in files
+            )
         ):
             raise LibraryConflict("Registration destination already exists")
+        from libs.operation_journal import sync_file
+
         stage.mkdir(parents=True, exist_ok=True)
         for file in files:
             file.capture(file.source)
@@ -270,19 +280,21 @@ class RegistrationRecovery:
             source, destination = file.source, file.destination
             if file.required and (not source.is_file() or not source.stat().st_size):
                 raise ValueError("Capture did not create an asset")
-            if source.is_file():
-                with source.open("rb") as stream:
-                    os.fsync(stream.fileno())
-                content = measure_file(source)
-                document["files"].append(
-                    {
-                        "source": str(source),
-                        "destination": str(destination),
-                        "digest": content.digest,
-                        "size": content.size,
-                        "owner": None,
-                    }
-                )
+            if not source.is_file():
+                # Optional file (no viewport, or the host wrote nothing): never silent.
+                logging.warning("Capture produced no %s", source.name)
+                continue
+            sync_file(source)
+            content = measure_file(source)
+            document["files"].append(
+                {
+                    "source": str(source),
+                    "destination": str(destination),
+                    "digest": content.digest,
+                    "size": content.size,
+                    "owner": None,
+                }
+            )
         from libs.operation_journal import sync_directory
 
         sync_directory(stage)

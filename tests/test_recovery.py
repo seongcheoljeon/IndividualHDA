@@ -198,3 +198,13 @@ def test_v1_journal_recovers_and_new_journals_write_named_moves(tmp_path: Path) 
     ]
     journal.rollback()
     assert source.read_text() == "original"
+
+
+def test_sync_file_flushes_a_file_opened_elsewhere(tmp_path: Path) -> None:
+    """Regression: fsync on an "rb" descriptor raises EBADF on Windows."""
+    from libs.operation_journal import sync_file
+
+    target = tmp_path / "asset.hda"
+    target.write_bytes(b"captured by houdini")
+    sync_file(target)
+    assert target.read_bytes() == b"captured by houdini"

@@ -314,3 +314,29 @@ def test_registration_job_insert_survives_added_database_column(tmp_path: Path) 
             database.execute("SELECT extension FROM registration_jobs").fetchone()[0]
             == "kept"
         )
+
+
+def test_staged_capture_paths_keep_the_destination_suffix(tmp_path: Path) -> None:
+    """Houdini's flipbook picks its image format from the suffix.
+
+    Staging the thumbnail as a bare "thumbnail" made the host write nothing, so
+    registration committed without one and only a manual update produced a file.
+    """
+    _, request, service = setup(tmp_path)
+    staged: list[Path] = []
+
+    class Recorder(Capture):
+        def asset(self, destination: Path) -> None:
+            staged.append(destination)
+            super().asset(destination)
+
+        def thumbnail(self, destination: Path) -> None:
+            staged.append(destination)
+            super().thumbnail(destination)
+
+    service.register(request, Recorder())
+    assert [path.name for path in staged] == [
+        request.hda_filename,
+        request.thumb_filename,
+    ]
+    assert (request.thumb_dirpath / request.thumb_filename).is_file()
