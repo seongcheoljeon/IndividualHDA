@@ -21,6 +21,7 @@ from widgets.asset_lifecycle.capture import HoudiniRegistrationCapture
 if TYPE_CHECKING:
     import hou
 
+    from widgets.panel.library_port import LibraryPort
     from widgets.panel.ports import (
         AssetManagementPort,
         AssetModelPort,
@@ -40,7 +41,6 @@ if TYPE_CHECKING:
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState
     from widgets.preference.preference import Preference
-    from widgets.team_library.integration import MainLibraryIntegration
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,7 +57,7 @@ class PanelAssetRegistrationBindings:
     selection: SelectionPort
     services: PanelServices
     session: PanelSessionState
-    team: Callable[[], MainLibraryIntegration]
+    library: Callable[[], LibraryPort]
     ui: MainWindowLayout
 
 
@@ -70,9 +70,7 @@ class PanelAssetRegistration:
     ) -> None:
         if not self.bindings.services.host_actions_enabled:
             return
-        team = self.bindings.team()
-        if team is not None and team.active:
-            team.actions.register_nodes(node_lst)
+        if self.bindings.library().register_nodes(node_lst):
             return
         if not host.IS_HOUDINI:
             log_handler.LogHandler.log_msg(

@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from widgets.library_metadata.dialog import LibraryMetadataDialog
     from widgets.library_metadata.recovery import RegistrationRecoveryDialog
     from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.library_port import LibraryPort
     from widgets.panel.ports import AssetModelPort, LibraryQueryPort, SelectionPort
     from widgets.panel.scene_usage import SceneUsageIntegration
     from widgets.panel.services import PanelServices
@@ -39,6 +40,7 @@ class PanelLibraryToolsBindings:
     stage_import: Callable[[Any], None]
     status: PanelStatus
     tasks: TaskController
+    library: Callable[[], LibraryPort]
     team: Callable[[], MainLibraryIntegration]
     ui: MainWindowLayout
     views: PanelViews
@@ -119,25 +121,9 @@ class PanelLibraryTools:
     def _refresh_registration_status(self) -> None:
         if self.bindings.status.closing or self.registration_status_tasks.busy:
             return
-        from libs.paths import Paths
-        from libs.registration_recovery import RegistrationRecovery
-        from libs.team.registration_recovery import TeamRegistrationRecovery
-
-        recovery: RegistrationRecovery | TeamRegistrationRecovery
-        team = self.bindings.team()
-        if team.active:
-            assert team.catalog is not None
-            recovery = TeamRegistrationRecovery(
-                Paths.config_dirpath / "workspace" / "registrations",
-                team.catalog.namespace,
-            )
-        else:
-            if (
-                self.bindings.queries.db_filepath is None
-                or not self.bindings.queries.db_filepath.is_file()
-            ):
-                return
-            recovery = RegistrationRecovery(self.bindings.queries.db_filepath)
+        recovery = self.bindings.library().registration_recovery()
+        if recovery is None:
+            return
 
         def loaded(rows: list[dict[str, Any]]) -> None:
             count = sum(row["phase"] not in {"committed", "discarded"} for row in rows)
@@ -150,42 +136,16 @@ class PanelLibraryTools:
         self.registration_status_tasks.start(recovery.jobs, loaded)
 
     def _open_registration_recovery(self) -> None:
-        from libs.paths import Paths
-        from libs.registration_recovery import RegistrationRecovery
-        from libs.team.registration_recovery import TeamRegistrationRecovery
         from widgets.library_metadata.recovery import RegistrationRecoveryDialog
 
-        recovery: RegistrationRecovery | TeamRegistrationRecovery
-        team = self.bindings.team()
-        if self.bindings.tasks.busy or team.busy:
+        library = self.bindings.library()
+        if self.bindings.tasks.busy or library.busy or not library.writable:
             return
-        if team.active:
-            assert team.catalog is not None
-            if not team.writable:
-                return
-            team_recovery = TeamRegistrationRecovery(
-                Paths.config_dirpath / "workspace" / "registrations",
-                team.catalog.namespace,
-            )
-
-            def retry(identity: str) -> Any:
-                return team_recovery.retry(identity, team.catalog, team.pending)
-
-            recovery = team_recovery
-        else:
-            if self.bindings.queries.db_filepath is None:
-                return
-            local_recovery = RegistrationRecovery(self.bindings.queries.db_filepath)
-            writer = self.bindings.services.lifecycle(
-                self.bindings.session.require_repository(), self.bindings.services.names
-            )
-
-            def retry(identity: str) -> Any:
-                return local_recovery.retry(identity, writer)
-
-            recovery = local_recovery
+        recovery = library.registration_recovery()
+        if recovery is None:
+            return
         dialog = RegistrationRecoveryDialog(
-            recovery.jobs, retry, recovery.discard, self.bindings.parent
+            recovery.jobs, recovery.retry, recovery.discard, self.bindings.parent
         )
         self.recovery_dialog = dialog
         try:
@@ -194,24 +154,18 @@ class PanelLibraryTools:
             dialog.shutdown()
             self.recovery_dialog = None
             dialog.deleteLater()
-        if team.active and team.presenter:
-            team.presenter.refresh()
-        elif not team.active:
-            self.bindings.reload_library()
+        library.refresh()
 
     def open_copy_to_team(self) -> None:
         from libs.paths import Paths
-        from libs.team.copy_source import PersonalCopySource
         from widgets.asset_copy.dialog import CopyAssetDialog
 
-        if self.bindings.tasks.busy or self.bindings.team().busy:
+        library = self.bindings.library()
+        if self.bindings.tasks.busy or library.busy:
             return
         asset_id = self.bindings.selection.state.asset.id
-        if (
-            self.bindings.team().active
-            or asset_id is None
-            or self.bindings.queries.db_filepath is None
-        ):
+        source = library.copy_source(asset_id) if asset_id is not None else None
+        if source is None:
             QtWidgets.QMessageBox.information(
                 self.bindings.parent,
                 "Copy to team",
@@ -219,7 +173,7 @@ class PanelLibraryTools:
             )
             return
         dialog = CopyAssetDialog(
-            PersonalCopySource(self.bindings.queries.db_filepath, asset_id),
+            source,
             Paths.config_dirpath / "workspace",
             self.bindings.parent,
             runtime=self.bindings.services.runtime,
@@ -242,54 +196,32 @@ class PanelLibraryTools:
         self._open_metadata_tools(asset_id)
 
     def _open_metadata_tools(self, asset_id: int | None = None) -> None:
-        from libs.library_management import LocalManagement, RemoteManagement
         from widgets.library_metadata.dialog import LibraryMetadataDialog
 
-        team = self.bindings.team()
-        if self.bindings.tasks.busy or team.busy:
+        library = self.bindings.library()
+        if self.bindings.tasks.busy or library.busy:
             return
-        if team.active:
-            assert team.catalog is not None
-            gateway: RemoteManagement | LocalManagement = RemoteManagement(
-                team.catalog, team.pending
-            )
-            writable, owner = team.writable, team.project.get("role") == "owner"
-        else:
-            if (
-                self.bindings.queries.db_filepath is None
-                or not self.bindings.queries.db_filepath.is_file()
-            ):
-                return
-            gateway = LocalManagement(self.bindings.queries.db_filepath)
-            writable = owner = True
+        gateway = library.management_gateway()
+        if gateway is None:
+            return
         dialog = LibraryMetadataDialog(
             gateway,
             self.bindings.parent,
             asset_id=asset_id,
-            writable=writable,
-            owner=owner,
+            writable=library.writable,
+            owner=library.owner,
             callbacks=self.bindings.services.callbacks,
         )
         self.metadata_dialog = dialog
-        dialog.changed.connect(
-            lambda: (
-                team.presenter.refresh()
-                if team.active and team.presenter
-                else self._tools_paths_changed()
-            )
-        )
+        dialog.changed.connect(library.metadata_changed)
         try:
             dialog.exec()
         finally:
             dialog.shutdown()
             self.metadata_dialog = None
             dialog.deleteLater()
-        if team.active:
-            assert team.catalog is not None
-            team.show_status("")
-        if not team.active:
-            self.tools_require_restart = False
-            self.bindings.reload_library()
+        self.tools_require_restart = False
+        library.metadata_dialog_closed()
 
     def open_library_tools(self, tab: int = 0) -> None:
         if self.bindings.tasks.busy or self.bindings.imported():

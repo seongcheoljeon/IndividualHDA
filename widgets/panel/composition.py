@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from main import IndividualHDA
@@ -38,6 +38,7 @@ from widgets.panel.bootstrap import PanelBootstrap
 from widgets.panel.context_menus import PanelContextMenusBindings
 from widgets.panel.host_callbacks import PanelHostCallbacksBindings
 from widgets.panel.houdini_actions import PanelHoudiniActionsBindings
+from widgets.panel.library_port import LibraryPort, PersonalLibrary, TeamLibrary
 from widgets.panel.library_queries import PanelLibraryQueriesBindings
 from widgets.panel.library_session import PersonalPanelSession
 from widgets.panel.library_sync import PanelLibrarySync, PanelLibrarySyncBindings
@@ -54,6 +55,21 @@ from widgets.preference import preference
 from widgets.rename_ihda import rename_ihda
 from widgets.video_player import make_video_player
 from widgets.web_view import make_web_view
+
+
+def _active_library(window: Any) -> LibraryPort:
+    """The only place that knows whether a team library is in front."""
+    team = window._team_library
+    if team.active:
+        return TeamLibrary(team)
+    return PersonalLibrary(
+        database=lambda: window.queries.db_filepath,
+        writer=lambda: window._services.lifecycle(
+            window.session.require_repository(), window._services.names
+        ),
+        reload=lambda: window._library_sync.reload_library(),
+        paths_changed=lambda: window.tools._tools_paths_changed(),
+    )
 
 
 class PanelComposition:
@@ -388,7 +404,7 @@ class PanelComposition:
             selection=window.selection,
             services=window._services,
             session=window.session,
-            team=lambda: window._team_library,
+            library=lambda: _active_library(window),
             ui=window,
         )
         window.management.bindings = PanelAssetManagementBindings(
@@ -404,7 +420,7 @@ class PanelComposition:
             selection=window.selection,
             services=window._services,
             session=window.session,
-            team=lambda: window._team_library,
+            library=lambda: _active_library(window),
             tools=window.tools,
             ui=window,
             video_player=window._video_player,
@@ -423,7 +439,7 @@ class PanelComposition:
             session=window.session,
             status=window.status,
             tasks=window._tasks,
-            team=lambda: window._team_library,
+            library=lambda: _active_library(window),
             ui=window,
             video_info=window._make_videoinfo,
         )
@@ -441,7 +457,7 @@ class PanelComposition:
             selection=window.selection,
             session=window.session,
             suggest=lambda: window._ai_actions.suggest(),
-            team=lambda: window._team_library,
+            library=lambda: _active_library(window),
             tools=window.tools,
             ui=window,
             video_info=window._make_videoinfo,
@@ -507,7 +523,7 @@ class PanelComposition:
             selection=window.selection,
             services=window._services,
             session=window.session,
-            team=lambda: window._team_library,
+            library=lambda: _active_library(window),
             ui=window,
         )
         window.selection.bindings = PanelSelectionBindings(
@@ -518,7 +534,7 @@ class PanelComposition:
             presentation=window.presentation,
             queries=window.queries,
             session=window.session,
-            team=lambda: window._team_library,
+            library=lambda: _active_library(window),
             ui=window,
             video_player=window._video_player,
             views=window.views,
@@ -536,6 +552,7 @@ class PanelComposition:
             stage_import=lambda stream: window._archives.stage_import(stream),
             status=window.status,
             tasks=window._tasks,
+            library=lambda: _active_library(window),
             team=lambda: window._team_library,
             ui=window,
             views=window.views,
@@ -548,7 +565,7 @@ class PanelComposition:
             services=window._services,
             session=window.session,
             tasks=window._ai_tasks,
-            team=lambda: window._team_library,
+            library=lambda: _active_library(window),
             ui=window,
         )
 

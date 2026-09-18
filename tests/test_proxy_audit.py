@@ -332,7 +332,9 @@ def test_multi_delete_keeps_ids_after_proxy_reorders(app: Any, tmp_path: Path) -
 
     owner = SimpleNamespace(
         bindings=SimpleNamespace(
-            team=lambda: None,
+            library=lambda: SimpleNamespace(
+                remove_selected=lambda: False, supports_scene_records=True
+            ),
             video_player=SimpleNamespace(player_stop=lambda: None),
             presentation=SimpleNamespace(is_icon_mode=True),
             models=SimpleNamespace(

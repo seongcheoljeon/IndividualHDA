@@ -326,8 +326,9 @@ LAZY_IMPORT_SITES: dict[str, int] = {
 # Debt: LibraryRepository size and its methods without a production caller.
 REPOSITORY_METHODS = 44
 DEAD_REPOSITORY_METHODS: set[str] = set()
-# Debt: personal features branching on the team integration being active.
-TEAM_ACTIVE_BRANCHES = 21
+# Personal features branch on the team integration being active only in the
+# composition root, which picks the LibraryPort adapter.
+TEAM_ACTIVE_BRANCHES = 1
 
 
 def _sql_reads_without_live_filter(tree: ast.AST) -> int:

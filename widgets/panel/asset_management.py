@@ -15,6 +15,7 @@ from libs.scene_record_cleanup import RecordCleanupResult, SceneRecordCleanup
 
 if TYPE_CHECKING:
     from libs.sqlite3_db_api import SQLite3DatabaseAPI
+    from widgets.panel.library_port import LibraryPort
     from widgets.panel.ports import (
         AssetModelPort,
         LibraryQueryPort,
@@ -46,7 +47,6 @@ if TYPE_CHECKING:
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState, PanelViews
     from widgets.rename_ihda.rename_ihda import RenameIHDA
-    from widgets.team_library.integration import MainLibraryIntegration
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,7 +63,7 @@ class PanelAssetManagementBindings:
     selection: SelectionPort
     services: PanelServices
     session: PanelSessionState
-    team: Callable[[], MainLibraryIntegration]
+    library: Callable[[], LibraryPort]
     tools: LibraryToolsPort
     ui: MainWindowLayout
     video_player: VideoPlayer | UnavailableVideoPlayer
@@ -116,7 +116,10 @@ class PanelAssetManagement:
     def _delete_unused_hda_record_info(
         self, db_api: SQLite3DatabaseAPI | None = None
     ) -> None:
-        if self.bindings.session.repository is None or self.bindings.team().active:
+        if (
+            self.bindings.session.repository is None
+            or not self.bindings.library().supports_scene_records
+        ):
             return
         try:
             result = SceneRecordCleanup(self.bindings.session.repository).cleanup(
@@ -468,7 +471,7 @@ iHDA note history: {cnt_hda_note_hist}
         if index is None or not index.isValid():
             return
         repository = self.bindings.session.repository
-        if repository is None or self.bindings.team().active:
+        if repository is None or not self.bindings.library().supports_scene_records:
             return
         identities = self.bindings.models.record_model.selected_record_ids(index)
         record_data_name = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
@@ -488,7 +491,7 @@ iHDA note history: {cnt_hda_note_hist}
             return
         if (
             repository is not self.bindings.session.repository
-            or self.bindings.team().active
+            or not self.bindings.library().supports_scene_records
         ):
             self.show_command_error("The library changed; select the records again.")
             return
@@ -532,9 +535,7 @@ iHDA note history: {cnt_hda_note_hist}
 
     def remove_hda_item(self, indexes: Any = None) -> None:
         # player가 재생중이거나 일시 정지상태면 정지
-        team = self.bindings.team()
-        if team is not None and team.active:
-            team.actions.remove()
+        if self.bindings.library().remove_selected():
             return
         self.bindings.video_player.player_stop()
         role = (

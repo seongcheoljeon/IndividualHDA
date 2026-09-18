@@ -23,6 +23,7 @@ from libs.scene_contracts import SceneRecord, SceneRecordInput
 if TYPE_CHECKING:
     import hou
 
+    from widgets.panel.library_port import LibraryPort
     from widgets.panel.ports import (
         AssetManagementPort,
         AssetModelPort,
@@ -42,7 +43,6 @@ if TYPE_CHECKING:
     from widgets.panel.scene_usage import SceneUsageIntegration
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState
-    from widgets.team_library.integration import MainLibraryIntegration
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -63,7 +63,7 @@ class PanelHoudiniActionsBindings:
     selection: SelectionPort
     services: PanelServices
     session: PanelSessionState
-    team: Callable[[], MainLibraryIntegration]
+    library: Callable[[], LibraryPort]
     ui: MainWindowLayout
 
 
@@ -75,9 +75,7 @@ class PanelHoudiniActions:
         # [[id, name, category, filename, dirpath, icon_lst, tag_lst], [...], ...]
         if not self.bindings.services.host_actions_enabled:
             return
-        team = self.bindings.team()
-        if team is not None and team.active:
-            team.actions.import_drop(drop_data)
+        if self.bindings.library().import_drop(drop_data):
             return
         if not host.IS_HOUDINI:
             log_handler.LogHandler.log_msg(

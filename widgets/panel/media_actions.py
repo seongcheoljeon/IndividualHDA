@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from libs.task_controller import TaskController
     from widgets.make_video_info.make_video_info import MakeVideoInfo
     from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.library_port import LibraryPort
     from widgets.panel.ports import (
         AssetModelPort,
         LibraryQueryPort,
@@ -32,7 +33,6 @@ if TYPE_CHECKING:
     )
     from widgets.panel.state import PanelSessionState, PanelStatus
     from widgets.preference.preference import Preference
-    from widgets.team_library.integration import MainLibraryIntegration
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,7 +49,7 @@ class PanelMediaActionsBindings:
     session: PanelSessionState
     status: PanelStatus
     tasks: TaskController
-    team: Callable[[], MainLibraryIntegration]
+    library: Callable[[], LibraryPort]
     ui: MainWindowLayout
     video_info: MakeVideoInfo
 
@@ -74,9 +74,7 @@ class PanelMediaActions:
     def slot_make_thumbnail(self) -> None:
         if not self.bindings.host_enabled:
             return
-        team = self.bindings.team()
-        if team is not None and team.active:
-            team.actions.attach("thumbnail")
+        if self.bindings.library().attach("thumbnail"):
             return
         if host.IS_HOUDINI:
             hda_dirpath = self.bindings.selection.state.asset.require_data().hda_dirpath
@@ -134,9 +132,7 @@ class PanelMediaActions:
     def _slot_make_video(self) -> None:
         if not self.bindings.host_enabled:
             return
-        team = self.bindings.team()
-        if team is not None and team.active:
-            team.actions.attach("video")
+        if self.bindings.library().attach("video"):
             return
         if self.bindings.tasks.busy:
             return

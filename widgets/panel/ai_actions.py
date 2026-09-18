@@ -21,11 +21,11 @@ from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 if TYPE_CHECKING:
     from libs.task_controller import TaskController
     from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.library_port import LibraryPort
     from widgets.panel.ports import NotesPort, SelectionPort
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState
     from widgets.preference.preference import Preference
-    from widgets.team_library.integration import MainLibraryIntegration
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,7 +36,7 @@ class PanelAIActionsBindings:
     services: PanelServices
     session: PanelSessionState
     tasks: TaskController
-    team: Callable[[], MainLibraryIntegration]
+    library: Callable[[], LibraryPort]
     ui: MainWindowLayout
 
 
@@ -246,7 +246,6 @@ class PanelAIActions(QtCore.QObject):
         self.bindings.ui.label__ai_status.setText("")
         self.bindings.ui.label__ai_status.setVisible(False)
         self.bindings.ui.pushButton__ai_cancel.setVisible(False)
-        team = self.bindings.team()
         self.bindings.ui.pushButton__ai_suggest.setEnabled(
-            team is None or not team.active or team.writable
+            self.bindings.library().writable
         )

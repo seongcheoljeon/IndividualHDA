@@ -31,6 +31,7 @@ from widgets.ui_tokens import ASSET_COMBO_ICON_SIZE
 if TYPE_CHECKING:
     from libs.ihda_icons import IHDAIcons
     from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.library_port import LibraryPort
     from widgets.panel.ports import (
         AssetModelPort,
         LibraryQueryPort,
@@ -39,7 +40,6 @@ if TYPE_CHECKING:
     )
     from widgets.panel.state import PanelSessionState, PanelViews
     from widgets.preference.preference import Preference
-    from widgets.team_library.integration import MainLibraryIntegration
     from widgets.video_player import UnavailableVideoPlayer
     from widgets.video_player.video_player import VideoPlayer
 
@@ -53,7 +53,7 @@ class PanelSelectionBindings:
     presentation: PresentationPort
     queries: LibraryQueryPort
     session: PanelSessionState
-    team: Callable[[], MainLibraryIntegration]
+    library: Callable[[], LibraryPort]
     ui: MainWindowLayout
     video_player: VideoPlayer | UnavailableVideoPlayer
     views: PanelViews
@@ -546,9 +546,7 @@ class PanelSelection:
 
     @QtCore.Slot(QtCore.QModelIndex)
     def _slot_hda_double_clicked(self, *args: Any) -> None:
-        team = self.bindings.team()
-        if team is not None and team.active:
-            team.actions.play_video()
+        if self.bindings.library().play_video():
             return
         index = args[0]
         if index is None or not index.isValid():

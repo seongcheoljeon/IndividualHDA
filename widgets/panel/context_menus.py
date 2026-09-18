@@ -25,6 +25,7 @@ from model import (
 if TYPE_CHECKING:
     from widgets.make_video_info.make_video_info import MakeVideoInfo
     from widgets.panel.layout import MainWindowLayout
+    from widgets.panel.library_port import LibraryPort
     from widgets.panel.ports import (
         AssetManagementPort,
         AssetModelPort,
@@ -38,7 +39,6 @@ if TYPE_CHECKING:
     )
     from widgets.panel.state import PanelSessionState, PanelViews
     from widgets.rename_ihda.rename_ihda import RenameIHDA
-    from widgets.team_library.integration import MainLibraryIntegration
     from widgets.video_player import UnavailableVideoPlayer
     from widgets.video_player.video_player import VideoPlayer
 
@@ -58,7 +58,7 @@ class PanelContextMenusBindings:
     selection: SelectionPort
     session: PanelSessionState
     suggest: Callable[[], None]
-    team: Callable[[], MainLibraryIntegration]
+    library: Callable[[], LibraryPort]
     tools: LibraryToolsPort
     ui: MainWindowLayout
     video_info: MakeVideoInfo
@@ -70,9 +70,7 @@ class PanelContextMenus:
     bindings: PanelContextMenusBindings
 
     def _build_context_history_menu(self, point: QtCore.QPoint) -> None:
-        team = self.bindings.team()
-        if team is not None and team.active:
-            team.actions.history_menu(point)
+        if self.bindings.library().history_menu(point):
             return
         index = self.bindings.views.history.indexAt(point)
         if not index.isValid():
@@ -144,9 +142,7 @@ class PanelContextMenus:
             pass
 
     def _build_context_ihda_menu(self, point: QtCore.QPoint) -> None:
-        team = self.bindings.team()
-        if team is not None and team.active:
-            team.actions.context_menu(point)
+        if self.bindings.library().context_menu(point):
             return
         view = (
             self.bindings.views.assets_list
