@@ -410,16 +410,6 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         return dict(map_lst)
 
     # history 모델에서 hist_id와 같은 item row를 반환
-    def get_hist_item_row_by_hist_id_from_model(
-        self, hist_id: int | None = None
-    ) -> int | None:
-        for row in range(0, self.rowCount()):
-            index = self.index(row, 0, QtCore.QModelIndex())
-            if not index.isValid():
-                continue
-            if hist_id == index.data(HistoryModel.hist_id_role):
-                return row
-        return None
 
     def remove_item(self, row: int | None = None) -> bool:
         if row is None or not 0 <= row < len(self.__items):

@@ -217,28 +217,6 @@ class HoudiniAPI:
         return node.type().name()
 
     @staticmethod
-    def node_structure(
-        node: hou.Node, max_children: int = 30, max_parms: int = 20
-    ) -> dict[str, Any]:
-        """Child node types and parameter labels of a live node, for AI prompts.
-
-        Only available while the node is in the scene (registration time); the
-        library does not store this, so later suggestions use stored fields only.
-        """
-        children: dict[str, int] = {}
-        for child in list(node.children())[:max_children]:
-            name = child.type().name()
-            children[name] = children.get(name, 0) + 1
-        labels = []
-        for template in node.parmTemplateGroup().entries():
-            label = template.label() if hasattr(template, "label") else ""
-            if label and not template.isHidden():
-                labels.append(label)
-            if len(labels) >= max_parms:
-                break
-        return {"children": children, "parameters": labels}
-
-    @staticmethod
     def __node_type_description(node: hou.Node | None) -> str | None:
         if node is None:
             return None
@@ -1035,17 +1013,6 @@ class HoudiniAPI:
             return category.typeName().lower() if category is not None else None
         except (AttributeError, hou.ObjectWasDeleted, hou.OperationFailed):
             return None
-
-    @staticmethod
-    def slot_confirm_primary_network_editor() -> None:
-        network_editor = HoudiniAPI.find_network_editor()
-        if network_editor is None:
-            return
-        network_editor.flashMessage(
-            paths.Paths.icons_hda_default_filepath.as_posix(),
-            "this is the main network",
-            1,
-        )
 
     @staticmethod
     def find_network_editor() -> hou.NetworkEditor | None:

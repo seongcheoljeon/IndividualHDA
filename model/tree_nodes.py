@@ -33,13 +33,6 @@ class Node(QtCore.QObject):
     def child(self, row: int) -> Any:
         return self._children[row]
 
-    def insert_child(self, position: Any, child: Node) -> bool:
-        if position < 0 or position > len(self._children):
-            return False
-        self._children.insert(position, child)
-        child._parent = self
-        return True
-
     def setParent(self, parent: Node | None) -> None:  # type: ignore[override]
         if parent is not None:
             self._parent = parent

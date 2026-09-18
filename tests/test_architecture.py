@@ -277,9 +277,9 @@ def test_scene_ui_does_not_open_storage_connections() -> None:
 # per module. Per-id lookups of a known-live asset are tolerated here; list
 # reads must filter. Target: only the per-id ones.
 SOFT_DELETE_UNFILTERED: dict[str, int] = {
-    "libs/database/assets.py": 3,
+    "libs/database/assets.py": 2,
     "libs/database/catalog.py": 3,
-    "libs/database/history.py": 12,
+    "libs/database/history.py": 11,
     "libs/database/lifecycle.py": 3,
     "libs/database/metadata.py": 2,
     "libs/database/records.py": 2,

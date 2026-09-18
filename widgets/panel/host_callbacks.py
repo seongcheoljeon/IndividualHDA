@@ -53,12 +53,6 @@ class PanelHostCallbacks:
     def _remove_selection_callback(self, event_func: Callable[..., Any]) -> None:
         self.bindings.host.remove_selection_callback(event_func)
 
-    def _is_exist_event_callbacks(self, event_func: Callable[..., Any]) -> bool:
-        return self.bindings.host.has_event_loop_callback(event_func)
-
-    def _is_exist_selection_callbacks(self, event_func: Callable[..., Any]) -> bool:
-        return self.bindings.host.has_selection_callback(event_func)
-
     def _slot_stackedwidget_whole_curt_changed(self, index: QtCore.QModelIndex) -> None:
         # 만약 iHDA 뷰가 아닌데 category synchronize가 활성화 상태면, 이벤트 콜백 삭제
         if (

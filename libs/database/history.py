@@ -187,57 +187,6 @@ class HistoryOperations(DatabaseSession):
             logging.error(err)
             return None
 
-    def is_library_file_referenced(
-        self, path: pathlib.Path, excluding_history_id: int
-    ) -> bool:
-        """Check surviving current/history references inside the delete transaction."""
-        rows = self._cursor.execute(
-            """SELECT dirpath, filename FROM hda_info WHERE filename = :name COLLATE NOCASE
-            UNION ALL SELECT dirpath, filename FROM thumbnail_info WHERE filename = :name COLLATE NOCASE
-            UNION ALL SELECT dirpath, filename FROM video_info WHERE filename = :name COLLATE NOCASE
-            UNION ALL SELECT hda_dirpath, hda_filename FROM hda_history WHERE id != :excluding_history_id AND hda_filename = :name COLLATE NOCASE
-            UNION ALL SELECT thumb_dirpath, thumb_filename FROM hda_history WHERE id != :excluding_history_id AND thumb_filename = :name COLLATE NOCASE
-            UNION ALL SELECT video_dirpath, video_filename FROM hda_history WHERE id != :excluding_history_id AND video_filename = :name COLLATE NOCASE""",
-            {"name": path.name, "excluding_history_id": excluding_history_id},
-        )
-        target = path.resolve()
-        return any(
-            directory is not None
-            and (pathlib.Path(directory) / filename).resolve() == target
-            for directory, filename in rows
-        )
-
-    def delete_hda_history(
-        self, hda_key_id: int | None = None, hist_id: int | None = None
-    ) -> int | None:
-        if (hda_key_id is None) and (hist_id is None):
-            query = """DELETE FROM hda_history"""
-            query_params: dict[str, Any] = {}
-        elif (hda_key_id is not None) and (hist_id is None):
-            query = """
-            DELETE FROM hda_history WHERE hda_key_id = :hda_key_id
-            """
-            query_params = {"hda_key_id": hda_key_id}
-        elif (hda_key_id is None) and (hist_id is not None):
-            query = """
-                DELETE FROM hda_history WHERE id = :hist_id
-                """
-            query_params = {"hist_id": hist_id}
-        else:
-            query = """
-            DELETE FROM hda_history WHERE hda_key_id = :hda_key_id AND id = :hist_id
-            """
-            query_params = {"hda_key_id": hda_key_id, "hist_id": hist_id}
-        try:
-            cursor = self._cursor.execute(query, query_params)
-            self._commit()
-            return cursor.rowcount
-        except Exception as err:
-            self._rollback()
-            logging.error("*** hda_history (delete) ***")
-            logging.error(err)
-            return None
-
     def delete_hda_note_history(self, hda_key_id: int | None = None) -> int | None:
         if hda_key_id is None:
             query = """DELETE FROM hda_note_history"""
@@ -325,19 +274,6 @@ class HistoryOperations(DatabaseSession):
         cursor = self._cursor.execute(query, query_params)
         dat = cursor.fetchone()[0]
         return dat
-
-    def get_all_hda_history_fileinfo(
-        self, user_id: str | None = None
-    ) -> list[tuple[Any, ...]]:
-        query = """
-        SELECT id, hda_key_id, hda_dirpath, hda_filename FROM hda_history WHERE id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) AND hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND userid = :user_id
-        """
-        query_params: dict[str, Any] = {"user_id": user_id}
-        cursor = self._cursor.execute(query, query_params)
-        fetch_dat = cursor.fetchall()
-        if (fetch_dat is None) or (not len(fetch_dat)):
-            return []
-        return fetch_dat
 
     def get_hist_hda_license(
         self,

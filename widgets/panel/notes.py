@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtGui, QtWidgets
 
 from libs import keys, log_handler, note_syntax
 from libs.tags import normalize_tags
@@ -137,33 +137,12 @@ class PanelNotes:
         detailview = detail_view.DetailView(parent=self.bindings.parent)
         detailview.show_detail_record_data(data=record_data)
 
-    @property
-    def _hda_note(self) -> str:
-        try:
-            return self.bindings.ui.textEdit__note.toPlainText()
-        except TypeError:
-            return self.bindings.ui.textEdit__note.toPlainText()
-
     @staticmethod
     def _set_move_cursor_textedit(inst: Any) -> None:
         cursor = inst.textCursor()
         cursor.movePosition(QtGui.QTextCursor.MoveOperation.End)
         scroll_bar = inst.verticalScrollBar()
         scroll_bar.setValue(scroll_bar.maximum())
-
-    @staticmethod
-    def _reshape_datetime(inst_datetime: Any) -> str:
-        try:
-            inst_date = inst_datetime.date()
-            inst_time = inst_datetime.time()
-        except AttributeError:
-            inst_date = inst_datetime.toDate()
-            inst_time = inst_datetime.toTime()
-        created_date = inst_date.toString(keys.Value.qt_date_fmt_str)
-        inst_week = inst_date.dayOfWeek()
-        created_week = QtCore.QLocale().dayName(inst_week)
-        created_time = inst_time.toString("hh:mm:ss AP")
-        return f"{created_date} {created_week} {created_time}"
 
     @staticmethod
     def split_tag_string(tag_str: str = "") -> list[str]:

@@ -338,20 +338,6 @@ class AssetsOperations(DatabaseSession):
             for row in named_query(self._connect, query, parameters)
         ]
 
-    def get_all_hda_fileinfo(self, user_id: str | None = None) -> list[tuple[Any, ...]]:
-        query = f"""
-        SELECT hinfo.hda_key_id, hinfo.dirpath, hinfo.filename, hkey.category FROM hda_info AS hinfo
-        INNER JOIN hda_key AS hkey
-        ON hinfo.hda_key_id = hkey.id
-        WHERE hkey.user_id = :user_id AND hkey.id {LIVE_ASSET_IDS}
-        """
-        query_params: dict[str, Any] = {"user_id": user_id}
-        cursor = self._cursor.execute(query, query_params)
-        fetch_dat = cursor.fetchall()
-        if (fetch_dat is None) or (not len(fetch_dat)):
-            return []
-        return fetch_dat
-
     def get_update_before_data(
         self, hda_key_id: int | None = None
     ) -> AssetBeforeUpdate | None:

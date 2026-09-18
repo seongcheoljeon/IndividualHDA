@@ -163,10 +163,6 @@ class IndividualHDA(QtWidgets.QMainWindow, MainWindowLayout):
         return self.stackedWidget__whole.indexOf(self.page__video_player)
 
     @property
-    def _web_view_idx(self) -> int:
-        return self.stackedWidget__whole.indexOf(self.page__web_view)
-
-    @property
     def _hist_view_idx(self) -> int:
         return self.stackedWidget__whole.indexOf(self.page__history)
 
@@ -196,9 +192,6 @@ class IndividualHDA(QtWidgets.QMainWindow, MainWindowLayout):
         self, operation: Callable[..., Any], completion: Callable[..., Any]
     ) -> None:
         self._archives.start(operation, completion)
-
-    def _stage_import(self, stream: Any) -> None:
-        self._archives.stage_import(stream)
 
     def _slot_import_data(self) -> None:
         self._archives.import_data()

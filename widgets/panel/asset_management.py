@@ -565,13 +565,6 @@ iHDA note history: {cnt_hda_note_hist}
                 filepath=video_filepath
             )
 
-    def _get_hda_model_row_by_hda_id(self, hda_id: int | None = None) -> int | None:
-        return (
-            self.bindings.models.assets.id_rows.get(hda_id)
-            if hda_id is not None
-            else None
-        )
-
     def _delete_ihda_item(
         self,
         hda_id: int | None = None,

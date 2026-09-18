@@ -86,9 +86,6 @@ class IHDAIcons:
         if hist_id is not None and hist_id in self.__pixmap_hist_thumbnail_data:
             del self.__pixmap_hist_thumbnail_data[hist_id]
 
-    def clear_pixmap_hist_thumbnail_data(self) -> None:
-        self.__pixmap_hist_thumbnail_data.clear()
-
     def add_pixmap_ihda_data(
         self, hkey_id: int | None = None, icon_lst: list[str] | None = None
     ) -> None:
