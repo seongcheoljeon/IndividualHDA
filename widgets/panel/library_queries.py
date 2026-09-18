@@ -12,9 +12,6 @@ from typing import TYPE_CHECKING, Any
 from PySide6 import QtCore
 
 from libs.asset_contracts import AssetData, HistoryData
-from libs.item_paths import item_path
-from libs.record_codec import decode_record
-from libs.repository import LibraryError
 from libs.scene_contracts import SceneRecord
 from model.asset_notifications import QtAssetNotifications
 
@@ -22,10 +19,9 @@ if TYPE_CHECKING:
     pass
 import logging
 from dataclasses import dataclass
-from datetime import datetime
 from typing import TYPE_CHECKING
 
-from libs import houdini_api, keys, log_handler, platform_info
+from libs import keys, log_handler
 
 if TYPE_CHECKING:
     from widgets.panel.asset_management import PanelAssetManagement
@@ -117,81 +113,6 @@ class PanelLibraryQueries:
                 row,
                 self.bindings.selection.state.asset.field,
             )
-
-    def _insert_hist_db_from_curt_hist_data(
-        self,
-        comment: str | None = None,
-        *,
-        data: AssetData | None = None,
-    ) -> None:
-        # history를 위한 변수
-        data = data if data is not None else self.bindings.selection.state.asset.data
-        if data is None or self.bindings.session.repository is None:
-            return
-        hda_dirpath = data.hda_dirpath
-        hda_name = data.hda_name
-        hda_version = data.hda_version
-        hda_id = data.hda_id
-        hda_filename = data.hda_filename
-        node_path = data.node_old_path
-        def_desc = data.node_def_desc
-        type_name = data.node_type_name
-        cate_name = data.hda_cate
-        icon_lst = data.hda_icon
-        tag_lst = data.hda_tags
-        thumb_filename = data.thumbnail_filename
-        thumb_dirpath = data.thumbnail_dirpath
-        thumb_filepath = item_path(thumb_dirpath, thumb_filename)
-        video_filename = data.video_filename
-        video_dirpath = data.video_dirpath
-        hou_version = houdini_api.HoudiniAPI.current_houdini_version()
-        hou_license = houdini_api.HoudiniAPI.current_houdini_license()
-        hip_filepath = houdini_api.HoudiniAPI.current_hipfile()
-        hip_dirpath = hip_filepath.parent
-        hip_filename = hip_filepath.name
-        declare_os = platform_info.platform_system()
-        val_datetime = datetime.today().strftime(keys.Value.datetime_fmt_str)
-        hist_data = decode_record(
-            HistoryData,
-            {
-                "hda_id": hda_id,
-                "comment": comment,
-                "org_hda_name": hda_name,
-                "version": hda_version,
-                "ihda_filename": hda_filename,
-                "ihda_dirpath": hda_dirpath,
-                "reg_time": val_datetime,
-                "hou_version": hou_version,
-                "hip_filename": hip_filename,
-                "hip_dirpath": hip_dirpath,
-                "hda_license": hou_license,
-                "os": declare_os,
-                "node_old_path": node_path,
-                "node_def_desc": def_desc,
-                "node_type_name": type_name,
-                "node_category": cate_name,
-                "userid": self.bindings.session.user,
-                "icon": icon_lst,
-                "thumb_filename": thumb_filename,
-                "thumb_dirpath": thumb_dirpath,
-                "video_filename": video_filename,
-                "video_dirpath": video_dirpath,
-            },
-        )
-        try:
-            last_hda_hist_id = (
-                self.bindings.session.require_repository().add_history_row(hist_data)
-            )
-        except LibraryError:
-            logging.exception("Could not record history for %s", hda_name)
-            self.bindings.presentation._loading_close()
-            return
-        self.bindings.models._add_pixmap_hist_thumbnail(
-            hist_id=last_hda_hist_id, thumb_filepath=thumb_filepath
-        )
-        self.bindings.models._insert_ihda_history_data_model(
-            data=hist_data, hist_id=last_hda_hist_id, tags=tag_lst
-        )
 
     def _get_hda_data(
         self,

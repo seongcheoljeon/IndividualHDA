@@ -215,8 +215,11 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
     selection.asset.id, selection.asset.row = 2, 1
     selection.asset.data = store.rows[1]
     rows, history, stored = [], [], []
+    # Every hda_history row becomes a version (v6 trigger), so a preview must not
+    # write one; the only way to would be through this repository call.
     repository = SimpleNamespace(
         set_video=lambda *args: stored.append(args) or "insert",
+        add_history_row=lambda row: history.append(row.hda_id),
     )
 
     class MediaOwner(PanelMediaActions, SimpleNamespace):
@@ -227,9 +230,6 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
         _selection=selection,
         _repository=repository,
         _change_hda_data=lambda **kwargs: rows.append(kwargs["row"]),
-        _insert_hist_db_from_curt_hist_data=lambda **kwargs: history.append(
-            kwargs["data"]["hda_id"]
-        ),
         _remove_preview_dir=lambda **kwargs: True,
         _loading_close=lambda: None,
     )
