@@ -157,7 +157,14 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         self.__player.setPosition(seconds * 1000)
 
     def __display_error_msg(self, *args: Any) -> None:
-        self.__set_status_info(self.__player.errorString())
+        # A decode or backend failure used to reach the log only as part of the
+        # window title, at info level; it never read as an error.
+        message = self.__player.errorString()
+        self.__set_status_info(message)
+        if message:
+            log_handler.LogHandler.log_msg(
+                method=logging.error, msg=f"video playback failed: {message}"
+            )
 
     def __handle_cursor(self, status: Any) -> None:
         if status in (
@@ -193,8 +200,9 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
             )
         else:
             ste_info = f"{self.__org_title} | {self.__track_info}"
+        # Title only. Playback state changes several times a second, and the
+        # window title already shows it; logging it flooded the panel.
         self.setWindowTitle(ste_info)
-        log_handler.LogHandler.log_msg(method=logging.info, msg=ste_info)
 
     def __set_track_info(self, info: Any) -> None:
         self.__track_info = info
@@ -205,7 +213,6 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         else:
             track_info = f"{self.__org_title} | {self.__track_info}"
         self.setWindowTitle(track_info)
-        log_handler.LogHandler.log_msg(method=logging.info, msg=track_info)
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.__probe_closing = True

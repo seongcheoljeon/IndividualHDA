@@ -512,11 +512,6 @@ class PanelSelection:
     @QtCore.Slot(QtCore.QModelIndex)
     def _slot_hda_record_double_clicked(self, *args: Any) -> None:
         index = args[0]
-        if not self.bindings.preference.is_ffmpeg_valid:
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="ffmpeg is not installed"
-            )
-            return
         if index is None or not index.isValid():
             return
         record_data = index.data(ihda_record_model.RecordModel.record_data_role)
@@ -554,11 +549,6 @@ class PanelSelection:
             team.actions.play_video()
             return
         index = args[0]
-        if not self.bindings.preference.is_ffmpeg_valid:
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="ffmpeg is not installed"
-            )
-            return
         if index is None or not index.isValid():
             return
         # self._selected_ihda_item(index=index)
