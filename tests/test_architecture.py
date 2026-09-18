@@ -272,19 +272,10 @@ def test_scene_ui_does_not_open_storage_connections() -> None:
 
 
 # --- ratchets added by the SOLID/SQL audit -----------------------------------
-# Debt: raw reads of hda_key/hda_history without a live-row filter
-# (rows.LIVE_ASSET_IDS / LIVE_HISTORY_IDS or an explicit deleted_at test),
-# per module. Per-id lookups of a known-live asset are tolerated here; list
-# reads must filter. Target: only the per-id ones.
-SOFT_DELETE_UNFILTERED: dict[str, int] = {
-    "libs/database/assets.py": 2,
-    "libs/database/catalog.py": 3,
-    "libs/database/history.py": 11,
-    "libs/database/lifecycle.py": 3,
-    "libs/database/metadata.py": 2,
-    "libs/database/records.py": 2,
-    "libs/database/sqlite_repository.py": 1,
-}
+# Raw reads of hda_key/hda_history must apply rows.LIVE_ASSET_IDS /
+# LIVE_HISTORY_IDS, test deleted_at, or state in the SQL why they include
+# trashed rows ("-- includes trashed rows: <reason>"). Kept at {}.
+SOFT_DELETE_UNFILTERED: dict[str, int] = {}
 # Debt: features reaching into another feature's underscore members through
 # their bindings (self.bindings.x._y) or the team integration (self.library._y).
 # Target: empty, once the bindings are typed as ports.
@@ -340,11 +331,22 @@ def _sql_reads_without_live_filter(tree: ast.AST) -> int:
             re.search(r"\bSELECT\b", sql)
             and re.search(r"\b(FROM|JOIN)\s+hda_(key|history)\b", sql)
             and "deleted_at" not in sql
+            and "-- includes trashed rows:" not in sql
             and not any(name.startswith("LIVE_") for name in formatted)
         )
 
     count = 0
+    # Constant pieces of an f-string are visited by ast.walk too; judge the
+    # f-string as a whole, not its fragments.
+    fragments = {
+        id(value)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.JoinedStr)
+        for value in node.values
+    }
     for node in ast.walk(tree):
+        if id(node) in fragments:
+            continue
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             count += raw(node.value, [])
         elif isinstance(node, ast.JoinedStr):

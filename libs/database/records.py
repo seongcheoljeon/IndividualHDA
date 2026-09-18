@@ -216,6 +216,7 @@ class RecordsOperations(DatabaseSession):
         user_id: str | None = None,
     ) -> list[SceneRecordFiles]:
         query = """
+        -- includes trashed rows: scene records keep pointing at trashed assets until purge
         SELECT hrecord.id, hrecord.hip_dirpath, hrecord.hip_filename, hrecord.hda_dirpath, hrecord.hda_filename
         FROM hda_node_location_record AS hrecord
         INNER JOIN hda_key AS hkey
@@ -252,6 +253,7 @@ class RecordsOperations(DatabaseSession):
         hip_dirpath: pathlib.Path | None = None,
     ) -> tuple[SceneRecord, ...]:
         query = """
+        -- includes trashed rows: scene records keep pointing at trashed assets until purge
         SELECT library_uuid, asset_uuid, version_uuid, link_status, id AS record_id,
             hda_key_id AS hda_id,
             hip_filename AS hip_filename,
@@ -294,6 +296,7 @@ class RecordsOperations(DatabaseSession):
         self, record_id: int | None = None
     ) -> SceneRecord | None:
         query = """
+        -- includes trashed rows: scene records keep pointing at trashed assets until purge
         SELECT library_uuid, asset_uuid, version_uuid, link_status, id AS record_id,
             hda_key_id AS hda_id,
             hip_filename AS hip_filename,

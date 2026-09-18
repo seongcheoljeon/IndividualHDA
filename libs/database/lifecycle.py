@@ -34,7 +34,8 @@ class PersonalLifecycle:
             or new_identity()
         )
         self.connection.execute(
-            """INSERT INTO audit_events
+            """-- includes trashed rows: an audit row is written for any asset
+            INSERT INTO audit_events
             (id,asset_uuid,version_uuid,actor,occurred_at,request_id,operation,changes)
             SELECT :new_identity,a.uuid,:version_uuid,k.user_id,:utc_now,:request_id,:operation,:changes FROM asset_identity a JOIN hda_key k ON k.id=a.asset_id WHERE k.id=:asset_id""",
             {
@@ -119,7 +120,8 @@ class PersonalLifecycle:
             )
             files = named_query(
                 self.connection,
-                f"""SELECT f.directory,f.filename FROM version_files f
+                f"""-- includes trashed rows: a purge collects the files of trashed versions
+                SELECT f.directory,f.filename FROM version_files f
                 JOIN hda_history h ON h.id=f.history_id WHERE {criteria}""",
                 {"identity": identity},
             ).fetchall()

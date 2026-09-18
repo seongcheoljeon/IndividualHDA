@@ -301,6 +301,7 @@ class AssetsOperations(DatabaseSession):
         hda_name: str | None = None,
     ) -> bool:
         query = """
+        -- includes trashed rows: the name stays UNIQUE until the asset is purged
         SELECT COUNT(*) FROM hda_key WHERE user_id = :user_id AND category = :category AND name = :hda_name
         """
         query_params: dict[str, Any] = {

@@ -605,6 +605,7 @@ class SqliteLibraryRepository:
             try:
                 with db.transaction():
                     if db._connect.execute(
+                        "-- includes trashed rows: a version number stays taken while its trashed row exists\n"
                         "SELECT 1 FROM hda_history WHERE hda_key_id=:asset_id AND version=:version",
                         {"asset_id": asset_id, "version": p.version},
                     ).fetchone():

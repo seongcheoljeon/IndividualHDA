@@ -78,6 +78,7 @@ class HistoryOperations(DatabaseSession):
         if path_moves is not None:
             rows = named_query(
                 self._connect,
+                "-- includes trashed rows: a rename moves the files of trashed versions too\n"
                 "SELECT id, hda_dirpath, hda_filename, thumb_dirpath, thumb_filename, video_dirpath, video_filename FROM hda_history WHERE hda_key_id = :hda_key_id",
                 {"hda_key_id": hda_key_id},
             ).fetchall()
@@ -206,11 +207,11 @@ class HistoryOperations(DatabaseSession):
 
     def is_exist_hda_history(self, hda_key_id: int | None = None) -> bool:
         if hda_key_id is None:
-            query = """SELECT COUNT(*) FROM hda_history"""
+            query = f"""SELECT COUNT(*) FROM hda_history WHERE id {LIVE_HISTORY_IDS}"""
             query_params: dict[str, Any] = {}
         else:
-            query = """SELECT COUNT(*) FROM hda_history WHERE hda_key_id = :hda_key_id
-            """
+            query = f"""SELECT COUNT(*) FROM hda_history
+            WHERE hda_key_id = :hda_key_id AND id {LIVE_HISTORY_IDS}"""
             query_params = {"hda_key_id": hda_key_id}
         cursor = self._cursor.execute(query, query_params)
         dat = cursor.fetchone()[0]
@@ -231,7 +232,8 @@ class HistoryOperations(DatabaseSession):
     def is_most_recent_ihda_history(
         self, hda_key_id: int | None = None, hist_id: int | None = None
     ) -> bool:
-        query = """SELECT MAX(id) FROM hda_history WHERE hda_key_id = :hda_key_id
+        query = """-- includes trashed rows: the newest row guards the current version, trashed or not
+        SELECT MAX(id) FROM hda_history WHERE hda_key_id = :hda_key_id
         """
         query_params: dict[str, Any] = {"hda_key_id": hda_key_id}
         cursor = self._cursor.execute(query, query_params)
@@ -241,7 +243,8 @@ class HistoryOperations(DatabaseSession):
     def get_most_recent_ihda_history_id(
         self, hda_key_id: int | None = None, hda_version: str | None = None
     ) -> int | None:
-        query = """SELECT MAX(id) FROM hda_history WHERE hda_key_id = :hda_key_id AND version = :hda_version
+        query = """-- includes trashed rows: the newest row of a version, trashed or not
+        SELECT MAX(id) FROM hda_history WHERE hda_key_id = :hda_key_id AND version = :hda_version
         """
         query_params: dict[str, Any] = {
             "hda_key_id": hda_key_id,
@@ -253,11 +256,11 @@ class HistoryOperations(DatabaseSession):
 
     def count_hda_history(self, hda_key_id: int | None = None) -> int:
         if hda_key_id is None:
-            query = """SELECT COUNT(*) FROM hda_history"""
+            query = f"""SELECT COUNT(*) FROM hda_history WHERE id {LIVE_HISTORY_IDS}"""
             query_params: dict[str, Any] = {}
         else:
-            query = """SELECT COUNT(*) FROM hda_history WHERE hda_key_id = :hda_key_id
-            """
+            query = f"""SELECT COUNT(*) FROM hda_history
+            WHERE hda_key_id = :hda_key_id AND id {LIVE_HISTORY_IDS}"""
             query_params = {"hda_key_id": hda_key_id}
         cursor = self._cursor.execute(query, query_params)
         dat = cursor.fetchone()[0]
@@ -281,8 +284,10 @@ class HistoryOperations(DatabaseSession):
         version: str | None = None,
         user_id: str | None = None,
     ) -> str | None:
-        query = """
-        SELECT hda_license FROM hda_history WHERE hda_key_id = :hda_key_id AND version = :version AND userid = :user_id
+        query = f"""
+        SELECT hda_license FROM hda_history
+        WHERE hda_key_id = :hda_key_id AND version = :version AND userid = :user_id
+          AND id {LIVE_HISTORY_IDS}
         """
         query_params: dict[str, Any] = {
             "hda_key_id": hda_key_id,
@@ -417,16 +422,17 @@ class HistoryOperations(DatabaseSession):
     def get_hda_history_video_most_recent_by_ver(
         self, hda_key_id: int | None = None, version: str | None = None
     ) -> pathlib.Path | None:
-        query_most_recent_id = """
-        SELECT MAX(id) FROM hda_history WHERE hda_key_id = :hda_key_id AND version = :version
+        query_most_recent_id = f"""
+        SELECT MAX(id) FROM hda_history
+        WHERE hda_key_id = :hda_key_id AND version = :version AND id {LIVE_HISTORY_IDS}
         """
         query_most_recent_id_params = {"hda_key_id": hda_key_id, "version": version}
         cursor = self._cursor.execute(query_most_recent_id, query_most_recent_id_params)
         most_recent_id = cursor.fetchone()[0]
         if most_recent_id is None:
             return None
-        query = """SELECT video_dirpath, video_filename FROM hda_history
-        WHERE id = :most_recent_id"""
+        query = f"""SELECT video_dirpath, video_filename FROM hda_history
+        WHERE id = :most_recent_id AND id {LIVE_HISTORY_IDS}"""
         query_params: dict[str, Any] = {"most_recent_id": most_recent_id}
         cursor = named_query(self._connect, query, query_params)
         dat = cursor.fetchone()
