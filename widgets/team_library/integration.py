@@ -20,7 +20,7 @@ from libs.paths import Paths
 from libs.tags import normalize_tags
 from libs.task_controller import TaskController
 from libs.team.client import HttpCatalog
-from libs.team.contracts import Conflict, Page, parse_blob
+from libs.team.contracts import Conflict, FileKind, Page, parse_blob
 from libs.team.panel_catalog import PanelCatalog
 from libs.team.pending import PendingCommand
 from libs.team.presentation import asset_row, history_row
@@ -124,7 +124,7 @@ class MainLibraryIntegration(QtCore.QObject):
         self._refresh_pending = False
         self._closing = False
         self._loading = False
-        self._file_kind = "asset"
+        self._file_kind: FileKind = "asset"
         self._import_target: tuple[Any, Any] | None = None
         self._conflict = False
         self._conflict_message = ""
@@ -756,7 +756,7 @@ class MainLibraryIntegration(QtCore.QObject):
 
     def download(
         self,
-        kind: str = "asset",
+        kind: FileKind = "asset",
         historical: dict[str, Any] | None = None,
         target: tuple[Any, Any] | None = None,
     ) -> None:

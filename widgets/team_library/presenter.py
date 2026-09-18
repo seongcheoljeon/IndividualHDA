@@ -14,6 +14,7 @@ from libs.team.contracts import (
     AssetCatalog,
     Blob,
     Command,
+    FileKind,
     Operation,
     Page,
     TeamError,
@@ -347,7 +348,7 @@ class WorkspacePresenter:
         self._run(lambda: self._execute(command), self._committed)
 
     def download(
-        self, kind: str = "asset", historical: dict[str, Any] | None = None
+        self, kind: FileKind = "asset", historical: dict[str, Any] | None = None
     ) -> None:
         from libs.team.contracts import parse_blob
 

@@ -10,6 +10,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from libs.asset_contracts import HistoryData
 from libs.drag_payload import decode_drag_record
 from libs.scene_contracts import SceneRecord
+from libs.team.contracts import FileKind
 from libs.ui_icons import Icon
 
 if TYPE_CHECKING:
@@ -208,7 +209,7 @@ class MainAssetActions:
                     description=description,
                 )
 
-    def attach(self, kind: str) -> None:
+    def attach(self, kind: FileKind) -> None:
         if self.library.presenter is None or not self.library.writable:
             return
         path, _ = QtWidgets.QFileDialog.getOpenFileName(

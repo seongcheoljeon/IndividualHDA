@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Literal, Protocol
 
 from libs.ai_defaults import OLLAMA_ENDPOINT, OLLAMA_MODEL
 
@@ -35,9 +35,17 @@ PLACEHOLDERS: dict[str, dict[str, str]] = {
 }
 
 
+AIKind = Literal["none", "local"]
+
+
+def ai_kind(value: object) -> AIKind:
+    """Settings files and combo boxes hand us text; only known kinds survive."""
+    return "local" if value == "local" else "none"
+
+
 @dataclass(frozen=True, slots=True)
 class AISettings:
-    kind: str = "none"
+    kind: AIKind = "none"
     endpoint: str = ""  # e.g. http://localhost:11434 for a local server
     model: str = ""
     api_key_env: str = ""  # NAME of the environment variable holding the key

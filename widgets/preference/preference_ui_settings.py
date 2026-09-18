@@ -21,7 +21,7 @@ from PySide6 import QtCore, QtWidgets
 
 from libs import keys as app_keys
 from libs import paths
-from libs.ai_provider import AISettings
+from libs.ai_provider import AISettings, ai_kind
 from libs.qt_helpers import center_on_screen
 from libs.runtime_settings import RUNTIME_SETTINGS_KEY, RuntimeSettings
 from libs.settings_store import apply_settings, load_json, save_json
@@ -148,7 +148,9 @@ class PreferenceUISettings:
         keys = app_keys.Name.PreferenceUI
         known = {field.name for field in dataclasses.fields(AISettings)}
         ai = self.__cfg_dict.get(keys.ai) or {}
-        window.ai_settings = AISettings(**{k: v for k, v in ai.items() if k in known})
+        values = {k: v for k, v in ai.items() if k in known}
+        values["kind"] = ai_kind(values.get("kind"))
+        window.ai_settings = AISettings(**values)
 
         def font(combo: QtWidgets.QFontComboBox) -> Callable[[Any], None]:
             def apply(value: Any) -> None:

@@ -12,7 +12,7 @@ from typing import Any
 from PySide6 import QtGui, QtWidgets
 
 from libs import keys, paths
-from libs.ai_provider import FIELDS, KINDS, PLACEHOLDERS, AISettings
+from libs.ai_provider import FIELDS, KINDS, PLACEHOLDERS, AISettings, ai_kind
 from libs.ffmpeg_api import FFmpegAPI
 from libs.runtime_settings import RuntimeSettings
 from libs.ui_icons import Icon
@@ -128,7 +128,7 @@ class Preference(QtWidgets.QDialog, PreferenceLayout):
     @property
     def ai_settings(self) -> AISettings:
         return AISettings(
-            kind=self.comboBox__ai_kind.currentText(),
+            kind=ai_kind(self.comboBox__ai_kind.currentText()),
             endpoint=self.lineEdit__ai_endpoint.text().strip(),
             model=self.lineEdit__ai_model.text().strip(),
             api_key_env=self.lineEdit__ai_api_key_env.text().strip(),

@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Literal, get_args
 
 from PySide6 import QtCore, QtWidgets
 
 from libs.library_metadata import new_identity, utc_now
+
+TrackingPage = Literal["checks", "dependents", "scenes"]
+
+
+def tracking_page(value: str) -> TrackingPage | None:
+    """A page name from a Qt signal, or None when it is not one of ours."""
+    return value if value in get_args(TrackingPage) else None  # type: ignore[return-value]
 
 
 class TrackingDetails(QtWidgets.QWidget):
@@ -49,12 +56,13 @@ class TrackingDetails(QtWidgets.QWidget):
         self.pushButton__record_check.clicked.connect(self._record)
         layout.addWidget(self.pushButton__record_check)
         self.tabWidget__tracking = QtWidgets.QTabWidget()
-        self.views: dict[str, QtWidgets.QTextEdit] = {}
-        for kind, label in (
+        self.views: dict[TrackingPage, QtWidgets.QTextEdit] = {}
+        pages: tuple[tuple[TrackingPage, str], ...] = (
             ("checks", "Checks"),
             ("dependents", "Used by assets"),
             ("scenes", "Used in scenes"),
-        ):
+        )
+        for kind, label in pages:
             page = QtWidgets.QWidget()
             box = QtWidgets.QVBoxLayout(page)
             view = QtWidgets.QTextEdit()
@@ -72,7 +80,7 @@ class TrackingDetails(QtWidgets.QWidget):
         layout.addWidget(self.tabWidget__tracking)
 
     def show_page(
-        self, kind: str, rows: list[dict[str, Any]], append: bool = False
+        self, kind: TrackingPage, rows: list[dict[str, Any]], append: bool = False
     ) -> None:
         self.pages[kind] = self.pages.get(kind, []) + rows if append else rows
         lines = []

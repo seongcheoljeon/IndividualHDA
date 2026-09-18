@@ -23,6 +23,8 @@ MAX_COPY_VERSIONS = 500
 DEFAULT_AUDIT_EVENT_LIMIT = 500
 DEFAULT_MAX_UPLOAD_BYTES = 1024**3
 Role = Literal["viewer", "editor", "owner"]
+# The files a version carries; the server validates uploads against this set.
+FileKind = Literal["asset", "thumbnail", "video"]
 Operation = Literal[
     "copy_asset",
     "create",

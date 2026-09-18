@@ -11,6 +11,7 @@ from libs.history_activity import rename_names, video_action
 from libs.library_management import ManagementGateway
 from libs.resource_policy import CallbackPolicy
 from libs.task_controller import TaskController
+from widgets.library_metadata.tracking import tracking_page
 
 
 class LibraryMetadataDialog(QtWidgets.QDialog):
@@ -189,7 +190,9 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
                 self._tracking_index, tracking is not None
             )
             for kind, rows in (tracking or {}).items():
-                self._tracking.show_page(kind, rows)
+                page = tracking_page(kind)
+                if page is not None:  # the server may know pages this build does not
+                    self._tracking.show_page(page, rows)
             self.comboBox__version.blockSignals(True)
             self.comboBox__version.clear()
             self.comboBox__version.addItems([item["version"] for item in self._items])
@@ -425,7 +428,10 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
         self._run(lambda: self.gateway.record_check(asset_id, body), recorded)
 
     def _tracking_page(self, kind: str, offset: int) -> None:
+        page = tracking_page(kind)
+        if page is None:
+            return
         self._run(
-            lambda: self.gateway.tracking_read(kind, self._asset_uuid, offset),
-            lambda rows: self._tracking.show_page(kind, rows, True),
+            lambda: self.gateway.tracking_read(page, self._asset_uuid, offset),
+            lambda rows: self._tracking.show_page(page, rows, True),
         )

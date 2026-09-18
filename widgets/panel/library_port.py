@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, Protocol
 from libs.library_management import LocalManagement, ManagementGateway, RemoteManagement
 from libs.paths import Paths
 from libs.registration_recovery import RegistrationRecovery
+from libs.team.contracts import FileKind
 from libs.team.copy_source import PersonalCopySource
 from libs.team.registration_recovery import TeamRegistrationRecovery
 
@@ -57,7 +58,7 @@ class LibraryPort(Protocol):
     def remove_selected(self) -> bool: ...
     def context_menu(self, point: QtCore.QPoint) -> bool: ...
     def history_menu(self, point: QtCore.QPoint) -> bool: ...
-    def attach(self, kind: str) -> bool: ...
+    def attach(self, kind: FileKind) -> bool: ...
     def play_video(self) -> bool: ...
 
 
@@ -128,7 +129,7 @@ class PersonalLibrary:
     def history_menu(self, point: QtCore.QPoint) -> bool:
         return False
 
-    def attach(self, kind: str) -> bool:
+    def attach(self, kind: FileKind) -> bool:
         return False
 
     def play_video(self) -> bool:
@@ -204,7 +205,7 @@ class TeamLibrary:
         self._team.actions.history_menu(point)
         return True
 
-    def attach(self, kind: str) -> bool:
+    def attach(self, kind: FileKind) -> bool:
         self._team.actions.attach(kind)
         return True
 
