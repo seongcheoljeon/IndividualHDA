@@ -45,26 +45,46 @@ class _ChipList(QtWidgets.QListWidget):
         super().keyPressEvent(event)
 
 
+class _ChipLabel(QtWidgets.QLabel):
+    """The tag text. A QLabel never elides and ignores host tool-button rules
+    (Houdini styles QToolButton for its toolbars, which showed long tags as …)."""
+
+    clicked = QtCore.Signal()
+
+    def __init__(self, text: str, parent: QtWidgets.QWidget) -> None:
+        super().__init__(text, parent)
+        self.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        self.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.NoTextInteraction)
+
+    def click(self) -> None:
+        self.clicked.emit()
+
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
+        if event.button() == QtCore.Qt.MouseButton.LeftButton and self.rect().contains(
+            event.position().toPoint()
+        ):
+            self.clicked.emit()
+        super().mouseReleaseEvent(event)
+
+
 class _Chip(QtWidgets.QFrame):
     def __init__(
         self, tag: str, *, suggested: bool, removable: bool, parent: QtWidgets.QWidget
     ) -> None:
         super().__init__(parent)
         self.setObjectName("chip__suggested" if suggested else "chip__tag")
+        self.setFrameShape(QtWidgets.QFrame.Shape.StyledPanel)
         layout = QtWidgets.QHBoxLayout(self)
-        layout.setContentsMargins(4, 0, 2, 0)
-        layout.setSpacing(0)
-        self.name = QtWidgets.QToolButton(self)
-        self.name.setAutoRaise(True)
-        self.name.setText(f"#{tag}")
-        self.name.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.PointingHandCursor))
+        layout.setContentsMargins(6, 1, 2, 1)
+        layout.setSpacing(2)
+        self.name = _ChipLabel(f"#{tag}", self)
         if suggested:
             font = self.name.font()
             font.setItalic(True)
             self.name.setFont(font)
-            self.name.setToolTip("Suggested — click to add")
+            self.name.setToolTip(f"{tag} — suggested, click to add")
         else:
-            self.name.setToolTip("Search this tag")
+            self.name.setToolTip(f"{tag} — click to search this tag")
         layout.addWidget(self.name)
         self.remove = QtWidgets.QToolButton(self)
         self.remove.setAutoRaise(True)
@@ -245,6 +265,12 @@ class TagEditor(QtWidgets.QWidget):
         item.setFlags(
             QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
         )
-        item.setSizeHint(chip.sizeHint())
+        # Style sheets add padding only once polished; measure after that so the
+        # row is never narrower than the chip it holds.
+        chip.ensurePolished()
+        for child in chip.findChildren(QtWidgets.QWidget):
+            child.ensurePolished()
+        hint = chip.sizeHint()
+        item.setSizeHint(QtCore.QSize(hint.width() + 2, hint.height()))
         self._list.addItem(item)
         self._list.setItemWidget(item, chip)
