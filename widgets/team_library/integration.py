@@ -650,36 +650,34 @@ class MainLibraryIntegration(QtCore.QObject):
     def _show_comparison(
         self, asset: dict[str, Any], note: str, tags: Sequence[str]
     ) -> None:
-        dialog = QtWidgets.QDialog(self.bindings.parent)
-        dialog.setWindowTitle("Review changes — " + asset["name"])
-        dialog.resize(680, 360)
-        layout = QtWidgets.QVBoxLayout(dialog)
-        layout.addWidget(
-            QtWidgets.QLabel(
-                "Your edits are kept. Compare them with the latest saved values before saving again."
-            )
+        from libs.tags import normalize_tags, tag_text
+        from widgets.team_library.comparison_dialog import ComparisonDialog
+
+        presenter = self.presenter
+        if presenter is None:
+            return
+        theirs_note, theirs_tags = asset.get("note", ""), list(asset.get("tags", []))
+
+        def keep_mine() -> None:
+            # The asset was reloaded before this dialog opened, so the command
+            # carries the latest revision and writes the whole draft in one go.
+            presenter.mutate("metadata", {"note": note, "tags": normalize_tags(tags)})
+
+        def take_theirs() -> None:
+            # Editing the widgets is what discards the draft: textChanged and
+            # the tag editor's changed signal route through presenter.edit.
+            self.bindings.textEdit__note.setPlainText(theirs_note)
+            self.bindings.textEdit__tag.setPlainText(tag_text(theirs_tags))
+            self.show_status("Draft replaced with the latest saved values.")
+
+        dialog = ComparisonDialog(
+            self.bindings.parent,
+            str(asset.get("name", "")),
+            (note, list(tags)),
+            (theirs_note, theirs_tags),
+            on_keep_mine=keep_mine,
+            on_take_theirs=take_theirs,
         )
-        columns = QtWidgets.QHBoxLayout()
-        for title, text in (
-            ("Your edits", note + "\n\nTags: " + " ".join(tags)),
-            (
-                "Latest saved",
-                asset.get("note", "") + "\n\nTags: " + " ".join(asset.get("tags", [])),
-            ),
-        ):
-            group = QtWidgets.QGroupBox(title)
-            group_layout = QtWidgets.QVBoxLayout(group)
-            editor = QtWidgets.QPlainTextEdit(text)
-            editor.setReadOnly(True)
-            group_layout.addWidget(editor)
-            columns.addWidget(group)
-        layout.addLayout(columns)
-        buttons = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Close
-        )
-        buttons.rejected.connect(dialog.reject)
-        layout.addWidget(buttons)
-        dialog.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
         dialog.open()
 
     def asset_committed(self, result: dict[str, Any]) -> None:

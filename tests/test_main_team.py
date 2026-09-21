@@ -232,8 +232,11 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
             if widget.windowTitle().startswith("Review changes")
         ]
         assert len(dialogs) == 1
-        dialogs[0].reject()
-        panel.pushButton__metadata_save.click()
+        # Both sides render as a line diff; the changed line is highlighted.
+        assert "my conflicting draft" in dialogs[0].textEdit__left.toPlainText()
+        assert "another artist's edit" in dialogs[0].textEdit__right.toPlainText()
+        assert "background-color:" in dialogs[0].textEdit__left.toHtml()
+        dialogs[0].pushButton__keep_mine.click()  # saves the draft over theirs
         wait_panel(app, panel)
         assert backend.get_asset(remote_asset["id"])["note"] == "my conflicting draft"
         # Trash needs no prompt when nothing depends on the asset; Undo restores it.

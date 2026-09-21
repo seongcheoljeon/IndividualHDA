@@ -56,6 +56,10 @@
   name / path / version buttons (the first clipboard use in the app). The
   Version details Activity tab is a proper table (time, actor, action, detail)
   with file rows underneath instead of one joined string.
+- **Conflict review is a diff.** When a team save collides with someone
+  else's, Review changes shows your draft and the saved note side by side with
+  changed lines highlighted and the tag difference listed, and offers **Keep
+  mine (save over)** and **Take theirs** instead of only Close.
 
 ## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
 
