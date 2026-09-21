@@ -744,20 +744,24 @@ class MainWindowLayout:
             40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
         )
         self.horizontalLayout__note_actions.addItem(self.spacer__note_actions)
-        self.pushButton__note_save = QPushButton(self.widget__note_editor)
-        self.pushButton__note_save.setObjectName("pushButton__note_save")
-        self.pushButton__note_save.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton__note_save.setIcon(QIcon(Icon.IC_SAVE_WHITE))
-        self.pushButton__note_save.setIconSize(
+        self.pushButton__metadata_save = QPushButton(self.widget__note_editor)
+        self.pushButton__metadata_save.setObjectName("pushButton__metadata_save")
+        self.pushButton__metadata_save.setCursor(
+            QCursor(Qt.CursorShape.PointingHandCursor)
+        )
+        self.pushButton__metadata_save.setIcon(QIcon(Icon.IC_SAVE_WHITE))
+        self.pushButton__metadata_save.setIconSize(
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
-        self.pushButton__note_save.setFlat(True)
-        self.pushButton__note_save.setToolTip(main_window_text("Save Note"))
-        self.pushButton__note_save.setStatusTip(
-            main_window_text("Save the text entered in the selected iHDA node")
+        self.pushButton__metadata_save.setFlat(True)
+        self.pushButton__metadata_save.setToolTip(
+            main_window_text("Save note and tags (Ctrl+S)")
         )
-        self.pushButton__note_save.setText("")
-        self.horizontalLayout__note_actions.addWidget(self.pushButton__note_save)
+        self.pushButton__metadata_save.setStatusTip(
+            main_window_text("Save the note and tags of the selected iHDA node")
+        )
+        self.pushButton__metadata_save.setText("")
+        self.horizontalLayout__note_actions.addWidget(self.pushButton__metadata_save)
         self.verticalLayout__note_editor.addLayout(self.horizontalLayout__note_actions)
         self.splitter__hda_info_vertical.addWidget(self.widget__note_editor)
         self._build_tag_editor(window)
@@ -791,20 +795,6 @@ class MainWindowLayout:
             40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
         )
         self.horizontalLayout__tag_actions.addItem(self.spacer__tag_actions)
-        self.pushButton__tag_save = QPushButton(self.widget__tag_editor)
-        self.pushButton__tag_save.setObjectName("pushButton__tag_save")
-        self.pushButton__tag_save.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton__tag_save.setIcon(QIcon(Icon.IC_SAVE_WHITE))
-        self.pushButton__tag_save.setIconSize(
-            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
-        )
-        self.pushButton__tag_save.setFlat(True)
-        self.pushButton__tag_save.setToolTip(main_window_text("Save Tag"))
-        self.pushButton__tag_save.setStatusTip(
-            main_window_text("Save the tag you entered in the selected iHDA node")
-        )
-        self.pushButton__tag_save.setText("")
-        self.horizontalLayout__tag_actions.addWidget(self.pushButton__tag_save)
         self.verticalLayout__tag_editor.addLayout(self.horizontalLayout__tag_actions)
         self.splitter__hda_info_vertical.addWidget(self.widget__tag_editor)
         self.verticalLayout__detail_page.addWidget(self.splitter__hda_info_vertical)

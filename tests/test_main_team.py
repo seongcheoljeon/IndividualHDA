@@ -116,10 +116,12 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         panel._ai_describe_done(Description("stale personal AI suggestion", []))
         assert panel.textEdit__note.toPlainText() != "stale personal AI suggestion"
         panel.textEdit__note.setPlainText("saved in team")
-        panel.pushButton__note_save.click()
+        panel.pushButton__metadata_save.click()
         wait_panel(app, panel)
         assert backend.get_asset(remote_asset["id"])["note"] == "saved in team"
-        assert not local.list_assets()[0].hda_note
+        # Leaving the personal library autosaved its draft; the team write above
+        # must not have touched it.
+        assert local.list_assets()[0].hda_note == "unsaved personal draft"
         assert writes and writes[-1] is not main_thread()
         from PySide6 import QtCore
 
@@ -218,7 +220,7 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
             )
         )
         panel.textEdit__note.setPlainText("my conflicting draft")
-        panel.pushButton__note_save.click()
+        panel.pushButton__metadata_save.click()
         wait_panel(app, panel)
         assert "Review changes" in panel.label__metadata_status.text()
         assert panel.textEdit__note.toPlainText() == "my conflicting draft"
@@ -231,12 +233,12 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         ]
         assert len(dialogs) == 1
         dialogs[0].reject()
-        panel.pushButton__note_save.click()
+        panel.pushButton__metadata_save.click()
         wait_panel(app, panel)
         assert backend.get_asset(remote_asset["id"])["note"] == "my conflicting draft"
         team.open_backend(backend, {"id": project, "name": "Studio", "role": "viewer"})
         wait_panel(app, panel)
-        assert not panel.pushButton__note_save.isEnabled()
+        assert not panel.pushButton__metadata_save.isEnabled()
         assert not panel.tools.actionProject_Members.isVisible()
         team.open_backend(
             broken, {"id": project, "name": "Unavailable", "role": "owner"}

@@ -163,7 +163,7 @@ def test_tag_action_buttons_share_one_icon_size(
     monkeypatch.setattr(WebView, "_WebView__set_init_load", lambda self: None)
     panel = IndividualHDA()
     try:
-        expected = panel.pushButton__tag_save.iconSize()
+        expected = panel.pushButton__metadata_save.iconSize()
         assert expected.width() == TOOLBAR_ICON_SIZE
         assert panel.pushButton__ai_suggest.iconSize() == expected
     finally:

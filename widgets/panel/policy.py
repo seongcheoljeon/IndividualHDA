@@ -12,9 +12,16 @@ class PanelPolicy:
     search: SearchPolicy = SearchPolicy()
     maximum_node_batch: int = DEFAULT_RUNTIME.maximum_node_batch
     warn_node_batch: int = DEFAULT_RUNTIME.warn_node_batch
+    # Personal note/tag edits are written this long after typing stops.
+    autosave_delay_ms: int = 1500
 
     def __post_init__(self) -> None:
-        for name in ("sync_interval_ms", "maximum_node_batch", "warn_node_batch"):
+        for name in (
+            "sync_interval_ms",
+            "maximum_node_batch",
+            "warn_node_batch",
+            "autosave_delay_ms",
+        ):
             value = getattr(self, name)
             if type(value) is not int or not 0 < value <= 2_147_483_647:
                 raise ValueError(f"{name} must be a positive Qt-compatible integer")

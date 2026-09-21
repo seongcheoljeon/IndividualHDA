@@ -270,12 +270,11 @@ class PanelBootstrap:
         window.lineEdit__search_cate.textChanged.connect(
             window.models.search_filter_regexp_hda_cate
         )
-        window.pushButton__note_save.clicked.connect(
-            lambda: window.notes._slot_save_note_tags(choice="note")
+        window.pushButton__metadata_save.clicked.connect(
+            window.notes._slot_save_metadata
         )
-        window.pushButton__tag_save.clicked.connect(
-            lambda: window.notes._slot_save_note_tags(choice="tag")
-        )
+        # Personal edits autosave; the button appears when a team library is active.
+        window.pushButton__metadata_save.setVisible(False)
         window.checkBox__casesensitive_cate.stateChanged.connect(
             window.selection._slot_checkbox_hda_cate_casesensitive
         )

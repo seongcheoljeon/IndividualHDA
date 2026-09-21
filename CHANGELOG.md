@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased — modern editing
+
+- **Tags are chips.** The tag pane no longer takes `#a #b` text. Committed tags
+  are chips (click one to search it, × or Backspace removes it); the line below
+  completes from the tags already in the library. Enter, comma or space commit.
+  AI suggestions arrive as dimmed chips to accept, never as an overwrite.
+- **Personal notes and tags autosave.** Edits are written about 1.5 s after
+  typing stops, and when you select another asset, switch library or close the
+  panel. The Yes/No prompt on every save is gone; the status line reads
+  `Unsaved`, `Saving…`, `Saved · just now` or `Save failed — edits retained`.
+  The team library keeps one explicit Save button (writes carry a revision and
+  may conflict). Note history gains one row per pause, not per keystroke.
+
 ## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
 
 - **History shows renames and video changes.** Rename and preview-video events

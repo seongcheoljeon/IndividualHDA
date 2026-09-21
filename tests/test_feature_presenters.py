@@ -526,3 +526,54 @@ def test_reload_discards_snapshot_from_before_write_or_library_switch(
     callbacks[0](LibrarySnapshot(revision=1), None)
     assert applied == ([LibrarySnapshot(revision=1)] if change == "none" else [])
     assert presenter.pending == (change == "metadata_save")
+
+
+def test_save_pending_writes_both_dirty_fields_in_one_operation() -> None:
+    view, executor, repository = View(), DelayedExecutor(), Metadata()
+    presenter = AssetDetailsPresenter(view, executor)
+    presenter.change_gateway(repository)
+    presenter.select(1, "note", ["tag"])
+    presenter.save_pending()  # nothing dirty: no write, no busy state
+    assert view.state == (False, False, False) and not repository.writes
+    presenter.edit("edited", ["tag", "more"])
+    presenter.save_pending()
+    assert view.state == (True, True, True)
+    executor.complete()
+    assert repository.writes == [(1, "edited"), (1, ["tag", "more"])]
+    assert view.state == (False, False, False)
+    assert [args[1] for args in view.saves] == ["note", "tag"]
+
+
+def test_autosave_flushes_on_selection_change_and_chains_newer_edits() -> None:
+    view, executor, repository = View(), DelayedExecutor(), Metadata()
+    presenter = AssetDetailsPresenter(view, executor)
+    presenter.autosave = True
+    presenter.change_gateway(repository)
+    presenter.select(1, "one", [])
+    presenter.edit("one edited", [])
+    presenter.select(2, "two", [])  # leaving asset 1 writes it
+    assert view.state == (False, False, True)
+    presenter.edit("two edited", [])  # lands while asset 1 is in flight
+    executor.complete()
+    assert repository.writes == [(1, "one edited")]
+    assert view.state == (True, False, True)  # asset 2 is now being written
+    executor.complete()
+    assert repository.writes == [(1, "one edited"), (2, "two edited")]
+    assert view.state == (False, False, False)
+
+
+def test_autosave_does_not_retry_after_a_failure_until_the_next_edit() -> None:
+    view, executor, repository = View(), DelayedExecutor(), Metadata()
+    presenter = AssetDetailsPresenter(view, executor)
+    presenter.autosave = True
+    presenter.change_gateway(repository)
+    presenter.select(1, "one", [])
+    presenter.edit("edited", [])
+    presenter.save_pending()
+    executor.complete(RuntimeError("asset is in the Trash"))
+    assert view.errors == ["asset is in the Trash"]
+    assert view.state == (True, False, False)  # dirty, idle: no save loop
+    presenter.edit("edited again", [])
+    presenter.save_pending()
+    executor.complete()
+    assert repository.writes == [(1, "edited again")]

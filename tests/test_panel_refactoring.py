@@ -199,7 +199,8 @@ def test_library_capabilities_and_dispatch_are_explicit() -> None:
         _repository=object(),
         _details=SimpleNamespace(
             presenter=SimpleNamespace(
-                select=lambda *args: calls.append(args), save=calls.append
+                select=lambda *args: calls.append(args),
+                save_pending=lambda: calls.append("save"),
             )
         ),
         _library_sync_presenter=SimpleNamespace(
@@ -216,13 +217,11 @@ def test_library_capabilities_and_dispatch_are_explicit() -> None:
     personal.select(
         3, AssetData(hda_note="draft", hda_tags=("water",), hda_id=0, hda_name="")
     )
-    personal.save("note")
+    personal.save()
     personal.refresh()
-    assert calls == [(3, "draft", ("water",)), "note", "local refresh"]
-    assert (
-        personal.capabilities.local_files
-        and personal.capabilities.confirm_metadata_save
-    )
+    assert calls == [(3, "draft", ("water",)), "save", "local refresh"]
+    assert personal.capabilities.local_files
+    assert not personal.capabilities.explicit_save  # personal edits autosave
     remote = SimpleNamespace(
         writable=False,
         project={"role": "viewer"},
@@ -236,6 +235,7 @@ def test_library_capabilities_and_dispatch_are_explicit() -> None:
     team.history()
     assert calls[-3:] == [3, "team refresh", "history"]
     assert not team.capabilities.edit_metadata and not team.capabilities.manage_members
+    assert team.capabilities.explicit_save
     remote.project["role"] = "owner"
     remote.writable = True
     assert team.capabilities.edit_metadata and team.capabilities.manage_members

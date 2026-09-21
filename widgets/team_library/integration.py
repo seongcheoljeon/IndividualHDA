@@ -84,8 +84,7 @@ class TeamBindings:
     label__tag_status: QtWidgets.QLabel
     lineEdit__search_hda: QtWidgets.QLineEdit
     pushButton__ai_suggest: QtWidgets.QPushButton
-    pushButton__note_save: QtWidgets.QPushButton
-    pushButton__tag_save: QtWidgets.QPushButton
+    pushButton__metadata_save: QtWidgets.QPushButton
     stackedWidget__hda_infos: QtWidgets.QStackedWidget
     textEdit__note: QtWidgets.QTextEdit
     textEdit__tag: TagEditor
@@ -283,6 +282,7 @@ class MainLibraryIntegration(QtCore.QObject):
             self.source.addItem("Connect team…", "connect")
             self.source.setCurrentIndex(1)
         bindings.show_assets()
+        bindings.pushButton__metadata_save.setVisible(True)
         self.presenter.page_ready(page)
         bindings.selection.init_select_ihda_category_model()
         self.show_busy(False)
@@ -347,8 +347,8 @@ class MainLibraryIntegration(QtCore.QObject):
         self._set_personal_controls(bindings.session.actions.capabilities.local_files)
         bindings.tools.actionProject_Members.setVisible(False)
         bindings.pushButton__ai_suggest.setEnabled(not bindings.ai_tasks.busy)
-        bindings.pushButton__note_save.setEnabled(True)
-        bindings.pushButton__tag_save.setEnabled(True)
+        bindings.pushButton__metadata_save.setEnabled(True)
+        bindings.pushButton__metadata_save.setVisible(False)
         bindings.textEdit__note.setReadOnly(False)
         bindings.textEdit__tag.setReadOnly(False)
         bindings.icons.pixmap_thumbnail_data.clear()
@@ -465,7 +465,7 @@ class MainLibraryIntegration(QtCore.QObject):
             if self.presenter is not None
             else (False, False)
         )
-        self.bindings.label__tag_status.setText("Unsaved changes" if tag_dirty else "")
+        self.bindings.label__tag_status.setText("Unsaved" if tag_dirty else "")
         return note_dirty, tag_dirty
 
     def _edited(self) -> None:
@@ -478,23 +478,18 @@ class MainLibraryIntegration(QtCore.QObject):
             if self._conflict:
                 self.bindings.label__metadata_status.setText(self._conflict_message)
             elif not self._tasks.busy:
-                self.show_status("Unsaved changes" if note_dirty else "")
+                self.show_status("Unsaved" if note_dirty else "")
 
-    def save(self, choice: str) -> None:
-        if self.presenter is None or not self.writable:
-            return
-        values = (
-            {"note": self.bindings.textEdit__note.toPlainText()}
-            if choice == "note"
-            else {"tags": self.bindings.textEdit__tag.tags()}
-        )
-        self.presenter.mutate("metadata", values)
+    def save(self) -> None:
+        if self.presenter is not None and self.writable:
+            self.presenter.save_metadata()
 
     def show_busy(self, busy: bool) -> None:
         self.source.setEnabled(not busy)
         if self.active:
-            self.bindings.pushButton__note_save.setEnabled(not busy and self.writable)
-            self.bindings.pushButton__tag_save.setEnabled(not busy and self.writable)
+            self.bindings.pushButton__metadata_save.setEnabled(
+                not busy and self.writable
+            )
             self.bindings.pushButton__ai_suggest.setEnabled(
                 self.writable and not self.bindings.ai_tasks.busy
             )
@@ -505,7 +500,7 @@ class MainLibraryIntegration(QtCore.QObject):
 
     def show_status(self, message: str) -> None:
         if message.startswith("Saved."):
-            message = "Saved"
+            message = "Saved · just now"
         elif "assets · loaded" in message:
             message = ""
         if (

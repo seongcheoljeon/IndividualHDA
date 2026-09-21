@@ -122,6 +122,7 @@ class PanelComposition:
                 saved=self._metadata_saved,
             ),
             window._services.tasks(window),
+            autosave_delay_ms=window._services.policy.autosave_delay_ms,
         )
         self.lifetime.add("details", lambda: window._details.close(), 30)
         window._asset_search = window._services.asset_search(window)
@@ -335,8 +336,7 @@ class PanelComposition:
                 label__tag_status=window.label__tag_status,
                 lineEdit__search_hda=window.lineEdit__search_hda,
                 pushButton__ai_suggest=window.pushButton__ai_suggest,
-                pushButton__note_save=window.pushButton__note_save,
-                pushButton__tag_save=window.pushButton__tag_save,
+                pushButton__metadata_save=window.pushButton__metadata_save,
                 stackedWidget__hda_infos=window.stackedWidget__hda_infos,
                 textEdit__note=window.textEdit__note,
                 textEdit__tag=window.textEdit__tag,

@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from libs.asset_contracts import AssetData
-from widgets.asset_details.presenter import Field
 from widgets.panel.state import PanelSessionState
 
 
@@ -16,14 +15,16 @@ class LibraryCapabilities:
     edit_metadata: bool = True
     local_files: bool = True
     manage_members: bool = False
-    confirm_metadata_save: bool = True
+    # Personal edits autosave; team edits wait for Save because every write
+    # carries an expected revision and may conflict.
+    explicit_save: bool = False
 
 
 class PanelLibrarySession(Protocol):
     @property
     def capabilities(self) -> LibraryCapabilities: ...
     def select(self, asset_id: int | None, data: AssetData | None) -> None: ...
-    def save(self, field: Field) -> None: ...
+    def save(self) -> None: ...
     def refresh(self) -> None: ...
     def history(self) -> None: ...
 
@@ -32,7 +33,7 @@ class MetadataEditor(Protocol):
     def select(
         self, asset_id: int | None, note: str = "", tags: Sequence[str] = ()
     ) -> None: ...
-    def save(self, field: Field) -> None: ...
+    def save_pending(self) -> None: ...
 
 
 class TeamSessionPort(Protocol):
@@ -41,7 +42,7 @@ class TeamSessionPort(Protocol):
     @property
     def project(self) -> dict[str, Any]: ...
     def select(self, asset_id: int | None) -> None: ...
-    def save(self, field: Field) -> None: ...
+    def save(self) -> None: ...
     def refresh(self) -> None: ...
     def request_history(self) -> None: ...
 
@@ -66,8 +67,8 @@ class PersonalPanelSession:
             data.hda_tags if data is not None else (),
         )
 
-    def save(self, field: Field) -> None:
-        self._details.save(field)
+    def save(self) -> None:
+        self._details.save_pending()
 
     def refresh(self) -> None:
         self._refresh()
@@ -87,14 +88,14 @@ class TeamPanelSession:
             edit_metadata=self._integration.writable,
             local_files=False,
             manage_members=self._integration.project.get("role") == "owner",
-            confirm_metadata_save=False,
+            explicit_save=True,
         )
 
     def select(self, asset_id: int | None, data: AssetData | None) -> None:
         self._integration.select(asset_id)
 
-    def save(self, field: Field) -> None:
-        self._integration.save(field)
+    def save(self) -> None:
+        self._integration.save()
 
     def refresh(self) -> None:
         self._integration.refresh()

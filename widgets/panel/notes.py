@@ -15,7 +15,6 @@ from PySide6 import QtGui, QtWidgets
 from libs import keys, log_handler, note_syntax
 from libs.tags import normalize_tags
 from libs.ui_icons import Icon
-from widgets.asset_details.presenter import Field
 from widgets.detail_view import detail_view
 from widgets.ui_tokens import COMPACT_MARGIN, TAG_TEXT_COLOR
 
@@ -153,35 +152,10 @@ class PanelNotes:
     def set_tag_string(tag_lst: Sequence[str]) -> str:
         return " ".join(["#" + x for x in sorted(tag_lst)])
 
-    def _slot_save_note_tags(self, choice: Field = "note") -> None:
-        if (
-            choice not in ("note", "tag")
-            or not self.bindings.session.actions.capabilities.edit_metadata
-        ):
-            return
-        if not self.bindings.session.actions.capabilities.confirm_metadata_save:
-            self.bindings.session.actions.save(choice)
-            return
-        if self.bindings.selection.state.asset.data is None:
-            log_handler.LogHandler.log_msg(
-                method=logging.warning, msg="iHDA node not clicked"
-            )
-            return
-        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.bindings.presentation.get_default_font())
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
-        msgbox.setWindowTitle(f"Save iHDA {choice}s")
-        msgbox.setText(
-            f'Save {choice}s to "{self.bindings.selection.state.asset.name} ({self.bindings.selection.state.asset.cate})" path iHDA node?'
-        )
-        msgbox.setStandardButtons(
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No
-        )
-        reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-            if choice in ("note", "tag"):
-                self.bindings.session.actions.save(choice)
+    def _slot_save_metadata(self) -> None:
+        """Save button / Ctrl+S: write the note and tags of the selected asset."""
+        if self.bindings.session.actions.capabilities.edit_metadata:
+            self.bindings.session.actions.save()
 
     @property
     def hda_tags(self) -> str:

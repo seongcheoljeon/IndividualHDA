@@ -9,6 +9,7 @@ from typing import Any
 
 from PySide6 import QtCore, QtWidgets
 
+from libs.debounce import DebouncedText
 from libs.task_controller import TaskController
 from widgets.asset_details.presenter import (
     AssetDetailsPresenter,
@@ -55,12 +56,23 @@ class MetadataSaveExecutor:
 
 
 class AssetDetailsIntegration:
-    def __init__(self, bindings: DetailsBindings, tasks: TaskController) -> None:
+    def __init__(
+        self,
+        bindings: DetailsBindings,
+        tasks: TaskController,
+        *,
+        autosave_delay_ms: int = 1500,
+    ) -> None:
         self.bindings = bindings
         self._tasks = tasks
         self.presenter = AssetDetailsPresenter(self, MetadataSaveExecutor(tasks))
+        self.presenter.autosave = True
+        self._autosave = DebouncedText(
+            lambda _: self.flush(), tasks, delay=autosave_delay_ms
+        )
         self.label__metadata_status = bindings.status
         self._save_error = ""
+        self._saved_recently = False
         self._library_identity: object = None
         self._vocabulary: Callable[[], Sequence[str]] | None = None
         bindings.note.textChanged.connect(self._edited)
@@ -73,6 +85,7 @@ class AssetDetailsIntegration:
         *,
         vocabulary: Callable[[], Sequence[str]] | None = None,
     ) -> None:
+        self.flush()
         self._tasks.drain()
         self.presenter.change_gateway(
             repository, preserve_drafts=identity == self._library_identity
@@ -92,7 +105,14 @@ class AssetDetailsIntegration:
         self.bindings.tags.setVocabulary(words)
 
     def _edited(self) -> None:
+        self._saved_recently = False
         self.presenter.edit(self.bindings.note.toPlainText(), self.bindings.tags.tags())
+        self._autosave.submit("")
+
+    def flush(self) -> None:
+        """Write pending edits now (Ctrl+S, selection change, library switch, close)."""
+        self._autosave.timer.stop()
+        self.presenter.save_pending()
 
     def show_draft(self, note: str, tags: Sequence[str]) -> None:
         bindings = self.bindings
@@ -103,6 +123,7 @@ class AssetDetailsIntegration:
             bindings.note.setPlainText(note)
             bindings.tags.setTags(tags)
         bindings.show_tags(list(tags))
+        self._saved_recently = False
 
     def show_state(self, note_dirty: bool, tag_dirty: bool, saving: bool) -> None:
         if saving:
@@ -112,13 +133,15 @@ class AssetDetailsIntegration:
             if saving
             else "Save failed — edits retained"
             if self._save_error
-            else "Unsaved changes"
+            else "Unsaved"
             if note_dirty
+            else "Saved · just now"
+            if self._saved_recently and not tag_dirty
             else ""
         )
         # Tag label carries dirtiness only. "Saving…" and save errors stay on the
         # shared line; repeating them here is the contention this split removes.
-        self.bindings.tag_status.setText("Unsaved changes" if tag_dirty else "")
+        self.bindings.tag_status.setText("Unsaved" if tag_dirty else "")
 
     def show_error(self, message: str) -> None:
         self._save_error = message
@@ -128,6 +151,7 @@ class AssetDetailsIntegration:
     def saved(self, asset_id: int, field: Field, value: str | list[str]) -> None:
         self.bindings.saved(asset_id, field, value)
         logging.info("Asset %s %s saved", asset_id, field)
+        self._saved_recently = True
         if field == "tag":
             self._refresh_vocabulary()
 
@@ -137,8 +161,10 @@ class AssetDetailsIntegration:
 
     def suspend(self) -> None:
         """Finish local saves and detach selection while keeping personal drafts."""
+        self.flush()
         self._tasks.drain()
         self.presenter.select(None)
 
     def close(self) -> None:
+        self.flush()
         self._tasks.drain()

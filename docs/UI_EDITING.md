@@ -37,7 +37,7 @@
 기존 스타일인 **위젯 종류 + `__` + 용도**를 사용합니다.
 
 ```python
-self.pushButton__note_save
+self.pushButton__metadata_save
 self.lineEdit__data_dirpath
 self.horizontalLayout__tag_actions
 self.widget__note_editor

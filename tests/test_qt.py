@@ -3,6 +3,7 @@ from __future__ import annotations
 import pathlib
 import sys
 import unicodedata
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -97,6 +98,18 @@ def test_panel_constructs(app: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     panel.close()
 
 
+def wait_until(app: Any, condition: Callable[[], bool], tries: int = 500) -> None:
+    """Poll the GUI loop until ``condition`` holds; never a fixed wait (CI timing)."""
+    from PySide6 import QtTest
+
+    for _ in range(tries):
+        app.processEvents()
+        if condition():
+            return
+        QtTest.QTest.qWait(10)
+    pytest.fail("Condition not met in time")
+
+
 def wait_search(app: Any, panel: Any) -> None:
     """Repository searches run off the GUI thread; wait for the current one."""
     from PySide6 import QtTest
@@ -152,7 +165,12 @@ def test_panel_with_saved_library(
         )
         assert db.insert_thumbnail_info(key, assets, "thumb.jpg", "1.0") == 1
         assert db.insert_tag_info(key, ["water"]) == 1
-    panel = IndividualHDA()
+    from widgets.panel.policy import PanelPolicy
+    from widgets.panel.services import PanelServices
+
+    panel = IndividualHDA(
+        services=PanelServices(policy=PanelPolicy(autosave_delay_ms=20))
+    )
     model = panel.models.list_proxy_model
     assert model.rowCount() == 1
     panel.lineEdit__search_hda.setText("missing")
@@ -182,15 +200,12 @@ def test_panel_with_saved_library(
         panel.selection.state.asset.id == key
         and browser.stackedWidget__hda.currentIndex() == 1
     )
-    # Real save buttons -> presenter -> worker -> SQLite -> shared models.
-    monkeypatch.setattr(
-        QtWidgets.QMessageBox,
-        "exec",
-        lambda _: QtWidgets.QMessageBox.StandardButton.Yes,
-    )
+    # Personal edits autosave: editor -> debounce -> presenter -> worker -> SQLite.
+    assert not panel.pushButton__metadata_save.isVisible()
     panel.textEdit__note.setPlainText("saved from the metadata presenter")
-    panel.pushButton__note_save.click()
-    panel._details.close()  # drain the worker and deliver its GUI callback
+    assert panel.label__metadata_status.text() == "Unsaved"
+    # The label follows the GUI callback that also updates the shared models.
+    wait_until(app, lambda: panel.label__metadata_status.text() == "Saved · just now")
     assert (
         panel.session.repository.list_assets()[0].hda_note
         == "saved from the metadata presenter"
@@ -198,12 +213,10 @@ def test_panel_with_saved_library(
     assert panel.models.assets.rows[0].hda_note == "saved from the metadata presenter"
     panel.textEdit__tag.setPlainText("#Water #water #한글")
     # Editing tags must light the tag indicator, not the note one.
-    assert panel.label__tag_status.text() == "Unsaved changes"
+    assert panel.label__tag_status.text() == "Unsaved"
     assert not panel.label__metadata_status.text()
-    panel.pushButton__tag_save.click()
-    panel._details.close()
+    wait_until(app, lambda: panel.label__metadata_status.text() == "Saved · just now")
     assert panel.session.repository.list_assets()[0].hda_tags == ("Water", "한글")
-    assert not panel.label__metadata_status.text()
     assert not panel.label__tag_status.text()
     panel.doubleSpinBox__zoom.setValue(150)
     panel._ui_settings.save_cfg_dict_to_file()
