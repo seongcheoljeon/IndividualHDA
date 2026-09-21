@@ -6,10 +6,7 @@ This module owns presentation only. Event handling stays in the owning widget.
 
 from __future__ import annotations
 
-from PySide6.QtCore import (
-    QLocale,
-    Qt,
-)
+from PySide6.QtCore import Qt
 from PySide6.QtGui import (
     QIcon,
 )
@@ -23,10 +20,11 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
+    QListWidget,
     QScrollArea,
     QSpacerItem,
     QSpinBox,
+    QStackedWidget,
     QTabWidget,
     QToolButton,
     QVBoxLayout,
@@ -145,7 +143,6 @@ class PreferenceLayout:
     lineEdit__ffmpeg_result: QLineEdit
     lineEdit__result: QLineEdit
     line__view_settings: QFrame
-    pushButton__reset_default_app_properties: QPushButton
     spacer__debug_font_size: QSpacerItem
     spacer__default_cate_item_padding: QSpacerItem
     spacer__default_history_item_padding: QSpacerItem
@@ -191,8 +188,10 @@ class PreferenceLayout:
 
     def build_ui(self, window: QDialog) -> None:
         self._configure_window(window)
+        self.add_page(preference_text("Storage"))
         build_storage_settings(self, window)
         build_ffmpeg_settings(self, window)
+        self.add_page(preference_text("Appearance"))
         build_appearance_settings(self, window)
         build_icon_sizes(self, window)
         build_item_padding(self, window)
@@ -200,45 +199,137 @@ class PreferenceLayout:
         build_tag_font(self, window)
         build_debug_font(self, window)
         self._build_dialog_buttons(window)
+        self.listWidget__pages.setCurrentRow(0)
 
     def _configure_window(self, window: QDialog) -> None:
         if not window.objectName():
             window.setObjectName("Dialog__preference")
-        window.resize(817, 889)
+        window.resize(760, 600)
         window.setFont(make_font(point_size=11))
         window.setWindowIcon(QIcon(Icon.VIEWPORT_LOGO_TRANS))
-        window.setLocale(
-            QLocale(QLocale.Language.English, QLocale.Country.UnitedStates)
-        )
         window.setWindowTitle(preference_text("iHDA Preference"))
+        self.pages: dict[str, tuple[QScrollArea, QWidget]] = {}
         self.verticalLayout__preference_shell = QVBoxLayout(window)
         self.verticalLayout__preference_shell.setObjectName(
             "verticalLayout__preference_shell"
         )
-        self.scrollArea__preferences = QScrollArea(window)
-        self.scrollArea__preferences.setObjectName("scrollArea__preferences")
-        self.scrollArea__preferences.setWidgetResizable(True)
-        self.scrollArea__preferences.setFrameShape(QFrame.Shape.NoFrame)
-        content = QWidget(self.scrollArea__preferences)
-        content.setObjectName("widget__preference_content")
-        self.scrollArea__preferences.setWidget(content)
-        self.verticalLayout__preference_shell.addWidget(self.scrollArea__preferences)
-        self.verticalLayout__preferences = QVBoxLayout(content)
-        self.verticalLayout__preferences.setSpacing(5)
-        self.verticalLayout__preferences.setObjectName("verticalLayout__preferences")
-        self.verticalLayout__preferences.setContentsMargins(6, 6, 6, 6)
+        self.horizontalLayout__pages = QHBoxLayout()
+        self.horizontalLayout__pages.setObjectName("horizontalLayout__pages")
+        self.horizontalLayout__pages.setSpacing(8)
+        self.listWidget__pages = QListWidget(window)
+        self.listWidget__pages.setObjectName("listWidget__pages")
+        self.listWidget__pages.setFixedWidth(150)
+        self.listWidget__pages.setFrameShape(QFrame.Shape.NoFrame)
+        self.horizontalLayout__pages.addWidget(self.listWidget__pages)
+        self.verticalLayout__page_column = QVBoxLayout()
+        self.verticalLayout__page_column.setObjectName("verticalLayout__page_column")
+        self.verticalLayout__page_column.setSpacing(4)
+        self.lineEdit__filter = QLineEdit(window)
+        self.lineEdit__filter.setObjectName("lineEdit__filter")
+        self.lineEdit__filter.setClearButtonEnabled(True)
+        self.lineEdit__filter.setPlaceholderText(preference_text("Filter settings"))
+        self.verticalLayout__page_column.addWidget(self.lineEdit__filter)
+        self.stackedWidget__pages = QStackedWidget(window)
+        self.stackedWidget__pages.setObjectName("stackedWidget__pages")
+        self.verticalLayout__page_column.addWidget(self.stackedWidget__pages, 1)
+        self.horizontalLayout__pages.addLayout(self.verticalLayout__page_column, 1)
+        self.verticalLayout__preference_shell.addLayout(self.horizontalLayout__pages, 1)
+        self.listWidget__pages.currentRowChanged.connect(
+            self.stackedWidget__pages.setCurrentIndex
+        )
+        self.lineEdit__filter.textChanged.connect(self.filter_pages)
+
+    def add_page(self, title: str) -> QVBoxLayout:
+        """A sidebar entry with its own scrolling column; builders add groups to it.
+
+        The returned layout is also ``verticalLayout__preferences`` until the next
+        page is added, which is what the section modules append to.
+        """
+        area = QScrollArea(self.stackedWidget__pages)
+        area.setObjectName(f"scrollArea__page_{len(self.pages)}")
+        area.setWidgetResizable(True)
+        area.setFrameShape(QFrame.Shape.NoFrame)
+        content = QWidget(area)
+        content.setObjectName(f"widget__page_{len(self.pages)}")
+        area.setWidget(content)
+        layout = QVBoxLayout(content)
+        layout.setSpacing(5)
+        layout.setContentsMargins(6, 6, 6, 6)
+        layout.addStretch(1)  # groups pack at the top; inserted before this
+        self.stackedWidget__pages.addWidget(area)
+        self.listWidget__pages.addItem(title)
+        self.pages[title] = (area, content)
+        self.verticalLayout__preferences = _PageLayout(layout)
+        return self.verticalLayout__preferences
+
+    @property
+    def scrollArea__preferences(self) -> QScrollArea:
+        """The scroll area of the page on screen."""
+        area = self.stackedWidget__pages.currentWidget()
+        assert isinstance(area, QScrollArea)
+        return area
+
+    def show_page(self, title: str) -> None:
+        self.listWidget__pages.setCurrentRow(list(self.pages).index(title))
+
+    def filter_pages(self, text: str) -> None:
+        """Hide the groups whose title and labels do not mention ``text``."""
+        needle = text.strip().casefold()
+        for row, (_area, content) in enumerate(self.pages.values()):
+            visible_any = False
+            for group in content.findChildren(
+                QWidget, options=Qt.FindChildOption.FindDirectChildrenOnly
+            ):
+                match = not needle or needle in _searchable_text(group)
+                group.setVisible(match)
+                visible_any = visible_any or match
+            item = self.listWidget__pages.item(row)
+            item.setFlags(
+                item.flags() | Qt.ItemFlag.ItemIsEnabled
+                if visible_any
+                else item.flags() & ~Qt.ItemFlag.ItemIsEnabled
+            )
 
     def _build_dialog_buttons(self, window: QDialog) -> None:
         self.buttonBox__confirm = QDialogButtonBox(window)
         self.buttonBox__confirm.setObjectName("buttonBox__confirm")
-        self.buttonBox__confirm.setLocale(
-            QLocale(QLocale.Language.English, QLocale.Country.UnitedStates)
-        )
         self.buttonBox__confirm.setOrientation(Qt.Orientation.Horizontal)
         self.buttonBox__confirm.setStandardButtons(
-            QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Ok
+            QDialogButtonBox.StandardButton.Cancel
+            | QDialogButtonBox.StandardButton.Ok
+            | QDialogButtonBox.StandardButton.Apply
+            | QDialogButtonBox.StandardButton.RestoreDefaults
         )
         self.verticalLayout__preference_shell.addWidget(self.buttonBox__confirm)
         self.buttonBox__confirm.accepted.connect(window.accept)
         self.buttonBox__confirm.rejected.connect(window.reject)
         self.tabWidget__view_settings.setCurrentIndex(0)
+
+
+class _PageLayout(QVBoxLayout):
+    """Proxy that inserts widgets above the page's trailing stretch."""
+
+    def __init__(self, target: QVBoxLayout) -> None:
+        super().__init__()
+        self._target = target
+
+    def addWidget(self, widget: QWidget, *args: object, **kwargs: object) -> None:  # type: ignore[override]
+        self._target.insertWidget(self._target.count() - 1, widget)
+
+    def insertWidget(
+        self, index: int, widget: QWidget, *args: object, **kwargs: object
+    ) -> None:  # type: ignore[override]
+        self._target.insertWidget(min(index, self._target.count() - 1), widget)
+
+
+def _searchable_text(widget: QWidget) -> str:
+    parts = [widget.objectName().replace("groupBox__", "").replace("_", " ")]
+    title = getattr(widget, "title", None)
+    if callable(title):
+        parts.append(str(title()))
+    parts.extend(label.text() for label in widget.findChildren(QLabel))
+    parts.extend(box.title() for box in widget.findChildren(QGroupBox))
+    tabs = widget.findChildren(QTabWidget)
+    for tab in tabs:
+        parts.extend(tab.tabText(i) for i in range(tab.count()))
+    return " ".join(parts).casefold()

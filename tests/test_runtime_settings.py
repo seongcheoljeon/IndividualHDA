@@ -255,11 +255,14 @@ def test_expanded_preferences_keep_confirmation_buttons_visible(app: Any) -> Non
     from widgets.preference.preference import Preference
 
     dialog = Preference()
+    dialog.show_page("Advanced")
     dialog.runtime_group.findChild(QtWidgets.QToolButton).setChecked(True)
     dialog.show()
     app.processEvents()
     available = dialog.screen().availableGeometry()
     assert dialog.height() <= available.height()
+    # The buttons live outside the page stack, so an expanded page can only
+    # scroll inside its own column and never pushes them off the dialog.
     assert dialog.rect().contains(dialog.buttonBox__confirm.geometry())
-    assert dialog.scrollArea__preferences.verticalScrollBar().maximum() > 0
+    assert dialog.scrollArea__preferences.widget() is dialog.pages["Advanced"][1]
     dialog.reject()

@@ -22,7 +22,6 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QSizePolicy,
     QSpacerItem,
     QSpinBox,
@@ -48,28 +47,6 @@ def build_appearance_settings(layout: PreferenceLayout, window: QDialog) -> None
     layout.horizontalLayout__appearance = QHBoxLayout(layout.groupBox__app_properties)
     layout.horizontalLayout__appearance.setObjectName("horizontalLayout__appearance")
     layout.horizontalLayout__appearance.setContentsMargins(5, 5, 5, 5)
-    layout.pushButton__reset_default_app_properties = QPushButton(
-        layout.groupBox__app_properties
-    )
-    layout.pushButton__reset_default_app_properties.setObjectName(
-        "pushButton__reset_default_app_properties"
-    )
-    layout.pushButton__reset_default_app_properties.setMaximumSize(QSize(55, 55))
-    layout.pushButton__reset_default_app_properties.setCursor(
-        QCursor(Qt.CursorShape.PointingHandCursor)
-    )
-    layout.pushButton__reset_default_app_properties.setIcon(
-        QIcon(Icon.IC_REFRESH_WHITE)
-    )
-    layout.pushButton__reset_default_app_properties.setIconSize(QSize(50, 50))
-    layout.pushButton__reset_default_app_properties.setFlat(True)
-    layout.pushButton__reset_default_app_properties.setToolTip(
-        preference_text("Initialize app properties to default values")
-    )
-    layout.pushButton__reset_default_app_properties.setText("")
-    layout.horizontalLayout__appearance.addWidget(
-        layout.pushButton__reset_default_app_properties
-    )
     layout.verticalLayout__appearance_groups = QVBoxLayout()
     layout.verticalLayout__appearance_groups.setObjectName(
         "verticalLayout__appearance_groups"

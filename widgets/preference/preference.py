@@ -29,7 +29,8 @@ class Preference(QtWidgets.QDialog, PreferenceLayout):
         self._presenter = PreferencePresenter(self)
         self.__build_ai_group()
         self.runtime_group = RuntimeGroup(self)
-        self.verticalLayout__preferences.insertWidget(3, self.runtime_group)
+        self.add_page("Advanced").addWidget(self.runtime_group)
+        self.listWidget__pages.setCurrentRow(0)
         self.__pref_settings = preference_ui_settings.PreferenceUISettings(window=self)
         self.__data_final_dirpath: pathlib.Path | None = None
         self.__ffmpeg_final_dirpath: pathlib.Path | None = None
@@ -79,8 +80,7 @@ class Preference(QtWidgets.QDialog, PreferenceLayout):
         self.pushButton__ai_models.clicked.connect(self.open_local_models)
         form.addRow("Local models", self.pushButton__ai_models)
         self.__local_models: Any = None
-        # Between the FFmpeg group and APP Properties.
-        self.verticalLayout__preferences.insertWidget(2, box)
+        self.add_page("AI").addWidget(box)
         self.comboBox__ai_kind.currentTextChanged.connect(self.__slot_ai_kind_changed)
         self.__slot_ai_kind_changed(self.comboBox__ai_kind.currentText())
 
@@ -164,9 +164,26 @@ class Preference(QtWidgets.QDialog, PreferenceLayout):
         self.toolButton__select_ffmpeg_dirpath.clicked.connect(
             self.__slot_select_ffmpeg_dir
         )
-        self.pushButton__reset_default_app_properties.clicked.connect(
-            self.__set_default_settings
+        self.buttonBox__confirm.clicked.connect(self.__slot_dialog_button)
+
+    def __slot_dialog_button(self, button: QtWidgets.QAbstractButton) -> None:
+        role = self.buttonBox__confirm.buttonRole(button)
+        if role == QtWidgets.QDialogButtonBox.ButtonRole.ApplyRole:
+            self._save()
+        elif role == QtWidgets.QDialogButtonBox.ButtonRole.ResetRole:
+            self.restore_defaults()
+
+    def restore_defaults(self) -> None:
+        """Appearance, icon, padding and font defaults; paths and AI stay as set."""
+        answer = QtWidgets.QMessageBox.question(
+            self,
+            "Restore defaults",
+            "Restore the appearance settings to their defaults? The data folder,"
+            " FFmpeg, AI and advanced settings keep their values.",
         )
+        if answer == QtWidgets.QMessageBox.StandardButton.Yes:
+            self.__set_default_settings()
+            self.show_page("Appearance")
 
     def __set_default_settings(self) -> None:
         view_font_style = keys.UISetting.view_font_style
@@ -315,19 +332,25 @@ class Preference(QtWidgets.QDialog, PreferenceLayout):
         except FileNotFoundError:
             return False
 
+    def _save(self) -> bool:
+        """Validate and write every setting; Apply and OK share this."""
+        if not self._presenter.validate(self.lineEdit__data_dirpath.text()):
+            return False
+        try:
+            self.__pref_settings.save_cfg_dict_to_file()
+        except (ValueError, OSError) as error:
+            self.show_preference_error(str(error))
+            return False
+        self.__pref_settings.save_main_window_geometry()
+        self.__pref_settings.save_splitter_status()
+        self.__is_data_valid = True
+        if len(self.lineEdit__ffmpeg_dirpath.text().strip()):
+            if self.ffmpeg_dirpath is not None and self.ffmpeg_dirpath.exists():
+                self.__is_ffmpeg_valid = True
+        return True
+
     def accept(self) -> None:
-        if self._presenter.validate(self.lineEdit__data_dirpath.text()):
-            try:
-                self.__pref_settings.save_cfg_dict_to_file()
-            except (ValueError, OSError) as error:
-                self.show_preference_error(str(error))
-                return
-            self.__pref_settings.save_main_window_geometry()
-            self.__pref_settings.save_splitter_status()
-            self.__is_data_valid = True
-            if len(self.lineEdit__ffmpeg_dirpath.text().strip()):
-                if self.ffmpeg_dirpath is not None and self.ffmpeg_dirpath.exists():
-                    self.__is_ffmpeg_valid = True
+        if self._save():
             super().accept()
 
     def show_preference_error(self, message: str) -> None:

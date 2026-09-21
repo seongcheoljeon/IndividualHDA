@@ -46,6 +46,11 @@
   step instead of being rescaled on every repaint, and the models no longer
   open image files on the GUI thread when a decode is still pending. Two
   doubled toolbar separators and a hard-coded menu-bar geometry are gone.
+- **Preferences have pages.** Storage, Appearance, AI and Advanced sit in a
+  sidebar instead of one long scroll; a filter box hides the groups that do
+  not mention what you typed. **Apply** saves without closing, and **Restore
+  Defaults** (with a confirmation) replaces the icon-only reset button; paths,
+  AI and advanced settings are never reset by it.
 
 ## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
 

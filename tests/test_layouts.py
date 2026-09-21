@@ -98,6 +98,33 @@ def test_preference_tabs_and_persisted_control_contract(app: Any) -> None:
         assert (
             layout.fontComboBox__note_font_style.parentWidget() is layout.groupBox__note
         )
+        # Sidebar pages: one list row per stacked page; every declared widget exists.
+        assert (
+            layout.listWidget__pages.count() == layout.stackedWidget__pages.count() == 2
+        )
+        assert [
+            layout.listWidget__pages.item(i).text()
+            for i in range(layout.listWidget__pages.count())
+        ] == ["Storage", "Appearance"]
+        for name in PreferenceLayout.__annotations__:
+            assert hasattr(layout, name), name
+        buttons = layout.buttonBox__confirm
+        assert buttons.button(QtWidgets.QDialogButtonBox.StandardButton.Apply)
+        assert buttons.button(QtWidgets.QDialogButtonBox.StandardButton.RestoreDefaults)
+        layout.show_page("Appearance")
+        assert layout.scrollArea__preferences.widget() is layout.pages["Appearance"][1]
+        # The filter hides groups that do not mention the text and greys out pages.
+        layout.lineEdit__filter.setText("font")
+        assert layout.groupBox__ffmpeg.isHidden() and layout.groupBox__data.isHidden()
+        assert not layout.groupBox__app_properties.isHidden()
+        assert not (
+            layout.listWidget__pages.item(0).flags() & QtCore.Qt.ItemFlag.ItemIsEnabled
+        )
+        layout.lineEdit__filter.clear()
+        assert not layout.groupBox__ffmpeg.isHidden()
+        assert (
+            layout.listWidget__pages.item(0).flags() & QtCore.Qt.ItemFlag.ItemIsEnabled
+        )
     finally:
         window.deleteLater()
         app.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)

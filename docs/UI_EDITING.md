@@ -18,7 +18,8 @@
 | 환경설정 — 저장 경로·FFmpeg | `widgets/preference/layout_storage.py` | `build_storage_settings()`, `build_ffmpeg_settings()` |
 | 환경설정 — 외형·폰트 | `widgets/preference/layout_appearance.py` | `build_appearance_settings()`, `build_note_font()`, `build_tag_font()`, `build_debug_font()` |
 | 환경설정 — 아이콘 크기 / 여백 | `widgets/preference/layout_icons.py`, `layout_padding.py` | `build_icon_sizes()`, `build_item_padding()` |
-| 환경설정 — 창·버튼·순서 | `widgets/preference/layout.py` | `PreferenceLayout.build_ui()` |
+| 환경설정 — 창·사이드바 페이지·필터·버튼 | `widgets/preference/layout.py` | `PreferenceLayout.build_ui()`, `add_page()`, `filter_pages()` |
+| 환경설정 — AI / 고급(런타임) 페이지 | `widgets/preference/preference.py` | `__build_ai_group()`, `RuntimeGroup` (`add_page("AI")`, `add_page("Advanced")`) |
 | 이름 변경 | `widgets/rename_ihda/layout.py` | `_build_name_preview()`, `_build_name_input()` |
 | 상세 보기 대화상자 | `widgets/detail_view/layout.py` | `_build_content()` |
 | 영상 생성 설정 | `widgets/make_video_info/layout.py` | `_build_video_settings()`, `_build_flipbook_options()` |
@@ -31,6 +32,15 @@
 예를 들어 이력 날짜 검색은 `layout_history.py`의 `build_history_date_filter()`에서 수정합니다.
 큰 페이지는 자기 모듈의 `build_*(layout, window)` 함수에 있고, 위젯은 여전히
 `MainWindowLayout`의 속성으로 선언됩니다.
+
+## 환경설정 페이지 추가
+
+환경설정은 왼쪽 목록(`listWidget__pages`) + 오른쪽 스택(`stackedWidget__pages`)입니다.
+새 섹션은 `PreferenceLayout.build_ui()`에서 `self.add_page("제목")`을 부른 뒤
+기존처럼 `build_*(layout, window)`로 그룹박스를 `layout.verticalLayout__preferences`에
+추가하면 됩니다(`add_page()`가 그 페이지의 레이아웃을 가리키게 합니다). 대화상자 쪽에서
+만드는 위젯은 `self.add_page("AI").addWidget(box)`처럼 붙입니다. 필터는 그룹 제목과
+안의 라벨 텍스트를 검색하므로 라벨을 빠짐없이 두면 저절로 검색됩니다.
 
 ## 이름 규칙
 
