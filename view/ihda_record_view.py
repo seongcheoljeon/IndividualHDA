@@ -28,7 +28,7 @@ class RecordView(QtWidgets.QTreeView):
         self.setAcceptDrops(True)
         self.setDragEnabled(True)
         self.setDropIndicatorShown(True)
-        self.setMouseTracking(True)
+        self.setMouseTracking(True)  # hover styling only; selection needs a click
         self.setSelectionMode(
             QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
         )
@@ -45,15 +45,10 @@ class RecordView(QtWidgets.QTreeView):
         self.__signal = Object()
         self.__comp_space = re_compile(r"\s")
         #
-        self.entered.connect(self.on_entered)
 
     @property
     def signal(self) -> Any:
         return self.__signal
-
-    def on_entered(self, index: QtCore.QModelIndex) -> None:
-        if index.isValid():
-            self.setCurrentIndex(index)
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:
         if event.mimeData().hasText():

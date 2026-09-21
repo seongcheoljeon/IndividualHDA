@@ -144,3 +144,31 @@ def test_houdini_node_text_drops_are_accepted_while_moving_and_delivered(
     QtWidgets.QApplication.sendEvent(viewport, drop)
     assert dropped == [["/obj/geo1", "/obj/geo2"]]
     view.close()
+
+
+def test_hovering_does_not_change_the_selection(app: Any) -> None:
+    """Selection follows clicks, keys and drags; moving the mouse only styles."""
+    from view.ihda_list_view import ListView
+
+    model = Model()
+    for name in ("a", "b", "c"):
+        model.appendRow(QtGui.QStandardItem(name))
+    view = ListView()
+    view.setModel(model)
+    view.resize(300, 300)
+    view.show()
+    app.processEvents()
+    view.setCurrentIndex(model.index(0, 0))
+    over_b = view.visualRect(model.index(1, 0)).center()
+    none = QtCore.Qt.MouseButton.NoButton
+    QtWidgets.QApplication.sendEvent(
+        view.viewport(), mouse(QtCore.QEvent.Type.MouseMove, over_b, none, none)
+    )
+    view.entered.emit(model.index(1, 0))  # what mouse tracking reports
+    assert view.currentIndex().row() == 0
+    left = QtCore.Qt.MouseButton.LeftButton
+    QtWidgets.QApplication.sendEvent(
+        view.viewport(), mouse(QtCore.QEvent.Type.MouseButtonPress, over_b, left, left)
+    )
+    assert view.currentIndex().row() == 1
+    view.close()
