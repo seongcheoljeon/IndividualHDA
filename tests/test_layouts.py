@@ -137,7 +137,7 @@ def test_every_referenced_icon_resolves(app: Any) -> None:
         if ".venv" in generated.parts:
             continue
         importlib.import_module(
-            str(generated.relative_to(root).with_suffix("")).replace("/", ".")
+            ".".join(generated.relative_to(root).with_suffix("").parts)
         )
 
     reference = re.compile(r'":(/[\w-]+/icons/[\w.@-]+)"')

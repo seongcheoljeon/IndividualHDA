@@ -120,6 +120,18 @@ Qt-free test modules to the appropriate manifest. Shared fixtures live in
 `tests/support`, not another test module. `--suite` filters before module imports,
 so core/server tests can run in their minimal environments.
 
+CI also runs the Qt suite on macOS and Windows, which local Linux runs do not
+catch. Before pushing, check the usual suspects:
+
+- Regenerate `*_rc.py` with `pyside6-rcc --no-zstd`; the macOS/Windows PySide6
+  wheels cannot open zstd-compressed resources.
+- Build module names from `path.parts`, not `str(path)` (backslashes).
+- Compare stored paths as `Path(...)`, not as strings; SQLite rows hold POSIX text.
+- Give child Pythons `-X utf8` and normalize Hangul to NFC before comparing.
+- Poll for a condition instead of `qWait(fixed)`; runners are slow.
+- Guard Qt wrappers with `shiboken6.isValid` after `deleteLater`.
+- SQLAlchemy `inspect()` in server tests needs the fixture's translated schema.
+
 PostgreSQL checks use a **disposable test database** and may reset its tables.
 Set `IHDA_TEST_POSTGRES_URL` to a `postgresql+psycopg://...` URL, then run:
 

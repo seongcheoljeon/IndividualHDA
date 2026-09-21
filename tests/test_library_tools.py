@@ -63,12 +63,14 @@ def test_path_repair_preview_backup_and_stale_rejection(
     backup = apply_paths(database, changes)
     assert backup.is_file()
     with sqlite3.connect(database) as connection:
-        assert connection.execute("SELECT dirpath FROM hda_info").fetchone()[0] == str(
-            new / "Old"
+        assert (
+            Path(connection.execute("SELECT dirpath FROM hda_info").fetchone()[0])
+            == new / "Old"
         )
     with sqlite3.connect(backup) as connection:
-        assert connection.execute("SELECT dirpath FROM hda_info").fetchone()[0] == str(
-            assets / "Old"
+        assert (
+            Path(connection.execute("SELECT dirpath FROM hda_info").fetchone()[0])
+            == assets / "Old"
         )
     with pytest.raises(RuntimeError, match="preview"):
         apply_paths(database, changes)
@@ -265,7 +267,10 @@ def test_debounce_delivers_only_latest_query(app: Any) -> None:
     debounce = DebouncedText(received.append, owner, 20)
     for text in ("a", "ab", "abc"):
         debounce.submit(text)
-    QtTest.QTest.qWait(60)
+    for _ in range(100):  # slow CI runners: wait for the timer, not a fixed 60 ms
+        QtTest.QTest.qWait(20)
+        if received:
+            break
     assert received == ["abc"]
 
 

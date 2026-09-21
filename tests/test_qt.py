@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pathlib
 import sys
+import unicodedata
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +38,8 @@ def test_note_highlighter(app: Any) -> None:
 
 def test_process_success_and_failure(app: Any) -> None:
     for command, expected in [
-        ([sys.executable, "-c", 'print("한글")'], 0),
+        # -X utf8: the child must not depend on the runner's console code page.
+        ([sys.executable, "-X", "utf8", "-c", 'print("한글")'], 0),
         (["/nonexistent/ihda-executable"], -1),
     ]:
         loop = QtCore.QEventLoop()
@@ -58,7 +60,8 @@ def test_process_success_and_failure(app: Any) -> None:
         job.shutdown()
         assert result and result[0][0] == expected
         if expected == 0:
-            assert "한글" in result[0][1]
+            # macOS may hand back decomposed Hangul; compare in one normal form.
+            assert "한글" in unicodedata.normalize("NFC", result[0][1])
 
 
 def test_video_widget(app: Any) -> None:
