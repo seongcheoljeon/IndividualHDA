@@ -81,5 +81,19 @@ class AssetDragMixin(_Base):
         drop_action = drag.exec(QtCore.Qt.DropAction.CopyAction)
         self.signal.mouse_signal_object.emit([drop_action, model_data_lst])
 
+    def dragMoveEvent(self, event: QtGui.QDragMoveEvent) -> None:
+        """Keep Houdini node drops (text) and asset payloads acceptable while moving.
+
+        The base implementation asks the model's canDropMimeData, which knows
+        neither mime type and would refuse; dragEnterEvent/dropEvent already
+        handle both, so a move over the view must agree with them.
+        """
+        mime = event.mimeData()
+        if mime.hasText() or mime.hasFormat(keys.Type.mime_type):
+            event.setDropAction(QtCore.Qt.DropAction.CopyAction)
+            event.accept()
+        else:
+            super().dragMoveEvent(event)
+
     def startDrag(self, supported_actions: Any) -> None:
         """The base-class drag never runs: this mixin owns dragging."""

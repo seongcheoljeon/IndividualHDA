@@ -110,3 +110,37 @@ def test_press_on_empty_space_does_not_drag(
     assert drops == []
     assert [i.row() for i in view.drag_indexes()] == [0]  # one payload per row
     view.close()
+
+
+def test_houdini_node_text_drops_are_accepted_while_moving_and_delivered(
+    app: Any,
+) -> None:
+    """Registering nodes is a drop of their paths as text from the network editor."""
+    from view.ihda_list_view import ListView
+
+    view = ListView()
+    view.setModel(Model())
+    view.resize(300, 300)
+    view.show()
+    app.processEvents()
+    dropped: list[Any] = []
+    view.signal.signal_object.connect(dropped.append)
+    mime = QtCore.QMimeData()
+    mime.setText("/obj/geo1 /obj/geo2")
+    pos = QtCore.QPointF(50, 50)
+    actions = QtCore.Qt.DropAction.CopyAction | QtCore.Qt.DropAction.MoveAction
+    buttons, mods = (
+        QtCore.Qt.MouseButton.MiddleButton,
+        QtCore.Qt.KeyboardModifier.NoModifier,
+    )
+    viewport = view.viewport()
+    enter = QtGui.QDragEnterEvent(pos.toPoint(), actions, mime, buttons, mods)
+    QtWidgets.QApplication.sendEvent(viewport, enter)
+    assert enter.isAccepted()
+    move = QtGui.QDragMoveEvent(pos.toPoint(), actions, mime, buttons, mods)
+    QtWidgets.QApplication.sendEvent(viewport, move)
+    assert move.isAccepted()  # the base class would have asked the model and refused
+    drop = QtGui.QDropEvent(pos, actions, mime, buttons, mods)
+    QtWidgets.QApplication.sendEvent(viewport, drop)
+    assert dropped == [["/obj/geo1", "/obj/geo2"]]
+    view.close()
