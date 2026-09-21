@@ -155,13 +155,20 @@ def test_server_v1_upgrade_preserves_documents_and_seeds_members(
             == SCHEMA_VERSION
         )
         # v4 indexes are created by the upgrade, not by create_all on old tables.
+        # The PostgreSQL fixture works in a per-test schema; ask the inspector there.
+        schema = (
+            connection.get_execution_options().get("schema_translate_map", {}).get(None)
+        )
         names = {
-            index["name"] for index in inspect(connection).get_indexes("team_assets")
+            index["name"]
+            for index in inspect(connection).get_indexes("team_assets", schema=schema)
         }
         assert "ix_team_assets_order" in names
         names = {
             index["name"]
-            for index in inspect(connection).get_indexes("team_audit_events")
+            for index in inspect(connection).get_indexes(
+                "team_audit_events", schema=schema
+            )
         }
         assert "ix_team_audit_lookup" in names
 
