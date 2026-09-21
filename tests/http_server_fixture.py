@@ -40,7 +40,9 @@ if __name__ == "__main__":
     listener.listen(128)
     ready = Path(configuration["ready"])
     temporary = ready.with_suffix(".tmp")
-    temporary.write_text(json.dumps({"port": listener.getsockname()[1]}))
+    temporary.write_text(
+        json.dumps({"port": listener.getsockname()[1]}), encoding="utf-8"
+    )
     temporary.replace(ready)
     try:
         uvicorn.Server(

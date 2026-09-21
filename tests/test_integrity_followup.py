@@ -29,7 +29,7 @@ def seed(db: SQLite3DatabaseAPI, directory: Path) -> AssetData:
         "thumbnail/v2.png",
         "video/v1.mp4",
     ):
-        (directory / file).write_text(file)
+        (directory / file).write_text(file, encoding="utf-8")
     db.insert_users("user", "user@example.com")
     db.insert_hda_category("sop", "user")
     db.insert_hda_key("Old", "sop", "user")
@@ -139,7 +139,7 @@ def test_external_media_path_is_not_renamed(tmp_path: Path) -> None:
         data = seed(db, tmp_path / "Old")
         external = tmp_path / "shared"
         external.mkdir()
-        (external / "v2.png").write_text("shared thumbnail")
+        (external / "v2.png").write_text("shared thumbnail", encoding="utf-8")
         data = replace(data, thumbnail_dirpath=external)
         plan = build_rename_plan(data, "New", Names(), rename_video=False)
         assert plan.thumbnail_directory == external

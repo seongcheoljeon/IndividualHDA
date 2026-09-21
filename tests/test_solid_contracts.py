@@ -76,9 +76,9 @@ def test_rename_sqlite_adapter_preserves_atomicity(
 ) -> None:
     old = tmp_path / "Old"
     old.mkdir()
-    (old / "old.hda").write_text("asset")
+    (old / "old.hda").write_text("asset", encoding="utf-8")
     (old / "thumbnail").mkdir()
-    (old / "thumbnail" / "old.png").write_text("thumbnail")
+    (old / "thumbnail" / "old.png").write_text("thumbnail", encoding="utf-8")
     data = decode_record(
         AssetData,
         {

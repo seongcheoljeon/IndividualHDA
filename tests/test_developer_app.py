@@ -14,7 +14,7 @@ def test_sample_panel_starts_and_closes_without_changing_user_settings(
     settings = tmp_path / "user-settings"
     settings.mkdir()
     sentinel = settings / "sentinel.json"
-    sentinel.write_text('{"keep": true}')
+    sentinel.write_text('{"keep": true}', encoding="utf-8")
     environment = dict(
         os.environ, IHDA_CONFIG_DIR=str(settings), QT_QPA_PLATFORM="offscreen"
     )
@@ -29,4 +29,4 @@ def test_sample_panel_starts_and_closes_without_changing_user_settings(
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert list(settings.iterdir()) == [sentinel]
-    assert sentinel.read_text() == '{"keep": true}'
+    assert sentinel.read_text(encoding="utf-8") == '{"keep": true}'

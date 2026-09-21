@@ -118,15 +118,15 @@ def test_restore_stages_only_after_validation_and_preserves_original(
 
     database, assets = library
     backup = create_backup(database, assets, "original")
-    original = (assets / "Old/v2.hda").read_text()
-    (assets / "Old/v2.hda").write_text("changed")
+    original = (assets / "Old/v2.hda").read_text(encoding="utf-8")
+    (assets / "Old/v2.hda").write_text("changed", encoding="utf-8")
     stream = ArchiveTransfer(assets, database.parent)
     validate_backup(backup)
     safety = stream.import_ihda_data(backup)
     assert safety.is_file() and stream.stage is not None
-    assert (assets / "Old/v2.hda").read_text() == "changed"
+    assert (assets / "Old/v2.hda").read_text(encoding="utf-8") == "changed"
     stream.commit_import()
-    assert (assets / "Old/v2.hda").read_text() == original
+    assert (assets / "Old/v2.hda").read_text(encoding="utf-8") == original
 
 
 def test_recovery_cleanup_references_and_safety_archive(
@@ -134,7 +134,7 @@ def test_recovery_cleanup_references_and_safety_archive(
 ) -> None:
     database, assets = library
     recovery = assets / "Old" / (".ihda-deleted-" + "a" * 32 + "-old.hda")
-    recovery.write_text("saved data")
+    recovery.write_text("saved data", encoding="utf-8")
     entries = recovery_files(database, assets)
     assert len(entries) == 1 and not entries[0].referenced
     with sqlite3.connect(database) as connection:
@@ -159,16 +159,16 @@ def test_recovery_changed_preview_and_pending_journal_rejected(
     recovery = assets / (".ihda-deleted-" + "b" * 32 + "-old")
     recovery.mkdir()
     item = recovery / "a.hda"
-    item.write_text("old")
+    item.write_text("old", encoding="utf-8")
     entries = recovery_files(database, assets)
-    item.write_text("changed")
+    item.write_text("changed", encoding="utf-8")
     with pytest.raises(RuntimeError):
         cleanup_recovery(database, assets, entries)
     journal = database.parent / ".ihda-operation-test.json"
-    journal.write_text("{}")
+    journal.write_text("{}", encoding="utf-8")
     with pytest.raises(RuntimeError, match="journals"):
         cleanup_recovery(database, assets, recovery_files(database, assets))
-    assert item.read_text() == "changed"
+    assert item.read_text(encoding="utf-8") == "changed"
 
 
 def test_paged_search_literal_matching_and_cancellation(
@@ -223,8 +223,8 @@ def test_diff_reports_metadata_parameters_and_node_sections(tmp_path: Path) -> N
     left, right = tmp_path / "left", tmp_path / "right"
     left.mkdir()
     right.mkdir()
-    (left / "node.parm").write_text("size = 1\n")
-    (right / "node.parm").write_text("size = 2\n")
+    (left / "node.parm").write_text("size = 1\n", encoding="utf-8")
+    (right / "node.parm").write_text("size = 2\n", encoding="utf-8")
     result = compare_expanded(
         left, right, {"note": "old"}, {"note": "new"}, {"box": "one"}, {"box": "two"}
     )

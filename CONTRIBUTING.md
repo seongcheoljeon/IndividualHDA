@@ -130,6 +130,7 @@ catch. Before pushing, check the usual suspects:
 - Give child Pythons `-X utf8` and normalize Hangul to NFC before comparing.
 - Poll for a condition instead of `qWait(fixed)`; runners are slow.
 - Guard Qt wrappers with `shiboken6.isValid` after `deleteLater`.
+- Always pass `encoding="utf-8"` to `read_text`/`write_text` (a guard test enforces it).
 - SQLAlchemy `inspect()` in server tests needs the fixture's translated schema.
 
 PostgreSQL checks use a **disposable test database** and may reset its tables.

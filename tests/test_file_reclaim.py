@@ -27,7 +27,7 @@ def test_reclaim_previews_then_deletes_only_unreferenced_library_files(
     assert hda.is_file() and thumbnail.is_file()
     # A file outside the managed root must never be touched, even if queued.
     stray = tmp_path / "elsewhere.hda"
-    stray.write_text("keep me")
+    stray.write_text("keep me", encoding="utf-8")
     with SQLite3DatabaseAPI(database) as db:
         db._connect.execute("INSERT INTO file_cleanup(path) VALUES(?)", (str(stray),))
         db._connect.commit()

@@ -332,7 +332,7 @@ def test_presenters_import_no_host_or_storage_implementation() -> None:
     import ast
 
     for path in Path("widgets").glob("*/presenter.py"):
-        tree = ast.parse(path.read_text())
+        tree = ast.parse(path.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 modules = [alias.name for alias in node.names]

@@ -90,7 +90,7 @@ def test_rejects_damaged_bundles_before_restore(
     bundle: Any, tmp_path: Path, damage: str
 ) -> None:
     backup, database, _ = bundle
-    manifest = json.loads((backup / "manifest.json").read_text())
+    manifest = json.loads((backup / "manifest.json").read_text(encoding="utf-8"))
     blob_name = next(name for name in manifest["files"] if name.startswith("blobs/"))
     if damage == "missing":
         (backup / blob_name).unlink()
@@ -103,8 +103,8 @@ def test_rejects_damaged_bundles_before_restore(
     elif damage == "incomplete":
         manifest["complete"] = False
     else:
-        (backup / "extra").write_text("unexpected")
-    (backup / "manifest.json").write_text(json.dumps(manifest))
+        (backup / "extra").write_text("unexpected", encoding="utf-8")
+    (backup / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     with pytest.raises((ValueError, OSError)):
         BackupService(database).restore(backup, tmp_path / "restore")
     assert not database.restored
@@ -312,7 +312,7 @@ def test_subprocess_credentials_are_not_command_arguments(
         assert password not in repr(arguments)
         passfile = Path(kwargs["env"]["PGPASSFILE"])
         assert passfile.is_file()
-        assert "test-only\\:password" in passfile.read_text()
+        assert "test-only\\:password" in passfile.read_text(encoding="utf-8")
         assert "PGPASSWORD" not in kwargs["env"]
         observed.append(passfile)
 
@@ -347,7 +347,7 @@ def test_schema_v2_bundle_is_still_verifiable(bundle: Any) -> None:
 
     backup, _, _ = bundle
     path = backup / "manifest.json"
-    manifest = json.loads(path.read_text())
+    manifest = json.loads(path.read_text(encoding="utf-8"))
     manifest["inventory"]["schema_version"] = 2
     names = {table.name for table in backup_tables(2)}
     manifest["inventory"]["tables"] = {
@@ -355,7 +355,7 @@ def test_schema_v2_bundle_is_still_verifiable(bundle: Any) -> None:
         for name, row in manifest["inventory"]["tables"].items()
         if name in names
     }
-    path.write_text(json.dumps(manifest))
+    path.write_text(json.dumps(manifest), encoding="utf-8")
     assert verify_bundle(backup)["inventory"]["schema_version"] == 2
 
 

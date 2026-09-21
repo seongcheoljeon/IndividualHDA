@@ -163,7 +163,7 @@ def test_panel_features_are_composed_and_have_explicit_bindings() -> None:
 def test_maintained_modules_are_type_checked() -> None:
     import tomllib
 
-    config = tomllib.loads((ROOT / "pyproject.toml").read_text())
+    config = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     for override in config["tool"]["mypy"].get("overrides", []):
         if override.get("ignore_errors"):
             assert all(module.endswith("_rc") for module in override["module"])
@@ -237,7 +237,7 @@ def test_named_boundaries_do_not_regress_to_row_lists_or_whole_windows() -> None
         "widgets/team_library/integration.py",
         "widgets/panel/scene_usage.py",
     ):
-        source = (ROOT / filename).read_text()
+        source = (ROOT / filename).read_text(encoding="utf-8")
         assert "IndividualHDA" not in source and "from main import" not in source
         tree = ast.parse(source)
         assert not any(
@@ -253,7 +253,7 @@ def test_named_boundaries_do_not_regress_to_row_lists_or_whole_windows() -> None
         "libs/database/nodes.py",
         "libs/database/records.py",
     ):
-        tree = ast.parse((ROOT / filename).read_text())
+        tree = ast.parse((ROOT / filename).read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if isinstance(node, ast.Constant) and isinstance(node.value, str):
                 assert not (
@@ -266,12 +266,14 @@ def test_named_boundaries_do_not_regress_to_row_lists_or_whole_windows() -> None
         "model/ihda_record_model.py",
         "model/ihda_inside_model.py",
     ):
-        source = (ROOT / filename).read_text()
+        source = (ROOT / filename).read_text(encoding="utf-8")
         assert "self.__keys" not in source and "self.__headers" not in source
 
 
 def test_scene_ui_does_not_open_storage_connections() -> None:
-    tree = ast.parse((ROOT / "widgets/panel/scene_usage.py").read_text())
+    tree = ast.parse(
+        (ROOT / "widgets/panel/scene_usage.py").read_text(encoding="utf-8")
+    )
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
             assert not (node.module or "").startswith(
@@ -467,3 +469,24 @@ def test_catalog_methods_cannot_bypass_project_authorization() -> None:
             assert not (isinstance(node, ast.Attribute) and node.attr == "_engine"), (
                 f"{module} reaches the engine directly; use reading()/writing()"
             )
+
+
+def test_text_files_are_read_and_written_as_utf8() -> None:
+    """Windows defaults to cp1252; a Korean comment in a source file broke CI."""
+    offenders = []
+    for path in sorted(ROOT.rglob("*.py")):
+        if any(
+            part in SKIP_PARTS - {"tests"} for part in path.parts
+        ) or path.name.endswith(GENERATED):
+            continue
+        source = path.read_text(encoding="utf-8")
+        for match in re.finditer(r"\.(read_text|write_text)\(", source):
+            depth, i = 1, match.end()
+            while depth and i < len(source):
+                depth += (source[i] == "(") - (source[i] == ")")
+                i += 1
+            if "encoding=" not in source[match.end() : i]:
+                offenders.append(
+                    f"{path.relative_to(ROOT)}:{source.count(chr(10), 0, match.start()) + 1}"
+                )
+    assert not offenders, f"pass encoding='utf-8' to read_text/write_text: {offenders}"

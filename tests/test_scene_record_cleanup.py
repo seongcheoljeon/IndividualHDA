@@ -19,7 +19,7 @@ def test_cleanup_preserves_inaccessible_records_and_deduplicates_deletion(
     tmp_path: Path,
 ) -> None:
     existing = tmp_path / "present.hda"
-    existing.write_text("unchanged")
+    existing.write_text("unchanged", encoding="utf-8")
     missing = tmp_path / "missing.hip"
     inaccessible = tmp_path / "restricted.hda"
     delete = Mock(side_effect=lambda identity: identity != 3)
@@ -42,7 +42,7 @@ def test_cleanup_preserves_inaccessible_records_and_deduplicates_deletion(
     assert result.deleted == (1,)
     assert {identity for identity, _ in result.failed} == {2, 3}
     assert [call.args[0] for call in delete.call_args_list] == [1, 3]
-    assert existing.read_text() == "unchanged"
+    assert existing.read_text(encoding="utf-8") == "unchanged"
     assert not missing.exists()
 
 
@@ -51,7 +51,7 @@ def seed_records(panel: Any, tmp_path: Path) -> list[int]:
     with SQLite3DatabaseAPI(panel.queries.db_filepath) as db:
         for index in range(3):
             hip = tmp_path / f"scene{index}.hip"
-            hip.write_text("scene")
+            hip.write_text("scene", encoding="utf-8")
             db.insert_hda_node_location_record(
                 hda_key_id=asset.hda_id,
                 hip_filename=hip.name,

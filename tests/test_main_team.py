@@ -314,7 +314,7 @@ def test_connection_dialog_only_opens_verified_project_and_never_saves_token(
         assert dialog.pushButton__open_library.isEnabled()
         dialog.pushButton__open_library.click()
         assert len(connected) == 1
-        assert token not in (tmp_path / "workspace.json").read_text()
+        assert token not in (tmp_path / "workspace.json").read_text(encoding="utf-8")
         dialog.lineEdit__server_url.setText("http://127.0.0.1:8001")
         assert not dialog.pushButton__open_library.isEnabled()
         assert dialog._transport is None

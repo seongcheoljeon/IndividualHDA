@@ -188,7 +188,7 @@ def test_copy_workflow_does_not_import_concrete_adapters() -> None:
     module = Path(__file__).resolve().parents[1] / "libs/team/copy_workflow.py"
     imports = {
         node.module
-        for node in ast.walk(ast.parse(module.read_text()))
+        for node in ast.walk(ast.parse(module.read_text(encoding="utf-8")))
         if isinstance(node, ast.ImportFrom)
     }
     assert not imports.intersection(

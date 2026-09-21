@@ -13,7 +13,7 @@ def test_relocate_history_moves_every_file_pair_and_rechecks_availability(
 ) -> None:
     old, new = tmp_path / "Old", tmp_path / "New"
     (new / "thumbnail").mkdir(parents=True)
-    (new / "v1.hda").write_text("hda")
+    (new / "v1.hda").write_text("hda", encoding="utf-8")
     moves = (PathMove(source=old, target=new),)
     item = HistoryData(
         hist_id=1,

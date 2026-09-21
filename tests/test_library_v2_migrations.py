@@ -179,14 +179,17 @@ def test_legacy_pending_requires_review_and_keeps_file(tmp_path: Path) -> None:
 
     path = tmp_path / "pending.json"
     payload = {"operation": "metadata", "asset_id": 1, "values": {"note": "old draft"}}
-    path.write_text(json.dumps(payload))
+    path.write_text(json.dumps(payload), encoding="utf-8")
     pending = PendingCommand(path)
     with pytest.raises(TeamError, match="pre-upgrade"):
         pending.load()
     assert pending.legacy() == payload and path.exists()
     pending.archive_legacy()
     assert pending.load() is None
-    assert json.loads(next(tmp_path.glob("*.pre-v2-*.json")).read_text()) == payload
+    assert (
+        json.loads(next(tmp_path.glob("*.pre-v2-*.json")).read_text(encoding="utf-8"))
+        == payload
+    )
 
 
 def test_trash_is_retained_and_relocatable_in_backup(tmp_path: Path) -> None:

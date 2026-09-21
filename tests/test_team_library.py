@@ -341,7 +341,7 @@ def test_real_http_transport_upload_download_and_retry(
             assert process.poll() is None, "HTTP test server exited during startup"
             time.sleep(0.01)
         assert ready_file.exists()
-        port = json.loads(ready_file.read_text())["port"]
+        port = json.loads(ready_file.read_text(encoding="utf-8"))["port"]
         transport = HttpTransport(f"http://127.0.0.1:{port}", lambda: token, timeout=5)
         # The socket is listening before readiness is published; requests can
         # queue while Uvicorn finishes initializing its loop.

@@ -16,11 +16,11 @@ from libs.sqlite3_db_api import SQLite3DatabaseAPI
 @pytest.mark.parametrize("step", [1, 2, 3, 4])
 def test_import_crash_after_each_rename(tmp_path: Path, step: int) -> None:
     (tmp_path / "assets").mkdir()
-    (tmp_path / "assets" / "old").write_text("old")
+    (tmp_path / "assets" / "old").write_text("old", encoding="utf-8")
     (tmp_path / "stage").mkdir()
-    (tmp_path / "stage" / "new").write_text("new")
-    (tmp_path / "stage" / "ihda.db").write_text("new db")
-    (tmp_path / "ihda.db").write_text("old db")
+    (tmp_path / "stage" / "new").write_text("new", encoding="utf-8")
+    (tmp_path / "stage" / "ihda.db").write_text("new db", encoding="utf-8")
+    (tmp_path / "ihda.db").write_text("old db", encoding="utf-8")
     code = """
 import os, sys
 from pathlib import Path
@@ -45,10 +45,10 @@ with durable_operation(root) as journal:
     )
     assert result.returncode == 71
     assert len(recover_operations(tmp_path)) == 1
-    assert (tmp_path / "ihda.db").read_text() == "old db"
-    assert (tmp_path / "assets" / "old").read_text() == "old"
-    assert (tmp_path / "stage" / "new").read_text() == "new"
-    assert (tmp_path / "stage" / "ihda.db").read_text() == "new db"
+    assert (tmp_path / "ihda.db").read_text(encoding="utf-8") == "old db"
+    assert (tmp_path / "assets" / "old").read_text(encoding="utf-8") == "old"
+    assert (tmp_path / "stage" / "new").read_text(encoding="utf-8") == "new"
+    assert (tmp_path / "stage" / "ihda.db").read_text(encoding="utf-8") == "new db"
     assert recover_operations(tmp_path) == []
 
 
@@ -56,7 +56,7 @@ with durable_operation(root) as journal:
 def test_database_commit_decides_recovery(tmp_path: Path, committed: bool) -> None:
     with SQLite3DatabaseAPI(tmp_path / "ihda.db") as db:
         db.insert_users("user", "old")
-    (tmp_path / "old.hda").write_text("asset")
+    (tmp_path / "old.hda").write_text("asset", encoding="utf-8")
     code = """
 import os, sys
 from pathlib import Path
@@ -86,14 +86,14 @@ with SQLite3DatabaseAPI(root/'ihda.db') as db:
 def test_recovery_conflict_retains_both_files(tmp_path: Path) -> None:
     from libs.operation_journal import MoveJournal
 
-    (tmp_path / "old").write_text("original")
+    (tmp_path / "old").write_text("original", encoding="utf-8")
     journal = MoveJournal(tmp_path)
     journal.move(tmp_path / "old", tmp_path / "new")
-    (tmp_path / "old").write_text("external")
+    (tmp_path / "old").write_text("external", encoding="utf-8")
     with pytest.raises(RuntimeError, match="conflict"):
         recover_operations(tmp_path)
-    assert (tmp_path / "new").read_text() == "original"
-    assert (tmp_path / "old").read_text() == "external"
+    assert (tmp_path / "new").read_text(encoding="utf-8") == "original"
+    assert (tmp_path / "old").read_text(encoding="utf-8") == "external"
     assert journal.path.exists()
 
 
@@ -115,7 +115,7 @@ def test_delete_asset_rolls_back_files_when_database_write_fails(
 
     assets = tmp_path / "Water"
     assets.mkdir()
-    (assets / "water.hda").write_text("asset")
+    (assets / "water.hda").write_text("asset", encoding="utf-8")
     with SQLite3DatabaseAPI(tmp_path / "ihda.db") as db:
         db.insert_users("user", "user@example.com")
         db.insert_hda_category("sop", "user")
@@ -124,7 +124,7 @@ def test_delete_asset_rolls_back_files_when_database_write_fails(
             BEGIN SELECT RAISE(ABORT,'simulated write failure'); END""")
         with pytest.raises(sqlite3.DatabaseError):
             delete_asset(db, 1)
-        assert (assets / "water.hda").read_text() == "asset"
+        assert (assets / "water.hda").read_text(encoding="utf-8") == "asset"
         assert (
             db._connect.execute("SELECT deleted_at FROM asset_identity").fetchone()[0]
             is None
@@ -174,7 +174,7 @@ def test_v1_journal_recovers_and_new_journals_write_named_moves(tmp_path: Path) 
     from libs.operation_journal import MoveJournal
 
     source, destination = tmp_path / "old", tmp_path / "new"
-    destination.write_text("original")
+    destination.write_text("original", encoding="utf-8")
     journal_path = tmp_path / ".ihda-operation-historical.json"
     journal_path.write_text(
         json.dumps(
@@ -185,19 +185,20 @@ def test_v1_journal_recovers_and_new_journals_write_named_moves(tmp_path: Path) 
                 "committed": False,
                 "moves": [[str(source), str(destination)]],
             }
-        )
+        ),
+        encoding="utf-8",
     )
     assert recover_operations(tmp_path) == [journal_path]
-    assert source.read_text() == "original" and not destination.exists()
+    assert source.read_text(encoding="utf-8") == "original" and not destination.exists()
     journal = MoveJournal(tmp_path)
     journal.move(source, destination)
-    document = json.loads(journal.path.read_text())
+    document = json.loads(journal.path.read_text(encoding="utf-8"))
     assert document["version"] == 2
     assert document["moves"] == [
         {"source": str(source), "destination": str(destination)}
     ]
     journal.rollback()
-    assert source.read_text() == "original"
+    assert source.read_text(encoding="utf-8") == "original"
 
 
 def test_sync_file_flushes_a_file_opened_elsewhere(tmp_path: Path) -> None:

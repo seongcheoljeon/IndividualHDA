@@ -81,7 +81,7 @@ def test_copy_preserves_versions_metadata_files_and_originals(
     with pytest.raises(Conflict, match="already been copied"):
         target.execute(Command("copy_asset", values=plan["values"]))
     assert target.catalog.list_assets().total == 1
-    journal = job.store.path.read_text()
+    journal = job.store.path.read_text(encoding="utf-8")
     assert "Bearer" not in journal
     assert "copy_asset" in journal
 

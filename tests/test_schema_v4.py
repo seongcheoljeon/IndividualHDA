@@ -14,7 +14,9 @@ def legacy(tmp_path: Path) -> tuple[sqlite3.Connection, Path]:
     connection = sqlite3.connect(path)
     connection.execute("PRAGMA foreign_keys=ON")
     connection.executescript(
-        (Path(__file__).parent / "fixtures/schema_legacy.sql").read_text()
+        (Path(__file__).parent / "fixtures/schema_legacy.sql").read_text(
+            encoding="utf-8"
+        )
     )
     connection.execute("INSERT INTO users VALUES ('owner','email','2020-01-01')")
     connection.execute("INSERT INTO hda_category VALUES ('sop','owner')")
