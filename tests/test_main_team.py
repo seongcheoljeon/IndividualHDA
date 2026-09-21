@@ -32,7 +32,7 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
 ) -> None:
     from threading import current_thread, main_thread
 
-    from test_qt import wait_search
+    from test_qt import wait_search, wait_until
 
     import public
     from libs.database.sqlite_repository import SqliteLibraryRepository
@@ -239,15 +239,24 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         dialogs[0].pushButton__keep_mine.click()  # saves the draft over theirs
         wait_panel(app, panel)
         assert backend.get_asset(remote_asset["id"])["note"] == "my conflicting draft"
+
         # Trash needs no prompt when nothing depends on the asset; Undo restores it.
+        def trashed() -> bool:
+            try:
+                backend.get_asset(remote_asset["id"])  # the server hides trashed assets
+            except NotFound:
+                return True
+            return False
+
         team.actions.remove()
+        # The confirm step runs on a deferred timer and re-arms while a task is
+        # busy, so poll for the outcome instead of counting event-loop turns.
+        wait_until(app, trashed)
         wait_panel(app, panel)
-        wait_panel(app, panel)  # the confirm step is deferred by one event-loop turn
-        with pytest.raises(NotFound):  # the server hides trashed assets
-            backend.get_asset(remote_asset["id"])
         toasts = panel._toasts.toasts()
         assert toasts and toasts[-1].action is not None
         toasts[-1].action.click()
+        wait_until(app, lambda: not trashed())
         wait_panel(app, panel)
         assert not backend.get_asset(remote_asset["id"]).get("deleted")
         team.refresh()
