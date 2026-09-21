@@ -253,6 +253,10 @@ class CallbacksPort(Protocol):
     def wrapper_execute_deferred(self, func: Callable[[], object]) -> None: ...
 
 
+class ContextMenusPort(Protocol):
+    def remove_selected_assets(self) -> None: ...
+
+
 class HoudiniActionsPort(Protocol):
     def import_models(self, model_data_lst: list[bytes]) -> None: ...
     def hda_info_to_node_comment(

@@ -140,6 +140,40 @@ class PanelContextMenus:
         else:
             pass
 
+    def remove_selected_assets(self) -> None:
+        """Move the selected assets to the Trash (context menu and the Delete key)."""
+        if self.bindings.presentation.is_icon_mode:
+            indexes = self.bindings.views.assets_list.selectedIndexes()
+        else:
+            # table 모델은 이렇게 해야한다. 왜냐면 cell 선택시 모든 cell을 선택되어지도록 했는데
+            # 이것 때문에 중복 index가 생겨 첫번째 컬럼을 명확시 지정하였다.
+            indexes = self.bindings.views.assets_table.selectionModel().selectedRows(0)
+        if not len(indexes):
+            log_handler.LogHandler.log_msg(
+                method=logging.info, msg="iHDA node is not selected"
+            )
+            return
+        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
+        msgbox.setFont(self.bindings.presentation.get_default_font())
+        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
+        msgbox.setWindowTitle("Remove iHDA Node")
+        msgbox.setText(
+            f'Delete the <font color=red>"{len(indexes)}"</font> selected iHDA nodes?'
+        )
+        msgbox.setInformativeText(
+            "Move assets to Trash. Files, versions and note history are retained for restoration."
+        )
+        msgbox.setStandardButtons(
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No
+        )
+        msgbox.setStyleSheet("QLabel {min-width: 500px;}")
+        msgbox.resize(msgbox.sizeHint())
+        reply = msgbox.exec()
+        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+            return
+        self.bindings.management.remove_hda_item(indexes=indexes)
+
     def _build_context_ihda_menu(self, point: QtCore.QPoint) -> None:
         if self.bindings.library().context_menu(point):
             return
@@ -298,39 +332,7 @@ class PanelContextMenus:
             )
             self.bindings.rename_dialog.show()
         elif action == action_hda_context_menu_remove:
-            if self.bindings.presentation.is_icon_mode:
-                indexes = self.bindings.views.assets_list.selectedIndexes()
-            else:
-                # table 모델은 이렇게 해야한다. 왜냐면 cell 선택시 모든 cell을 선택되어지도록 했는데
-                # 이것 때문에 중복 index가 생겨 첫번째 컬럼을 명확시 지정하였다.
-                indexes = (
-                    self.bindings.views.assets_table.selectionModel().selectedRows(0)
-                )
-            if not len(indexes):
-                log_handler.LogHandler.log_msg(
-                    method=logging.info, msg="iHDA node is not selected"
-                )
-                return
-            msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation.get_default_font())
-            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
-            msgbox.setWindowTitle("Remove iHDA Node")
-            msgbox.setText(
-                f'Delete the <font color=red>"{len(indexes)}"</font> selected iHDA nodes?'
-            )
-            msgbox.setInformativeText(
-                "Move assets to Trash. Files, versions and note history are retained for restoration."
-            )
-            msgbox.setStandardButtons(
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No
-            )
-            msgbox.setStyleSheet("QLabel {min-width: 500px;}")
-            msgbox.resize(msgbox.sizeHint())
-            reply = msgbox.exec()
-            if reply != QtWidgets.QMessageBox.StandardButton.Yes:
-                return
-            self.bindings.management.remove_hda_item(indexes=indexes)
+            self.remove_selected_assets()
         elif action == action_hist_context_menu_ihda_history:
             hda_name = self.bindings.selection.state.asset.name or ""
             hda_id = self.bindings.selection.state.asset.require_data().hda_id

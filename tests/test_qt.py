@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 
 from libs.drag_payload import decode_payload, encode_payload
 from libs.process_job import ProcessJob
@@ -224,6 +224,31 @@ def test_panel_with_saved_library(
     panel.selection._slot_hda_double_clicked(panel.models.table_proxy_model.index(0, 0))
     assert len(imported) == 1 and len(imported[0]) == 1
     assert decode_payload(imported[0][0])["hda_name"] == "Water"
+    # Keyboard: Enter imports, Escape clears the search, F5 reloads; all scoped to
+    # the panel so Houdini keeps its own keys.
+    panel._shortcuts["import_table"].activated.emit()
+    assert len(imported) == 2
+    panel.lineEdit__search_hda.setText("pending")
+    panel._shortcuts["clear_search"].activated.emit()
+    assert panel.lineEdit__search_hda.text() == ""
+    assert panel.actionReload.shortcut() == QtGui.QKeySequence(
+        QtGui.QKeySequence.StandardKey.Refresh
+    )
+    assert all(
+        s.context() != QtCore.Qt.ShortcutContext.WindowShortcut
+        for s in panel._shortcuts.values()
+    )
+    removed: list[Any] = []
+    monkeypatch.setattr(
+        panel.management, "remove_hda_item", lambda indexes: removed.append(indexes)
+    )
+    monkeypatch.setattr(
+        QtWidgets.QMessageBox,
+        "exec",
+        lambda _: QtWidgets.QMessageBox.StandardButton.Yes,
+    )
+    panel._shortcuts["remove_table"].activated.emit()
+    assert len(removed) == 1 and len(removed[0]) == 1
     # Markdown preview renders the plain-text note; the stored value is untouched.
     panel.textEdit__note.setPlainText("# Title\n\nSome **bold** text")
     panel.toolButton__note_preview.setChecked(True)

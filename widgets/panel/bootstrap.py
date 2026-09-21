@@ -277,6 +277,9 @@ class PanelBootstrap:
         window.toolButton__note_preview.toggled.connect(
             window.notes._slot_toggle_note_preview
         )
+        from widgets.panel.shortcuts import install_shortcuts
+
+        window._shortcuts = install_shortcuts(window)
         window.textEdit__note.textChanged.connect(window.notes.refresh_note_preview)
         # Personal edits autosave; the button appears when a team library is active.
         window.pushButton__metadata_save.setVisible(False)

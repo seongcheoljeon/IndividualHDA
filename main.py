@@ -83,6 +83,7 @@ class IndividualHDA(QtWidgets.QMainWindow, MainWindowLayout):
     _ihda_icons: IHDAIcons
     _browser: AssetBrowserIntegration
     _details: AssetDetailsIntegration
+    _shortcuts: dict[str, QtGui.QShortcut]
     _rename_ihda: RenameIHDA
     _make_videoinfo: MakeVideoInfo
     _ui_settings: UISettings

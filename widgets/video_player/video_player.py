@@ -148,6 +148,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
             self.__slot_pos_value_changed
         )
         self.__shortcut_play_tgl.activated.connect(self.slot_play_toggle)
+        self.__shortcut_full_screen_tgl.activated.connect(self.__full_screen_toggle)
         self.doubleSpinBox__play_speed.valueChanged.connect(self.__slot_playspeed)
 
     def __slot_pos_value_changed(self, val: Any) -> None:

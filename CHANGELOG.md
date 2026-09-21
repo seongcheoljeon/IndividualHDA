@@ -20,6 +20,11 @@
   double-click imports the selection into the current Network Editor
   (Ctrl+double-click plays the preview video, which the plain double-click
   used to do). The three views share one drag implementation.
+- **Keyboard shortcuts.** Ctrl+S saves, Ctrl+F focuses the search, Esc clears
+  it, F5 reloads, Enter imports the selected assets and Delete moves them to
+  the Trash. All are scoped to the panel or to one view, so Houdini keeps its
+  own keys and nothing fires while typing a note. The video player's `f`
+  (fullscreen) key, present but unconnected, now works.
 
 ## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
 
