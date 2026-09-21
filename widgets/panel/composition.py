@@ -132,6 +132,7 @@ class PanelComposition:
                 counter_host=window.widget__asset_count_host,
                 row_count=lambda: len(window.models.assets.rows),
                 failed=window.models._asset_search_failed_message,
+                open_preferences=lambda: window._preference.show(),
             ),
             window._asset_search,
             window._services.search_gateway,

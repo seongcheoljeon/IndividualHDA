@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import partial
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -14,6 +15,7 @@ from model.proxy_filters import AssetProxyModel
 from view.ihda_list_view import ListView
 from view.ihda_table_view import TableView
 from widgets.asset_browser.state import AssetViewMode
+from widgets.empty_state import attach_empty_state
 from widgets.ui_tokens import (
     COMPACT_MARGIN,
     PANEL_SPACING,
@@ -33,6 +35,8 @@ class AssetBrowserView(QtWidgets.QWidget):
         super().__init__(parent)
         self.setObjectName("widget__asset_browser")
         self._asset_proxy_models: tuple[AssetProxyModel, ...] = ()
+        self._library_available = True
+        self._open_preferences: Callable[[], None] | None = None
         browser_layout = QtWidgets.QVBoxLayout(self)
         browser_layout.setContentsMargins(0, 0, 0, 0)
         browser_layout.setSpacing(PANEL_SPACING)
@@ -70,6 +74,10 @@ class AssetBrowserView(QtWidgets.QWidget):
         )
         self.verticalLayout__listview.setObjectName("verticalLayout__listview")
         self.verticalLayout__tableview.setObjectName("verticalLayout__tableview")
+        self.empty_states = (
+            attach_empty_state(self.listView__hda),
+            attach_empty_state(self.tableView__hda),
+        )
         self.label__hda_count = QtWidgets.QLabel("0", self)
         self.label__hda_count.setObjectName("label__hda_count")
         self.label__hda_count.setAlignment(
@@ -228,13 +236,15 @@ class AssetBrowserView(QtWidgets.QWidget):
             source_model = proxy_model.sourceModel()
             if source_model is not None and source_model.parent() is None:
                 source_model.setParent(self)
-        for widget, proxy in zip(
+        for widget, proxy, state in zip(
             (self.listView__hda, self.tableView__hda),
             self._asset_proxy_models,
+            self.empty_states,
             strict=True,
         ):
             if widget.model() is not proxy:
                 widget.setModel(proxy)
+            state.follow(proxy)
             selection = widget.selectionModel()
             selection.selectionChanged.connect(partial(self._selection_changed, proxy))
             widget.clicked.connect(partial(self._selected, proxy))
@@ -261,9 +271,46 @@ class AssetBrowserView(QtWidgets.QWidget):
         )
         self.asset_selected.emit(asset_id)
 
+    def set_open_preferences(self, callback: Callable[[], None] | None) -> None:
+        self._open_preferences = callback
+        self.update_count()
+
+    def show_library_available(self, available: bool) -> None:
+        self._library_available = available
+        self.update_count()
+
     def update_count(self) -> None:
-        if self._asset_proxy_models:
-            self.label__hda_count.setText(str(self._asset_proxy_models[0].rowCount()))
+        if not self._asset_proxy_models:
+            return
+        proxy = self._asset_proxy_models[0]
+        self.label__hda_count.setText(str(proxy.rowCount()))
+        source = proxy.sourceModel()
+        total = source.rowCount() if source is not None else 0
+        text = self.lineEdit__search_hda.text().strip()
+        for state in self.empty_states:
+            if not self._library_available:
+                state.set_content(
+                    "No library selected",
+                    "Choose the data folder that holds ihda.db in Preferences.",
+                    "Open Preferences" if self._open_preferences else None,
+                    self._open_preferences,
+                )
+            elif total == 0:
+                state.set_content(
+                    "No assets yet",
+                    "Drop Houdini nodes here (middle-button drag from the network"
+                    " editor) to register them.",
+                )
+            elif text:
+                state.set_content(
+                    f'No matches for "{text}"',
+                    "",
+                    "Clear search",
+                    self.lineEdit__search_hda.clear,
+                )
+            else:
+                state.set_content("No assets match the current filters")
+            state.refresh()
 
     def show_results(self, ids: frozenset[int]) -> None:
         for proxy in self._asset_proxy_models:

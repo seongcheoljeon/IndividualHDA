@@ -62,9 +62,16 @@ def startup_fallback(error: BaseException, log_dir: Path) -> QtWidgets.QWidget:
     hint.setWordWrap(True)
     button = QtWidgets.QPushButton("Open log folder")
     button.clicked.connect(lambda: IHDASystem.open_folder(dirpath=log_dir))
+    settings = QtWidgets.QPushButton("Open settings folder")
+    settings.setToolTip("The preferences and workspace files live here.")
+    settings.clicked.connect(lambda: IHDASystem.open_folder(dirpath=log_dir.parent))
     for item in (title, message, hint):
         layout.addWidget(item)
-    layout.addWidget(button, 0, QtCore.Qt.AlignmentFlag.AlignLeft)
+    buttons = QtWidgets.QHBoxLayout()
+    buttons.addWidget(button)
+    buttons.addWidget(settings)
+    buttons.addStretch(1)
+    layout.addLayout(buttons)
     layout.addStretch(1)
     return widget
 

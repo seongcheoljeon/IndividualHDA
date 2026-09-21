@@ -22,6 +22,7 @@ class BrowserBindings:
     counter_host: QtWidgets.QWidget
     row_count: Callable[[], int]
     failed: Callable[[str], None]
+    open_preferences: Callable[[], None] | None = None
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -43,6 +44,7 @@ class AssetBrowserIntegration:
         search_policy: SearchPolicy = SearchPolicy(),
     ) -> None:
         self.view = AssetBrowserView(bindings.host)
+        self.view.set_open_preferences(bindings.open_preferences)
         layout = QtWidgets.QVBoxLayout(bindings.host)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.view)

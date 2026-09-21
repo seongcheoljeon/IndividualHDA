@@ -43,6 +43,9 @@ class RecordingView:
     def filter_text(self, request: SearchRequest) -> None:
         self.local = request
 
+    def show_library_available(self, available: bool) -> None:
+        self.available = available
+
 
 class Gateway:
     def __init__(self) -> None:
@@ -197,6 +200,31 @@ def test_browser_models_filters_selection_and_mode(app: Any, tmp_path: Path) -> 
     assert lp.rowCount() == tp.rowCount() == 1 and view.label__hda_count.text() == "1"
     view.show_results(frozenset({2}))
     assert lp.rowCount() == tp.rowCount() == 0
+    # Empty states follow the proxies and say why the view is empty.
+    list_state, table_state = view.empty_states
+    # The list page is hidden while the table mode is current; ask each state.
+    assert not list_state.isHidden() and not table_state.isHidden()
+    assert list_state.title.text() == "No assets match the current filters"
+    view.lineEdit__search_hda.setText("nothing")
+    view.filter_text(SearchRequest("nothing", "Name", False))
+    assert list_state.title.text() == 'No matches for "nothing"'
+    assert list_state.action.text() == "Clear search"
+    list_state.action.click()
+    assert view.lineEdit__search_hda.text() == ""
+    for proxy in (lp, tp):
+        proxy.is_favorite_nodes = False
+    view.filter_text(SearchRequest())
+    assert list_state.isHidden()
+    # Content is decided even while hidden, so a later empty model reads right.
+    view.show_library_available(False)
+    assert list_state.title.text() == "No library selected"
+    assert list_state.action.isHidden()  # no Preferences callback here
+    view.show_library_available(True)
+    assert list_state.title.text() == "No assets match the current filters"
+    empty_view = AssetBrowserView()
+    empty_view.bind_models(ListProxyModel(), TableProxyModel())
+    assert empty_view.empty_states[0].title.text() == "No assets yet"
+    empty_view.deleteLater()
     view.close()
     view.deleteLater()
     app.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)

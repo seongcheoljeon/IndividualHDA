@@ -172,6 +172,18 @@ class PanelBootstrap:
         window.views.inside = ihda_inside_view.InsideView(window)
         window.verticalLayout__hda_inside_node.addWidget(window.views.inside)
         window.models._init_set_ihda_inside_model()
+        from widgets.empty_state import attach_empty_state
+
+        attach_empty_state(window.views.history).set_content(
+            "No versions", "Select an asset to see its versions and activity."
+        )
+        attach_empty_state(window.views.record).set_content(
+            "No scene records",
+            "Records appear when iHDA nodes are imported into a saved scene.",
+        )
+        attach_empty_state(window.views.inside).set_content(
+            "No iHDA nodes here", "Refresh after importing assets into this network."
+        )
         window.selection._slot_chk_hist_search_data(
             window.checkBox__hist_search_date.isChecked()
         )

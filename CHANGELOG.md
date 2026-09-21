@@ -32,6 +32,11 @@
   batch drop) and the "select an asset first" notices are toasts too, with a
   Preferences shortcut where that is the fix. The dependency warning and the
   purge confirmation stay modal.
+- **Empty views explain themselves.** An empty asset grid says whether no
+  library is selected (with an Open Preferences button), the library has no
+  assets yet, or the search matched nothing (with Clear search). The history,
+  scene-record and inside-node views have their own hints, and the start-up
+  fallback offers the settings folder next to the log folder.
 
 ## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
 

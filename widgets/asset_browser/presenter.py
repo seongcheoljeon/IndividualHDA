@@ -15,6 +15,7 @@ class BrowserView(Protocol):
     def show_error(self, message: str) -> None: ...
     def show_results(self, ids: frozenset[int]) -> None: ...
     def filter_text(self, request: SearchRequest) -> None: ...
+    def show_library_available(self, available: bool) -> None: ...
 
 
 class SearchExecutor(Protocol):
@@ -46,6 +47,7 @@ class AssetBrowserPresenter:
     def change_gateway(self, search_gateway: AssetSearchGateway | None) -> None:
         self.invalidate()
         self._search_gateway = search_gateway
+        self._browser_view.show_library_available(search_gateway is not None)
 
     def search(self, request: SearchRequest) -> None:
         if self._is_closed:
