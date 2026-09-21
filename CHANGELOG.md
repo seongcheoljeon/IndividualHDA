@@ -1,5 +1,47 @@
 # Changelog
 
+## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
+
+- **History shows renames and video changes.** Rename and preview-video events
+  were already recorded by the audit triggers but never shown. They appear as
+  italic non-version rows (`NAME (CHANGE) old → new`, `VIDEO (INSERT/UPDATE)`)
+  interleaved by time with the versions, in the personal and the team library;
+  they own no files, so open/detail/delete/drag skip them. The Version details
+  Activity tab names the rename (`Renamed "old" → "new"`) and says whether a
+  video was attached or replaced.
+- **Emptied categories disappear.** Deleting an asset moves it to the Trash and
+  keeps its row until purge, so the category cleanup trigger never fired and
+  `obj`/`sop` stayed in the tree. The category query now lists only categories
+  with a live asset; restoring brings the category back.
+- **Trashed assets stay out of every read.** Tags, icons, thumbnails, names and
+  ids of trashed assets leaked into the UI through reads that selected from
+  `hda_key` directly. One live-row filter is applied everywhere; the few reads
+  that must see trashed rows say why in the SQL, and a test forbids new
+  unfiltered reads. Registering a name that sits in the Trash says so.
+- **Purge can free the files it left behind.** Permanent deletion queued the
+  files but nothing deleted them. The Trash dialog now previews the queued
+  files after a purge and asks before removing the ones no version references,
+  together with the directories they leave empty; referenced or out-of-root
+  files are reported and kept.
+- **Writes commit as one unit.** Note, tag and registration name checks and the
+  multi-statement rename/scene-record writers run inside a transaction and
+  report SQLite errors as `LibraryError`.
+- **Team server.** Listing assets and histories no longer runs one query per
+  row; two indexes back the hot reads (schema 4 — run the `upgrade` CLI once);
+  PostgreSQL listings read under REPEATABLE READ so the revision matches the
+  rows; the audit event listing accepts `offset`/`limit`. Reads and writes go
+  through one authorized access layer, each operation is a handler, and the
+  audit trail has its own module.
+- **Panel architecture.** Features talk through ports (`widgets/panel/ports.py`)
+  and never reach another feature's private members; the personal/team split
+  is behind `LibraryPort`, chosen in one place. `LibraryRepository` is the union
+  of three role protocols. Item models stop touching the filesystem and
+  rewriting rows while painting. The main window and the preference dialog
+  build their large sections in their own modules, `HoudiniAPI` is a facade over
+  topic modules, and a task started from a completion callback is queued
+  instead of dropped. Guard tests keep each of these from regressing; see
+  CONTRIBUTING.md.
+
 ## 2.1.1 (unreleased) — registration durability and panel typography
 
 - **Registration on Windows.** Flush staged capture files through a writable
