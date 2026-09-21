@@ -136,11 +136,9 @@ def test_ai_suggest_fills_editors_without_saving(
     app.processEvents()
     assert "물" in prompts[0].text  # vocabulary from the library
     assert panel.textEdit__note.toPlainText() == "Water sim."
-    assert panel.notes.split_tag_string(panel.notes.hda_tags) == [
-        "sim",
-        "water",
-        "물",
-    ]
+    # Tags arrive as suggestion chips; the stored tag stays until one is accepted.
+    assert panel.textEdit__tag.tags() == ["물"]
+    assert sorted(panel.textEdit__tag.suggestions()) == ["sim", "water"]
     assert repo.list_assets()[0].hda_note is None  # nothing saved without a click
     # The progress line and its cancel button only exist while a request runs.
     assert not panel.label__ai_status.isVisible()

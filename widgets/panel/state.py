@@ -42,6 +42,12 @@ class PanelSessionState:
             raise LibraryUnavailable("Select a personal library first")
         return self.context
 
+    def tag_vocabulary(self) -> list[str]:
+        """Completer words for the tag editor: every tag this user has stored."""
+        if self.repository is None:
+            return []
+        return self.repository.distinct_tags(owner=self.user)
+
 
 @dataclass(slots=True)
 class PanelStatus:

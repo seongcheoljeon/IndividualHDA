@@ -251,7 +251,9 @@ def test_ai_result_cannot_cross_a_library_session(app: Any) -> None:
     state = SelectionState()
     state.select_asset(decode_record(AssetData, {"hda_id": 7, "hda_name": "Current"}))
     session = PanelSessionState(user="tester")
-    note, tags = QtWidgets.QTextEdit(), QtWidgets.QTextEdit()
+    from widgets.tag_editor import TagEditor
+
+    note, tags = QtWidgets.QTextEdit(), TagEditor()
     note.setPlainText("Current draft")
     feature = PanelAIActions()
     feature.target_id = 7
@@ -266,7 +268,7 @@ def test_ai_result_cannot_cross_a_library_session(app: Any) -> None:
     session.replace(None, None)
     feature.describe_done(Description(summary="Stale answer", tags=["stale"]))
     assert note.toPlainText() == "Current draft"
-    assert tags.toPlainText() == ""
+    assert tags.toPlainText() == "" and not tags.suggestions()
 
 
 def test_registration_capture_accepts_a_host_adapter(tmp_path: Path) -> None:

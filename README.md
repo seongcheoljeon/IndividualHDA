@@ -104,8 +104,8 @@ own machine through [Ollama](https://ollama.com).
    vision-capable model for your GPU memory; press **Download**, then **Use as
    AI backend**, then **OK** in Preferences.
 3. Select an asset and press the **AI** button next to the tag editor (or use
-   the context menu). The suggestion fills the note and tag editors; press the
-   save buttons to keep it.
+   the context menu). The suggestion fills the note and shows the proposed tags
+   as chips under the tag editor; click a chip to add it, then save.
 
 Only asset metadata and the thumbnail are sent to the model, never file paths
 or user names. Nothing is written to the library without your click.

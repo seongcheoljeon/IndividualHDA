@@ -17,7 +17,6 @@ from libs.domain import ItemSelection
 from libs.history_activity import activity_rows, merge_history_rows
 from libs.host import IS_HOUDINI
 from libs.paths import Paths
-from libs.tags import normalize_tags, tag_text
 from libs.task_controller import TaskController
 from libs.team.client import HttpCatalog
 from libs.team.contracts import Conflict, FileKind, Page, parse_blob
@@ -27,6 +26,7 @@ from libs.team.presentation import asset_row, history_row
 from libs.team.search import DocumentSearch
 from widgets.library_connection.dialog import ConnectionDialog
 from widgets.panel.library_session import PersonalPanelSession, TeamPanelSession
+from widgets.tag_editor import TagEditor
 from widgets.team_library.actions import MainAssetActions
 from widgets.team_library.executor import WorkspaceTaskExecutor
 from widgets.team_library.presenter import WorkspacePresenter
@@ -88,7 +88,7 @@ class TeamBindings:
     pushButton__tag_save: QtWidgets.QPushButton
     stackedWidget__hda_infos: QtWidgets.QStackedWidget
     textEdit__note: QtWidgets.QTextEdit
-    textEdit__tag: QtWidgets.QTextEdit
+    textEdit__tag: TagEditor
 
 
 class MainLibraryIntegration(QtCore.QObject):
@@ -134,7 +134,7 @@ class MainLibraryIntegration(QtCore.QObject):
         self.source = bindings.browser.view.comboBox__library_source
         self.source.activated.connect(self._source_changed)
         bindings.textEdit__note.textChanged.connect(self._edited)
-        bindings.textEdit__tag.textChanged.connect(self._edited)
+        bindings.textEdit__tag.changed.connect(self._edited)
         bindings.label__metadata_status.linkActivated.connect(self._recover)
 
     @property
@@ -387,6 +387,9 @@ class MainLibraryIntegration(QtCore.QObject):
         self.bindings.icons.pixmap_thumbnail_data.clear()
         self.bindings.icons.pixmap_hist_thumbnail_data.clear()
         self._documents = {item["id"]: item for item in page.items}
+        self.bindings.textEdit__tag.setVocabulary(
+            [tag for item in page.items for tag in item.get("tags", [])]
+        )
         self._histories.clear()
         self._history_owner = None
         self._history_pending = self.bindings.presentation.is_ihda_history_view
@@ -446,7 +449,7 @@ class MainLibraryIntegration(QtCore.QObject):
             QtCore.QSignalBlocker(bindings.textEdit__tag),
         ):
             bindings.textEdit__note.setPlainText(note)
-            bindings.textEdit__tag.setPlainText(tag_text(tags))
+            bindings.textEdit__tag.setTags(tags)
         bindings.notes.set_label_tags(list(tags))
         self._show_tag_dirty()
         if self._review_asset_id is not None and self._review_asset_id == asset.get(
@@ -469,7 +472,7 @@ class MainLibraryIntegration(QtCore.QObject):
         if self.presenter is not None:
             self.presenter.edit(
                 self.bindings.textEdit__note.toPlainText(),
-                normalize_tags(self.bindings.textEdit__tag.toPlainText()),
+                self.bindings.textEdit__tag.tags(),
             )
             note_dirty, _ = self._show_tag_dirty()
             if self._conflict:
@@ -483,7 +486,7 @@ class MainLibraryIntegration(QtCore.QObject):
         values = (
             {"note": self.bindings.textEdit__note.toPlainText()}
             if choice == "note"
-            else {"tags": normalize_tags(self.bindings.textEdit__tag.toPlainText())}
+            else {"tags": self.bindings.textEdit__tag.tags()}
         )
         self.presenter.mutate("metadata", values)
 

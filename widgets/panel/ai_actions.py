@@ -202,18 +202,12 @@ class PanelAIActions(QtCore.QObject):
             return
         if description.summary:
             self.bindings.ui.textEdit__note.setPlainText(description.summary)
-        existing = self.bindings.notes.split_tag_string(
-            tag_str=self.bindings.notes.hda_tags
-        )
-        merged = sorted(set(existing) | set(description.tags))
-        self.bindings.ui.textEdit__tag.setPlainText(
-            self.bindings.notes.set_tag_string(merged)
-        )
+        self.bindings.ui.textEdit__tag.setSuggestions(description.tags)
         timings = format_timings(dict(self._provider.last_timings))
         log_handler.LogHandler.log_msg(
             method=logging.info,
-            msg="AI suggestion filled the note and tag editors; press the save buttons"
-            " to keep them" + (f" ({timings})" if timings else ""),
+            msg="AI suggestion filled the note; click a suggested tag chip to add it"
+            + (f" ({timings})" if timings else ""),
         )
 
     @QtCore.Slot(object)

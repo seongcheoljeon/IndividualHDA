@@ -98,7 +98,6 @@ class PanelBootstrap:
         window.doubleSpinBox__zoom.setMinimum(UISetting.min_zoom_value)
         window.doubleSpinBox__zoom.setMaximum(UISetting.max_zoom_value)
         note_syntax.NoteHighLighter(window.textEdit__note)
-        note_syntax.NoteHighLighter(window.textEdit__tag)
         window.presentation._set_font_properties(
             window.textEdit__note,
             window.presentation.get_font_properties(

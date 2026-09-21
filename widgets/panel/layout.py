@@ -51,6 +51,7 @@ from widgets.panel.layout_history import (
 )
 from widgets.panel.layout_inside_nodes import build_inside_nodes
 from widgets.panel.layout_scene_records import build_scene_records
+from widgets.tag_editor import TagEditor
 from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 
 
@@ -768,15 +769,13 @@ class MainWindowLayout:
         self.verticalLayout__tag_editor.setSpacing(1)
         self.verticalLayout__tag_editor.setObjectName("verticalLayout__tag_editor")
         self.verticalLayout__tag_editor.setContentsMargins(1, 1, 1, 1)
-        self.textEdit__tag = QTextEdit(self.widget__tag_editor)
+        self.textEdit__tag = TagEditor(self.widget__tag_editor)
         self.textEdit__tag.setObjectName("textEdit__tag")
-        self.textEdit__tag.setFrameShape(QFrame.Shape.NoFrame)
-        self.textEdit__tag.setTabStopDistance(40.0)
         self.textEdit__tag.setStatusTip(
             main_window_text("Please enter a tag for that HDA")
         )
         self.textEdit__tag.setPlaceholderText(
-            main_window_text("ex) #basic #explosion #smoke <Separated by #>")
+            main_window_text("Add a tag and press Enter")
         )
         self.verticalLayout__tag_editor.addWidget(self.textEdit__tag)
         self.label__tag_status = QLabel(self.widget__tag_editor)

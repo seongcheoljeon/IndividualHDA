@@ -291,7 +291,9 @@ class PanelPresentation:
         )
         self.bindings.browser.change_repository(self.bindings.session.repository)
         self.bindings.details.change_repository(
-            self.bindings.session.repository, self.bindings.session.context
+            self.bindings.session.repository,
+            self.bindings.session.context,
+            vocabulary=self.bindings.session.tag_vocabulary,
         )
         if self.bindings.session.context is not None:
             self.bindings.session.context.asset_root.mkdir(parents=True, exist_ok=True)

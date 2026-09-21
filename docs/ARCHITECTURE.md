@@ -505,7 +505,8 @@ Implemented so far:
   next to the tag editor (and the asset context menu) asks the model for a summary
   and tags from stored metadata, the studio tag vocabulary and the thumbnail. The
   prompt never contains paths, users or hip locations (tested). The answer only
-  fills the note/tag editors; the user's Save click persists it.
+  fills the note editor and offers the tags as suggestion chips (`TagEditor.
+  setSuggestions`); nothing is stored until the user accepts and saves.
 
 ## Personal/team switching in the main panel
 

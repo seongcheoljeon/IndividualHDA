@@ -158,6 +158,9 @@ class PanelComposition:
             window._browser.view.checkBox__casesensitive_hda
         )
         window.lineEdit__search_hda = window._browser.view.lineEdit__search_hda
+        window.textEdit__tag.tagClicked.connect(
+            lambda tag: window.lineEdit__search_hda.setText(f"tag:{tag}")
+        )
         window.label__hda_count = window._browser.view.label__hda_count
         window._asset_search_debounce = window._browser.debounce
         self.lifetime.add("browser", lambda: window._browser.close(), 20)
@@ -243,7 +246,9 @@ class PanelComposition:
         bootstrap.open_library()
         window._browser.change_repository(window.session.repository)
         window._details.change_repository(
-            window.session.repository, window.session.context
+            window.session.repository,
+            window.session.context,
+            vocabulary=window.session.tag_vocabulary,
         )
         # initialization setting
         bootstrap.build_models()

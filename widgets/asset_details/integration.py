@@ -9,19 +9,19 @@ from typing import Any
 
 from PySide6 import QtCore, QtWidgets
 
-from libs.tags import normalize_tags, tag_text
 from libs.task_controller import TaskController
 from widgets.asset_details.presenter import (
     AssetDetailsPresenter,
     Field,
     MetadataGateway,
 )
+from widgets.tag_editor import TagEditor
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class DetailsBindings:
     note: QtWidgets.QTextEdit
-    tags: QtWidgets.QTextEdit
+    tags: TagEditor
     status: QtWidgets.QLabel
     tag_status: QtWidgets.QLabel
     show_tags: Callable[[list[str]], None]
@@ -62,23 +62,37 @@ class AssetDetailsIntegration:
         self.label__metadata_status = bindings.status
         self._save_error = ""
         self._library_identity: object = None
+        self._vocabulary: Callable[[], Sequence[str]] | None = None
         bindings.note.textChanged.connect(self._edited)
-        bindings.tags.textChanged.connect(self._edited)
+        bindings.tags.changed.connect(self._edited)
 
     def change_repository(
-        self, repository: MetadataGateway | None, identity: object
+        self,
+        repository: MetadataGateway | None,
+        identity: object,
+        *,
+        vocabulary: Callable[[], Sequence[str]] | None = None,
     ) -> None:
         self._tasks.drain()
         self.presenter.change_gateway(
             repository, preserve_drafts=identity == self._library_identity
         )
         self._library_identity = identity
+        self._vocabulary = vocabulary if repository is not None else None
+        self._refresh_vocabulary()
+
+    def _refresh_vocabulary(self) -> None:
+        """Completer words come from the library; failures only cost suggestions."""
+        words: Sequence[str] = ()
+        if self._vocabulary is not None:
+            try:
+                words = self._vocabulary()
+            except Exception as error:
+                logging.warning("Tag vocabulary unavailable: %s", error)
+        self.bindings.tags.setVocabulary(words)
 
     def _edited(self) -> None:
-        self.presenter.edit(
-            self.bindings.note.toPlainText(),
-            normalize_tags(self.bindings.tags.toPlainText()),
-        )
+        self.presenter.edit(self.bindings.note.toPlainText(), self.bindings.tags.tags())
 
     def show_draft(self, note: str, tags: Sequence[str]) -> None:
         bindings = self.bindings
@@ -87,7 +101,7 @@ class AssetDetailsIntegration:
             QtCore.QSignalBlocker(bindings.tags),
         ):
             bindings.note.setPlainText(note)
-            bindings.tags.setPlainText(tag_text(tags))
+            bindings.tags.setTags(tags)
         bindings.show_tags(list(tags))
 
     def show_state(self, note_dirty: bool, tag_dirty: bool, saving: bool) -> None:
@@ -114,6 +128,8 @@ class AssetDetailsIntegration:
     def saved(self, asset_id: int, field: Field, value: str | list[str]) -> None:
         self.bindings.saved(asset_id, field, value)
         logging.info("Asset %s %s saved", asset_id, field)
+        if field == "tag":
+            self._refresh_vocabulary()
 
     @property
     def busy(self) -> bool:
