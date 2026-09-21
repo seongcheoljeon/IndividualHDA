@@ -98,12 +98,13 @@ class PanelBootstrap:
         window.doubleSpinBox__zoom.setMinimum(UISetting.min_zoom_value)
         window.doubleSpinBox__zoom.setMaximum(UISetting.max_zoom_value)
         note_syntax.NoteHighLighter(window.textEdit__note)
+        note_font = window.presentation.get_font_properties(
+            Name.PreferenceUI.spb_note_font_size,
+            Name.PreferenceUI.cmb_note_font_style,
+        )
+        window.presentation._set_font_properties(window.textEdit__note, note_font)
         window.presentation._set_font_properties(
-            window.textEdit__note,
-            window.presentation.get_font_properties(
-                Name.PreferenceUI.spb_note_font_size,
-                Name.PreferenceUI.cmb_note_font_style,
-            ),
+            window.textBrowser__note_preview, note_font
         )
         window.presentation._set_font_properties(
             window.textEdit__tag,
@@ -273,6 +274,10 @@ class PanelBootstrap:
         window.pushButton__metadata_save.clicked.connect(
             window.notes._slot_save_metadata
         )
+        window.toolButton__note_preview.toggled.connect(
+            window.notes._slot_toggle_note_preview
+        )
+        window.textEdit__note.textChanged.connect(window.notes.refresh_note_preview)
         # Personal edits autosave; the button appears when a team library is active.
         window.pushButton__metadata_save.setVisible(False)
         window.checkBox__casesensitive_cate.stateChanged.connect(

@@ -19,6 +19,7 @@ class Icon(StrEnum):
     IC_BORDER_COLOR_WHITE = ":/main/icons/ic_border_color_white.png"
     IC_BUILD_WHITE = ":/main/icons/ic_build_white.png"
     IC_CAMERA_ALT_WHITE = ":/main/icons/ic_camera_alt_white.png"
+    IC_CHROME_READER_MODE_WHITE = ":/main/icons/ic_chrome_reader_mode_white.png"
     IC_CLEAR_WHITE = ":/main/icons/ic_clear_white.png"
     IC_DELETE_FOREVER_WHITE = ":/main/icons/ic_delete_forever_white.png"
     IC_DONE_WHITE = ":/main/icons/ic_done_white.png"

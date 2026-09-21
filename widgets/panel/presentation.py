@@ -333,13 +333,12 @@ class PanelPresentation:
         self._set_tree_view_item_icon_size(treeview_icon_size)
         self.set_view_item_icon_size(self.bindings.ui.doubleSpinBox__zoom.value())
         # text view의 font size, style 적용
-        self._set_font_properties(
-            self.bindings.ui.textEdit__note,
-            self.get_font_properties(
-                keys.Name.PreferenceUI.spb_note_font_size,
-                keys.Name.PreferenceUI.cmb_note_font_style,
-            ),
+        note_font = self.get_font_properties(
+            keys.Name.PreferenceUI.spb_note_font_size,
+            keys.Name.PreferenceUI.cmb_note_font_style,
         )
+        self._set_font_properties(self.bindings.ui.textEdit__note, note_font)
+        self._set_font_properties(self.bindings.ui.textBrowser__note_preview, note_font)
         self._set_font_properties(
             self.bindings.ui.textEdit__tag,
             self.get_font_properties(

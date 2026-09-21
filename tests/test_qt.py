@@ -218,6 +218,28 @@ def test_panel_with_saved_library(
     wait_until(app, lambda: panel.label__metadata_status.text() == "Saved · just now")
     assert panel.session.repository.list_assets()[0].hda_tags == ("Water", "한글")
     assert not panel.label__tag_status.text()
+    # Markdown preview renders the plain-text note; the stored value is untouched.
+    panel.textEdit__note.setPlainText("# Title\n\nSome **bold** text")
+    panel.toolButton__note_preview.setChecked(True)
+    assert (
+        panel.textEdit__note.isHidden()
+        and not panel.textBrowser__note_preview.isHidden()
+    )
+    assert panel.textBrowser__note_preview.toPlainText() == "Title\nSome bold text"
+    panel.textEdit__note.setPlainText("# Title\n\nSome **bold** text, more")
+    assert (
+        panel.textBrowser__note_preview.toPlainText() == "Title\nSome bold text, more"
+    )
+    panel.toolButton__note_preview.setChecked(False)
+    assert (
+        not panel.textEdit__note.isHidden()
+        and panel.textBrowser__note_preview.isHidden()
+    )
+    wait_until(app, lambda: panel.label__metadata_status.text() == "Saved · just now")
+    assert (
+        panel.session.repository.list_assets()[0].hda_note
+        == "# Title\n\nSome **bold** text, more"
+    )
     panel.doubleSpinBox__zoom.setValue(150)
     panel._ui_settings.save_cfg_dict_to_file()
     panel.doubleSpinBox__zoom.setValue(100)

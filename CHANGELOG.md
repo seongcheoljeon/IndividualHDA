@@ -12,6 +12,9 @@
   `Unsaved`, `Saving…`, `Saved · just now` or `Save failed — edits retained`.
   The team library keeps one explicit Save button (writes carry a revision and
   may conflict). Note history gains one row per pause, not per keystroke.
+- **Notes preview as Markdown.** A toggle next to the note swaps the editor for
+  a rendered view (headings, emphasis, lists, links). Notes are still stored as
+  plain text, so nothing changes for existing notes or the note history.
 
 ## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
 

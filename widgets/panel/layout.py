@@ -38,6 +38,7 @@ from PySide6.QtWidgets import (
     QTextBrowser,
     QTextEdit,
     QToolBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -457,9 +458,7 @@ class MainWindowLayout:
         )
         self.actionLicense_Registration = QAction(window)
         self.actionLicense_Registration.setObjectName("actionLicense_Registration")
-        self.actionLicense_Registration.setIcon(
-            QIcon(":/main/icons/ic_chrome_reader_mode_white.png")
-        )
+        self.actionLicense_Registration.setIcon(QIcon(Icon.IC_CHROME_READER_MODE_WHITE))
         self.actionLicense_Registration.setText(
             main_window_text("License Registration...")
         )
@@ -731,6 +730,13 @@ class MainWindowLayout:
             main_window_text("This is a note to write the selected iHDA.")
         )
         self.verticalLayout__note_editor.addWidget(self.textEdit__note)
+        # Read-only Markdown rendering of the note; swapped in by the toggle below.
+        self.textBrowser__note_preview = QTextBrowser(self.widget__note_editor)
+        self.textBrowser__note_preview.setObjectName("textBrowser__note_preview")
+        self.textBrowser__note_preview.setFrameShape(QFrame.Shape.NoFrame)
+        self.textBrowser__note_preview.setOpenExternalLinks(True)
+        self.textBrowser__note_preview.setVisible(False)
+        self.verticalLayout__note_editor.addWidget(self.textBrowser__note_preview)
         self.label__metadata_status = QLabel(self.widget__note_editor)
         self.label__metadata_status.setObjectName("label__metadata_status")
         self.verticalLayout__note_editor.addWidget(self.label__metadata_status)
@@ -740,6 +746,21 @@ class MainWindowLayout:
             "horizontalLayout__note_actions"
         )
         self.horizontalLayout__note_actions.setContentsMargins(3, -1, 3, -1)
+        self.toolButton__note_preview = QToolButton(self.widget__note_editor)
+        self.toolButton__note_preview.setObjectName("toolButton__note_preview")
+        self.toolButton__note_preview.setCheckable(True)
+        self.toolButton__note_preview.setAutoRaise(True)
+        self.toolButton__note_preview.setIcon(QIcon(Icon.IC_CHROME_READER_MODE_WHITE))
+        self.toolButton__note_preview.setIconSize(
+            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+        )
+        self.toolButton__note_preview.setToolTip(
+            main_window_text("Preview the note as Markdown")
+        )
+        self.toolButton__note_preview.setStatusTip(
+            main_window_text("Toggle between editing and a rendered Markdown view")
+        )
+        self.horizontalLayout__note_actions.addWidget(self.toolButton__note_preview)
         self.spacer__note_actions = QSpacerItem(
             40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
         )

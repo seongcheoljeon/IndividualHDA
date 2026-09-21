@@ -152,6 +152,19 @@ class PanelNotes:
     def set_tag_string(tag_lst: Sequence[str]) -> str:
         return " ".join(["#" + x for x in sorted(tag_lst)])
 
+    def _slot_toggle_note_preview(self, checked: bool) -> None:
+        """Swap the editor for a rendered Markdown view; the note stays plain text."""
+        ui = self.bindings.ui
+        if checked:
+            ui.textBrowser__note_preview.setMarkdown(ui.textEdit__note.toPlainText())
+        ui.textBrowser__note_preview.setVisible(checked)
+        ui.textEdit__note.setVisible(not checked)
+
+    def refresh_note_preview(self) -> None:
+        ui = self.bindings.ui
+        if ui.toolButton__note_preview.isChecked():
+            ui.textBrowser__note_preview.setMarkdown(ui.textEdit__note.toPlainText())
+
     def _slot_save_metadata(self) -> None:
         """Save button / Ctrl+S: write the note and tags of the selected asset."""
         if self.bindings.session.actions.capabilities.edit_metadata:
