@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QLabel,
+    QPushButton,
     QTextBrowser,
     QVBoxLayout,
 )
@@ -62,7 +63,26 @@ class DetailViewLayout:
         self.label__pixmap.setObjectName("label__pixmap")
         self.label__pixmap.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.label__pixmap.setText("")
-        self.verticalLayout__preview.addWidget(self.label__pixmap)
+        self.verticalLayout__preview.addWidget(self.label__pixmap, 1)
+        self.horizontalLayout__copy_buttons = QHBoxLayout()
+        self.horizontalLayout__copy_buttons.setObjectName(
+            "horizontalLayout__copy_buttons"
+        )
+        self.horizontalLayout__copy_buttons.setSpacing(3)
+        self.pushButton__copy_name = QPushButton(_translate("Copy name"), window)
+        self.pushButton__copy_name.setObjectName("pushButton__copy_name")
+        self.pushButton__copy_path = QPushButton(_translate("Copy path"), window)
+        self.pushButton__copy_path.setObjectName("pushButton__copy_path")
+        self.pushButton__copy_version = QPushButton(_translate("Copy version"), window)
+        self.pushButton__copy_version.setObjectName("pushButton__copy_version")
+        for button in (
+            self.pushButton__copy_name,
+            self.pushButton__copy_path,
+            self.pushButton__copy_version,
+        ):
+            button.setEnabled(False)
+            self.horizontalLayout__copy_buttons.addWidget(button)
+        self.verticalLayout__preview.addLayout(self.horizontalLayout__copy_buttons)
         self.horizontalLayout__detail_content.addLayout(self.verticalLayout__preview)
         self.textBrowser__detail = QTextBrowser(window)
         self.textBrowser__detail.setObjectName("textBrowser__detail")

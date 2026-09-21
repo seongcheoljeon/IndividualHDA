@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QCoreApplication
 from PySide6.QtGui import QFont
-from PySide6.QtWidgets import QSizePolicy, QWidget
+from PySide6.QtWidgets import QApplication, QSizePolicy, QWidget
 
 
 def make_font(
@@ -24,6 +24,13 @@ def size_policy(
     policy = QSizePolicy(horizontal, vertical)
     policy.setHeightForWidth(widget.sizePolicy().hasHeightForWidth())
     return policy
+
+
+def copy_to_clipboard(text: str) -> None:
+    """The one place the app touches the clipboard."""
+    clipboard = QApplication.clipboard()
+    if clipboard is not None:
+        clipboard.setText(text)
 
 
 def main_window_text(text: str) -> str:

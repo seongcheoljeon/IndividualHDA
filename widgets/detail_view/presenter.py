@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from libs.asset_contracts import AssetData, HistoryData
 from libs.keys import Key
@@ -13,8 +13,42 @@ from libs.scene_contracts import SceneRecord
 
 @dataclass(frozen=True)
 class DetailContent:
-    text: str
+    rows: tuple[tuple[str, str], ...]
     thumbnail: Path | None
+    copyable: dict[str, str]  # "Name" / "Path" / "Version" -> value, when known
+
+    @property
+    def text(self) -> str:
+        return "\n".join(f"{key}: {value}" for key, value in self.rows)
+
+
+def _first(values: dict[str, Any], *keys: str) -> str:
+    for key in keys:
+        value = values.get(key)
+        if value not in (None, ""):
+            return str(value)
+    return ""
+
+
+def copyable_values(values: dict[str, Any]) -> dict[str, str]:
+    """The three things people paste elsewhere: the name, the file, the version."""
+    result: dict[str, str] = {}
+    name = _first(values, "hda_name", "org_hda_name", "node_name")
+    version = _first(values, "hda_version", "version")
+    path = _first(values, "hda_filepath")
+    for directory, filename in (
+        ("hda_dirpath", "hda_filename"),
+        ("ihda_dirpath", "ihda_filename"),
+    ):
+        if not path and values.get(directory) and values.get(filename):
+            path = str(Path(str(values[directory])) / str(values[filename]))
+    if name:
+        result["Name"] = name
+    if path:
+        result["Path"] = path
+    if version:
+        result["Version"] = version
+    return result
 
 
 class DetailView(Protocol):
@@ -64,11 +98,12 @@ class DetailPresenter:
                 Key.History.thumb_filename if history else Key.thumbnail_filename
             )
         content = DetailContent(
-            "\n".join(
-                f"{key.replace('_', ' ').upper()}: {value}"
+            tuple(
+                (key.replace("_", " ").upper(), str(value))
                 for key, value in sorted(values.items())
                 if key not in excluded
             ),
             Path(directory) / filename if directory is not None and filename else None,
+            copyable_values(values),
         )
         self._view.show_content(content)

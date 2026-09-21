@@ -65,8 +65,21 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
             ["Kind", "Target", "Version", "Required"]
         )
         self.tableWidget__dependencies.horizontalHeader().setStretchLastSection(True)
-        self.textEdit__activity = QtWidgets.QPlainTextEdit()
-        self.textEdit__activity.setReadOnly(True)
+        from widgets.library_metadata.activity_model import ActivityModel
+
+        self.activity_model = ActivityModel(self)
+        self.tableView__activity = QtWidgets.QTableView()
+        self.tableView__activity.setModel(self.activity_model)
+        self.tableView__activity.setSelectionBehavior(
+            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.tableView__activity.setEditTriggers(
+            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
+        )
+        self.tableView__activity.setAlternatingRowColors(True)
+        self.tableView__activity.verticalHeader().setVisible(False)
+        self.tableView__activity.horizontalHeader().setStretchLastSection(True)
+        self.tableView__activity.setSortingEnabled(False)
         self.tabWidget__details = QtWidgets.QTabWidget()
         self.tabWidget__details.addTab(self.textEdit__description, "Change description")
         dependency_page = QtWidgets.QWidget()
@@ -90,7 +103,7 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
         dependencies_layout.addWidget(self.pushButton__add_dependency)
         dependencies_layout.addWidget(self.pushButton__remove_dependency)
         self.tabWidget__details.addTab(dependency_page, "Dependencies")
-        self.tabWidget__details.addTab(self.textEdit__activity, "Activity and files")
+        self.tabWidget__details.addTab(self.tableView__activity, "Activity and files")
         layout.addWidget(self.tableWidget__items)
         layout.addWidget(self.comboBox__version)
         from widgets.library_metadata.tracking import TrackingDetails
@@ -198,17 +211,30 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
             self.comboBox__version.addItems([item["version"] for item in self._items])
             self.comboBox__version.blockSignals(False)
             self._version(0)
-            self.textEdit__activity.setPlainText(
-                "\n".join(self._activity(item) for item in result["events"])
-                + "\n\n"
-                + "\n".join(
-                    f"{item['version']} · {item['filename']} · {item['status']}"
+            self.activity_model.set_rows(
+                [
+                    (*self._activity_parts(item), item["operation"])
+                    for item in result["events"]
+                ]
+                + [
+                    (
+                        str(item["version"]),
+                        "",
+                        "File",
+                        f"{item['filename']} · {item['status']}",
+                    )
                     for item in result["files"]
-                )
+                ]
             )
+            self.tableView__activity.resizeColumnsToContents()
+
+    @classmethod
+    def _activity(cls, item: dict[str, Any]) -> str:
+        return " · ".join(cls._activity_parts(item))
 
     @staticmethod
-    def _activity(item: dict[str, Any]) -> str:
+    def _activity_parts(item: dict[str, Any]) -> tuple[str, str, str]:
+        """(time, actor, what happened) for one audit event."""
         from uuid import UUID
 
         actor = item.get("actor_name") or item.get("actor") or "Unknown"
@@ -254,7 +280,7 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
             title = label + (" added" if action == "insert" else " changed")
         else:
             title = labels.get(operation, "Changed")
-        return f"{item['occurred_at']} · {actor} · {title}"
+        return str(item["occurred_at"]), actor, title
 
     def _version(self, index: int) -> None:
         self.tableWidget__dependencies.setRowCount(0)

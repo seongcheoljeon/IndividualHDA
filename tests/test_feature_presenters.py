@@ -258,10 +258,28 @@ def test_detail_does_not_mutate_record_and_handles_missing_thumbnail() -> None:
     presenter.show(data, record=True)
     assert data == original
     assert view.content.thumbnail is None
-    assert "<b>literal</b>" in view.content.text
+    assert "<b>literal</b>" in view.content.text  # literal data, escaped by the view
+    assert dict(view.content.rows)["NODE NAME"] == data.node_name
+    assert view.content.copyable["Name"] == data.node_name
     presenter.show(HistoryData(hda_id=0, org_hda_name="", version=""), history=True)
     assert view.content.thumbnail is None
     assert "None" in view.content.text
+    assert view.content.copyable == {}  # nothing worth pasting on an empty record
+    presenter.show(
+        HistoryData(
+            hda_id=1,
+            org_hda_name="Water",
+            version="2.0",
+            ihda_dirpath=Path("/lib/sop/Water"),
+            ihda_filename="water_2.0.ihda",
+        ),
+        history=True,
+    )
+    assert view.content.copyable == {
+        "Name": "Water",
+        "Path": str(Path("/lib/sop/Water") / "water_2.0.ihda"),
+        "Version": "2.0",
+    }
 
 
 @pytest.mark.parametrize(

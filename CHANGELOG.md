@@ -51,6 +51,11 @@
   not mention what you typed. **Apply** saves without closing, and **Restore
   Defaults** (with a confirmation) replaces the icon-only reset button; paths,
   AI and advanced settings are never reset by it.
+- **Detail view and activity.** The detail dialog shows a key/value table
+  instead of a text dump, keeps the thumbnail's aspect ratio and adds Copy
+  name / path / version buttons (the first clipboard use in the app). The
+  Version details Activity tab is a proper table (time, actor, action, detail)
+  with file rows underneath instead of one joined string.
 
 ## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
 
