@@ -254,11 +254,22 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         wait_panel(app, panel)
         assert not panel.pushButton__metadata_save.isEnabled()
         assert not panel.tools.actionProject_Members.isVisible()
+        assert panel.label__metadata_status.text() == "Read-only (viewer role)"
         team.open_backend(
             broken, {"id": project, "name": "Unavailable", "role": "owner"}
         )
         wait_panel(app, panel)
         assert team.active and team.project["name"] == "Studio"
+        # Another user's change shows up on the next revision poll, no Reload.
+        create_asset(backend, tmp_path, "TeamZeta")
+        assert len(panel.models.assets.rows) == 1
+        panel._library_sync.timer.timeout.emit()
+        wait_panel(app, panel)
+        assert [row.hda_name for row in panel.models.assets.rows] == [
+            "TeamWater2",
+            "TeamZeta",
+        ]
+        assert panel._library_sync.tasks.busy is False
         import os
 
         if os.environ.get("IHDA_UI_CAPTURE"):

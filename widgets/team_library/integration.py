@@ -123,6 +123,7 @@ class MainLibraryIntegration(QtCore.QObject):
         self._refresh_pending = False
         self._closing = False
         self._loading = False
+        self._revision: int | None = None  # of the page on screen; polls compare
         self._file_kind: FileKind = "asset"
         self._import_target: tuple[Any, Any] | None = None
         self._conflict = False
@@ -212,10 +213,12 @@ class MainLibraryIntegration(QtCore.QObject):
         self._loading = True
         self.source.setEnabled(False)
         self.show_status("Loading team library…")
+        self.bindings.presentation.loading_show()
 
         def ready(page: Any, error: Exception | None) -> None:
             self._loading = False
             self._candidate = None
+            self.bindings.presentation.loading_close()
             if self._closing:
                 return
             if error is not None:
@@ -279,6 +282,11 @@ class MainLibraryIntegration(QtCore.QObject):
             self.source.clear()
             self.source.addItem("Personal", "personal")
             self.source.addItem(project["name"], "team")
+            self.source.setItemData(
+                1,
+                f"{project['name']} · role: {project.get('role', 'unknown')}",
+                QtCore.Qt.ItemDataRole.ToolTipRole,
+            )
             self.source.addItem("Connect team…", "connect")
             self.source.setCurrentIndex(1)
         bindings.show_assets()
@@ -370,6 +378,34 @@ class MainLibraryIntegration(QtCore.QObject):
             else:
                 self.presenter.refresh()
 
+    def poll(self) -> None:
+        """Timer tick: fetch one row for the project revision; reload on change.
+
+        Runs on the library-sync controller, which idles in team mode, so a poll
+        never blocks a write on the team controller. Failures are silent: the
+        next tick tries again and the page on screen stays valid.
+        """
+        catalog = self.catalog
+        if (
+            catalog is None
+            or not self.active
+            or self._closing
+            or self._loading
+            or self._tasks.busy
+            or self.bindings.sync.tasks.busy
+            or self._refresh_pending
+        ):
+            return
+        backend = catalog.backend
+
+        def ready(page: Any) -> None:
+            if self._closing or self.catalog is not catalog:
+                return
+            if page.revision != self._revision:
+                self.refresh()
+
+        self.bindings.sync.tasks.start(lambda: backend.list_assets("", 0, 1), ready)
+
     def _idle(self) -> None:
         if self._closing:
             return
@@ -387,6 +423,7 @@ class MainLibraryIntegration(QtCore.QObject):
         self.bindings.icons.pixmap_thumbnail_data.clear()
         self.bindings.icons.pixmap_hist_thumbnail_data.clear()
         self._documents = {item["id"]: item for item in page.items}
+        self._revision = page.revision
         self.bindings.textEdit__tag.setVocabulary(
             [tag for item in page.items for tag in item.get("tags", [])]
         )
@@ -497,12 +534,17 @@ class MainLibraryIntegration(QtCore.QObject):
             self.bindings.textEdit__tag.setReadOnly(not self.writable)
         if busy:
             self.show_status("Working…")
+            self.bindings.presentation.loading_show()
+        else:
+            self.bindings.presentation.loading_close()
 
     def show_status(self, message: str) -> None:
         if message.startswith("Saved."):
             message = "Saved · just now"
         elif "assets · loaded" in message:
             message = ""
+        if not message and self.active and not self.writable:
+            message = "Read-only (viewer role)"
         if (
             self._pending is not None
             and self.active

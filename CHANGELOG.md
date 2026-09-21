@@ -37,6 +37,11 @@
   assets yet, or the search matched nothing (with Clear search). The history,
   scene-record and inside-node views have their own hints, and the start-up
   fallback offers the settings folder next to the log folder.
+- **Team library feedback.** Loading and writing show the busy overlay instead
+  of a "Working…" line, the library source tooltip names your role and a
+  viewer sees "Read-only (viewer role)" in the status line. The panel polls the
+  project revision every sync interval, so another artist's change appears
+  without pressing Reload.
 
 ## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
 

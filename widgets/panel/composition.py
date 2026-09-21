@@ -347,6 +347,8 @@ class PanelComposition:
             )
         )
         self.lifetime.add("team", lambda: window._team_library.shutdown(), 20)
+        # The same tick that polls the personal revision asks the team server.
+        window._library_sync.timer.timeout.connect(window._team_library.poll)
 
         from libs.database.tracking import deliver_local_scene_usage
         from libs.scene_outbox import SceneOutbox
