@@ -15,7 +15,10 @@
 | 개인 / 팀 라이브러리 선택 | `widgets/asset_browser/view.py` | `_build_toolbar()`의 `comboBox__library_source` |
 | 팀 연결 / 구성원 설정 | `widgets/library_connection/dialog.py`, `members.py` | 각 설정 대화상자의 생성 메서드 |
 | 개인 → 팀 복사 | `widgets/asset_copy/dialog.py` | `_build_layout()`; 흐름 준비는 `presenter.py` |
-| 환경설정 | `widgets/preference/layout.py` | `_build_storage_settings()`, `_build_icon_sizes()`, `_build_item_padding()` |
+| 환경설정 — 저장 경로·FFmpeg | `widgets/preference/layout_storage.py` | `build_storage_settings()`, `build_ffmpeg_settings()` |
+| 환경설정 — 외형·폰트 | `widgets/preference/layout_appearance.py` | `build_appearance_settings()`, `build_note_font()`, `build_tag_font()`, `build_debug_font()` |
+| 환경설정 — 아이콘 크기 / 여백 | `widgets/preference/layout_icons.py`, `layout_padding.py` | `build_icon_sizes()`, `build_item_padding()` |
+| 환경설정 — 창·버튼·순서 | `widgets/preference/layout.py` | `PreferenceLayout.build_ui()` |
 | 이름 변경 | `widgets/rename_ihda/layout.py` | `_build_name_preview()`, `_build_name_input()` |
 | 상세 보기 대화상자 | `widgets/detail_view/layout.py` | `_build_content()` |
 | 영상 생성 설정 | `widgets/make_video_info/layout.py` | `_build_video_settings()`, `_build_flipbook_options()` |

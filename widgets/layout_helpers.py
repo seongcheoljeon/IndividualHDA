@@ -29,3 +29,8 @@ def size_policy(
 def main_window_text(text: str) -> str:
     """Translatable text in the main window's context."""
     return QCoreApplication.translate("MainWindow__individualHDA", text)
+
+
+def preference_text(text: str) -> str:
+    """Translatable text in the preference dialog's context."""
+    return QCoreApplication.translate("Dialog__preference", text)
