@@ -15,11 +15,10 @@
 - **Notes preview as Markdown.** A toggle next to the note swaps the editor for
   a rendered view (headings, emphasis, lists, links). Notes are still stored as
   plain text, so nothing changes for existing notes or the note history.
-- **Left-drag and double-click import.** Assets drag out of the list, table and
-  history views with the left button as well as the middle one, and a
-  double-click imports the selection into the current Network Editor
-  (Ctrl+double-click plays the preview video, which the plain double-click
-  used to do). The three views share one drag implementation.
+- **Left-drag import.** Assets drag out of the list, table and history views
+  with the left button as well as the middle one; Enter imports the selection
+  into the current Network Editor. Double-click still plays the preview video.
+  The three views share one drag implementation.
 - **Keyboard shortcuts.** Ctrl+S saves, Ctrl+F focuses the search, Esc clears
   it, F5 reloads, Enter imports the selected assets and Delete moves them to
   the Trash. All are scoped to the panel or to one view, so Houdini keeps its

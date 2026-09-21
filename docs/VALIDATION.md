@@ -39,7 +39,7 @@ On each of Windows, macOS and Linux, using a disposable library and HIP:
 
 1. Start the Python panel, choose a data folder, restart and check settings.
 2. Register SOP, OBJ, VOP and subnet nodes via middle-button drag/drop from the
-   network editor; import them back by left- or middle-drag and by double-click. Compare
+   network editor; import them back by left- or middle-drag and with Enter. Compare
    original nodes, wires, names, flags and embedded definitions before/after.
 3. Update a version; inspect history; rename, favorite, tag, edit notes, search
    names/tags/types; switch list/table/history views and remove selected rows.

@@ -73,8 +73,8 @@ Assets are registered under your OS login name. Set `IHDA_USER` to use a pipelin
 ## Use
 
 - Drag Houdini nodes (middle button) into the panel to register them. Drag an
-  asset with the left or middle button into a Network Editor, or double-click
-  it, to import; Ctrl+double-click plays its preview video.
+  asset with the left or middle button into a Network Editor, or press Enter,
+  to import; double-click plays its preview video.
 - Browse categories and search by name, tag, or node type.
 - Manage versions, notes, tags, favorites, thumbnails, and preview videos.
 - Inspect asset instances recorded from HIP files.

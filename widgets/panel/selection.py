@@ -546,14 +546,13 @@ class PanelSelection:
 
     @QtCore.Slot(QtCore.QModelIndex)
     def _slot_hda_double_clicked(self, *args: Any) -> None:
+        """Double-click plays the preview video; importing is Enter, the context
+        menu or a drag into the Network Editor (a double-click that creates nodes
+        was tried and rejected)."""
         index = args[0] if args else None
         if index is None or not index.isValid():
             return
-        modifiers = QtWidgets.QApplication.keyboardModifiers()
-        if modifiers & QtCore.Qt.KeyboardModifier.ControlModifier:
-            self.play_current_video()
-        else:
-            self.import_current()
+        self.play_current_video()
 
     def _current_asset_view(self) -> Any:
         if self.bindings.presentation.is_ihda_history_view:
