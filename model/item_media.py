@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Protocol
 
 from PySide6 import QtCore, QtGui
 
-from libs.item_paths import item_path
+from libs.thumbnail_cache import ThumbnailCache
 from libs.ui_icons import Icon
+
+_PLACEHOLDERS: dict[int, QtGui.QPixmap] = {}
 
 
 class PixmapSource(Protocol):
@@ -17,23 +18,34 @@ class PixmapSource(Protocol):
     ) -> QtGui.QPixmap | None: ...
 
 
+def placeholder(size: int) -> QtGui.QPixmap:
+    """The "no image" pixmap at ``size``; one instance per size."""
+    pixmap = _PLACEHOLDERS.get(size)
+    if pixmap is None:
+        pixmap = QtGui.QPixmap(Icon.NO_IMG_AVAILABLE).scaled(
+            QtCore.QSize(size, size), QtCore.Qt.AspectRatioMode.KeepAspectRatio
+        )
+        _PLACEHOLDERS[size] = pixmap
+    return pixmap
+
+
 def thumbnail(
     source: PixmapSource | dict[int, QtGui.QPixmap],
     identity: int | None,
-    directory: Path | None,
-    filename: str | None,
     size: int,
 ) -> QtGui.QPixmap:
-    pixmap = source.get(identity) if identity is not None else None
-    if pixmap is not None and pixmap.isNull():
-        path = item_path(directory, filename)
-        pixmap = (
-            QtGui.QPixmap(str(path)) if path is not None and path.is_file() else None
-        )
-        if pixmap is not None and isinstance(source, dict) and identity is not None:
-            source[identity] = pixmap
+    """The item's thumbnail fitted to ``size``; never reads a file on this thread.
+
+    Decoding belongs to ThumbnailCache's workers (set_path arms it, changed
+    repaints the row). data() only ever hands back what is already in memory.
+    """
+    if identity is None:
+        return placeholder(size)
+    if isinstance(source, ThumbnailCache):
+        return source.scaled(identity, size)
+    pixmap = source.get(identity)
     if pixmap is None or pixmap.isNull():
-        pixmap = QtGui.QPixmap(Icon.NO_IMG_AVAILABLE)
+        return placeholder(size)
     return pixmap.scaled(
         QtCore.QSize(size, size), QtCore.Qt.AspectRatioMode.KeepAspectRatio
     )

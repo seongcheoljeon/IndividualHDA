@@ -152,8 +152,6 @@ class TableModel(QtCore.QAbstractTableModel, ModelStyleMixin):
                 return thumbnail(
                     self.__pixmap_thumb_data,
                     hda_id,
-                    data.thumbnail_dirpath,
-                    data.thumbnail_filename,
                     self.__thumb_size,
                 )
             if column == node_icon_column:

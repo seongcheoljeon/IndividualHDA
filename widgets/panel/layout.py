@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import (
-    QRect,
     QSize,
     Qt,
 )
@@ -870,7 +869,6 @@ class MainWindowLayout:
     def _build_menus_and_toolbar(self, window: QMainWindow) -> None:
         self.menubar = QMenuBar(window)
         self.menubar.setObjectName("menubar")
-        self.menubar.setGeometry(QRect(0, 0, 1472, 31))
         self.menuFile = QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")
         self.menuFile.setTitle(main_window_text("File"))
@@ -957,12 +955,10 @@ class MainWindowLayout:
         self.toolBar.addAction(self.actionOpen_the_hda_directory)
         self.toolBar.addAction(self.actionReload)
         self.toolBar.addSeparator()
-        self.toolBar.addSeparator()
         self.toolBar.addAction(self.actioniHDA)
         self.toolBar.addAction(self.actionHistory)
         self.toolBar.addAction(self.actionVideo_Player)
         self.toolBar.addAction(self.actionWeb)
-        self.toolBar.addSeparator()
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionCategory_Synchronization)
         self.toolBar.addAction(self.actionNode_Synchronization)

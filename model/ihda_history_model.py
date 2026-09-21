@@ -150,8 +150,6 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
                 return thumbnail(
                     self.__pixmap_hist_thumb_data,
                     data.hist_id,
-                    data.thumb_dirpath,
-                    data.thumb_filename,
                     self.__thumb_size,
                 )
             elif column == self.__hda_def_column:

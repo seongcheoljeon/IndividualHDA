@@ -42,6 +42,10 @@
   viewer sees "Read-only (viewer role)" in the status line. The panel polls the
   project revision every sync interval, so another artist's change appears
   without pressing Reload.
+- **Smoother scrolling with thumbnails.** Scaled thumbnails are kept per zoom
+  step instead of being rescaled on every repaint, and the models no longer
+  open image files on the GUI thread when a decode is still pending. Two
+  doubled toolbar separators and a hard-coded menu-bar geometry are gone.
 
 ## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
 

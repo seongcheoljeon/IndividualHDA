@@ -90,6 +90,11 @@ class ThumbnailCache(QtCore.QObject):
         self._versions: dict[int, int] = {}
         self._generation = 0
         self._cache: OrderedDict[int, QtGui.QPixmap] = OrderedDict()
+        # (key, edge) -> (source pixmap it was scaled from, scaled pixmap). Keeping
+        # the source lets a hit detect that the decoded image replaced the fallback.
+        self._scaled: OrderedDict[
+            tuple[int, int], tuple[QtGui.QPixmap, QtGui.QPixmap]
+        ] = OrderedDict()
         self._pending: dict[int, int] = {}
         self._pool = QtCore.QThreadPool(self)
         self._pool.setMaxThreadCount(self.policy.workers)
@@ -116,12 +121,15 @@ class ThumbnailCache(QtCore.QObject):
         old = self._cache.pop(key, None)
         if old is not None:
             self._bytes -= self._cost(old)
+        for entry in [entry for entry in self._scaled if entry[0] == key]:
+            del self._scaled[entry]
 
     def clear(self) -> None:
         self._paths.clear()
         self._resolvers.clear()
         self._versions.clear()
         self._cache.clear()
+        self._scaled.clear()
         self._bytes = 0
 
     def set_path(
@@ -160,6 +168,27 @@ class ThumbnailCache(QtCore.QObject):
                 )
             )
         return self.fallback if default is None else default
+
+    def scaled(self, key: int, edge: int) -> QtGui.QPixmap:
+        """``get(key)`` fitted into an ``edge`` square, memoised per (key, edge).
+
+        data() asks for this on every repaint; scaling there each time cost more
+        than the paint itself. The memo follows the source: while the image is
+        still decoding it holds the scaled fallback, afterwards the real one.
+        """
+        source = self.get(key)
+        hit = self._scaled.get((key, edge))
+        if hit is not None and hit[0] is source:
+            self._scaled.move_to_end((key, edge))
+            return hit[1]
+        pixmap = source.scaled(
+            QtCore.QSize(edge, edge), QtCore.Qt.AspectRatioMode.KeepAspectRatio
+        )
+        self._scaled[(key, edge)] = (source, pixmap)
+        # A few zoom steps per key is the realistic ceiling; bound it anyway.
+        while len(self._scaled) > 4 * self.capacity:
+            self._scaled.popitem(last=False)
+        return pixmap
 
     @staticmethod
     def _cost(pixmap: QtGui.QPixmap) -> int:

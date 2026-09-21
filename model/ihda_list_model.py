@@ -175,8 +175,6 @@ class ListModel(QtCore.QAbstractListModel, ModelStyleMixin):
                 return thumbnail(
                     self.__pixmap_thumb_data,
                     hda_id,
-                    index_dat.thumbnail_dirpath,
-                    index_dat.thumbnail_filename,
                     self.__thumb_size,
                 )
             else:

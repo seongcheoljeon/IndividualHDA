@@ -91,3 +91,33 @@ def test_thumbnail_resolver_is_lazy_and_runs_outside_gui_thread(
         assert cache.get(1).size() == QtCore.QSize(8, 8)
     finally:
         cache.shutdown()
+
+
+def test_scaled_thumbnails_are_memoised_and_follow_the_decode(
+    app: Any, tmp_path: Path
+) -> None:
+    from model.item_media import placeholder, thumbnail
+
+    image = QtGui.QImage(64, 32, QtGui.QImage.Format_RGB32)
+    image.fill(QtCore.Qt.blue)
+    path = tmp_path / "wide.png"
+    assert image.save(str(path))
+    cache = ThumbnailCache(QtGui.QPixmap(8, 8), capacity=2)
+    cache.set_path(1, path)
+    first = cache.scaled(1, 16)  # arms the decode; scaled fallback meanwhile
+    assert first is cache.scaled(1, 16) and first.size() == QtCore.QSize(16, 16)
+    deadline = time.monotonic() + 5
+    while cache.pending_count and time.monotonic() < deadline:
+        app.processEvents()
+        time.sleep(0.005)
+    decoded = cache.scaled(1, 16)
+    assert decoded is not first and decoded.size() == QtCore.QSize(16, 8)
+    assert decoded is cache.scaled(1, 16) and cache.scaled(1, 32).width() == 32
+    del cache[1]
+    assert cache.scaled(1, 16) is not decoded  # invalidated with the key
+    # The model helper never opens files itself: unknown ids get the placeholder.
+    assert thumbnail({}, 7, 20) is placeholder(20) and thumbnail(
+        cache, None, 20
+    ) is placeholder(20)
+    assert thumbnail(cache, 1, 24) is cache.scaled(1, 24)
+    cache.shutdown()
