@@ -17,7 +17,7 @@ class MetadataGateway(Protocol):
 
 
 class DetailsView(Protocol):
-    def show_draft(self, note: str, tags: str) -> None: ...
+    def show_draft(self, note: str, tags: Sequence[str]) -> None: ...
     def show_state(self, note_dirty: bool, tag_dirty: bool, saving: bool) -> None: ...
     def show_error(self, message: str) -> None: ...
     def saved(self, asset_id: int, field: Field, value: str | list[str]) -> None: ...
@@ -34,9 +34,9 @@ class SaveExecutor(Protocol):
 @dataclass
 class Draft:
     note: str
-    tags: str
+    tags: list[str]
     saved_note: str
-    saved_tags: str
+    saved_tags: list[str]
 
     @property
     def dirty(self) -> bool:
@@ -63,7 +63,7 @@ class AssetDetailsPresenter:
         if not preserve_drafts:
             self._drafts.clear()
             self._asset_id = None
-            self._view.show_draft("", "")
+            self._view.show_draft("", [])
         self._state()
 
     def select(
@@ -71,20 +71,19 @@ class AssetDetailsPresenter:
     ) -> None:
         self._asset_id = asset_id
         if asset_id is None:
-            self._view.show_draft("", "")
+            self._view.show_draft("", [])
         else:
-            tag_text = " ".join(f"#{tag}" for tag in sorted(tags))
             draft = self._drafts.get(asset_id)
             if draft is None or not draft.dirty:
-                draft = Draft(note, tag_text, note, tag_text)
+                draft = Draft(note, list(tags), note, list(tags))
                 self._drafts[asset_id] = draft
             self._view.show_draft(draft.note, draft.tags)
         self._state()
 
-    def edit(self, note: str, tags: str) -> None:
+    def edit(self, note: str, tags: Sequence[str]) -> None:
         if self._asset_id is not None:
             draft = self._drafts[self._asset_id]
-            draft.note, draft.tags = note, tags
+            draft.note, draft.tags = note, list(tags)
         self._state()
 
     def forget(self, asset_id: int) -> None:
@@ -109,8 +108,8 @@ class AssetDetailsPresenter:
         self.write_generation += 1
         draft = self._drafts[asset_id]
         generation = self._generation
-        note, tags = draft.note, sorted(normalize_tags(draft.tags))
-        submitted_text = draft.note if field == "note" else draft.tags
+        note, tags = draft.note, normalize_tags(draft.tags)
+        submitted_note, submitted_tags = draft.note, list(draft.tags)
 
         def operation() -> None:
             if field == "note":
@@ -126,9 +125,9 @@ class AssetDetailsPresenter:
                 self._view.show_error(str(error))
             elif self._drafts.get(asset_id) is draft:
                 if field == "note":
-                    draft.saved_note = submitted_text
+                    draft.saved_note = submitted_note
                 else:
-                    draft.saved_tags = submitted_text
+                    draft.saved_tags = submitted_tags
                 self._view.saved(asset_id, field, note if field == "note" else tags)
             self._state()
 

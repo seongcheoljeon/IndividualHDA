@@ -35,7 +35,9 @@ class WorkspaceBackend(AssetCatalog, Protocol):
 
 class WorkspaceView(Protocol):
     def show_page(self, page: Page) -> None: ...
-    def show_asset(self, asset: dict[str, Any], note: str, tags: str) -> None: ...
+    def show_asset(
+        self, asset: dict[str, Any], note: str, tags: Sequence[str]
+    ) -> None: ...
     def show_error(self, message: str) -> None: ...
     def show_failure(self, error: Exception) -> None: ...
     def asset_committed(self, result: dict[str, Any]) -> None: ...
@@ -72,7 +74,7 @@ class WorkspacePresenter:
             pending,
         )
         self._assets: dict[int, dict[str, Any]] = {}
-        self._drafts: dict[int, tuple[str, str]] = {}
+        self._drafts: dict[int, tuple[str, list[str]]] = {}
         self._selected: int | None = None
         self._selection_generation = 0
         self._busy = False
@@ -132,10 +134,8 @@ class WorkspacePresenter:
         )
 
     @staticmethod
-    def _text(asset: dict[str, Any]) -> tuple[str, str]:
-        return asset.get("note", ""), " ".join(
-            f"#{tag}" for tag in asset.get("tags", [])
-        )
+    def _text(asset: dict[str, Any]) -> tuple[str, list[str]]:
+        return asset.get("note", ""), list(asset.get("tags", []))
 
     def select(self, asset_id: int | None) -> None:
         if asset_id is not None and asset_id not in self._assets:
@@ -147,9 +147,9 @@ class WorkspacePresenter:
             return
         self._view.show_asset(self._assets[asset_id], *self._drafts[asset_id])
 
-    def edit(self, note: str, tags: str) -> None:
+    def edit(self, note: str, tags: Sequence[str]) -> None:
         if self._selected is not None:
-            self._drafts[self._selected] = (note, tags)
+            self._drafts[self._selected] = (note, list(tags))
 
     def _selection(self) -> dict[str, Any]:
         if self._selected is None:

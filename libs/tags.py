@@ -8,6 +8,11 @@ from collections.abc import Iterable
 _TAG_SEPARATORS = re.compile(r"[#,\r\n]+")
 
 
+def tag_text(tags: Iterable[str]) -> str:
+    """The editor form of a tag list: ``#a #b`` in the list's own order."""
+    return " ".join(f"#{tag}" for tag in tags)
+
+
 def normalize_tags(tags: str | Iterable[str] | None) -> list[str]:
     """Split on #, comma or newline; strip; drop empties and case-insensitive repeats.
 

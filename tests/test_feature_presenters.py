@@ -22,15 +22,15 @@ from widgets.web_view.presenter import WebPresenter
 
 class View:
     def __init__(self) -> None:
-        self.draft = ("", "")
+        self.draft: tuple[str, Sequence[str]] = ("", [])
         self.state = (False, False, False)
         self.errors: list[str] = []
         self.saves: list[Any] = []
         self.content: Any = None
         self.zoom = 0.0
 
-    def show_draft(self, note: str, tags: str) -> None:
-        self.draft = note, tags
+    def show_draft(self, note: str, tags: Sequence[str]) -> None:
+        self.draft = note, list(tags)
 
     def show_state(self, note_dirty: bool, tag_dirty: bool, saving: bool) -> None:
         self.state = note_dirty, tag_dirty, saving
@@ -103,20 +103,20 @@ def test_note_and_tag_dirty_are_reported_separately() -> None:
     presenter.select(1, "note", ["tag"])
     assert view.state == (False, False, False)
 
-    presenter.edit("edited note", "#tag")
+    presenter.edit("edited note", ["tag"])
     assert view.state == (True, False, False)
     presenter.save("note")
     executor.complete()
     assert view.state == (False, False, False)
 
-    presenter.edit("edited note", "#tag #extra")
+    presenter.edit("edited note", ["tag", "extra"])
     assert view.state == (False, True, False)
     presenter.save("tag")
     executor.complete()
     assert view.state == (False, False, False)
 
     # Both at once -- the AI suggestion path.
-    presenter.edit("again", "#tag #extra #more")
+    presenter.edit("again", ["tag", "extra", "more"])
     assert view.state == (True, True, False)
 
 
@@ -126,18 +126,18 @@ def test_save_keeps_target_and_newer_edits(field: Any) -> None:
     presenter = AssetDetailsPresenter(view, executor)
     presenter.change_gateway(repository)
     presenter.select(1, "original", ["old"])
-    presenter.edit("first edit", "#Water #water #한글")
+    presenter.edit("first edit", ["Water", "water", "한글"])
     presenter.save(field)
-    presenter.edit("second edit", "#newer")
+    presenter.edit("second edit", ["newer"])
     presenter.select(2, "other", [])
     executor.complete()
     assert repository.writes == [
         (1, "first edit" if field == "note" else ["Water", "한글"])
     ]
-    assert view.draft == ("other", "")
+    assert view.draft == ("other", [])
     assert view.saves[0][0] == 1
     presenter.select(1, "first edit", ["Water", "한글"])
-    assert view.draft == ("second edit", "#newer")
+    assert view.draft == ("second edit", ["newer"])
     assert view.state == (True, True, False)
 
 
@@ -146,7 +146,7 @@ def test_failed_save_keeps_draft_and_can_retry() -> None:
     presenter = AssetDetailsPresenter(view, executor)
     presenter.change_gateway(repository)
     presenter.select(3, "old")
-    presenter.edit("unsaved", "")
+    presenter.edit("unsaved", [])
     presenter.save("note")
     executor.complete(RuntimeError("offline"))
     assert view.errors == ["offline"] and not view.saves
@@ -164,14 +164,14 @@ def test_library_switch_ignores_old_result_and_executor_busy_is_recoverable() ->
     presenter = AssetDetailsPresenter(view, executor)
     presenter.change_gateway(old)
     presenter.select(1)
-    presenter.edit("old library", "")
+    presenter.edit("old library", [])
     presenter.save("note")
     presenter.change_gateway(new)
     presenter.select(1, "new library")
     executor.complete()
     assert old.writes == [(1, "old library")] and not new.writes
-    assert view.draft == ("new library", "") and not view.saves
-    presenter.edit("new edit", "")
+    assert view.draft == ("new library", []) and not view.saves
+    presenter.edit("new edit", [])
     executor.accept = False
     presenter.save("note")
     assert view.state == (True, False, False) and view.errors
@@ -186,11 +186,11 @@ def test_deleted_asset_does_not_receive_late_save() -> None:
     presenter = AssetDetailsPresenter(view, executor)
     presenter.change_gateway(Metadata())
     presenter.select(1)
-    presenter.edit("value", "")
+    presenter.edit("value", [])
     presenter.save("note")
     presenter.forget(1)
     executor.complete()
-    assert not view.saves and view.draft == ("", "")
+    assert not view.saves and view.draft == ("", [])
 
 
 @pytest.mark.parametrize("command", ["register", "rename", "delete", "delete_history"])
@@ -383,10 +383,10 @@ def test_same_library_preference_change_preserves_draft() -> None:
     presenter = AssetDetailsPresenter(view, executor)
     presenter.change_gateway(Metadata())
     presenter.select(1, "saved")
-    presenter.edit("draft", "#tag")
+    presenter.edit("draft", ["tag"])
     presenter.change_gateway(Metadata(), preserve_drafts=True)
     presenter.select(1, "saved")
-    assert view.draft == ("draft", "#tag") and view.state == (True, True, False)
+    assert view.draft == ("draft", ["tag"]) and view.state == (True, True, False)
 
 
 def test_dialog_validation_controls_accepted_signal(

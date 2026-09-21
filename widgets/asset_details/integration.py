@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from PySide6 import QtCore, QtWidgets
 
-from libs.tags import normalize_tags
+from libs.tags import normalize_tags, tag_text
 from libs.task_controller import TaskController
 from widgets.asset_details.presenter import (
     AssetDetailsPresenter,
@@ -77,18 +77,18 @@ class AssetDetailsIntegration:
     def _edited(self) -> None:
         self.presenter.edit(
             self.bindings.note.toPlainText(),
-            self.bindings.tags.toPlainText(),
+            normalize_tags(self.bindings.tags.toPlainText()),
         )
 
-    def show_draft(self, note: str, tags: str) -> None:
+    def show_draft(self, note: str, tags: Sequence[str]) -> None:
         bindings = self.bindings
         with (
             QtCore.QSignalBlocker(bindings.note),
             QtCore.QSignalBlocker(bindings.tags),
         ):
             bindings.note.setPlainText(note)
-            bindings.tags.setPlainText(tags)
-        bindings.show_tags(normalize_tags(tags))
+            bindings.tags.setPlainText(tag_text(tags))
+        bindings.show_tags(list(tags))
 
     def show_state(self, note_dirty: bool, tag_dirty: bool, saving: bool) -> None:
         if saving:

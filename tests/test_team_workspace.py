@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -31,8 +31,8 @@ class View:
     def show_busy(self, busy: bool) -> None:
         self.busy = busy
 
-    def show_asset(self, asset: Any, note: str, tags: str) -> None:
-        self.asset = asset, note, tags
+    def show_asset(self, asset: Any, note: str, tags: Sequence[str]) -> None:
+        self.asset = asset, note, list(tags)
 
     def show_page(self, page: Any) -> None:
         self.page = page
@@ -113,15 +113,15 @@ def workspace(tmp_path: Path) -> tuple[Any, ...]:
 
 def test_async_save_captures_selection_and_keeps_newer_draft(tmp_path: Path) -> None:
     presenter, view, backend, executor, pending = workspace(tmp_path)
-    presenter.edit("first", "#water")
+    presenter.edit("first", ["water"])
     presenter.save_metadata()
-    presenter.edit("newer", "#new")
+    presenter.edit("newer", ["new"])
     presenter.select(2)
     executor.complete()
     assert backend.items[1]["note"] == "first" and backend.items[2]["note"] == "old"
     assert view.asset[0]["id"] == 2
     presenter.select(1)
-    assert view.asset[1:] == ("newer", "#new")
+    assert view.asset[1:] == ("newer", ["new"])
     assert not pending.path.exists() and not view.busy
 
 
@@ -130,7 +130,7 @@ def test_lost_response_can_be_retried_after_restart_without_duplicate_write(
 ) -> None:
     presenter, view, backend, executor, pending = workspace(tmp_path)
     backend.lose_response = True
-    presenter.edit("saved once", "")
+    presenter.edit("saved once", [])
     presenter.save_metadata()
     executor.complete()
     command = pending.load()
@@ -148,7 +148,7 @@ def test_conflict_keeps_draft_and_refresh_does_not_silently_rebase_it(
     tmp_path: Path,
 ) -> None:
     presenter, view, backend, executor, pending = workspace(tmp_path)
-    presenter.edit("my draft", "#water")
+    presenter.edit("my draft", ["water"])
     backend.items[1].update(note="other user's note", revision=2)
     presenter.refresh()
     executor.complete()
@@ -168,7 +168,7 @@ def test_conflict_keeps_draft_and_refresh_does_not_silently_rebase_it(
 
 def test_closing_does_not_deliver_results_to_dead_view(tmp_path: Path) -> None:
     presenter, view, backend, executor, pending = workspace(tmp_path)
-    presenter.edit("commit on shutdown", "")
+    presenter.edit("commit on shutdown", [])
     presenter.save_metadata()
     before = copy.deepcopy(view.asset)
     presenter.close()
@@ -243,7 +243,7 @@ def test_unsaved_fields_is_per_field_and_per_selected_asset(tmp_path: Path) -> N
     note, tags = view.asset[1:]
     presenter.edit("edited note", tags)
     assert presenter.unsaved_fields == (True, False)
-    presenter.edit(note, "#brand #new")
+    presenter.edit(note, ["brand", "new"])
     assert presenter.unsaved_fields == (False, True)
 
     # Selecting a clean asset clears the indicators, but the library is still

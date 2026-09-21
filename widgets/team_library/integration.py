@@ -17,7 +17,7 @@ from libs.domain import ItemSelection
 from libs.history_activity import activity_rows, merge_history_rows
 from libs.host import IS_HOUDINI
 from libs.paths import Paths
-from libs.tags import normalize_tags
+from libs.tags import normalize_tags, tag_text
 from libs.task_controller import TaskController
 from libs.team.client import HttpCatalog
 from libs.team.contracts import Conflict, FileKind, Page, parse_blob
@@ -437,17 +437,17 @@ class MainLibraryIntegration(QtCore.QObject):
                 self.bindings.label__hist_cnt.setText("0")
                 self.bindings.label__hist_tags.clear()
             if asset_id is None:
-                self.show_asset({}, "", "")
+                self.show_asset({}, "", [])
 
-    def show_asset(self, asset: dict[str, Any], note: str, tags: str) -> None:
+    def show_asset(self, asset: dict[str, Any], note: str, tags: Sequence[str]) -> None:
         bindings = self.bindings
         with (
             QtCore.QSignalBlocker(bindings.textEdit__note),
             QtCore.QSignalBlocker(bindings.textEdit__tag),
         ):
             bindings.textEdit__note.setPlainText(note)
-            bindings.textEdit__tag.setPlainText(tags)
-        bindings.notes.set_label_tags(normalize_tags(tags))
+            bindings.textEdit__tag.setPlainText(tag_text(tags))
+        bindings.notes.set_label_tags(list(tags))
         self._show_tag_dirty()
         if self._review_asset_id is not None and self._review_asset_id == asset.get(
             "id"
@@ -469,7 +469,7 @@ class MainLibraryIntegration(QtCore.QObject):
         if self.presenter is not None:
             self.presenter.edit(
                 self.bindings.textEdit__note.toPlainText(),
-                self.bindings.textEdit__tag.toPlainText(),
+                normalize_tags(self.bindings.textEdit__tag.toPlainText()),
             )
             note_dirty, _ = self._show_tag_dirty()
             if self._conflict:
@@ -607,7 +607,9 @@ class MainLibraryIntegration(QtCore.QObject):
             self._review_asset_id = self.bindings.selection.state.asset.id
             self.presenter.reload_selected()
 
-    def _show_comparison(self, asset: dict[str, Any], note: str, tags: str) -> None:
+    def _show_comparison(
+        self, asset: dict[str, Any], note: str, tags: Sequence[str]
+    ) -> None:
         dialog = QtWidgets.QDialog(self.bindings.parent)
         dialog.setWindowTitle("Review changes — " + asset["name"])
         dialog.resize(680, 360)
@@ -619,7 +621,7 @@ class MainLibraryIntegration(QtCore.QObject):
         )
         columns = QtWidgets.QHBoxLayout()
         for title, text in (
-            ("Your edits", note + "\n\nTags: " + tags),
+            ("Your edits", note + "\n\nTags: " + " ".join(tags)),
             (
                 "Latest saved",
                 asset.get("note", "") + "\n\nTags: " + " ".join(asset.get("tags", [])),
