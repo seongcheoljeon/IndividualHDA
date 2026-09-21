@@ -66,6 +66,9 @@
   change description, validated as you type (name rules, version format,
   duplicate name), and Register only enables when the request is valid.
   Dropping new nodes still registers them straight away.
+- **Theme colours follow the host palette.** The hover and checked colours of
+  the Houdini theme derive from the palette highlight instead of a hard-coded
+  orange, so they match Houdini's own accent and any other palette.
 
 ## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
 

@@ -1,5 +1,15 @@
 # Refactoring continuation
 
+## Open: SVG icons (needs assets)
+
+The UI modernization (Unreleased in CHANGELOG) stopped short of the icon set:
+the 96 PNG icons stay until someone adds the Apache-2.0 Material SVGs and their
+license file and confirms Houdini's bundled Qt lists `svg` in
+`QImageReader.supportedImageFormats()`. The procedure is in
+`docs/UI_EDITING.md` ("아이콘을 SVG로 바꾸려면"). The hover/checked colours of
+the Houdini theme already follow the host palette (`ui_settings.py`), so the
+theme side needs no further change for that step.
+
 ## Completed in the registration slice
 
 - Personal new-registration and add-version capture share `RegistrationService`.

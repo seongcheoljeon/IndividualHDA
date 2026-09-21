@@ -56,34 +56,43 @@ class UISettings:
             self.__window.actionDark_blue.setChecked(False)
             if host.IS_HOUDINI:
                 self.__window.setProperty("houdiniStyle", True)
-                add_style = """
-QToolButton:pressed {
+                # Hover/checked colours follow the host palette (Houdini's
+                # highlight is orange, so the look is unchanged there) instead
+                # of a hard-coded orange that clashed with other palettes.
+                highlight = self.__window.palette().highlight().color()
+                hover = (
+                    f"rgba({highlight.red()}, {highlight.green()},"
+                    f" {highlight.blue()}, 85)"
+                )
+                border = highlight.darker(125).name()
+                add_style = f"""
+QToolButton:pressed {{
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
         stop: 0 #dadbde, stop: 1 #f6f7fa);
-}
-QToolButton:checked {
-    background-color: rgb(209, 118, 0, 85);
+}}
+QToolButton:checked {{
+    background-color: {hover};
     border-style: outset;
-}
-QTreeView::item:hover {
-    background-color: rgb(209, 118, 0, 85);
-    border: 1px solid #ad5a00;
-}
-QListView::item:hover {
-    background-color: rgb(209, 118, 0, 85);
-    border: 1px solid #ad5a00;
-}
-QTableView::item:hover {
-    background-color: rgb(209, 118, 0, 85);
-    border: 1px solid #ad5a00;
-}
-QToolBar {
+}}
+QTreeView::item:hover {{
+    background-color: {hover};
+    border: 1px solid {border};
+}}
+QListView::item:hover {{
+    background-color: {hover};
+    border: 1px solid {border};
+}}
+QTableView::item:hover {{
+    background-color: {hover};
+    border: 1px solid {border};
+}}
+QToolBar {{
     spacing: 3px;
     border-style: none;
-}
-QMenuBar {
+}}
+QMenuBar {{
     border-style: none;
-}
+}}
                 """
                 self.__window.setStyleSheet(
                     HoudiniAPI.host_stylesheet() + "\n" + add_style

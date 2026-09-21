@@ -105,6 +105,26 @@ python -m mypy
 아이콘용 `.qrc`와 `*_rc.py`는 계속 사용합니다. UI 레이아웃 파일과 별개인 Qt 리소스이며,
 이미지 리소스 변경이 필요할 때만 기존 리소스 컴파일 방식을 사용합니다.
 
+### 아이콘을 SVG로 바꾸려면 (준비 중)
+
+지금 아이콘은 PNG 96개(대부분 Material Design `ic_*_white`)라 HiDPI에서 흐릿합니다.
+전환 절차는 다음과 같고, 1·2번은 저장소 밖에서 사람이 해야 합니다.
+
+1. **에셋과 라이선스**: `google/material-design-icons`에서 `libs/ui_icons.py`의
+   멤버에 대응하는 `src/<category>/<name>/materialicons/24px.svg`를
+   `icons/svg/<name>.svg`로 복사하고(`ic_archive_white` → `archive` 식으로 이름 대응),
+   `icons/svg/LICENSE-Apache-2.0.txt`와 NOTICE 한 줄을 추가합니다. 브랜드·사진
+   PNG(`houdini_logo*`, `apple`, `no_img_available`, `viewport_logo_trans`)는 PNG로 둡니다.
+2. **Houdini에서 SVG 플러그인 확인**: Houdini Python 셸에서
+   `from PySide6.QtGui import QImageReader; b"svg" in QImageReader.supportedImageFormats()`
+   가 참이어야 합니다(개발용 `.venv`의 PySide6 6.11에서는 확인됨).
+3. **코드**: `libs/ui_icons.py` 값만 `:/main/icons/svg/<name>.svg`로 바꾸고(멤버 이름은
+   유지 → 호출부 불변), `icons.qrc`에 파일을 등록한 뒤 `pyside6-rcc --no-zstd icons.qrc
+   -o icons_rc.py`로 재생성합니다(zstd 리소스는 macOS/Windows 휠에서 읽히지 않음).
+   흑백 SVG 한 세트를 다크/라이트 양쪽에 쓰려면 `QIcon(path).pixmap(size)`에
+   `QPainter.CompositionMode_SourceIn`으로 색을 입히는 헬퍼를 두면 됩니다.
+   `tests/test_layouts.py::test_every_referenced_icon_resolves`가 누락을 잡습니다.
+
 팀 라이브러리는 기존 메인 목록과 노트·태그 위젯에 연결합니다. 화면 통합은
 `widgets/team_library/integration.py`, 우클릭 동작은 `actions.py`, 저장·초안·충돌은
 `presenter.py`에서 수정합니다. 별도 Workspace 레이아웃은 제거되었습니다.
