@@ -218,6 +218,12 @@ def test_panel_with_saved_library(
     wait_until(app, lambda: panel.label__metadata_status.text() == "Saved · just now")
     assert panel.session.repository.list_assets()[0].hda_tags == ("Water", "한글")
     assert not panel.label__tag_status.text()
+    # Double-click imports the selected rows; the Houdini step is behind the port.
+    imported: list[list[bytes]] = []
+    monkeypatch.setattr(panel.houdini, "import_models", imported.append)
+    panel.selection._slot_hda_double_clicked(panel.models.table_proxy_model.index(0, 0))
+    assert len(imported) == 1 and len(imported[0]) == 1
+    assert decode_payload(imported[0][0])["hda_name"] == "Water"
     # Markdown preview renders the plain-text note; the stored value is untouched.
     panel.textEdit__note.setPlainText("# Title\n\nSome **bold** text")
     panel.toolButton__note_preview.setChecked(True)

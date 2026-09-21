@@ -6,12 +6,12 @@ from __future__ import annotations
 # modify date       :
 # description       :
 from re import compile as re_compile
-from sys import stdout
 from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from libs import keys
+from view.asset_drag import AssetDragMixin
 
 
 class Object(QtCore.QObject):
@@ -20,7 +20,7 @@ class Object(QtCore.QObject):
 
 
 # list view overwrite class
-class ListView(QtWidgets.QListView):
+class ListView(AssetDragMixin, QtWidgets.QListView):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setAcceptDrops(True)
@@ -38,7 +38,7 @@ class ListView(QtWidgets.QListView):
         self.setSelectionMode(
             QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
         )
-        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.InternalMove)
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.DragDrop)
         self.setWrapping(True)
         #
         self.__signal = Object()
@@ -77,27 +77,3 @@ class ListView(QtWidgets.QListView):
             self.signal.signal_object.emit([event.mimeData().data(keys.Type.mime_type)])
         else:
             super().dropEvent(event)
-
-    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
-        if not (event.buttons() & QtCore.Qt.MouseButton.MiddleButton):
-            return
-        indexes = self.selectedIndexes()
-        if not len(indexes):
-            return
-        drag = QtGui.QDrag(self)
-        model_data_lst = []
-        for index in indexes:
-            if not index.isValid():
-                continue
-            model = index.model()
-            mime_data = model.mimeData([index])
-            model_data = mime_data.data(keys.Type.mime_type).data()
-            drag.setMimeData(mime_data)
-            model_data_lst.append(model_data)
-            pixmap = index.data(QtCore.Qt.ItemDataRole.DecorationRole)
-            drag.setHotSpot(QtCore.QPoint(pixmap.width() // 3, pixmap.height() // 3))
-            drag.setPixmap(pixmap)
-        drop_action = drag.exec(QtCore.Qt.DropAction.CopyAction)
-        self.signal.mouse_signal_object.emit([drop_action, model_data_lst])
-        stdout.flush()
-        super().mouseMoveEvent(event)

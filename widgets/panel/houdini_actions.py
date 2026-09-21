@@ -95,6 +95,30 @@ class PanelHoudiniActions:
             )
             self.bindings.presentation.dragdrop_overlay_close()
             return
+        self._import_into(model_data_lst, network_editor)
+
+    def import_models(self, model_data_lst: list[bytes]) -> None:
+        """Enter / double-click import: the target is the current Network Editor."""
+        if not self.bindings.services.host_actions_enabled:
+            return
+        if self.bindings.library().import_selected():
+            return
+        if not host.IS_HOUDINI:
+            log_handler.LogHandler.log_msg(
+                method=logging.warning, msg="importing needs a running Houdini"
+            )
+            return
+        network_editor = houdini_api.HoudiniAPI.network_editor()
+        if network_editor is None:
+            log_handler.LogHandler.log_msg(
+                method=logging.error, msg="Open a Network Editor first"
+            )
+            return
+        self._import_into(list(model_data_lst), network_editor)
+
+    def _import_into(
+        self, model_data_lst: list[Any], network_editor: hou.NetworkEditor
+    ) -> None:
         total_node_cnt = len(model_data_lst)
         if not total_node_cnt:
             log_handler.LogHandler.log_msg(

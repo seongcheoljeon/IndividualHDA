@@ -543,6 +543,7 @@ class PanelComposition:
             ui=window,
             video_player=window._video_player,
             views=window.views,
+            houdini=window.houdini,
         )
         window.tools.bindings = PanelLibraryToolsBindings(
             imported=lambda: window._archives.imported,

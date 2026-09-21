@@ -60,6 +60,7 @@ class LibraryPort(Protocol):
     def history_menu(self, point: QtCore.QPoint) -> bool: ...
     def attach(self, kind: FileKind) -> bool: ...
     def play_video(self) -> bool: ...
+    def import_selected(self) -> bool: ...
 
 
 class PersonalLibrary:
@@ -133,6 +134,9 @@ class PersonalLibrary:
         return False
 
     def play_video(self) -> bool:
+        return False
+
+    def import_selected(self) -> bool:
         return False
 
 
@@ -211,4 +215,8 @@ class TeamLibrary:
 
     def play_video(self) -> bool:
         self._team.actions.play_video()
+        return True
+
+    def import_selected(self) -> bool:
+        self._team.download()
         return True

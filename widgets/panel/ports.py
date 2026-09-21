@@ -254,6 +254,7 @@ class CallbacksPort(Protocol):
 
 
 class HoudiniActionsPort(Protocol):
+    def import_models(self, model_data_lst: list[bytes]) -> None: ...
     def hda_info_to_node_comment(
         self,
         node: hou.Node | None = None,

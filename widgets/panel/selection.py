@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from widgets.panel.library_port import LibraryPort
     from widgets.panel.ports import (
         AssetModelPort,
+        HoudiniActionsPort,
         LibraryQueryPort,
         NotesPort,
         PresentationPort,
@@ -57,6 +58,7 @@ class PanelSelectionBindings:
     ui: MainWindowLayout
     video_player: VideoPlayer | UnavailableVideoPlayer
     views: PanelViews
+    houdini: HoudiniActionsPort
 
 
 class PanelSelection:
@@ -546,12 +548,33 @@ class PanelSelection:
 
     @QtCore.Slot(QtCore.QModelIndex)
     def _slot_hda_double_clicked(self, *args: Any) -> None:
-        if self.bindings.library().play_video():
-            return
-        index = args[0]
+        index = args[0] if args else None
         if index is None or not index.isValid():
             return
-        # self.selected_ihda_item(index=index)
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        if modifiers & QtCore.Qt.KeyboardModifier.ControlModifier:
+            self.play_current_video()
+        else:
+            self.import_current()
+
+    def _current_asset_view(self) -> Any:
+        if self.bindings.presentation.is_ihda_history_view:
+            return self.bindings.views.history
+        if self.bindings.presentation.is_icon_mode:
+            return self.bindings.views.assets_list
+        return self.bindings.views.assets_table
+
+    def import_current(self) -> None:
+        """Import the selected rows into the current Network Editor (Enter, double-click)."""
+        from view.asset_drag import payloads
+
+        self.bindings.houdini.import_models(
+            payloads(self._current_asset_view().drag_indexes())
+        )
+
+    def play_current_video(self) -> None:
+        if self.bindings.library().play_video():
+            return
         if self.bindings.presentation.is_ihda_history_view:
             video_dirpath = self.state.history.require_data().video_dirpath
             ihda_ver = self.state.history.require_data().version

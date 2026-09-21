@@ -15,6 +15,11 @@
 - **Notes preview as Markdown.** A toggle next to the note swaps the editor for
   a rendered view (headings, emphasis, lists, links). Notes are still stored as
   plain text, so nothing changes for existing notes or the note history.
+- **Left-drag and double-click import.** Assets drag out of the list, table and
+  history views with the left button as well as the middle one, and a
+  double-click imports the selection into the current Network Editor
+  (Ctrl+double-click plays the preview video, which the plain double-click
+  used to do). The three views share one drag implementation.
 
 ## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
 
