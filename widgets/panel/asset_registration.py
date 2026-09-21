@@ -9,7 +9,6 @@ import logging
 import pathlib
 from collections.abc import Callable
 from datetime import datetime
-from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore, QtWidgets
@@ -262,56 +261,42 @@ But it didn't stop, so please wait a little longer.
                 method=logging.warning,
                 msg=f"{node_name} in the {node_cate} category exists...",
             )
-            # 업데이트 할 것인지 물어 본 다음 업데이트 진행
-            msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation.get_default_font())
-            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
-            msgbox.setWindowTitle("Update iHDA Node")
-            msgbox.setText(
-                f"""
-<font color=red size=5>{node_cate}</font> the same name exists in the category<br>
-<font color=red size=5>{node_name}</font> do you want to update iHDA node?"""
-            )
-            msgbox.setStandardButtons(
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No
-            )
-            checkBox__version_description = QtWidgets.QCheckBox(
-                "Add a change description", msgbox
-            )
-            msgbox.setCheckBox(checkBox__version_description)
-            reply = msgbox.exec()
-            description = ""
-            if (
-                reply == QtWidgets.QMessageBox.StandardButton.Yes
-                and checkBox__version_description.isChecked()
-            ):
-                description, accepted = QtWidgets.QInputDialog.getMultiLineText(
-                    self.bindings.parent, "Version description", "What changed?"
-                )
-                if not accepted:
-                    return False
-            if reply == QtWidgets.QMessageBox.StandardButton.No:
-                log_handler.LogHandler.log_msg(
-                    method=logging.info, msg="update has been canceled"
-                )
-                return False
             identity = self.bindings.session.require_repository().asset_identity(
                 self.bindings.session.user, node_cate, node_name
             )
             if identity is None:
                 return False
             hda_key_id = identity.asset_id
-            hda_node_type = identity.node_type
-            current_version = identity.version
             # 업데이트하려는 노드가 저장되어있는 노드 타입과 같은지 확인
-            if hda_node_type != houdini_api.HoudiniAPI.node_type_name(node):
-                log_handler.LogHandler.log_msg(
-                    method=logging.error,
-                    msg="node you want to update is different from the node type stored in DB",
+            if identity.node_type != houdini_api.HoudiniAPI.node_type_name(node):
+                self.bindings.presentation.notify(
+                    f'"{node_name}" is a different node type from the stored asset;'
+                    " rename it to register it separately.",
+                    level="error",
                 )
                 return False
-            version = self._get_new_up_version(version=current_version)
+            from libs.registration_request import RegistrationRequest, bump_version
+            from widgets.registration_dialog import RegistrationDialog
+
+            dialog = RegistrationDialog(
+                self.bindings.parent,
+                title="Update iHDA Node",
+                request=RegistrationRequest(
+                    node_name, node_cate, bump_version(identity.version or "")
+                ),
+                categories=[node_cate],
+                lock_identity=True,
+            )
+            dialog.setFont(self.bindings.presentation.get_default_font())
+            accepted = dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted
+            request = dialog.request()
+            dialog.deleteLater()
+            if not accepted:
+                log_handler.LogHandler.log_msg(
+                    method=logging.info, msg="update has been canceled"
+                )
+                return False
+            version, description = request.version, request.description
             node_info_dict = self._node_info_data(
                 key_lst=item_key_lst, node=node, version=version
             )
@@ -363,12 +348,6 @@ But it didn't stop, so please wait a little longer.
         if not len(node_info_dict):
             return None
         return node_info_dict
-
-    @staticmethod
-    def _get_new_up_version(version: str | None = None) -> str:
-        if version is None:
-            raise ValueError("A version is required")
-        return str(Decimal(version) + Decimal("0.1"))
 
     def _registration_payload(self, info_data: dict[str, Any]) -> RegistrationPayload:
         """Gather everything HOM knows on the GUI thread; the repository writes it."""

@@ -181,36 +181,53 @@ class MainAssetActions:
         )
         if not path:
             return
-        name = self.bindings.selection.state.asset.name or Path(path).stem
-        category = self.bindings.selection.state.asset.cate or "sop"
-        if not new_version:
-            name, accepted = QtWidgets.QInputDialog.getText(
-                self.bindings.parent, "Register asset", "Name", text=Path(path).stem
+        from libs.registration_request import RegistrationRequest, bump_version
+        from widgets.registration_dialog import RegistrationDialog
+
+        asset = self.bindings.selection.state.asset
+        rows = list(self.bindings.models.assets.rows)
+        categories = sorted({row.hda_cate for row in rows}) or ["sop"]
+        if new_version:
+            current = asset.data.hda_version if asset.data is not None else ""
+            request = RegistrationRequest(
+                asset.name or Path(path).stem,
+                asset.cate or "sop",
+                bump_version(current) if current else "1.0",
             )
-            if not accepted:
-                return
-            category, accepted = QtWidgets.QInputDialog.getText(
-                self.bindings.parent, "Register asset", "Category", text="sop"
+        else:
+            request = RegistrationRequest(Path(path).stem, "sop", "1.0")
+
+        def taken(name: str, category: str) -> str | None:
+            if new_version:
+                return None
+            exists = any(
+                row.hda_name.casefold() == name.casefold() and row.hda_cate == category
+                for row in rows
             )
-            if not accepted:
-                return
-        version, accepted = QtWidgets.QInputDialog.getText(
-            self.bindings.parent, "Asset version", "Version", text="1.0"
+            return "That name already exists in this category." if exists else None
+
+        dialog = RegistrationDialog(
+            self.bindings.parent,
+            title="New version" if new_version else "Register asset",
+            request=request,
+            categories=categories,
+            taken=taken,
+            lock_identity=new_version,
+            file=Path(path),
         )
+        accepted = dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted
+        result = dialog.request()
+        dialog.deleteLater()
         if accepted:
-            description, accepted = QtWidgets.QInputDialog.getMultiLineText(
-                self.bindings.parent, "Asset version", "Change description (optional)"
+            self.library.presenter.register(
+                Path(path),
+                result.name,
+                result.category,
+                result.version,
+                {},
+                new_version=new_version,
+                description=result.description,
             )
-            if accepted:
-                self.library.presenter.register(
-                    Path(path),
-                    name,
-                    category,
-                    version,
-                    {},
-                    new_version=new_version,
-                    description=description,
-                )
 
     def attach(self, kind: FileKind) -> None:
         if self.library.presenter is None or not self.library.writable:

@@ -60,6 +60,12 @@
   else's, Review changes shows your draft and the saved note side by side with
   changed lines highlighted and the tag difference listed, and offers **Keep
   mine (save over)** and **Take theirs** instead of only Close.
+- **One registration form.** Registering a file in a team library asked four
+  questions in a row; updating a dropped node asked a Yes/No with a checkbox and
+  then a text box. Both now open one dialog with name, category, version and
+  change description, validated as you type (name rules, version format,
+  duplicate name), and Register only enables when the request is valid.
+  Dropping new nodes still registers them straight away.
 
 ## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
 
