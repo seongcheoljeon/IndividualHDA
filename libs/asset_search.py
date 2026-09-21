@@ -6,6 +6,7 @@ import threading
 from collections.abc import Callable
 
 from PySide6 import QtCore
+from shiboken6 import isValid
 
 from libs.background_job import BackgroundJob
 
@@ -47,9 +48,10 @@ class AssetSearch(QtCore.QObject):
 
         job = BackgroundJob(run, self)
         job.result.connect(lambda value, error: self._deliver(generation, value, error))
-        # Qt deletes the thread object once it has finished; we only drop our ref.
-        job.finished.connect(job.deleteLater)
+        # Drop our reference before Qt deletes the thread object; a wrapper whose
+        # C++ side is gone raises on any access, so the list must not hold it.
         job.finished.connect(lambda: self._forget(job))
+        job.finished.connect(job.deleteLater)
         self._jobs.append(job)
         job.start()
 
@@ -60,12 +62,13 @@ class AssetSearch(QtCore.QObject):
 
     @property
     def busy(self) -> bool:
-        return any(job.isRunning() for job in self._jobs)
+        return any(isValid(job) and job.isRunning() for job in self._jobs)
 
     def drain(self) -> None:
         self.cancel()
         for job in list(self._jobs):
-            job.wait()
+            if isValid(job):
+                job.wait()
 
     def _deliver(self, generation: int, value: object, error: object) -> None:
         if generation != self._generation:
@@ -76,5 +79,5 @@ class AssetSearch(QtCore.QObject):
             self.results.emit(value)
 
     def _forget(self, job: BackgroundJob) -> None:
-        if job in self._jobs:
-            self._jobs.remove(job)
+        # Identity, not equality: comparing a deleted wrapper raises.
+        self._jobs = [kept for kept in self._jobs if kept is not job]
