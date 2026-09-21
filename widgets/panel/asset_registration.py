@@ -88,20 +88,11 @@ class PanelAssetRegistration:
             return
         total_node_cnt = len(node_lst)
         if total_node_cnt > self.bindings.services.policy.maximum_node_batch:
-            msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation.get_default_font())
-            msgbox.setWindowTitle("iHDA Node Registration")
-            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
-            msgbox.setText("Too many nodes to register")
-            msgbox.setDetailedText(
-                f"""
-Please register no more than {self.bindings.services.policy.maximum_node_batch} items.
-Total Nodes: {total_node_cnt}
-            """
+            self.bindings.presentation.notify(
+                f"Too many nodes to register: {total_node_cnt} dropped, the limit is"
+                f" {self.bindings.services.policy.maximum_node_batch}.",
+                level="error",
             )
-            # msgbox.resize(msgbox.sizeHint())
-            msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-            _ = msgbox.exec()
             return
         if total_node_cnt > self.bindings.services.policy.warn_node_batch:
             msgbox = QtWidgets.QMessageBox(self.bindings.parent)
@@ -150,6 +141,7 @@ But it didn't stop, so please wait a little longer.
 
     def _register_dropped_nodes(self, node_lst: Any, total_node_cnt: int) -> None:
         is_declare = False
+        skipped = 0
         for node_cnt, node_dat in enumerate(node_lst):
             node_path = (
                 node_dat
@@ -166,6 +158,7 @@ But it didn't stop, so please wait a little longer.
                     method=logging.warning,
                     msg=f'[{node_cnt + 1}/{total_node_cnt}] "{node_name}" node cannot be registered. check the error message',
                 )
+                skipped += 1
                 continue
             # 유효한 후디니 노드 이름인지
             if (
@@ -195,6 +188,7 @@ But it didn't stop, so please wait a little longer.
                             method=logging.error,
                             msg=f'[{node_cnt + 1}/{total_node_cnt}] "{node_name}" node cannot be registered. check the error message',
                         )
+                        skipped += 1
                         continue
                     # 현재 후디니버전 18.0.429 에서 노드이름이 _(언더바)/숫자로 처음 시작하게 되면 에러 발생한다. 그래서 아래 코드 추가함.
                     if (node_name.startswith("_")) or (node_name[0].isdigit()):
@@ -203,6 +197,7 @@ But it didn't stop, so please wait a little longer.
                             msg=f'[{node_cnt + 1}/{total_node_cnt}] "{node_name}" _(underline) or numbers should not be in the first \
                             word of the node name. change the node name',
                         )
+                        skipped += 1
                         continue
             node_cate = houdini_api.HoudiniAPI.node_category_type_name(node) or ""
             try:
@@ -218,12 +213,18 @@ But it didn't stop, so please wait a little longer.
                     method=logging.error,
                     msg=f'[{node_cnt + 1}/{total_node_cnt}] "{node_name}" node DB input failed',
                 )
+                skipped += 1
                 continue
             self.bindings.models.add_category_item(category=node_cate)
             is_declare = True
             log_handler.LogHandler.log_msg(
                 method=logging.debug,
                 msg=f'[{node_cnt + 1}/{total_node_cnt}] node dropped "{node_path}" ({node_cate})',
+            )
+        if skipped:
+            self.bindings.presentation.notify(
+                f"Skipped {skipped} of {total_node_cnt} nodes; the log says why.",
+                level="warning",
             )
         if is_declare:
             self.bindings.selection.select_category(

@@ -20,7 +20,12 @@ if TYPE_CHECKING:
     from widgets.library_metadata.recovery import RegistrationRecoveryDialog
     from widgets.panel.layout import MainWindowLayout
     from widgets.panel.library_port import LibraryPort
-    from widgets.panel.ports import AssetModelPort, LibraryQueryPort, SelectionPort
+    from widgets.panel.ports import (
+        AssetModelPort,
+        LibraryQueryPort,
+        PresentationPort,
+        SelectionPort,
+    )
     from widgets.panel.scene_usage import SceneUsageIntegration
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState, PanelStatus, PanelViews
@@ -33,6 +38,7 @@ class PanelLibraryToolsBindings:
     models: AssetModelPort
     parent: QtWidgets.QWidget
     queries: LibraryQueryPort
+    presentation: PresentationPort
     reload_library: Callable[[], None]
     scene_usage: Callable[[], SceneUsageIntegration]
     selection: SelectionPort
@@ -167,10 +173,8 @@ class PanelLibraryTools:
         asset_id = self.bindings.selection.state.asset.id
         source = library.copy_source(asset_id) if asset_id is not None else None
         if source is None:
-            QtWidgets.QMessageBox.information(
-                self.bindings.parent,
-                "Copy to team",
-                "Select an asset in your personal library first.",
+            self.bindings.presentation.notify(
+                "Select an asset in your personal library first.", level="warning"
             )
             return
         dialog = CopyAssetDialog(
@@ -190,9 +194,7 @@ class PanelLibraryTools:
     def _open_selected_version_details(self) -> None:
         asset_id = self.bindings.selection.state.asset.id
         if asset_id is None:
-            QtWidgets.QMessageBox.information(
-                self.bindings.parent, "Version details", "Select an asset first."
-            )
+            self.bindings.presentation.notify("Select an asset first.", level="warning")
             return
         self._open_metadata_tools(asset_id)
 
@@ -232,10 +234,8 @@ class PanelLibraryTools:
             self.bindings.queries.hda_base_dirpath,
         )
         if database is None or assets is None or not database.is_file():
-            QtWidgets.QMessageBox.information(
-                self.bindings.parent,
-                "Library Tools",
-                "Configure a library in Preferences first.",
+            self.bindings.presentation.notify(
+                "Configure a library in Preferences first.", level="warning"
             )
             return
         if self.library_manager is None:
@@ -335,8 +335,8 @@ class PanelLibraryTools:
                     f"Imported {snapshot['version']}: {node.path()}"
                 )
         except Exception as error:
-            QtWidgets.QMessageBox.warning(
-                self.bindings.parent, "Import version", str(error)
+            self.bindings.presentation.notify(
+                f"Import version failed: {error}", level="error"
             )
 
     def capture_team_node(

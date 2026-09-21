@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from widgets.preference.preference import Preference
     from widgets.rename_ihda.rename_ihda import RenameIHDA
     from widgets.team_library.integration import MainLibraryIntegration
+    from widgets.toast import ToastStack
     from widgets.video_player import UnavailableVideoPlayer
     from widgets.video_player.video_player import VideoPlayer
 
@@ -78,6 +79,7 @@ class IndividualHDA(QtWidgets.QMainWindow, MainWindowLayout):
     _ai_actions: PanelAIActions
     _library_sync: PanelLibrarySync
     _loading: Overlay
+    _toasts: ToastStack
     _dragdrop_overlay: DragOverlay
     _preference: Preference
     _ihda_icons: IHDAIcons
@@ -230,6 +232,7 @@ class IndividualHDA(QtWidgets.QMainWindow, MainWindowLayout):
     def resizeEvent(self, event: QtGui.QResizeEvent) -> None:
         self._loading.resize(event.size())
         self._dragdrop_overlay.resize(event.size())
+        self._toasts.reposition(event.size())
         super().resizeEvent(event)
 
     def dragEnterEvent(self, event: QtGui.QDragEnterEvent) -> None:

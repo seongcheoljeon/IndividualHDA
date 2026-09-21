@@ -10,7 +10,7 @@ from __future__ import annotations
 import pathlib
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from PySide6 import QtCore, QtGui
 
@@ -163,6 +163,14 @@ class PresentationPort(Protocol):
     def is_show_thumbnail(self) -> bool: ...
     def loading_close(self) -> None: ...
     def loading_show(self) -> None: ...
+    def notify(
+        self,
+        message: str,
+        *,
+        action: str | None = None,
+        on_action: Callable[[], None] | None = None,
+        level: Literal["info", "warning", "error"] = "info",
+    ) -> None: ...
     def open_houdini_file(self, hip_filepath: pathlib.Path | None = None) -> None: ...
     def resizing_listview(self) -> None: ...
     def set_view_item_icon_size(self, val: Any) -> None: ...

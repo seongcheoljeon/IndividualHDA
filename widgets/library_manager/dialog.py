@@ -20,7 +20,7 @@ from libs.library_backups import (
     validate_backup,
 )
 from libs.library_explorer import history_versions, search_assets
-from libs.library_maintenance import Cancelled, apply_paths, inspect_library, plan_paths
+from libs.library_maintenance import apply_paths, inspect_library, plan_paths
 from libs.runtime_settings import RuntimeSettings
 from libs.task_controller import TaskController
 from libs.version_compare import compare_expanded, expand_asset
@@ -162,7 +162,6 @@ class LibraryManager(QtWidgets.QDialog):
             operation()
         except Exception as error:
             self.status.setText(str(error))
-            QtWidgets.QMessageBox.warning(self, "Library Manager", str(error))
 
     def _run(
         self,
@@ -187,8 +186,6 @@ class LibraryManager(QtWidgets.QDialog):
     def _result(self, value: Any, error: Exception | None) -> None:
         if error is not None:
             self.status.setText(str(error))
-            if not isinstance(error, Cancelled) and not self._destroying:
-                QtWidgets.QMessageBox.warning(self, "Library Manager", str(error))
         else:
             self.status.setText("Completed")
 

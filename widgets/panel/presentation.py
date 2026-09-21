@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import logging
 import pathlib
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -79,6 +80,7 @@ if TYPE_CHECKING:
     from widgets.panel.state import PanelSessionState, PanelStatus, PanelViews
     from widgets.preference.preference import Preference
     from widgets.rename_ihda.rename_ihda import RenameIHDA
+    from widgets.toast import ToastStack
     from widgets.video_player import UnavailableVideoPlayer
     from widgets.video_player.video_player import VideoPlayer
 
@@ -98,6 +100,7 @@ class PanelPresentationBindings:
     services: PanelServices
     session: PanelSessionState
     status: PanelStatus
+    toasts: ToastStack
     ui: MainWindowLayout
     ui_settings: UISettings
     video_info: MakeVideoInfo
@@ -233,6 +236,27 @@ class PanelPresentation:
         if host.IS_HOUDINI:
             self.bindings.callbacks.remove_event_loop_callback(self._loading_counter)
         self.bindings.loading.close()
+
+    def notify(
+        self,
+        message: str,
+        *,
+        action: str | None = None,
+        on_action: Callable[[], None] | None = None,
+        level: Literal["info", "warning", "error"] = "info",
+    ) -> None:
+        """Non-modal feedback: a toast (with an optional action), the status bar
+        and the log. Modal boxes stay for questions and irreversible steps."""
+        method = {
+            "info": logging.info,
+            "warning": logging.warning,
+            "error": logging.error,
+        }
+        log_handler.LogHandler.log_msg(method=method[level], msg=message)
+        self.bindings.toasts.push(
+            message, action=action, on_action=on_action, level=level
+        )
+        self.bindings.ui.statusbar.showMessage(message, 5000)
 
     def _loading_counter(self) -> None:
         self.bindings.loading.counter = 1

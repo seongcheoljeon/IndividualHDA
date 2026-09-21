@@ -644,6 +644,13 @@ class MainLibraryIntegration(QtCore.QObject):
         self._conflict = False
         self._conflict_asset_id = None
         self._refresh_pending = True
+        presenter = self.presenter
+        if result.get("deleted") and presenter is not None:
+            self.bindings.presentation.notify(
+                f'"{result.get("name", "Asset")}" moved to Trash',
+                action="Undo",
+                on_action=lambda: presenter.restore(result["id"], result["revision"]),
+            )
 
     def request_history(self) -> None:
         asset_id = self.bindings.selection.state.asset.id

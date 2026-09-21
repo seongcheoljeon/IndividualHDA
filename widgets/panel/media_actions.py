@@ -137,8 +137,11 @@ class PanelMediaActions:
         if self.bindings.tasks.busy:
             return
         if not self.bindings.preference.is_ffmpeg_valid:
-            log_handler.LogHandler.log_msg(
-                method=logging.error, msg="ffmpeg is not installed"
+            self.bindings.presentation.notify(
+                "FFmpeg is not configured; set its folder in Preferences.",
+                action="Preferences",
+                on_action=self.bindings.preference.show,
+                level="error",
             )
             return
         if not host.IS_HOUDINI:

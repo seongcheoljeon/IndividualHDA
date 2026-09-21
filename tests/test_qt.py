@@ -238,17 +238,6 @@ def test_panel_with_saved_library(
         s.context() != QtCore.Qt.ShortcutContext.WindowShortcut
         for s in panel._shortcuts.values()
     )
-    removed: list[Any] = []
-    monkeypatch.setattr(
-        panel.management, "remove_hda_item", lambda indexes: removed.append(indexes)
-    )
-    monkeypatch.setattr(
-        QtWidgets.QMessageBox,
-        "exec",
-        lambda _: QtWidgets.QMessageBox.StandardButton.Yes,
-    )
-    panel._shortcuts["remove_table"].activated.emit()
-    assert len(removed) == 1 and len(removed[0]) == 1
     # Markdown preview renders the plain-text note; the stored value is untouched.
     panel.textEdit__note.setPlainText("# Title\n\nSome **bold** text")
     panel.toolButton__note_preview.setChecked(True)
@@ -271,6 +260,15 @@ def test_panel_with_saved_library(
         panel.session.repository.list_assets()[0].hda_note
         == "# Title\n\nSome **bold** text, more"
     )
+    # Delete moves to the Trash without a prompt; the toast offers Undo.
+    panel._shortcuts["remove_table"].activated.emit()
+    wait_until(app, lambda: panel.models.list_proxy_model.rowCount() == 0)
+    toasts = panel._toasts.toasts()
+    assert toasts and toasts[-1].action is not None
+    assert toasts[-1].action.text() == "Undo" and "Trash" in toasts[-1].message.text()
+    toasts[-1].action.click()
+    wait_until(app, lambda: panel.models.list_proxy_model.rowCount() == 1)
+    assert not panel._toasts.toasts()
     panel.doubleSpinBox__zoom.setValue(150)
     panel._ui_settings.save_cfg_dict_to_file()
     panel.doubleSpinBox__zoom.setValue(100)

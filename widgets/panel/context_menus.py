@@ -153,25 +153,6 @@ class PanelContextMenus:
                 method=logging.info, msg="iHDA node is not selected"
             )
             return
-        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.bindings.presentation.get_default_font())
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
-        msgbox.setWindowTitle("Remove iHDA Node")
-        msgbox.setText(
-            f'Delete the <font color=red>"{len(indexes)}"</font> selected iHDA nodes?'
-        )
-        msgbox.setInformativeText(
-            "Move assets to Trash. Files, versions and note history are retained for restoration."
-        )
-        msgbox.setStandardButtons(
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No
-        )
-        msgbox.setStyleSheet("QLabel {min-width: 500px;}")
-        msgbox.resize(msgbox.sizeHint())
-        reply = msgbox.exec()
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
-            return
         self.bindings.management.remove_hda_item(indexes=indexes)
 
     def _build_context_ihda_menu(self, point: QtCore.QPoint) -> None:
@@ -370,20 +351,6 @@ class PanelContextMenus:
                 log_handler.LogHandler.log_msg(
                     method=logging.info, msg="iHDA node is not selected"
                 )
-                return
-            msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation.get_default_font())
-            msgbox.setWindowTitle("Delete iHDA node history")
-            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
-            msgbox.setText(
-                f"Move historical versions of the selected {len(indexes)} assets to Trash? Current versions, files and note history are retained."
-            )
-            msgbox.setStandardButtons(
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No
-            )
-            reply = msgbox.exec()
-            if reply == QtWidgets.QMessageBox.StandardButton.No:
                 return
             # player가 재생중이거나 일시정지 상태면 정지
             self.bindings.video_player.player_stop()

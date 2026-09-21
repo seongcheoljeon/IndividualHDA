@@ -196,6 +196,9 @@ class PanelComposition:
         self.lifetime.add("log", lambda: window._log_handler.close(), 100)
         # loading indicator class
         window._loading = loading_indicator.Overlay(parent=window)
+        from widgets.toast import ToastStack
+
+        window._toasts = ToastStack(parent=window)
         window._loading.close()
         # dragdrop indicator class
         window._dragdrop_overlay = dragdrop_overlay.Overlay(text="", parent=window)
@@ -501,6 +504,7 @@ class PanelComposition:
             services=window._services,
             session=window.session,
             status=window.status,
+            toasts=window._toasts,
             ui=window,
             ui_settings=window._ui_settings,
             video_info=window._make_videoinfo,
@@ -547,6 +551,7 @@ class PanelComposition:
         )
         window.tools.bindings = PanelLibraryToolsBindings(
             imported=lambda: window._archives.imported,
+            presentation=window.presentation,
             models=window.models,
             parent=window,
             queries=window.queries,

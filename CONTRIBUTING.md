@@ -86,6 +86,7 @@ entry points instead of reaching into another module's internals:
 | Show something new in the History list | Build rows with `libs/history_activity.py` (`kind != "version"`); never insert into `hda_history` — the v6 trigger turns every row into a version | Synthetic history rows |
 | Record an audit event on the server | `ihda_server/audit.py:record_event` | Import `LifecycleStore` from `tracking` |
 | Add a widget to the main window | The page's `build_*` in `widgets/panel/layout_*.py` (or `MainWindowLayout._build_*`), declare its attribute on `MainWindowLayout`, then the feature's `*Bindings` and `composition.py` | — |
+| Tell the user something happened | `self.bindings.presentation.notify(message, action="Undo", on_action=…, level=…)` — a toast (`widgets/toast.py`), the status bar and the log in one call; keep `QMessageBox` for questions and irreversible steps (purge, dependents) | An information `QMessageBox`, or a log line the user never sees |
 | Free disk space after a purge | `ManagementGateway.reclaim(apply)`; purging only queues paths in `file_cleanup`, `libs/library_files.cleanup` deletes the unreferenced ones and empty directories | Delete files inside the purge transaction |
 
 ## Guard tests

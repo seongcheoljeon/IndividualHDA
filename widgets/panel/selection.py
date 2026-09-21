@@ -499,9 +499,8 @@ class PanelSelection:
     def play_video_most_recent_by_version(self, video_info: Any = None) -> None:
         video_filepath = video_info
         if video_filepath is None or not video_filepath.exists():
-            log_handler.LogHandler.log_msg(
-                method=logging.warning,
-                msg="the video file has been renamed or has no video file",
+            self.bindings.presentation.notify(
+                "The video file was renamed or removed.", level="warning"
             )
             return
         self.slot_select_view(
@@ -528,9 +527,8 @@ class PanelSelection:
             hda_id, hda_ver
         )
         if video_info is None:
-            log_handler.LogHandler.log_msg(
-                method=logging.warning,
-                msg=f'"{hda_name} (v{hda_ver})" iHDA node has no video',
+            self.bindings.presentation.notify(
+                f'"{hda_name} (v{hda_ver})" iHDA node has no video', level="warning"
             )
             return
         self.play_video_most_recent_by_version(video_info=video_info)
@@ -580,9 +578,9 @@ class PanelSelection:
             ihda_ver = self.state.history.require_data().version
             hist_id = self.state.history.require_data().hist_id
             if video_dirpath is None:
-                log_handler.LogHandler.log_msg(
-                    method=logging.warning,
-                    msg=f'id: {hist_id} "{self.state.history.name} [{ihda_ver}]" iHDA node has no video',
+                self.bindings.presentation.notify(
+                    f'id: {hist_id} "{self.state.history.name} [{ihda_ver}]" iHDA node has no video',
+                    level="warning",
                 )
                 return
             video_filename = self.state.history.require_data().video_filename
@@ -590,17 +588,15 @@ class PanelSelection:
         else:
             video_dirpath = self.state.asset.require_data().video_dirpath
             if video_dirpath is None:
-                log_handler.LogHandler.log_msg(
-                    method=logging.warning,
-                    msg=f'"{self.state.asset.name}" iHDA node has no video',
+                self.bindings.presentation.notify(
+                    f'"{self.state.asset.name}" iHDA node has no video', level="warning"
                 )
                 return
             video_filename = self.state.asset.require_data().video_filename
             video_filepath = item_path(video_dirpath, video_filename)
         if video_filepath is None or not video_filepath.exists():
-            log_handler.LogHandler.log_msg(
-                method=logging.warning,
-                msg="the video file has been renamed or has no video file",
+            self.bindings.presentation.notify(
+                "The video file was renamed or removed.", level="warning"
             )
             return
         self.slot_select_view(

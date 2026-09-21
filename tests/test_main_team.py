@@ -38,7 +38,7 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
     from libs.database.sqlite_repository import SqliteLibraryRepository
     from libs.sqlite3_db_api import SQLite3DatabaseAPI
     from libs.team.client import BlobCache, HttpCatalog
-    from libs.team.contracts import Command, Unavailable
+    from libs.team.contracts import Command, NotFound, Unavailable
     from main import IndividualHDA
     from widgets.preference.preference import Preference
     from widgets.web_view.web_view import WebView
@@ -236,6 +236,20 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
         panel.pushButton__metadata_save.click()
         wait_panel(app, panel)
         assert backend.get_asset(remote_asset["id"])["note"] == "my conflicting draft"
+        # Trash needs no prompt when nothing depends on the asset; Undo restores it.
+        team.actions.remove()
+        wait_panel(app, panel)
+        wait_panel(app, panel)  # the confirm step is deferred by one event-loop turn
+        with pytest.raises(NotFound):  # the server hides trashed assets
+            backend.get_asset(remote_asset["id"])
+        toasts = panel._toasts.toasts()
+        assert toasts and toasts[-1].action is not None
+        toasts[-1].action.click()
+        wait_panel(app, panel)
+        assert not backend.get_asset(remote_asset["id"]).get("deleted")
+        team.refresh()
+        wait_panel(app, panel)
+        assert panel.models.assets.rows[0].hda_name == "TeamWater2"
         team.open_backend(backend, {"id": project, "name": "Studio", "role": "viewer"})
         wait_panel(app, panel)
         assert not panel.pushButton__metadata_save.isEnabled()

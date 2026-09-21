@@ -137,7 +137,8 @@ class AssetDetailsPresenter:
             asset_id for asset_id in self._drafts if asset_id not in candidates
         ]
         for asset_id in candidates:
-            fields = self._drafts[asset_id].dirty_fields
+            draft = self._drafts.get(asset_id)  # forget() may have dropped it
+            fields = draft.dirty_fields if draft is not None else ()
             if fields:
                 self._save(asset_id, fields)
                 return

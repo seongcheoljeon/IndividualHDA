@@ -83,6 +83,7 @@ class PanelAssetManagement:
         )
 
     def _committed_asset_display_failed(self, error: Exception) -> None:
+        logging.exception("Display update failed after a committed library change")
         self.show_command_error(
             f"Library change saved, but display update failed: {error}. Reload the library."
         )
@@ -658,9 +659,25 @@ iHDA note history: {cnt_hda_note_hist}
         self.bindings.ui.label__loc_record_count.setText(
             str(self.bindings.models.record_proxy_model.get_row_count())
         )
-        log_handler.LogHandler.log_msg(
-            method=logging.info, msg=f'"{name}" moved to Trash'
+        self.bindings.presentation.notify(
+            f'"{name}" moved to Trash',
+            action="Undo",
+            on_action=lambda: self._restore_trashed(name, {"asset_id": hda_id}),
         )
+
+    def _restore_trashed(self, name: str, item: dict[str, Any]) -> None:
+        """Undo from the toast: clear deleted_at and reload the library snapshot."""
+        from libs.library_management import LocalManagement
+
+        context = self.bindings.session.context
+        if context is None:
+            return
+        try:
+            LocalManagement(pathlib.Path(context.db_filepath)).change(item, "restore")
+        except Exception as error:
+            self.show_command_error(f"Could not restore {name}: {error}")
+            return
+        self.bindings.reload_library()
 
     def _delete_each_hist_ihda_item(
         self,
@@ -713,9 +730,13 @@ iHDA note history: {cnt_hda_note_hist}
         self._restore_history_selection_data()
         self.bindings.notes.clear_hist_parms()
         if verbose:
-            log_handler.LogHandler.log_msg(
-                method=logging.info,
-                msg=f"Version {history.version} moved to Trash",
+            self.bindings.presentation.notify(
+                f"Version {history.version} moved to Trash",
+                action="Undo",
+                on_action=lambda: self._restore_trashed(
+                    f"version {history.version}",
+                    {"asset_id": hda_id, "history_id": hist_id},
+                ),
             )
 
     def _delete_hist_combobox_ihda_item(self, hkey_id: int | None = None) -> None:

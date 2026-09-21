@@ -334,6 +334,14 @@ class WorkspacePresenter:
 
         return self._run(load, ready)
 
+    def restore(self, asset_id: int, revision: int) -> None:
+        """Undo of a trash: the revision is the one the delete result reported."""
+        command = Command(
+            "restore", asset_id=asset_id, expected_revision=revision, values={}
+        )
+        if not self._run(lambda: self._execute(command), self._committed):
+            self._view.show_error("Wait for the current operation to finish")
+
     def delete_history(self, asset_id: int, history_id: int) -> None:
         asset = self._assets.get(asset_id)
         if asset is None:

@@ -127,20 +127,11 @@ class PanelHoudiniActions:
             self.bindings.presentation.dragdrop_overlay_close()
             return
         if total_node_cnt > self.bindings.services.policy.maximum_node_batch:
-            msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation.get_default_font())
-            msgbox.setWindowTitle("Import iHDA Node")
-            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
-            msgbox.setText("Too many nodes to import")
-            msgbox.setDetailedText(
-                f"""
-            Please bring no more than {self.bindings.services.policy.maximum_node_batch} items.
-            Total Nodes: {total_node_cnt}
-            """
+            self.bindings.presentation.notify(
+                f"Too many nodes to import: {total_node_cnt} selected, the limit is"
+                f" {self.bindings.services.policy.maximum_node_batch}.",
+                level="error",
             )
-            # msgbox.resize(msgbox.sizeHint())
-            msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-            _ = msgbox.exec()
             return
         if total_node_cnt > self.bindings.services.policy.warn_node_batch:
             msgbox = QtWidgets.QMessageBox(self.bindings.parent)

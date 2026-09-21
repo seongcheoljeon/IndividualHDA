@@ -577,3 +577,17 @@ def test_autosave_does_not_retry_after_a_failure_until_the_next_edit() -> None:
     presenter.save_pending()
     executor.complete()
     assert repository.writes == [(1, "edited again")]
+
+
+def test_forgetting_the_selected_asset_does_not_autosave_it() -> None:
+    """Trash: the draft is dropped first, then the selection clears. The flush
+    that leaving an asset triggers must not look the dropped draft up."""
+    view, executor, repository = View(), DelayedExecutor(), Metadata()
+    presenter = AssetDetailsPresenter(view, executor)
+    presenter.autosave = True
+    presenter.change_gateway(repository)
+    presenter.select(1, "one", [])
+    presenter.edit("edited", [])
+    presenter.forget(1)
+    assert view.draft == ("", []) and not repository.writes
+    assert view.state == (False, False, False)

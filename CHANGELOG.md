@@ -25,6 +25,13 @@
   the Trash. All are scoped to the panel or to one view, so Houdini keeps its
   own keys and nothing fires while typing a note. The video player's `f`
   (fullscreen) key, present but unconnected, now works.
+- **Toasts instead of pop-ups.** Moving assets or versions to the Trash no
+  longer asks first: a toast at the bottom of the panel says what happened and
+  offers **Undo** (personal and team). Warnings that only reached the log
+  (FFmpeg not configured, an asset without a video, nodes skipped during a
+  batch drop) and the "select an asset first" notices are toasts too, with a
+  Preferences shortcut where that is the fix. The dependency warning and the
+  purge confirmation stay modal.
 
 ## 2.2.0 (unreleased) — activity history, trash hygiene and the SOLID audit
 

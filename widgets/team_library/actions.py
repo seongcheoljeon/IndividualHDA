@@ -149,6 +149,9 @@ class MainAssetActions:
                         self.library.callbacks.retry_delay_ms, confirm
                     )
                     return
+                if not rows:
+                    operation()  # reversible: the toast offers Undo
+                    return
                 if (
                     QtWidgets.QMessageBox.question(
                         self.bindings.parent,
