@@ -141,6 +141,10 @@ def test_committed_delete_reloads_after_display_failure(
     panel.management._apply_scene_record_cleanup(result)
     assert set(model.selected_record_ids(model.index(0, 0))) == set(identities[1:])
     assert "Records were deleted" in errors[0]
+    assert any(
+        toast.message.text() == "Removed 1 stale scene record."
+        for toast in panel._toasts.toasts()
+    )
     assert len(panel.session.repository.scene_record_files(panel.session.user)) == 2
 
 

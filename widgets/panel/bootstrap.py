@@ -237,6 +237,11 @@ class PanelBootstrap:
         window.views.category.setItemDelegate(
             CategoryDelegate(window.views.category, count_role=CategoryModel.count_role)
         )
+        from model.ihda_record_model import RecordModel
+
+        window.views.record.setItemDelegate(
+            CategoryDelegate(window.views.record, count_role=RecordModel.count_role)
+        )
         window.selection._slot_chk_hist_search_data(
             window.checkBox__hist_search_date.isChecked()
         )

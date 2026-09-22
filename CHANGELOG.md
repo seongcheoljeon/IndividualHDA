@@ -9,6 +9,11 @@
   registration. Any row jumps to its node on double-click, the search also
   matches node paths, and an empty result says so with a Scan button. The scan
   sits behind the host port, so it is covered by tests without Houdini.
+- **Record tab.** Folder, HIP-file and network rows show how many records
+  they hold; records drag out with the left or middle button (a multi-row drag
+  now carries every row); the right-click menu is ordered Open ▸ / Go To
+  Network / Detail / Delete; cleaning stale records reports the result as a
+  toast; tooltips show the full HIP path and node path.
 - **Asset cards.** The grid draws each asset as a card: rounded thumbnail,
   name, a version pill and a favorite star that toggles on click (personal and
   team). Missing files dim the card instead of striking the name through.

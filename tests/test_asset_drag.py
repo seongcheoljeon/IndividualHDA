@@ -172,3 +172,84 @@ def test_hovering_does_not_change_the_selection(app: Any) -> None:
     )
     assert view.currentIndex().row() == 1
     view.close()
+
+
+def test_record_view_drags_only_concrete_records(app: Any, monkeypatch: Any) -> None:
+    from pathlib import Path
+
+    from libs.scene_contracts import SceneRecord
+    from model.ihda_record_model import RecordModel
+    from view.ihda_record_view import RecordView
+
+    monkeypatch.setattr(
+        QtGui.QDrag, "exec", lambda self, *a, **k: QtCore.Qt.DropAction.IgnoreAction
+    )
+    records = [
+        SceneRecord(
+            record_id=n,
+            hda_id=n,
+            hip_filename="shot.hip",
+            hip_dirpath=Path("/hips"),
+            parent_node_path="/obj/geo1",
+            node_name=f"fx{n}",
+            node_ver="1.0",
+        )
+        for n in (1, 2)
+    ]
+    model = RecordModel(data=records)
+    view = RecordView()
+    view.setModel(model)
+    view.resize(400, 300)
+    view.expandAll()
+    view.show()
+    app.processEvents()
+    # root > folder > hip > network > records
+    root = model.index(0, 0)
+    folder = model.index(0, 0, root)
+    hip = model.index(0, 0, folder)
+    network = model.index(0, 0, hip)
+    assert folder.data(RecordModel.count_role) == 2  # badge counts the records
+    assert hip.data(RecordModel.count_role) == 2
+    assert model.index(0, 0, network).data(RecordModel.count_role) is None
+    assert "/hips" in folder.data(QtCore.Qt.ItemDataRole.ToolTipRole)
+    assert "/obj/geo1" in model.index(0, 0, network).data(
+        QtCore.Qt.ItemDataRole.ToolTipRole
+    )
+    drops: list[Any] = []
+    view.signal.mouse_signal_object.connect(drops.append)
+    view.selectionModel().select(
+        hip,
+        QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect
+        | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+    )
+    assert view.drag_indexes() == []  # a HIP row is not draggable
+    for row in range(2):
+        view.selectionModel().select(
+            model.index(row, 0, network),
+            QtCore.QItemSelectionModel.SelectionFlag.Select
+            | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+        )
+    view.selectionModel().select(
+        hip,
+        QtCore.QItemSelectionModel.SelectionFlag.Deselect
+        | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+    )
+    assert len(view.drag_indexes()) == 2
+    start = view.visualRect(model.index(0, 0, network)).center()
+    left = QtCore.Qt.MouseButton.LeftButton
+    viewport = view.viewport()
+    QtWidgets.QApplication.sendEvent(
+        viewport, mouse(QtCore.QEvent.Type.MouseButtonPress, start, left, left)
+    )
+    for row in range(2):  # the press re-selected one row; select both again
+        view.selectionModel().select(
+            model.index(row, 0, network),
+            QtCore.QItemSelectionModel.SelectionFlag.Select
+            | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+        )
+    far = start + QtCore.QPoint(QtWidgets.QApplication.startDragDistance() + 5, 0)
+    QtWidgets.QApplication.sendEvent(
+        viewport, mouse(QtCore.QEvent.Type.MouseMove, far, left, left)
+    )
+    assert len(drops) == 1 and len(drops[0][1]) == 2  # one payload per record
+    view.close()

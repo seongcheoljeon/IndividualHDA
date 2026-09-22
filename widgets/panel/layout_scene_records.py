@@ -166,24 +166,22 @@ def build_scene_records(layout: MainWindowLayout, window: QMainWindow) -> None:
     layout.horizontalLayout__scene_record_count.addItem(
         layout.spacer__scene_record_count
     )
-    layout.label__loc_record_count = QLabel(layout.page__hda_loc_record)
-    layout.label__loc_record_count.setObjectName("label__loc_record_count")
-    layout.label__loc_record_count.setAlignment(
-        Qt.AlignmentFlag.AlignRight
-        | Qt.AlignmentFlag.AlignRight
-        | Qt.AlignmentFlag.AlignVCenter
-    )
-    layout.label__loc_record_count.setText(main_window_text("0"))
-    layout.horizontalLayout__scene_record_count.addWidget(
-        layout.label__loc_record_count
-    )
     layout.label__loc_record_count_suffix = QLabel(layout.page__hda_loc_record)
     layout.label__loc_record_count_suffix.setObjectName(
         "label__loc_record_count_suffix"
     )
-    layout.label__loc_record_count_suffix.setText(main_window_text("records"))
+    layout.label__loc_record_count_suffix.setText(main_window_text("Scene records:"))
     layout.horizontalLayout__scene_record_count.addWidget(
         layout.label__loc_record_count_suffix
+    )
+    layout.label__loc_record_count = QLabel(layout.page__hda_loc_record)
+    layout.label__loc_record_count.setObjectName("label__loc_record_count")
+    layout.label__loc_record_count.setAlignment(
+        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+    )
+    layout.label__loc_record_count.setText(main_window_text("0"))
+    layout.horizontalLayout__scene_record_count.addWidget(
+        layout.label__loc_record_count
     )
     layout.verticalLayout__scene_record_content.addLayout(
         layout.horizontalLayout__scene_record_count

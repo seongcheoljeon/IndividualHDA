@@ -136,6 +136,18 @@ class NodeData(Node):
         return self.__pnode_path
 
 
+def _records_below(node: NodeData) -> int:
+    """How many concrete records sit under a folder / HIP file / network row."""
+    total = 0
+    for row in range(len(node)):
+        child = node.child_at_row(row)
+        if isinstance(child, NodeData) and child.record_id is not None:
+            total += 1
+        else:
+            total += _records_below(child)  # type: ignore[arg-type]
+    return total
+
+
 class RecordModel(QtCore.QAbstractItemModel, ModelStyleMixin):
     record_id_role = QtCore.Qt.ItemDataRole.UserRole
     hda_id_role = QtCore.Qt.ItemDataRole.UserRole + 1
@@ -148,6 +160,7 @@ class RecordModel(QtCore.QAbstractItemModel, ModelStyleMixin):
     is_record_type_role = QtCore.Qt.ItemDataRole.UserRole + 8
     record_data_role = QtCore.Qt.ItemDataRole.UserRole + 9
     pnode_path_role = QtCore.Qt.ItemDataRole.UserRole + 10
+    count_role = QtCore.Qt.ItemDataRole.UserRole + 11  # records below a group row
 
     def __init__(
         self,
@@ -570,8 +583,15 @@ class RecordModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             )
         elif role == QtCore.Qt.ItemDataRole.ToolTipRole:
             if column == RecordColumn.NAME:
-                return node.name()
+                parts = [str(node.hip_filepath or node.hip_dirpath or node.name())]
+                if node.pnode_path:
+                    parts.append(str(node.pnode_path))
+                return "\n".join(parts)
             return None
+        elif role == RecordModel.count_role:
+            if node.record_id is not None:
+                return None  # a record itself, not a group
+            return _records_below(node)
         elif role == QtCore.Qt.ItemDataRole.DecorationRole:
             if node.icon is None:
                 return None

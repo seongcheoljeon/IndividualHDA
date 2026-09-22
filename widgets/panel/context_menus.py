@@ -421,30 +421,25 @@ class PanelContextMenus:
             action_open_context_ihda_folder.setIcon(
                 QtGui.QIcon(QtGui.QPixmap(Icon.IC_FOLDER_WHITE))
             )
-        # go to network
+        context_menu.addMenu(open_context_menu)
+        context_menu.addSeparator()
         action_context_menu_go_to_network = None
         if pnode_path is not None:
             action_context_menu_go_to_network = context_menu.addAction("Go To Network")
             action_context_menu_go_to_network.setIcon(
                 QtGui.QIcon(QtGui.QPixmap(":/main/icons/ic_flight_takeoff_white.png"))
             )
-            context_menu.addAction(action_context_menu_go_to_network)
-        # detail view
         action_context_menu_detail = None
         if record_data is not None:
             action_context_menu_detail = context_menu.addAction("Detail")
             action_context_menu_detail.setIcon(
                 QtGui.QIcon(QtGui.QPixmap(Icon.IC_FORMAT_QUOTE_WHITE))
             )
-            context_menu.addAction(action_context_menu_detail)
+        context_menu.addSeparator()
         action_context_menu_remove = context_menu.addAction("Delete")
         action_context_menu_remove.setIcon(
             QtGui.QIcon(QtGui.QPixmap(Icon.IC_DELETE_FOREVER_WHITE))
         )
-        context_menu.addMenu(open_context_menu)
-        context_menu.addSeparator()
-        context_menu.addSeparator()
-        context_menu.addAction(action_context_menu_remove)
         action = context_menu.exec(self.bindings.views.record.mapToGlobal(point))
         if action == action_open_context_ihda_folder:
             ihda_system.IHDASystem.open_folder(dirpath=hda_filepath)

@@ -171,12 +171,20 @@ class PanelAssetManagement:
 
         restore(QtCore.QModelIndex())
         self.bindings.ui.label__loc_record_count.setText(str(proxy.get_row_count()))
+        removed = len(result.deleted)
+        self.bindings.presentation.notify(
+            f"Removed {removed} stale scene record{'s' if removed != 1 else ''}."
+            if removed
+            else "No stale scene records; every HIP and asset file still exists."
+        )
         if result.failed:
-            self.show_command_error(
-                "Some records were kept: "
-                + "; ".join(
-                    f"{identity}: {message}" for identity, message in result.failed
-                )
+            details = "; ".join(
+                f"{identity}: {message}" for identity, message in result.failed
+            )
+            self.show_command_error("Some records were kept: " + details)
+            self.bindings.presentation.notify(
+                f"{len(result.failed)} record(s) could not be checked; see the log.",
+                level="warning",
             )
 
     def _slot_favorite_node(self) -> None:

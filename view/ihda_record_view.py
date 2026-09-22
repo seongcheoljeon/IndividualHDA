@@ -7,13 +7,13 @@ from __future__ import annotations
 # modify date       :
 # description       :
 from re import compile as re_compile
-from sys import stdout
 from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from libs import keys
 from model import ihda_record_model
+from view.asset_drag import AssetDragMixin
 
 
 class Object(QtCore.QObject):
@@ -22,7 +22,7 @@ class Object(QtCore.QObject):
 
 
 # tree view overwirte class
-class RecordView(QtWidgets.QTreeView):
+class RecordView(AssetDragMixin, QtWidgets.QTreeView):
     def __init__(self, parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
         self.setAcceptDrops(True)
@@ -32,7 +32,7 @@ class RecordView(QtWidgets.QTreeView):
         self.setSelectionMode(
             QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
         )
-        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.InternalMove)
+        self.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.DragDrop)
         self.setHeaderHidden(False)
         self.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         self.setSortingEnabled(True)
@@ -74,35 +74,12 @@ class RecordView(QtWidgets.QTreeView):
         else:
             super().dropEvent(event)
 
-    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
-        if not (event.buttons() & QtCore.Qt.MouseButton.MiddleButton):
-            return
+    def drag_indexes(self) -> list[QtCore.QModelIndex]:
+        """Only concrete records leave the view; folders and HIP rows stay put."""
         indexes = self.selectionModel().selectedRows(keys.Value.drag_column_record_view)
-        if not len(indexes):
-            return
-        is_all_ihda_type = all(
-            x.data(ihda_record_model.RecordModel.record_type_role) == keys.Type.ihda
-            for x in indexes
-        )
-        if not is_all_ihda_type:
-            return
-        drag = QtGui.QDrag(self)
-        model_data_lst = []
-        for index in indexes:
-            if not index.isValid():
-                continue
-            model = index.model()
-            mime_data = model.mimeData([index])
-            model_data = mime_data.data(keys.Type.mime_type).data()
-            drag.setMimeData(mime_data)
-            model_data_lst.append(model_data)
-            pixmap = index.data(QtCore.Qt.ItemDataRole.DecorationRole)
-            if pixmap is not None:
-                drag.setHotSpot(
-                    QtCore.QPoint(pixmap.width() // 3, pixmap.height() // 3)
-                )
-                drag.setPixmap(pixmap)
-        drop_action = drag.exec(QtCore.Qt.DropAction.CopyAction)
-        self.signal.mouse_signal_object.emit([drop_action, model_data_lst])
-        stdout.flush()
-        super().mouseMoveEvent(event)
+        if not indexes or any(
+            index.data(ihda_record_model.RecordModel.record_type_role) != keys.Type.ihda
+            for index in indexes
+        ):
+            return []
+        return list(indexes)
