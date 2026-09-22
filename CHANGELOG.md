@@ -2,6 +2,11 @@
 
 ## Unreleased — modern editing
 
+- **No icon errors at startup.** The panel looked for `$HH/help/icons.zip`,
+  where Houdini kept its icons until 19 moved them, and logged an error and a
+  warning every launch. Node icons come from `hou.qt.Icon`, which is what
+  Houdini answered with all along, so the archive reader and both messages are
+  gone.
 - **About is a dialog, not a message box.** It shows the version, the running
   Houdini, Qt and Python, the system and a link that opens the settings
   folder, with a Copy info button that puts those lines on the clipboard for a

@@ -253,10 +253,7 @@ class Name:
     # ######################### #
 
     class Icons:
-        filename: Final = "IconMapping"
         networks: Final = "NETWORKS"
-        desktop: Final = "DESKTOP"
-        blank: Final = "blank"
         root: Final = "root"
 
     class FFmpeg:
@@ -332,7 +329,6 @@ class Name:
 
 
 class Extensions:
-    houdini_icons: Final = ".svg"
     ihda_file: Final = ".ihda"
     company_log_icon_file_ext: Final = ".png"
     image: Final = ".jpg"
