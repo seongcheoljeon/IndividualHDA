@@ -286,3 +286,7 @@ cython_debug/
 .config
 .idea
 benchmarks/*.json
+
+# per-user Claude Code settings and local test artifacts
+.claude/settings.local.json
+pytest-report.xml
