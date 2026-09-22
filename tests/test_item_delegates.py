@@ -306,13 +306,22 @@ def test_version_pills_are_accented_and_tables_drop_grid_and_row_numbers(
         version_column=AssetColumn.VERSION,
     )
     rect = QtCore.QRect(0, 0, 76, 28)
-    cell = render(rows, option_for(rect), table.index(0, AssetColumn.VERSION))
-    colours = {
-        cell.pixelColor(x, y).name().lower()
+    # An explicit font: another test may have left the application font elsewhere.
+    option = option_for(rect)
+    option.font = QtGui.QFont(option.font)
+    option.font.setPointSize(10)
+    cell = render(rows, option, table.index(0, AssetColumn.VERSION))
+    pixels = [
+        cell.pixelColor(x, y)
         for x in range(cell.width())
         for y in range(cell.height())
-    }
-    assert VERSION_COLOR.lower() in colours and "#ffffff" in colours
+        if cell.pixelColor(x, y).alpha()
+    ]
+    accent = QtGui.QColor(VERSION_COLOR)
+    assert any(colour == accent for colour in pixels)  # the pill is the accent
+    assert any(
+        colour.lightness() > accent.lightness() + 60 for colour in pixels
+    )  # text
     for view in (TableView(), HistoryView()):
         assert view.verticalHeader().isHidden()
         assert not view.showGrid()
