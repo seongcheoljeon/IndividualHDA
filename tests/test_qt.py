@@ -278,7 +278,7 @@ def test_panel_with_saved_library(
     # The Find page scans the HIP when it opens, lists the instances and jumps
     # to a node on double-click; imports mark it stale so it rescans itself.
     inside = panel.models.inside_model
-    panel.selection.mark_inside_stale()  # hidden page: nothing happens yet
+    panel._inside_page.mark_stale()  # hidden page: nothing happens yet
     scans[0] = scans[0]  # unchanged scene
     panel.pushButton__hda_inside_node_view.click()  # showing -> rescans
     assert (
@@ -296,14 +296,14 @@ def test_panel_with_saved_library(
     )
     proxy = panel.models.inside_proxy_model
     geo = proxy.index(0, 0, proxy.index(0, 0, proxy.index(0, 0)))
-    panel.selection._slot_hda_inside_double_clicked(geo)
+    panel._inside_page.double_clicked(geo)
     assert visited == ["/obj/geo1"]  # any node, not only iHDA rows
     scans[0] = ()
-    panel.selection.mark_inside_stale()  # page is visible: rescan now
+    panel._inside_page.mark_stale()  # page is visible: rescan now
     assert inside.rowCount(inside.index(0, 0)) == 0
     assert panel.views.inside_empty.title.text() == "No iHDA nodes in this HIP file"
     scans[0] = None  # type: ignore[call-overload]
-    panel.selection._slot_refresh_inside_nodes()
+    panel._inside_page.refresh()
     assert "Scanning the HIP file failed" in panel._toasts.toasts()[-1].message.text()
     for toast in panel._toasts.toasts():
         toast.dismiss()

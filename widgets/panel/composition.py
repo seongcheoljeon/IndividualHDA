@@ -413,6 +413,7 @@ class PanelComposition:
             queries=window.queries,
             scene_usage=lambda: window._scene_usage,
             selection=window.selection,
+            inside_page=lambda: window._inside_page,
             services=window._services,
             session=window.session,
             library=lambda: _active_library(window),
@@ -533,6 +534,7 @@ class PanelComposition:
             queries=window.queries,
             reload_library=lambda: window._library_sync.reload_library(),
             selection=window.selection,
+            inside_page=lambda: window._inside_page,
             services=window._services,
             session=window.session,
             library=lambda: _active_library(window),
@@ -551,7 +553,7 @@ class PanelComposition:
             video_player=window._video_player,
             views=window.views,
             houdini=window.houdini,
-            scan_scene=window._services.host_scene.scan_ihda_nodes,
+            inside_page=lambda: window._inside_page,
         )
         window.tools.bindings = PanelLibraryToolsBindings(
             imported=lambda: window._archives.imported,

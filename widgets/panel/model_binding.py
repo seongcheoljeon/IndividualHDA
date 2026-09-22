@@ -373,16 +373,6 @@ class PanelModelBinding:
         self.bindings.views.record.expandAll()
 
     @QtCore.Slot(str)
-    def _search_filter_regexp_hda_inside(self, text: str) -> None:
-        # 대소문자 구별하지 않음.
-        casesensitivity = QtCore.Qt.CaseSensitivity.CaseInsensitive
-        regexp = wildcard_expression(text.strip(), casesensitivity)
-        self.inside_proxy_model.setFilterRegularExpression(regexp)
-        self.bindings.ui.label__found_hda_inside_hipfile_count.setText(
-            str(self.inside_proxy_model.get_row_count())
-        )
-        self.bindings.views.inside.expandAll()
-
     def _add_pixmap_category(self, category: str | None = None) -> None:
         self.bindings.icons.add_pixmap_cate_data(category=category)
 

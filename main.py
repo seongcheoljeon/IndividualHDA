@@ -49,6 +49,7 @@ if TYPE_CHECKING:
     from widgets.make_video_info.make_video_info import MakeVideoInfo
     from widgets.panel.ai_actions import PanelAIActions
     from widgets.panel.archive_actions import PanelArchives
+    from widgets.panel.inside_page import InsidePageController
     from widgets.panel.library_sync import PanelLibrarySync
     from widgets.panel.scene_usage import SceneUsageIntegration
     from widgets.panel.services import PanelServices
@@ -86,6 +87,7 @@ class IndividualHDA(QtWidgets.QMainWindow, MainWindowLayout):
     _browser: AssetBrowserIntegration
     _details: AssetDetailsIntegration
     _shortcuts: dict[str, QtGui.QShortcut]
+    _inside_page: InsidePageController
     _rename_ihda: RenameIHDA
     _make_videoinfo: MakeVideoInfo
     _ui_settings: UISettings

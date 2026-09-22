@@ -6,10 +6,9 @@ Explicit bindings connect this feature to its view and collaborators.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
-from operator import itemgetter
 from typing import TYPE_CHECKING, Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -17,10 +16,8 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from libs import host, houdini_api, keys, log_handler
 from libs.domain import SelectionState
 from libs.item_paths import item_path
-from libs.scene_scan import ScannedNode, count_marks
 from model import (
     ihda_history_model,
-    ihda_inside_model,
     ihda_list_model,
     ihda_record_model,
     ihda_table_model,
@@ -36,6 +33,7 @@ if TYPE_CHECKING:
     from widgets.panel.ports import (
         AssetModelPort,
         HoudiniActionsPort,
+        InsidePagePort,
         LibraryQueryPort,
         NotesPort,
         PresentationPort,
@@ -60,7 +58,7 @@ class PanelSelectionBindings:
     video_player: VideoPlayer | UnavailableVideoPlayer
     views: PanelViews
     houdini: HoudiniActionsPort
-    scan_scene: Callable[[], Sequence[ScannedNode]]
+    inside_page: Callable[[], InsidePagePort]
 
 
 class PanelSelection:
@@ -112,27 +110,6 @@ class PanelSelection:
         self.bindings.ui.comboBox__hist_ihda_node.addItem(root_icon, "ALL", -1)
         self.bindings.ui.comboBox__hist_ihda_node.setCurrentIndex(0)
 
-    def _init_set_inside_ihda_combobox(self) -> None:
-        self._default_set_inside_ihda_combobox()
-        ihda_node_lst = self.bindings.models.inside_model.get_ihda_node_list()
-        if not len(ihda_node_lst):
-            return
-        for node_info in sorted(ihda_node_lst, key=itemgetter(0)):
-            node_name, hda_id, node_path = node_info
-            self._set_inside_ihda_to_combobox(
-                hkey_id=hda_id, hda_name=node_name, node_path=node_path
-            )
-
-    def _default_set_inside_ihda_combobox(self) -> None:
-        self.bindings.ui.comboBox__hda_inside_node.clear()
-        root_icon = QtGui.QIcon(
-            self.bindings.icons.pixmap_cate_data.get(
-                keys.Name.Icons.root, QtGui.QPixmap()
-            ).scaled(ASSET_COMBO_ICON_SIZE, ASSET_COMBO_ICON_SIZE)
-        )
-        self.bindings.ui.comboBox__hda_inside_node.addItem(root_icon, "ALL", -1)
-        self.bindings.ui.comboBox__hda_inside_node.setCurrentIndex(0)
-
     def set_hist_ihda_to_combobox(
         self, hkey_id: int | None = None, hda_name: str | None = None
     ) -> None:
@@ -148,30 +125,6 @@ class PanelSelection:
             self.bindings.ui.comboBox__hist_ihda_node.addItem(
                 icon, hda_name or "", hkey_id
             )
-
-    def _set_inside_ihda_to_combobox(
-        self,
-        hkey_id: int | None = None,
-        hda_name: str | None = None,
-        node_path: str | None = None,
-    ) -> None:
-        pixmap = (
-            self.bindings.icons.pixmap_ihda_data.get(hkey_id)
-            if hkey_id is not None
-            else None
-        )
-        # 만약 iHDA 노드를 삭제해서 pixmap 데이터가 존재하지 않는다면 직접 후디니 icon을 가공하여 가져온다.
-        if pixmap is None:
-            node = houdini_api.HoudiniAPI.find_node(node_path)
-            if node is None:
-                icon_lst = None
-            else:
-                icon_lst = houdini_api.HoudiniAPI.node_icon_path_lst(node)
-            pixmap = self.bindings.icons.get_houdini_icon(icon_lst=icon_lst)
-        icon = QtGui.QIcon(pixmap.scaled(ASSET_COMBO_ICON_SIZE, ASSET_COMBO_ICON_SIZE))
-        self.bindings.ui.comboBox__hda_inside_node.addItem(
-            icon, hda_name or "", hkey_id
-        )
 
     def _get_all_hist_ihda_combobox_data(self) -> list[Any]:
         return [
@@ -259,15 +212,6 @@ class PanelSelection:
         self.bindings.ui.label__hist_cnt.setText(
             str(self.bindings.models.history_proxy_model.rowCount())
         )
-
-    @QtCore.Slot(int)
-    def _slot_search_inside_node_combobox(self, idx: int) -> None:
-        hda_id = self.bindings.ui.comboBox__hda_inside_node.itemData(idx)
-        self.bindings.models.inside_proxy_model.set_filter_attribute(hda_id=hda_id)
-        self.bindings.ui.label__found_hda_inside_hipfile_count.setText(
-            str(self.bindings.models.inside_proxy_model.get_row_count())
-        )
-        self.bindings.views.inside.expandAll()
 
     def _slot_hist_ihda_search_date(self, *args: Any) -> None:
         HistoryPresenter(self).filter_dates(
@@ -400,73 +344,6 @@ class PanelSelection:
             str(self.bindings.models.record_proxy_model.get_row_count())
         )
 
-    def _slot_inside_only_curt_filter(self, *args: Any) -> None:
-        is_checked = self.bindings.ui.checkBox__hda_inside_connect_to_view.isChecked()
-        self.bindings.ui.comboBox__hda_inside_node.setDisabled(is_checked)
-        if is_checked:
-            self.bindings.ui.lineEdit__search_found_hda_inside_node.clear()
-            hda_id = self.state.asset.id
-            self.bindings.models.inside_proxy_model.set_filter_attribute(hda_id=hda_id)
-            self.bindings.ui.label__found_hda_inside_hipfile_count.setText(
-                str(self.bindings.models.inside_proxy_model.get_row_count())
-            )
-            self.bindings.views.inside.expandAll()
-        else:
-            self._slot_search_inside_node_combobox(
-                self.bindings.ui.comboBox__hda_inside_node.currentIndex()
-            )
-
-    # The inside-node tree is rebuilt lazily: imports and registrations mark it
-    # stale, and the scan runs when the page is (or becomes) visible. Nothing
-    # scans before bootstrap has built the models (the saved page is restored
-    # earlier than that).
-    _inside_stale = True
-    _inside_ready = False
-
-    def inside_models_ready(self) -> None:
-        """Bootstrap: the inside model exists; scan now if the page is showing."""
-        self._inside_ready = True
-        self._scan_if_showing()
-
-    def mark_inside_stale(self) -> None:
-        self._inside_stale = True
-        self._scan_if_showing()
-
-    def _scan_if_showing(self) -> None:
-        if (
-            self._inside_ready
-            and self._inside_stale
-            and self.bindings.ui.pushButton__hda_inside_node_view.isChecked()
-        ):
-            self._slot_refresh_inside_nodes()
-
-    @log_handler.log_elapsed("iHDA node search")
-    def _slot_refresh_inside_nodes(self) -> None:
-        try:
-            nodes = tuple(self.bindings.scan_scene())
-        except Exception as error:
-            self.bindings.presentation.notify(
-                f"Scanning the HIP file failed: {error}", level="error"
-            )
-            return
-        self._inside_stale = False
-        self.bindings.models.inside_model.make_node_tree(nodes)
-        self.bindings.views.inside.expandAll()
-        self.bindings.ui.label__found_hda_inside_hipfile_count.setText(
-            str(self.bindings.models.inside_proxy_model.get_row_count())
-        )
-        self.bindings.views.inside_empty.set_content(
-            "No iHDA nodes in this HIP file",
-            "Import an asset into the scene, then scan again.",
-            "Scan again",
-            self._slot_refresh_inside_nodes,
-        )
-        self._init_set_inside_ihda_combobox()
-        log_handler.LogHandler.log_msg(
-            method=logging.info,
-            msg=f"iHDA node scan: {count_marks(nodes)} instance(s) in the current HIP file",
-        )
-
     def _slot_thumbnails(self) -> None:
         if self.bindings.presentation.is_show_thumbnail:
             thumb_icon = "ic_photo_white.png"
@@ -560,15 +437,6 @@ class PanelSelection:
             )
             return
         self.play_video_most_recent_by_version(video_info=video_info)
-
-    @QtCore.Slot(QtCore.QModelIndex)
-    def _slot_hda_inside_double_clicked(self, *args: Any) -> None:
-        index = args[0]
-        if index is None or not index.isValid():
-            return
-        # Any row is a Houdini node; the context menu's "Go To Node" agrees.
-        node_path = index.data(ihda_inside_model.InsideModel.node_path_role)
-        self.go_to_houdini_node(node_path=node_path)
 
     @QtCore.Slot(QtCore.QModelIndex)
     def _slot_hda_double_clicked(self, *args: Any) -> None:
@@ -669,8 +537,7 @@ class PanelSelection:
         # record view 갱신
         if self.bindings.ui.checkBox__record_only_current_ihda.isChecked():
             self._slot_record_only_curt_filter()
-        if self.bindings.ui.checkBox__hda_inside_connect_to_view.isChecked():
-            self._slot_inside_only_curt_filter()
+        self.bindings.inside_page().selection_changed()
 
     def _slot_selected_category(self, *args: Any) -> None:
         index = args[0]
@@ -730,4 +597,4 @@ class PanelSelection:
             if button.isChecked():
                 ui.stackedWidget__hda_infos.setCurrentWidget(page)
                 break
-        self._scan_if_showing()  # only acts when the Find page is the one showing
+        # The Find page reacts to its own button's toggled signal (bootstrap).

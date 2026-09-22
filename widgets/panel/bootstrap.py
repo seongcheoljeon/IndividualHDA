@@ -183,15 +183,35 @@ class PanelBootstrap:
             "Records appear when iHDA nodes are imported into a saved scene.",
         )
         window.views.inside_empty = attach_empty_state(window.views.inside)
-        window.views.inside_empty.set_content(
-            "Not scanned yet",
-            "The current HIP file is scanned when this page opens.",
-            "Scan now",
-            window.selection._slot_refresh_inside_nodes,
+        from widgets.panel.inside_page import InsidePageBindings, InsidePageController
+
+        window._inside_page = InsidePageController(
+            InsidePageBindings(
+                scan_scene=window._services.host_scene.scan_ihda_nodes,
+                model=window.models.inside_model,
+                proxy=window.models.inside_proxy_model,
+                view=window.views.inside,
+                empty=window.views.inside_empty,
+                combo=window.comboBox__hda_inside_node,
+                count_label=window.label__found_hda_inside_hipfile_count,
+                connect_checkbox=window.checkBox__hda_inside_connect_to_view,
+                search_edit=window.lineEdit__search_found_hda_inside_node,
+                nav_button=window.pushButton__hda_inside_node_view,
+                icons=window._ihda_icons,
+                selected_asset_id=lambda: window.selection.state.asset.id,
+                go_to_node=lambda path: window.selection.go_to_houdini_node(path),
+                presentation=window.presentation,
+            )
         )
-        # The saved page was restored before the models existed; scan now if it
-        # is the Find page.
-        window.selection.inside_models_ready()
+
+        # Opening the page scans it; the saved page was restored before the
+        # models existed, so models_ready() covers that first show.
+        def find_page_toggled(checked: bool) -> None:
+            if checked:
+                window._inside_page.page_shown()
+
+        window.pushButton__hda_inside_node_view.toggled.connect(find_page_toggled)
+        window._inside_page.models_ready()
         from model.ihda_list_model import ListModel
         from widgets.item_delegates import CardDelegate
 
@@ -391,21 +411,18 @@ class PanelBootstrap:
         window.views.record.signal.signal_object.connect(
             window.registration._slot_drop_node_into_hda_view
         )
-        window.pushButton__hda_inside_node_refresh.clicked.connect(
-            window.selection._slot_refresh_inside_nodes
-        )
+        inside_page = window._inside_page
+        window.pushButton__hda_inside_node_refresh.clicked.connect(inside_page.refresh)
         window.comboBox__hda_inside_node.currentIndexChanged.connect(
-            window.selection._slot_search_inside_node_combobox
+            inside_page.filter_by_combo
         )
         window.checkBox__hda_inside_connect_to_view.stateChanged.connect(
-            window.selection._slot_inside_only_curt_filter
+            inside_page.connect_to_selection
         )
         window.lineEdit__search_found_hda_inside_node.textChanged.connect(
-            window.models._search_filter_regexp_hda_inside
+            inside_page.search
         )
-        window.views.inside.doubleClicked.connect(
-            window.selection._slot_hda_inside_double_clicked
-        )
+        window.views.inside.doubleClicked.connect(inside_page.double_clicked)
         window.actionNode_Synchronization.triggered.connect(
             window.callbacks._slot_selection_node_sync
         )
