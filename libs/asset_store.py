@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Iterable, Mapping
 from dataclasses import replace
 from types import MappingProxyType
@@ -14,6 +15,7 @@ class AssetStore:
     def __init__(self, observer: RowNotifications | None = None) -> None:
         self.rows: list[AssetData] = []
         self._id_rows: dict[int, int] = {}
+        self._category_counts: Counter[str] | None = None
         self._observer: RowNotifications = (
             observer if observer is not None else SilentRows()
         )
@@ -25,7 +27,15 @@ class AssetStore:
     def observe(self, observer: RowNotifications) -> None:
         self._observer = observer
 
+    @property
+    def category_counts(self) -> Mapping[str, int]:
+        """Assets per category; recomputed only after the rows changed."""
+        if self._category_counts is None:
+            self._category_counts = Counter(item.hda_cate for item in self.rows)
+        return self._category_counts
+
     def _reindex(self) -> None:
+        self._category_counts = None
         # Rows carry their position; the models read it instead of recomputing.
         self.rows[:] = numbered(self.rows)
         self._id_rows.clear()
@@ -61,6 +71,7 @@ class AssetStore:
         if data.hda_id != item.hda_id:
             raise ValueError("Asset IDs are immutable")
         self.rows[row] = replace(data, item_row=row)
+        self._category_counts = None
         self._observer.changed(row)
 
     def remove(self, row: int) -> None:

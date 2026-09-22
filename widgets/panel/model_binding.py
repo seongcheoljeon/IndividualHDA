@@ -116,6 +116,7 @@ class PanelModelBinding:
             font_style=font_style,
             icon_size=icon_size,
             padding=padding,
+            counts=lambda: self.assets.category_counts,
         )
         self.category_proxy_model = ihda_category_proxy_model.CategoryProxyModel()
         self.category_proxy_model.setSourceModel(self.category_model)
@@ -467,6 +468,9 @@ class PanelModelBinding:
                 self._remove_pixmap_category(category=category)
                 self.category_model.reload()
                 self.bindings.views.category.expandAll()
+            else:
+                # The category stays; only its count badge changed.
+                self.bindings.views.category.viewport().update()
 
     def get_category_count(self) -> int:
         return self.category_proxy_model.rowCount(

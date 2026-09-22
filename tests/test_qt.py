@@ -218,6 +218,17 @@ def test_panel_with_saved_library(
     wait_until(app, lambda: panel.label__metadata_status.text() == "Saved · just now")
     assert panel.session.repository.list_assets()[0].hda_tags == ("Water", "한글")
     assert not panel.label__tag_status.text()
+    # The category tree knows how many assets each category holds.
+    from model.ihda_category_model import CategoryModel
+
+    tree = panel.models.category_model
+    network = tree.index(0, 0)
+    sop = next(
+        tree.index(row, 0, network)
+        for row in range(tree.rowCount(network))
+        if tree.index(row, 0, network).data(CategoryModel.category_role) == "sop"
+    )
+    assert sop.data(CategoryModel.count_role) == 1
     # The grid draws cards; the star on a card toggles the favorite of that row.
     from widgets.item_delegates import CardDelegate
 

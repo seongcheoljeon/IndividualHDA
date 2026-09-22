@@ -38,7 +38,7 @@ class RecordView(QtWidgets.QTreeView):
         self.setSortingEnabled(True)
         self.sortByColumn(0, QtCore.Qt.SortOrder.AscendingOrder)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self.setAlternatingRowColors(False)
+        self.setAlternatingRowColors(True)
         self.header().setStretchLastSection(True)
         self.resizeColumnToContents(0)
         #

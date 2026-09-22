@@ -12,6 +12,7 @@
 | 이력 페이지 | `widgets/panel/layout_history.py` | `build_history_search()`, `build_history_date_filter()`, `build_history_results()` |
 | 씬 레코드 / 인사이드 노드 | `widgets/panel/layout_scene_records.py`, `layout_inside_nodes.py` | `build_scene_records()`, `build_inside_nodes()` |
 | 검색·에셋 목록·확대·화면 전환 | `widgets/asset_browser/view.py` | `_build_toolbar()`, `_build_search_row()` |
+| 항목 모양 — 그리드 카드·표 행·카테고리 배지 | `widgets/item_delegates.py` | `CardDelegate`, `RowDelegate`, `CategoryDelegate` (모델 `data()`는 데이터만, 그리기는 여기) |
 | 개인 / 팀 라이브러리 선택 | `widgets/asset_browser/view.py` | `_build_toolbar()`의 `comboBox__library_source` |
 | 팀 연결 / 구성원 설정 | `widgets/library_connection/dialog.py`, `members.py` | 각 설정 대화상자의 생성 메서드 |
 | 개인 → 팀 복사 | `widgets/asset_copy/dialog.py` | `_build_layout()`; 흐름 준비는 `presenter.py` |

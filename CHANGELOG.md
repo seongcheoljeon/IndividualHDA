@@ -11,6 +11,8 @@
   and definition on two lines, the version as a pill and, in the asset table, a
   star that toggles the favorite. History activity rows (renames, video
   changes) appear as a quiet timeline entry rather than a struck-out version.
+- **Category counts.** The network tree shows how many assets each category
+  holds, and the scene-record and inside-node trees use alternating rows.
 - **Tags are chips.** The tag pane no longer takes `#a #b` text. Committed tags
   are chips (click one to search it, × or Backspace removes it); the line below
   completes from the tags already in the library. Enter, comma or space commit.

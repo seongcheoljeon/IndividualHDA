@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import contextlib
+from collections.abc import Callable, Mapping
 from typing import Any, overload
 
 from PySide6 import QtCore, QtGui
@@ -47,6 +48,7 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
     category_role = QtCore.Qt.ItemDataRole.UserRole
     type_role = QtCore.Qt.ItemDataRole.UserRole + 1
     depth_role = QtCore.Qt.ItemDataRole.UserRole + 2
+    count_role = QtCore.Qt.ItemDataRole.UserRole + 3  # assets in this category
 
     def __init__(
         self,
@@ -57,9 +59,12 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         icon_size: int | None = None,
         padding: int | None = None,
         parent: QtCore.QObject | None = None,
+        counts: Callable[[], Mapping[str, int]] | None = None,
     ) -> None:
         super().__init__(parent)
         self.__data = self.__default_data
+        # Injected so the model never reaches into the asset store itself.
+        self.__counts = counts
         self.__pixmap_cate_data = (
             pixmap_cate_data if pixmap_cate_data is not None else {}
         )
@@ -324,6 +329,10 @@ class CategoryModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             return node.node_type
         elif role == CategoryModel.depth_role:
             return node.depth()
+        elif role == CategoryModel.count_role:
+            if self.__counts is None or node.depth() == 0:
+                return None
+            return self.__counts().get(node.name() or "", 0)
 
     def rowCount(
         self,

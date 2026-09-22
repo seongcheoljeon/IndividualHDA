@@ -179,3 +179,56 @@ def test_row_delegate_paints_versions_activity_and_the_star(app: Any) -> None:
     assert painted(version_cell) > 0 and painted(activity_cell) > 0
     # Only the version row carries a thumbnail; the activity row starts with a dot.
     assert activity_cell.pixelColor(7, rect.center().y()).alpha() > 0
+
+
+def test_category_counts_come_from_the_store_and_draw_as_a_badge(app: Any) -> None:
+    from libs.asset_store import AssetStore
+    from model.ihda_category_model import CategoryModel
+    from widgets.item_delegates import CategoryDelegate
+
+    store = AssetStore()
+    store.reset(
+        [
+            replace(asset(1), hda_cate="sop"),
+            replace(asset(2), hda_cate="sop"),
+            replace(asset(3), hda_cate="obj"),
+        ]
+    )
+    assert dict(store.category_counts) == {"sop": 2, "obj": 1}
+    store.remove(0)
+    assert dict(store.category_counts) == {"sop": 1, "obj": 1}  # invalidated on change
+    model = CategoryModel(
+        data={"sop": None, "obj": None, "vop": None},
+        pixmap_cate_data={},
+        font_size=10,
+        font_style="Sans",
+        icon_size=16,
+        padding=2,
+        counts=lambda: store.category_counts,
+    )
+    root = model.index(0, 0)
+    counts = {
+        model.index(row, 0, root).data(CategoryModel.category_role): model.index(
+            row, 0, root
+        ).data(CategoryModel.count_role)
+        for row in range(model.rowCount(root))
+    }
+    assert counts == {"sop": 1, "obj": 1, "vop": 0}
+    assert root.data(CategoryModel.count_role) is None  # the root is not a category
+    delegate = CategoryDelegate(None, count_role=CategoryModel.count_role)
+    rect = QtCore.QRect(0, 0, 160, 22)
+    sop = next(
+        model.index(row, 0, root)
+        for row in range(model.rowCount(root))
+        if model.index(row, 0, root).data(CategoryModel.category_role) == "sop"
+    )
+    vop = next(
+        model.index(row, 0, root)
+        for row in range(model.rowCount(root))
+        if model.index(row, 0, root).data(CategoryModel.category_role) == "vop"
+    )
+    assert painted(render(delegate, option_for(rect), sop)) > 0
+    assert (
+        delegate.sizeHint(option_for(rect), sop).width()
+        > delegate.sizeHint(option_for(rect), vop).width()
+    )

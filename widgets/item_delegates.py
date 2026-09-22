@@ -445,3 +445,57 @@ def two_line_row_height(font: QtGui.QFont) -> int:
     """The row height a two-line name cell needs; tables take the max with the icon."""
     metrics = QtGui.QFontMetrics(font)
     return metrics.height() + QtGui.QFontMetrics(small_font(font)).height() + 6
+
+
+# --- the category tree ----------------------------------------------------------
+
+
+class CategoryDelegate(QtWidgets.QStyledItemDelegate):
+    """Default tree row plus a right-aligned count badge when the count is known."""
+
+    def __init__(self, parent: QtCore.QObject | None, *, count_role: int) -> None:
+        super().__init__(parent)
+        self._count_role = count_role
+
+    def paint(  # type: ignore[override]
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+    ) -> None:
+        count = index.data(self._count_role)
+        if not count:
+            super().paint(painter, option, index)
+            return
+        opt = QtWidgets.QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        pill_font = small_font(opt.font)
+        width = QtGui.QFontMetrics(pill_font).horizontalAdvance(str(count)) + 14
+        opt.rect = opt.rect.adjusted(0, 0, -(width + CARD_PADDING), 0)
+        super().paint(painter, opt, index)
+        top_left = QtCore.QPoint(
+            option.rect.right() - width - CARD_PADDING // 2,
+            option.rect.center().y() - BADGE_HEIGHT // 2,
+        )
+        painter.save()
+        draw_pill(painter, top_left, str(count), opt.palette, pill_font)
+        painter.restore()
+
+    def sizeHint(  # type: ignore[override]
+        self,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+    ) -> QtCore.QSize:
+        size = super().sizeHint(option, index)
+        count = index.data(self._count_role)
+        if count:
+            size.setWidth(
+                size.width()
+                + QtGui.QFontMetrics(small_font(option.font)).horizontalAdvance(
+                    str(count)
+                )
+                + 14
+                + CARD_PADDING
+            )
+            size.setHeight(max(size.height(), BADGE_HEIGHT + 4))
+        return size
