@@ -12,7 +12,7 @@ from logging import warning
 # modified date:
 # description:      iHDA icons
 from re import compile
-from typing import Any
+from typing import Any, Protocol
 from zipfile import ZipFile, is_zipfile
 
 from PySide6 import QtGui
@@ -24,6 +24,13 @@ from libs.houdini_api import HoudiniAPI
 from libs.resource_policy import ThumbnailPolicy
 from libs.thumbnail_cache import ThumbnailCache
 from libs.ui_icons import Icon
+
+
+class IconProvider(Protocol):
+    """Pixmaps for nodes the caches do not know: resolved from Houdini icon names."""
+
+    def get_houdini_icon(self, icon_lst: list[str] | None = None) -> QtGui.QPixmap: ...
+    def get_category_icon(self, category: str | None = None) -> QtGui.QPixmap: ...
 
 
 class IHDAIcons:

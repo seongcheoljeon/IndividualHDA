@@ -106,7 +106,7 @@ def test_inside_model_mirrors_the_scan_without_houdini(app: Any) -> None:
     from model.ihda_inside_model import InsideModel
     from model.ihda_inside_proxy_model import InsideProxyModel
 
-    model = InsideModel(pixmap_cate_data={}, pixmap_ihda_data={}, inst_ihda_icon=None)
+    model = InsideModel(pixmap_cate_data={}, pixmap_ihda_data={}, icons=None)
     assert model.rowCount(model.index(0, 0)) == 0  # empty until a scan arrives
     model.make_node_tree(scene())
     root = model.index(0, 0)
@@ -140,3 +140,31 @@ def test_inside_model_mirrors_the_scan_without_houdini(app: Any) -> None:
     assert proxy.get_row_count() == 1
     model.clear_item()
     assert model.rowCount(model.index(0, 0)) == 0
+
+
+def test_inside_model_asks_the_icon_provider_for_unknown_icons(app: Any) -> None:
+    from PySide6 import QtGui
+
+    from model.ihda_inside_model import InsideModel
+
+    asked: list[tuple[str, Any]] = []
+
+    class Icons:  # satisfies libs.ihda_icons.IconProvider structurally
+        def get_houdini_icon(self, icon_lst: list[str] | None = None) -> QtGui.QPixmap:
+            asked.append(("houdini", icon_lst))
+            return QtGui.QPixmap(4, 4)
+
+        def get_category_icon(self, category: str | None = None) -> QtGui.QPixmap:
+            asked.append(("category", category))
+            return QtGui.QPixmap(4, 4)
+
+    known = QtGui.QPixmap(8, 8)
+    model = InsideModel(
+        pixmap_cate_data={"sop": known}, pixmap_ihda_data={3: known}, icons=Icons()
+    )
+    model.make_node_tree(scene())
+    # fire (id 3) and the sop category are cached; smoke (id 5) and obj/geo icons are not.
+    assert ("houdini", ["SOP", "subnet"]) in asked  # smoke
+    assert ("houdini", ["OBJ", "geo"]) in asked  # geo1
+    assert ("category", "obj") in asked
+    assert not any(kind == "category" and value == "sop" for kind, value in asked)

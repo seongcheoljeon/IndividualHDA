@@ -12,6 +12,7 @@ from typing import Any, overload
 from PySide6 import QtCore, QtGui
 
 from libs import keys
+from libs.ihda_icons import IconProvider
 from libs.model_columns import InsideColumn
 from libs.scene_scan import ScannedNode
 from libs.ui_icons import Icon
@@ -98,7 +99,7 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         nodes: Sequence[ScannedNode] = (),
         pixmap_cate_data: dict[str, QtGui.QPixmap] | None = None,
         pixmap_ihda_data: dict[int, QtGui.QPixmap] | None = None,
-        inst_ihda_icon: Any = None,
+        icons: IconProvider | None = None,
         font_size: int | None = None,
         font_style: str | None = None,
         icon_size: int | None = None,
@@ -113,7 +114,7 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         self.__pixmap_ihda_data = (
             pixmap_ihda_data if pixmap_ihda_data is not None else {}
         )
-        self.__inst_ihda_icon = inst_ihda_icon
+        self.__icons = icons
         self._font_size = (
             font_size if font_size is not None else keys.UISetting.view_font_size
         )
@@ -191,14 +192,14 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             self.__add_scanned(scanned.children, depth=depth + 1, parent=node)
 
     def __houdini_icon(self, icon_paths: Sequence[str]) -> QtGui.QPixmap | None:
-        if self.__inst_ihda_icon is None:
+        if self.__icons is None:
             return self.__generic_pixmap
-        return self.__inst_ihda_icon.get_houdini_icon(icon_lst=list(icon_paths) or None)
+        return self.__icons.get_houdini_icon(icon_lst=list(icon_paths) or None)
 
     def __category_icon(self, category: str) -> QtGui.QPixmap | None:
-        if self.__inst_ihda_icon is None:
+        if self.__icons is None:
             return self.__generic_pixmap
-        return self.__inst_ihda_icon.get_category_icon(category=category)
+        return self.__icons.get_category_icon(category=category)
 
     @property
     def scanned(self) -> tuple[ScannedNode, ...]:
