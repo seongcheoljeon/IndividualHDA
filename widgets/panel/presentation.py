@@ -13,65 +13,9 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from libs import host, houdini_api, ihda_system, keys, log_handler, platform_info
-from libs.app_metadata import (
-    FFMPEG_DOWNLOAD_URL,
-    MINIMUM_HOUDINI_MAJOR,
-    SPONSORS_URL,
-    SUPPORT_URL,
-)
+from libs import host, houdini_api, ihda_system, keys, log_handler
+from libs.app_metadata import FFMPEG_DOWNLOAD_URL, SUPPORT_URL
 from libs.domain import LibraryContext
-from libs.ui_icons import Icon
-
-
-def app_info(houdini_ver: Any = None) -> str:
-    info = f"""
-<p>Individual HDA (Houdini built-in app)<br><br>
-Release Date: 2026.09.22<br>
-Release Version: {keys.Value.current_ver}<br>
-OS Available: {platform_info.platform_system().title()}<br>
-Recommended Houdini Version: {houdini_ver}<br>
-<br>
-<b><i>Please donate if you like this app.<i><b><br>
-<br>
-<a href="{SUPPORT_URL}" style="color:#ff5f5f" target="_blank">📖 Buy me a book</a><br>
-<a href="{SPONSORS_URL}" style="color:#ea4aaa" target="_blank">❤ Sponsor on GitHub</a><br>
-<br>
-<a href="https://youtube.com/@seongcheoljeon5785?si=SQx4Waw5RWszO666" style="color:red"
-target="_blank">Youtube</a><br>
-    """
-    return info
-
-
-def license_info() -> str:
-    lic_info = """
-MIT License
-
-Copyright (c) 2020 Seongcheol Jeon
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-
-
-    """
-    return lic_info
-
 
 if TYPE_CHECKING:
     from libs.dragdrop_overlay import Overlay as DragOverlay
@@ -584,34 +528,23 @@ class PanelPresentation:
         self.bindings.ui_settings.set_theme(theme=theme)
 
     def _slot_about(self) -> None:
-        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.get_default_font(font_size=15))
-        msgbox.setWindowTitle("Individual HDA (Houdini built-in app)")
-        msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
-        msgbox.setIconPixmap(QtGui.QPixmap(Icon.VIEWPORT_LOGO_TRANS))
-        msgbox.setText(app_info(MINIMUM_HOUDINI_MAJOR))
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        msgbox.setDetailedText(license_info())
-        msgbox.setStyleSheet("""
-QLabel {
-    min-width: 800px;
-}
-QTextEdit {
-    background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop: 0 white, stop: 0.4 gray, stop: 1 green);
-    font: 30px;
-    color: black;
-    min-height: 300px;
-}
-        """)
-        btn_detail = None
-        for btn in msgbox.buttons():
-            if msgbox.buttonRole(btn) == QtWidgets.QMessageBox.ButtonRole.ActionRole:
-                btn_detail = btn
-                break
-        if btn_detail is not None:
-            btn_detail.click()
-        # msgbox.resize(msgbox.sizeHint())
-        _ = msgbox.exec()
+        from libs import paths
+        from widgets.about_dialog import AboutDialog
+
+        houdini_version = (
+            houdini_api.HoudiniAPI.current_houdini_version()
+            if host.IS_HOUDINI
+            else None
+        )
+        dialog = AboutDialog(
+            self.bindings.parent,
+            houdini_version=houdini_version,
+            config_dir=paths.Paths.config_dirpath,
+            open_url=ihda_system.IHDASystem.open_browser,
+            open_folder=ihda_system.IHDASystem.open_folder,
+        )
+        dialog.exec()
+        dialog.deleteLater()
 
     def _slot_help(self) -> None:
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)

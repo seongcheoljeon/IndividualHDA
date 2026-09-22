@@ -2,6 +2,13 @@
 
 ## Unreleased — modern editing
 
+- **About is a dialog, not a message box.** It shows the version, the running
+  Houdini, Qt and Python, the system and a link that opens the settings
+  folder, with a Copy info button that puts those lines on the clipboard for a
+  bug report. Links to the repository, the issue tracker and the videos sit
+  next to the support buttons, and the licences (this project's and the third
+  party ones, read from the files instead of a second copy in the code) open
+  on demand instead of always showing on a green gradient.
 - **Tables read like tables.** The asset and history tables drop the grid
   lines and the "iHDA n" row-number column, band alternate rows, left-align a
   quieter header and give the Like / Version / Count columns room for their
