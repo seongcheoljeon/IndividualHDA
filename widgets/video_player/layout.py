@@ -321,7 +321,7 @@ class VideoPlayerLayout:
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
         self.pushButton__full_screen.setFlat(True)
-        self.pushButton__full_screen.setToolTip(_translate("Full Screen"))
+        self.pushButton__full_screen.setToolTip(_translate("Full Screen (toggle, F)"))
         self.pushButton__full_screen.setStatusTip(
             _translate("You can view the video full-screen.")
         )
@@ -367,6 +367,16 @@ class VideoPlayerLayout:
         self.horizontalLayout__playback_footer.addLayout(
             self.horizontalLayout__playback_actions
         )
+        # The player is embedded in the panel, so its window title is never shown:
+        # the current track and the playback status live in these labels.
+        self.label__track = QLabel(self.widget__playback_controls)
+        self.label__track.setObjectName("label__track")
+        self.label__track.setToolTip(_translate("Current track"))
+        self.horizontalLayout__playback_footer.addWidget(self.label__track)
+        self.label__status = QLabel(self.widget__playback_controls)
+        self.label__status.setObjectName("label__status")
+        self.label__status.setToolTip(_translate("Playback status"))
+        self.horizontalLayout__playback_footer.addWidget(self.label__status)
         self.spacer__playback_footer_end = QSpacerItem(
             40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum
         )

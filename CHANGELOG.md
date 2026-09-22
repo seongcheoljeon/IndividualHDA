@@ -2,6 +2,12 @@
 
 ## Unreleased — modern editing
 
+- **Video player you can read.** Track name, playback status, buffering and
+  errors were written to the player's window title, which is never visible
+  inside the panel; they now appear on footer labels (errors in red). The
+  fullscreen button toggles, playlist entries show the file name with the path
+  as tooltip, the playback-mode button names its mode, the empty playlist says
+  what to do, and dropped files accept every format the Add dialog does.
 - **Find tab (iHDA nodes in the current HIP) works reliably.** The scan no
   longer breaks when a node comment was edited (notes with colons or blank
   lines used to abort it silently), walks the scene once instead of once per

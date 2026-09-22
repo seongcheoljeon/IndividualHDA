@@ -23,6 +23,55 @@ from widgets.video_player import video_ui_settings, video_widget
 from widgets.video_player.layout import VideoPlayerLayout
 from widgets.video_player.presenter import VideoPresenter
 
+VIDEO_EXTENSIONS = (
+    "mp4",
+    "avi",
+    "mpg",
+    "mpeg",
+    "mpe",
+    "wmv",
+    "asf",
+    "asx",
+    "flv",
+    "rm",
+    "mov",
+    "mkv",
+    "webm",
+    "ts",
+    "vob",
+)
+AUDIO_EXTENSIONS = (
+    "mp3",
+    "wav",
+    "ogg",
+    "gsm",
+    "flac",
+    "au",
+    "aiff",
+    "vox",
+    "wma",
+    "aac",
+    "dss",
+    "mid",
+)
+PLAYLIST_EXTENSIONS = ("m3u", "m3u8")
+PATH_ROLE = (
+    QtCore.Qt.ItemDataRole.UserRole
+)  # playlist items show the name, keep the path
+PLAYBACK_MODE_NAMES = {
+    0: "Play once",
+    1: "Repeat one",
+    2: "Play list once",
+    3: "Repeat list",
+    4: "Shuffle",
+}
+STATUS_ERROR_STYLE = "color: #d9534f;"
+
+
+def _filter(label: str, extensions: Sequence[str]) -> str:
+    patterns = " ".join(f"*.{ext} *.{ext.upper()}" for ext in extensions)
+    return f"{label} ({patterns})"
+
 
 class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
     def __init__(
@@ -71,15 +120,17 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         self.__shortcut_play_tgl = QtGui.QShortcut(QtGui.QKeySequence("Space"), self)
         self.__shortcut_full_screen_tgl = QtGui.QShortcut(QtGui.QKeySequence("f"), self)
         #
-        self.__video_filter_str = "Video files ({})".format(
-            " ".join(self.__video_extensions)
-        )
-        self.__audio_filter_str = "Audio files ({})".format(
-            " ".join(self.__audio_extensions)
-        )
-        self.__playlist_filter_str = "Playlist files (*.m3u *.m3u8 *.M3U *.M3U8)"
+        self.__video_filter_str = _filter("Video files", VIDEO_EXTENSIONS)
+        self.__audio_filter_str = _filter("Audio files", AUDIO_EXTENSIONS)
+        self.__playlist_filter_str = _filter("Playlist files", PLAYLIST_EXTENSIONS)
         self.__all_filter_str = "All files (*.*)"
         #
+        from widgets.empty_state import attach_empty_state
+
+        self.playlist_empty = attach_empty_state(self.listWidget__playlist)
+        self.playlist_empty.set_content(
+            "No videos yet", "Drop video files here or use Add."
+        )
         self.listWidget__playlist.setCurrentRow(0)
         self.__playlist.setCurrentIndex(0)
         self.__connections()
@@ -118,9 +169,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         self.pushButton__del_playlist.clicked.connect(self.__slot_delete_playlist)
         self.pushButton__playback_mode.clicked.connect(self.__slot_playback_mode)
         self.pushButton__volume.clicked.connect(self.__slot_volume_btn)
-        self.pushButton__full_screen.clicked.connect(
-            lambda: self.__video_widget.setFullScreen(True)
-        )
+        self.pushButton__full_screen.clicked.connect(self.__full_screen_toggle)
         self.pushButton__play.clicked.connect(self.__slot_play_btn)
         self.pushButton__stop.clicked.connect(self.__slot_stop_btn)
         self.pushButton__previous_video.clicked.connect(
@@ -162,24 +211,13 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         # A decode or backend failure used to reach the log only as part of the
         # window title, at info level; it never read as an error.
         message = self.__player.errorString()
-        self.__set_status_info(message)
+        self.__set_status_info(message, error=True)
         if message:
             log_handler.LogHandler.log_msg(
                 method=logging.error, msg=f"video playback failed: {message}"
             )
 
-    def __handle_cursor(self, status: Any) -> None:
-        if status in (
-            QtMultimedia.QMediaPlayer.MediaStatus.LoadingMedia,
-            QtMultimedia.QMediaPlayer.MediaStatus.BufferingMedia,
-            QtMultimedia.QMediaPlayer.MediaStatus.StalledMedia,
-        ):
-            self.setCursor(QtCore.Qt.CursorShape.BusyCursor)
-        else:
-            self.unsetCursor()
-
     def __slot_status_changed(self, status: Any) -> None:
-        self.__handle_cursor(status)
         if status == QtMultimedia.QMediaPlayer.MediaStatus.LoadingMedia:
             self.__set_status_info("Loading...")
         elif status == QtMultimedia.QMediaPlayer.MediaStatus.StalledMedia:
@@ -194,27 +232,28 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
     def __slot_buffering_progress(self, progress: int) -> None:
         self.__set_status_info(f"Buffering {progress}%")
 
-    def __set_status_info(self, info: Any) -> None:
-        self.__status_info = info
-        if self.__status_info != "":
-            ste_info = (
-                f"{self.__org_title} | {self.__track_info} - {self.__status_info}"
-            )
-        else:
-            ste_info = f"{self.__org_title} | {self.__track_info}"
-        # Title only. Playback state changes several times a second, and the
-        # window title already shows it; logging it flooded the panel.
-        self.setWindowTitle(ste_info)
+    def __set_status_info(self, info: Any, *, error: bool = False) -> None:
+        """Playback status on the footer label; errors in the warning colour.
+
+        Not logged: state changes several times a second and flooded the panel.
+        """
+        self.__status_info = str(info or "")
+        self.label__status.setText(self.__status_info)
+        self.label__status.setStyleSheet(STATUS_ERROR_STYLE if error else "")
+        self.__refresh_title()
 
     def __set_track_info(self, info: Any) -> None:
-        self.__track_info = info
-        if self.__status_info != "":
-            track_info = (
-                f"{self.__org_title} | {self.__track_info} - {self.__status_info}"
-            )
-        else:
-            track_info = f"{self.__org_title} | {self.__track_info}"
-        self.setWindowTitle(track_info)
+        self.__track_info = str(info or "")
+        self.label__track.setText(self.__track_info)
+        self.__refresh_title()
+
+    def __refresh_title(self) -> None:
+        parts = [self.__org_title]
+        if self.__track_info:
+            parts.append(self.__track_info)
+        if self.__status_info:
+            parts.append(self.__status_info)
+        self.setWindowTitle(" | ".join(parts))
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.__probe_closing = True
@@ -248,9 +287,12 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         filepath_lst = []
         for url in event.mimeData().urls():
             video_filepath = url.toLocalFile()
-            exts = ["mp4", "avi", "mkv", "mov", "mp3", "wav", "m3u"]
             video_fileinfo = QtCore.QFileInfo(video_filepath)
-            if video_fileinfo.suffix().lower() not in exts:
+            if video_fileinfo.suffix().lower() not in (
+                *VIDEO_EXTENSIONS,
+                *AUDIO_EXTENSIONS,
+                *PLAYLIST_EXTENSIONS,
+            ):
                 log_handler.LogHandler.log_msg(
                     method=logging.warning,
                     msg=f'"{video_fileinfo.suffix().lower()}" extension is not supported',
@@ -289,10 +331,14 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
     def ffmpeg_dirpath(self, val: Any) -> None:
         self.__ffmpeg_dirpath = pathlib.Path(val) if val is not None else None
 
+    @staticmethod
+    def item_path(item: QtWidgets.QListWidgetItem) -> pathlib.Path:
+        return pathlib.Path(str(item.data(PATH_ROLE)))
+
     def __slot_video_metadata(self) -> None:
         item = self.listWidget__playlist.currentItem()
         if item is not None:
-            self.__probe(pathlib.Path(item.text()))
+            self.__probe(self.item_path(item))
 
     def __probe(self, filepath: pathlib.Path) -> None:
         if filepath in self.__probe_cache:
@@ -347,10 +393,10 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         icon = "ic_movie_white.png" if is_video else "ic_audiotrack_white.png"
         for index in range(self.listWidget__playlist.count()):
             item = self.listWidget__playlist.item(index)
-            if pathlib.Path(item.text()) == filepath:
+            if self.item_path(item) == filepath:
                 item.setIcon(QtGui.QIcon(":/video_player_main/icons/" + icon))
         current = self.listWidget__playlist.currentItem()
-        if current and pathlib.Path(current.text()) == filepath:
+        if current and self.item_path(current) == filepath:
             self.__set_track_info(title)
 
     def __slot_update_duration(self, duration: int) -> None:
@@ -375,6 +421,12 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         self.pushButton__playback_mode.setIcon(
             QtGui.QIcon(QtGui.QPixmap(f":/video_player_main/icons/{icon}"))
         )
+        name = PLAYBACK_MODE_NAMES[self.playback_idx]
+        self.pushButton__playback_mode.setToolTip(f"Playback mode: {name}")
+
+    @property
+    def playback_mode_name(self) -> str:
+        return PLAYBACK_MODE_NAMES[self.playback_idx]
 
     def __build_context_playlist(self, point: Any) -> None:
         index = self.listWidget__playlist.indexAt(point)
@@ -480,11 +532,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
 
     def __slot_playlist_doubleclicked(self, index: QtWidgets.QListWidgetItem) -> None:
         row = self.listWidget__playlist.row(index)
-        vpath = QtCore.QFileInfo(self.listWidget__playlist.item(row).text().strip())
-        if not vpath.exists():
-            log_handler.LogHandler.log_msg(
-                method=logging.warning, msg="file does not exists"
-            )
+        if not self.__file_exists(self.listWidget__playlist.item(row)):
             return
         self.__playlist.setCurrentIndex(row)
         self.__player.play()
@@ -501,7 +549,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
             else:
                 paths.append(str(filepath))
         existing = {
-            self.listWidget__playlist.item(i).text()
+            str(self.listWidget__playlist.item(i).data(PATH_ROLE))
             for i in range(self.listWidget__playlist.count())
         }
         for filepath in paths:
@@ -513,10 +561,10 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
                 else QtCore.QUrl.fromLocalFile(str(pathlib.Path(filepath).absolute()))
             )
             self.__playlist.addMedia(url.toString())
-            self.listWidget__playlist.addItem(filepath)
-            self.listWidget__playlist.item(
-                self.listWidget__playlist.count() - 1
-            ).setToolTip(filepath)
+            item = QtWidgets.QListWidgetItem(pathlib.Path(filepath).name or filepath)
+            item.setData(PATH_ROLE, filepath)
+            item.setToolTip(filepath)
+            self.listWidget__playlist.addItem(item)
             existing.add(filepath)
             self.__probe(pathlib.Path(filepath))
 
@@ -614,6 +662,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
     def __slot_playback_mode(self) -> None:
         self.playback_idx += 1
         self.__set_playback_mode()
+        self.__set_status_info(self.playback_mode_name)
         pbmode = [MediaPlaylist.Sequential, MediaPlaylist.Loop]
         self.pushButton__previous_video.setEnabled(
             self.__playlist.playbackMode() in pbmode
@@ -629,13 +678,7 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
     def __slot_play_btn(self) -> None:
         row = self.listWidget__playlist.currentRow()
         item = self.listWidget__playlist.item(row)
-        if item is None:
-            return
-        vpath = QtCore.QFileInfo(item.text().strip())
-        if not vpath.exists():
-            log_handler.LogHandler.log_msg(
-                method=logging.warning, msg="file does not exists"
-            )
+        if item is None or not self.__file_exists(item):
             return
         if self.__is_playing():
             self.__player.pause()
@@ -644,6 +687,16 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         else:
             self.__playlist.setCurrentIndex(row)
             self.__player.play()
+
+    def __file_exists(self, item: QtWidgets.QListWidgetItem) -> bool:
+        path = str(item.data(PATH_ROLE))
+        if "://" in path or QtCore.QFileInfo(path).exists():
+            return True
+        self.__set_status_info(f"File not found: {item.text()}", error=True)
+        log_handler.LogHandler.log_msg(
+            method=logging.warning, msg=f"file does not exist: {path}"
+        )
+        return False
 
     def __slot_stop_btn(self) -> None:
         self.__player.stop()
@@ -711,52 +764,10 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         self.__playback_idx = val % 5
 
     def get_all_playlist_path(self) -> list[Any]:
-        all_playlist = []
-        for i in range(self.listWidget__playlist.count()):
-            vpath = pathlib.Path(self.listWidget__playlist.item(i).text())
-            all_playlist.append(vpath)
-        return all_playlist
-
-    @property
-    def __video_extensions(self) -> list[Any]:
-        ext_lst = [
-            "mp4",
-            "avi",
-            "mpg",
-            "mpeg",
-            "mpe",
-            "wmv",
-            "asf",
-            "asx",
-            "flv",
-            "rm",
-            "mov",
-            "mkv",
-            "webm",
-            "ts",
-            "vob",
+        return [
+            self.item_path(self.listWidget__playlist.item(i))
+            for i in range(self.listWidget__playlist.count())
         ]
-        ext_lst += [x.upper() for x in ext_lst]
-        return [f"*.{x}" for x in ext_lst]
-
-    @property
-    def __audio_extensions(self) -> list[Any]:
-        ext_lst = [
-            "mp3",
-            "wav",
-            "ogg",
-            "gsm",
-            "flac",
-            "au",
-            "aiff",
-            "vox",
-            "wma",
-            "aac",
-            "dss",
-            "mid",
-        ]
-        ext_lst += [x.upper() for x in ext_lst]
-        return [f"*.{x}" for x in ext_lst]
 
     @property
     def last_dirpath(self) -> pathlib.Path | None:

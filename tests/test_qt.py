@@ -69,8 +69,25 @@ def test_video_widget(app: Any) -> None:
     from widgets.video_player.video_player import VideoPlayer
 
     widget = VideoPlayer()
-    widget.add_playlist(["one.mp4", "two.mp4", "one.mp4"])
+    assert not widget.playlist_empty.isHidden()
+    widget.add_playlist(["/clips/one.mp4", "/clips/two.mp4", "/clips/one.mp4"])
     assert widget.listWidget__playlist.count() == 2
+    assert widget.playlist_empty.isHidden()
+    first = widget.listWidget__playlist.item(0)
+    assert first.text() == "one.mp4" and first.toolTip() == "/clips/one.mp4"
+    assert VideoPlayer.item_path(first) == pathlib.Path("/clips/one.mp4")
+    assert widget.get_all_playlist_path() == [
+        pathlib.Path("/clips/one.mp4"),
+        pathlib.Path("/clips/two.mp4"),
+    ]
+    widget.delete_playlist_item_by_filepath(pathlib.Path("/clips/one.mp4"))
+    assert widget.listWidget__playlist.count() == 1
+    # The mode button names the mode instead of relying on the icon alone.
+    assert widget.playback_mode_name == "Repeat one"
+    widget.pushButton__playback_mode.click()
+    assert widget.playback_mode_name == "Play list once"
+    assert "Play list once" in widget.pushButton__playback_mode.toolTip()
+    assert widget.label__status.text() == "Play list once"
     widget.close()
 
 
@@ -675,6 +692,9 @@ def test_playback_state_is_quiet_but_failures_are_logged(
         with caplog.at_level(logging.DEBUG):
             widget._VideoPlayer__set_status_info("Buffering 40%")
             widget._VideoPlayer__set_track_info("clip.mp4")
+        # The player is embedded: the footer labels are what the user sees.
+        assert widget.label__status.text() == "Buffering 40%"
+        assert widget.label__track.text() == "clip.mp4"
         assert "Buffering 40%" in widget.windowTitle()
         assert caplog.records == []
 
@@ -684,5 +704,7 @@ def test_playback_state_is_quiet_but_failures_are_logged(
             widget._VideoPlayer__display_error_msg(None)
         assert [r.levelno for r in caplog.records] == [logging.ERROR]
         assert "codec not supported" in caplog.records[0].getMessage()
+        assert widget.label__status.text() == "codec not supported"
+        assert "d9534f" in widget.label__status.styleSheet()  # shown as an error
     finally:
         widget.close()
