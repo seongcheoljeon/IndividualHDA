@@ -14,7 +14,12 @@ from typing import TYPE_CHECKING, Any, Literal
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from libs import host, houdini_api, ihda_system, keys, log_handler, platform_info
-from libs.app_metadata import FFMPEG_DOWNLOAD_URL, MINIMUM_HOUDINI_MAJOR, SUPPORT_URL
+from libs.app_metadata import (
+    FFMPEG_DOWNLOAD_URL,
+    MINIMUM_HOUDINI_MAJOR,
+    SPONSORS_URL,
+    SUPPORT_URL,
+)
 from libs.domain import LibraryContext
 from libs.ui_icons import Icon
 
@@ -30,6 +35,7 @@ Recommended Houdini Version: {houdini_ver}<br>
 <b><i>Please donate if you like this app.<i><b><br>
 <br>
 <a href="{SUPPORT_URL}" style="color:#ff5f5f" target="_blank">📖 Buy me a book</a><br>
+<a href="{SPONSORS_URL}" style="color:#ea4aaa" target="_blank">❤ Sponsor on GitHub</a><br>
 <br>
 <a href="https://vimeo.com/seongcheolzeon" style="color:red"
 target="_blank">Vimeo</a><br>
