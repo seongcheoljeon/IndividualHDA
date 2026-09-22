@@ -7,6 +7,10 @@
   team). Missing files dim the card instead of striking the name through.
   Items are now drawn by delegates (`widgets/item_delegates.py`); the models
   only provide data.
+- **Table rows.** The asset and history tables show a thumbnail with the name
+  and definition on two lines, the version as a pill and, in the asset table, a
+  star that toggles the favorite. History activity rows (renames, video
+  changes) appear as a quiet timeline entry rather than a struck-out version.
 - **Tags are chips.** The tag pane no longer takes `#a #b` text. Committed tags
   are chips (click one to search it, × or Backspace removes it); the line below
   completes from the tags already in the library. Enter, comma or space commit.

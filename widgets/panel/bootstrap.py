@@ -199,6 +199,33 @@ class PanelBootstrap:
             QtCore.Qt.WidgetAttribute.WA_Hover, True
         )
         card.favoriteToggled.connect(window.management.toggle_favorite_at)
+        from libs.model_columns import AssetColumn, HistoryColumn
+        from model.ihda_history_model import HistoryModel
+        from model.ihda_table_model import TableModel
+        from widgets.item_delegates import RowDelegate
+
+        rows = RowDelegate(
+            window.views.assets_table,
+            data_role=TableModel.data_role,
+            name_column=AssetColumn.NAME,
+            secondary_column=AssetColumn.DEFINITION,
+            version_column=AssetColumn.VERSION,
+            favorite_column=AssetColumn.FAVORITE,
+            favorite_role=TableModel.favorite_role,
+        )
+        window.views.assets_table.setItemDelegate(rows)
+        rows.favoriteToggled.connect(window.management.toggle_favorite_at)
+        window.views.history.setItemDelegate(
+            RowDelegate(
+                window.views.history,
+                data_role=HistoryModel.data_role,
+                name_column=HistoryColumn.NAME,
+                secondary_column=HistoryColumn.DEFINITION,
+                version_column=HistoryColumn.VERSION,
+            )
+        )
+        for view in (window.views.assets_table, window.views.history):
+            view.viewport().setAttribute(QtCore.Qt.WidgetAttribute.WA_Hover, True)
         window.selection._slot_chk_hist_search_data(
             window.checkBox__hist_search_date.isChecked()
         )

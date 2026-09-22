@@ -23,7 +23,7 @@ STAR_SIZE = 16
 ASSET_TABLE_COLUMN_WIDTHS = (
     (AssetColumn.NAME, 250),
     (AssetColumn.DEFINITION, 130),
-    (AssetColumn.FAVORITE, 10),
+    (AssetColumn.FAVORITE, 28),
     (AssetColumn.VERSION, 60),
     (AssetColumn.USE_COUNT, 50),
 )

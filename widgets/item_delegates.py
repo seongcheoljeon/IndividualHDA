@@ -246,3 +246,202 @@ class CardDelegate(QtWidgets.QStyledItemDelegate):
             )
             return True
         return super().editorEvent(event, model, option, index)
+
+
+# --- the asset and history tables -----------------------------------------------
+
+
+class RowDelegate(QtWidgets.QStyledItemDelegate):
+    """Table rows: thumbnail + two-line name cell, version pill, clickable star.
+
+    Activity rows of the history table (renames, video changes: ``is_version``
+    False) get a timeline dot and dim italic text instead of a thumbnail.
+    """
+
+    favoriteToggled = QtCore.Signal(QtCore.QModelIndex)
+
+    def __init__(
+        self,
+        parent: QtCore.QObject | None,
+        *,
+        data_role: int,
+        name_column: int,
+        secondary_column: int,
+        version_column: int | None = None,
+        favorite_column: int | None = None,
+        favorite_role: int | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self._data_role = data_role
+        self._name_column = name_column
+        self._secondary_column = secondary_column
+        self._version_column = version_column
+        self._favorite_column = favorite_column
+        self._favorite_role = favorite_role
+
+    @staticmethod
+    def _is_version(data: Any) -> bool:
+        return bool(getattr(data, "is_version", True))
+
+    def paint(  # type: ignore[override]
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+    ) -> None:
+        column = index.column()
+        if column not in (
+            self._name_column,
+            self._version_column,
+            self._favorite_column,
+        ):
+            super().paint(painter, option, index)
+            return
+        opt = QtWidgets.QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        theme_background(painter, opt)
+        palette = opt.palette
+        data = index.data(self._data_role)
+        font = QtGui.QFont(opt.font)
+        font.setStrikeOut(False)
+        painter.save()
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        if not is_available(data):
+            painter.setOpacity(UNAVAILABLE_OPACITY)
+        if column == self._favorite_column:
+            favorite = self._favorite_role is not None and bool(
+                index.data(self._favorite_role)
+            )
+            rect = QtCore.QRect(0, 0, STAR_SIZE, STAR_SIZE)
+            rect.moveCenter(opt.rect.center())
+            hovered = bool(opt.state & QtWidgets.QStyle.StateFlag.State_MouseOver)
+            if favorite or hovered:
+                draw_star(painter, rect, palette, filled=favorite)
+        elif column == self._version_column:
+            text = str(index.data(QtCore.Qt.ItemDataRole.DisplayRole) or "")
+            if text:
+                pill_font = small_font(font)
+                width = QtGui.QFontMetrics(pill_font).horizontalAdvance(text) + 14
+                top_left = QtCore.QPoint(
+                    opt.rect.center().x() - width // 2,
+                    opt.rect.center().y() - BADGE_HEIGHT // 2,
+                )
+                draw_pill(painter, top_left, text, palette, pill_font)
+        else:
+            self._paint_name(painter, opt, index, data, font)
+        painter.restore()
+
+    def _paint_name(
+        self,
+        painter: QtGui.QPainter,
+        opt: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+        data: Any,
+        font: QtGui.QFont,
+    ) -> None:
+        palette = opt.palette
+        rect = opt.rect.adjusted(CARD_PADDING, 0, -CARD_PADDING, 0)
+        name = str(index.data(QtCore.Qt.ItemDataRole.DisplayRole) or "")
+        if not self._is_version(data):
+            # Activity row: a timeline dot and the event text, quieter than a version.
+            dot = QtCore.QRectF(rect.left() + 2, rect.center().y() - 3, 7, 7)
+            painter.setPen(QtCore.Qt.PenStyle.NoPen)
+            painter.setBrush(palette.mid())
+            painter.drawEllipse(dot)
+            font.setItalic(True)
+            painter.setFont(font)
+            painter.setPen(palette.placeholderText().color())
+            painter.drawText(
+                rect.adjusted(14, 0, 0, 0),
+                QtCore.Qt.AlignmentFlag.AlignLeft
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                QtGui.QFontMetrics(font).elidedText(
+                    name, QtCore.Qt.TextElideMode.ElideRight, rect.width() - 14
+                ),
+            )
+            return
+        pixmap = index.data(QtCore.Qt.ItemDataRole.DecorationRole)
+        text_left = rect.left()
+        if isinstance(pixmap, QtGui.QPixmap) and not pixmap.isNull():
+            edge = min(rect.height() - 2, pixmap.height(), pixmap.width())
+            area = QtCore.QRect(rect.left(), rect.top() + 1, edge, rect.height() - 2)
+            draw_rounded_pixmap(painter, area, pixmap, CARD_RADIUS // 2)
+            text_left = area.right() + CARD_PADDING * 2
+        text_rect = QtCore.QRect(
+            text_left, rect.top(), rect.right() - text_left, rect.height()
+        )
+        secondary = ""
+        model = index.model()
+        if self._secondary_column != index.column() and model is not None:
+            sibling = model.index(index.row(), self._secondary_column, index.parent())
+            secondary = str(sibling.data(QtCore.Qt.ItemDataRole.DisplayRole) or "")
+        metrics = QtGui.QFontMetrics(font)
+        detail_font = small_font(font)
+        detail_metrics = QtGui.QFontMetrics(detail_font)
+        two_lines = bool(secondary) and (
+            metrics.height() + detail_metrics.height() <= text_rect.height()
+        )
+        if two_lines:
+            top = (
+                text_rect.top()
+                + (text_rect.height() - metrics.height() - detail_metrics.height()) // 2
+            )
+            name_rect = QtCore.QRect(
+                text_rect.left(), top, text_rect.width(), metrics.height()
+            )
+            detail_rect = QtCore.QRect(
+                text_rect.left(),
+                top + metrics.height(),
+                text_rect.width(),
+                detail_metrics.height(),
+            )
+        else:
+            name_rect, detail_rect = text_rect, QtCore.QRect()
+        painter.setFont(font)
+        painter.setPen(palette.text().color())
+        painter.drawText(
+            name_rect,
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
+            metrics.elidedText(
+                name, QtCore.Qt.TextElideMode.ElideMiddle, name_rect.width()
+            ),
+        )
+        if two_lines:
+            painter.setFont(detail_font)
+            painter.setPen(palette.placeholderText().color())
+            painter.drawText(
+                detail_rect,
+                QtCore.Qt.AlignmentFlag.AlignLeft
+                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                detail_metrics.elidedText(
+                    secondary, QtCore.Qt.TextElideMode.ElideRight, detail_rect.width()
+                ),
+            )
+
+    def editorEvent(  # type: ignore[override]
+        self,
+        event: QtCore.QEvent,
+        model: QtCore.QAbstractItemModel,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+    ) -> bool:
+        if (
+            self._favorite_column is not None
+            and index.column() == self._favorite_column
+            and event.type() == QtCore.QEvent.Type.MouseButtonRelease
+            and isinstance(event, QtGui.QMouseEvent)
+            and event.button() == QtCore.Qt.MouseButton.LeftButton
+        ):
+            self.favoriteToggled.emit(
+                index
+                if isinstance(index, QtCore.QModelIndex)
+                else model.index(index.row(), index.column(), index.parent())
+            )
+            return True
+        return super().editorEvent(event, model, option, index)
+
+
+def two_line_row_height(font: QtGui.QFont) -> int:
+    """The row height a two-line name cell needs; tables take the max with the icon."""
+    metrics = QtGui.QFontMetrics(font)
+    return metrics.height() + QtGui.QFontMetrics(small_font(font)).height() + 6

@@ -510,16 +510,19 @@ class PanelPresentation:
         self.bindings.models.history_model.set_icon_size(
             icon_size=tableview_icon_size, thumb_size=tableview_thumb_size
         )
-        # tableview
+        # tableview: the name cell shows two lines, so rows are never shorter than that
+        from widgets.item_delegates import two_line_row_height
+
+        minimum = two_line_row_height(self.bindings.views.assets_table.font())
         if self.is_show_thumbnail:
             vertical_cell_size = tableview_thumb_size
         else:
             vertical_cell_size = tableview_icon_size
         self.bindings.views.assets_table.verticalHeader().setDefaultSectionSize(
-            vertical_cell_size
+            max(int(vertical_cell_size), minimum)
         )
         self.bindings.views.history.verticalHeader().setDefaultSectionSize(
-            tableview_thumb_size
+            max(int(tableview_thumb_size), minimum)
         )
 
     @property
