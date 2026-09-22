@@ -205,11 +205,29 @@ def test_panel_with_saved_library(
                 raise RuntimeError("scene locked")
             return scans[0]
 
+    # The previous session left the Find page open: it must not scan before the
+    # models exist (that crashed the panel) and must scan once they do.
+    import json
+
+    from libs.paths import Paths
+
+    Paths.json_filepath.write_text(
+        json.dumps({"btn_hda_inside_node": True, "btn_hda_info": False}),
+        encoding="utf-8",
+    )
     panel = IndividualHDA(
         services=PanelServices(
             policy=PanelPolicy(autosave_delay_ms=20), host_scene=FakeScene
         )
     )
+    assert (
+        panel.stackedWidget__hda_infos.currentWidget() is panel.page__hda_inside_hipfile
+    )
+    assert (
+        panel.models.inside_model.rowCount(panel.models.inside_model.index(0, 0)) == 1
+    )
+    panel.pushButton__hda_info.click()
+    Paths.json_filepath.unlink()
     model = panel.models.list_proxy_model
     assert model.rowCount() == 1
     panel.lineEdit__search_hda.setText("missing")
@@ -260,9 +278,9 @@ def test_panel_with_saved_library(
     # The Find page scans the HIP when it opens, lists the instances and jumps
     # to a node on double-click; imports mark it stale so it rescans itself.
     inside = panel.models.inside_model
-    assert inside.rowCount(inside.index(0, 0)) == 0
-    assert panel.views.inside_empty.title.text() == "Not scanned yet"
-    panel.pushButton__hda_inside_node_view.click()
+    panel.selection.mark_inside_stale()  # hidden page: nothing happens yet
+    scans[0] = scans[0]  # unchanged scene
+    panel.pushButton__hda_inside_node_view.click()  # showing -> rescans
     assert (
         panel.stackedWidget__hda_infos.currentWidget() is panel.page__hda_inside_hipfile
     )

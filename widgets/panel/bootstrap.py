@@ -189,6 +189,9 @@ class PanelBootstrap:
             "Scan now",
             window.selection._slot_refresh_inside_nodes,
         )
+        # The saved page was restored before the models existed; scan now if it
+        # is the Find page.
+        window.selection.inside_models_ready()
         from model.ihda_list_model import ListModel
         from widgets.item_delegates import CardDelegate
 

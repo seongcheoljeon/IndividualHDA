@@ -417,12 +417,27 @@ class PanelSelection:
             )
 
     # The inside-node tree is rebuilt lazily: imports and registrations mark it
-    # stale, and the scan runs when the page is (or becomes) visible.
+    # stale, and the scan runs when the page is (or becomes) visible. Nothing
+    # scans before bootstrap has built the models (the saved page is restored
+    # earlier than that).
     _inside_stale = True
+    _inside_ready = False
+
+    def inside_models_ready(self) -> None:
+        """Bootstrap: the inside model exists; scan now if the page is showing."""
+        self._inside_ready = True
+        self._scan_if_showing()
 
     def mark_inside_stale(self) -> None:
         self._inside_stale = True
-        if self.bindings.ui.pushButton__hda_inside_node_view.isChecked():
+        self._scan_if_showing()
+
+    def _scan_if_showing(self) -> None:
+        if (
+            self._inside_ready
+            and self._inside_stale
+            and self.bindings.ui.pushButton__hda_inside_node_view.isChecked()
+        ):
             self._slot_refresh_inside_nodes()
 
     @log_handler.log_elapsed("iHDA node search")
@@ -716,5 +731,4 @@ class PanelSelection:
             self.bindings.ui.stackedWidget__hda_infos.setCurrentWidget(
                 self.bindings.ui.page__hda_inside_hipfile
             )
-            if self._inside_stale:
-                self._slot_refresh_inside_nodes()
+            self._scan_if_showing()
