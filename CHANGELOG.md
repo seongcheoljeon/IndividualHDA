@@ -2,6 +2,11 @@
 
 ## Unreleased — modern editing
 
+- **History filters that start useful.** The date filter defaults to the last
+  30 days (it used to be the year 2020, which hid everything the moment it was
+  switched on), dates read as `yyyy-MM-dd`, a start after the end is sorted
+  instead of silently ignored, and a Clear filters button puts every control
+  back at once. The count reads "N shown".
 - **Web view behaves like a browser.** A thin progress bar under the address
   bar, a "Could not load …" notice with Reload instead of a blank page, back
   and forward buttons that disable when there is nowhere to go, the address bar

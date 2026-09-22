@@ -21,10 +21,12 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QDateEdit,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
+    QPushButton,
     QSizePolicy,
     QSpacerItem,
     QSplitter,
@@ -35,6 +37,9 @@ from PySide6.QtWidgets import (
 from libs.ui_icons import Icon
 from widgets.layout_helpers import main_window_text, size_policy
 from widgets.ui_tokens import TOOLBAR_ICON_SIZE
+
+# The date filter starts on the last month; the old 2020 range hid everything.
+DEFAULT_DATE_SPAN_DAYS = 30
 
 if TYPE_CHECKING:
     from widgets.panel.layout import MainWindowLayout
@@ -137,10 +142,11 @@ def build_history_search(layout: MainWindowLayout, window: QMainWindow) -> None:
     layout.horizontalLayout__history_search.addLayout(
         layout.horizontalLayout__history_query
     )
-    layout.spacer__history_search_end = QSpacerItem(
-        24, 20, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum
-    )
-    layout.horizontalLayout__history_search.addItem(layout.spacer__history_search_end)
+    layout.line__history_filters = QFrame(layout.widget__history_search)
+    layout.line__history_filters.setObjectName("line__history_filters")
+    layout.line__history_filters.setFrameShape(QFrame.Shape.VLine)
+    layout.line__history_filters.setFrameShadow(QFrame.Shadow.Sunken)
+    layout.horizontalLayout__history_search.addWidget(layout.line__history_filters)
 
 
 def build_history_date_filter(layout: MainWindowLayout, window: QMainWindow) -> None:
@@ -172,7 +178,10 @@ def build_history_date_filter(layout: MainWindowLayout, window: QMainWindow) -> 
     layout.dateEdit__hist_search_start.setFrame(False)
     layout.dateEdit__hist_search_start.setAlignment(Qt.AlignmentFlag.AlignCenter)
     layout.dateEdit__hist_search_start.setCalendarPopup(True)
-    layout.dateEdit__hist_search_start.setDate(QDate(2020, 1, 1))
+    layout.dateEdit__hist_search_start.setDisplayFormat("yyyy-MM-dd")
+    layout.dateEdit__hist_search_start.setDate(
+        QDate.currentDate().addDays(-DEFAULT_DATE_SPAN_DAYS)
+    )
     layout.dateEdit__hist_search_start.setToolTip(main_window_text("Start Date"))
     layout.dateEdit__hist_search_start.setStatusTip(
         main_window_text("Start date to search")
@@ -197,7 +206,8 @@ def build_history_date_filter(layout: MainWindowLayout, window: QMainWindow) -> 
     layout.dateEdit__hist_search_end.setFrame(False)
     layout.dateEdit__hist_search_end.setAlignment(Qt.AlignmentFlag.AlignCenter)
     layout.dateEdit__hist_search_end.setCalendarPopup(True)
-    layout.dateEdit__hist_search_end.setDate(QDate(2020, 12, 31))
+    layout.dateEdit__hist_search_end.setDisplayFormat("yyyy-MM-dd")
+    layout.dateEdit__hist_search_end.setDate(QDate.currentDate())
     layout.dateEdit__hist_search_end.setToolTip(main_window_text("End Date"))
     layout.dateEdit__hist_search_end.setStatusTip(
         main_window_text("End date to search")
@@ -216,6 +226,25 @@ def build_history_date_filter(layout: MainWindowLayout, window: QMainWindow) -> 
     )
     layout.horizontalLayout__history_search.addItem(
         layout.spacer__history_search_middle
+    )
+    layout.pushButton__hist_reset_filters = QPushButton(layout.widget__history_search)
+    layout.pushButton__hist_reset_filters.setObjectName(
+        "pushButton__hist_reset_filters"
+    )
+    layout.pushButton__hist_reset_filters.setCursor(
+        QCursor(Qt.CursorShape.PointingHandCursor)
+    )
+    layout.pushButton__hist_reset_filters.setIcon(QIcon(Icon.CLEAR))
+    layout.pushButton__hist_reset_filters.setIconSize(
+        QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
+    )
+    layout.pushButton__hist_reset_filters.setFlat(True)
+    layout.pushButton__hist_reset_filters.setToolTip(main_window_text("Clear filters"))
+    layout.pushButton__hist_reset_filters.setStatusTip(
+        main_window_text("Show every history entry again")
+    )
+    layout.horizontalLayout__history_search.addWidget(
+        layout.pushButton__hist_reset_filters
     )
     layout.splitter__ihda_hist_whole_vertical.addWidget(layout.widget__history_search)
 
@@ -270,7 +299,10 @@ def build_history_results(layout: MainWindowLayout, window: QMainWindow) -> None
     layout.horizontalLayout__history_count.addWidget(layout.label__hist_cnt)
     layout.label__hist_cnt_suffix = QLabel(layout.page__history)
     layout.label__hist_cnt_suffix.setObjectName("label__hist_cnt_suffix")
-    layout.label__hist_cnt_suffix.setText(main_window_text("histories"))
+    layout.label__hist_cnt_suffix.setText(main_window_text("shown"))
+    layout.label__hist_cnt.setToolTip(
+        main_window_text("History entries that pass the filters above")
+    )
     layout.horizontalLayout__history_count.addWidget(layout.label__hist_cnt_suffix)
     layout.horizontalLayout__history_footer.addLayout(
         layout.horizontalLayout__history_count

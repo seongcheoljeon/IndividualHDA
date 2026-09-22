@@ -8,7 +8,6 @@ from typing import Protocol
 
 class HistoryView(Protocol):
     def show_history_dates(self, dates: list[str]) -> None: ...
-    def show_history_error(self, message: str) -> None: ...
 
 
 class HistoryPresenter:
@@ -16,11 +15,9 @@ class HistoryPresenter:
         self._view = view
 
     def filter_dates(self, enabled: bool, start: date, end: date) -> None:
-        if enabled and start > end:
-            self._view.show_history_error(
-                "Search start date must not be after the end date."
-            )
+        """An inverted range is a typing slip: filter the sorted range."""
+        if not enabled:
+            self._view.show_history_dates([])
             return
-        self._view.show_history_dates(
-            [start.isoformat(), end.isoformat()] if enabled else []
-        )
+        first, last = sorted((start, end))
+        self._view.show_history_dates([first.isoformat(), last.isoformat()])

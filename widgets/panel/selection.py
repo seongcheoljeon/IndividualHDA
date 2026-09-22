@@ -228,8 +228,15 @@ class PanelSelection:
             ),
         )
 
-    def show_history_error(self, message: str) -> None:
-        log_handler.LogHandler.log_msg(method=logging.warning, msg=message)
+    def reset_history_filters(self) -> None:
+        """Back to every entry: each control's own signal refilters the table."""
+        ui = self.bindings.ui
+        ui.comboBox__hist_ihda_node.setCurrentIndex(0)
+        ui.comboBox__search_field_hist.setCurrentIndex(0)
+        ui.checkBox__casesensitive_hda_hist.setChecked(False)
+        ui.lineEdit__search_hda_hist.clear()
+        ui.checkBox__hist_search_date.setChecked(False)
+        self.bindings.models.search_filter_regexp_hist_hda_item("")
 
     def show_history_dates(self, dates: list[str]) -> None:
         self.bindings.models.history_proxy_model.set_datetime(datetime_lst=dates)

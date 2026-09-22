@@ -67,6 +67,31 @@ def test_reload_and_revision_poll_follow_external_changes(
     assert panel.comboBox__hist_ihda_node.count() == 3
     assert panel.models.history_model.rowCount() == 2
 
+    # History filters: the date filter starts on the last month, so entries
+    # registered today stay visible; Clear filters undoes everything at once.
+    from PySide6.QtCore import QDate
+
+    history = panel.models.history_proxy_model
+    assert panel.dateEdit__hist_search_end.date() == QDate.currentDate()
+    assert panel.dateEdit__hist_search_start.date() < QDate.currentDate()
+    panel.checkBox__hist_search_date.setChecked(True)
+    assert history.rowCount() == 2 and panel.label__hist_cnt.text() == "2"
+    # An inverted range is sorted, not refused.
+    panel.dateEdit__hist_search_start.setDate(QDate.currentDate().addDays(3))
+    assert history.rowCount() == 2
+    panel.comboBox__hist_ihda_node.setCurrentIndex(
+        panel.comboBox__hist_ihda_node.findData(1)
+    )
+    panel.lineEdit__search_hda_hist.setText("zzz")
+    panel.models.search_filter_regexp_hist_hda_item("zzz")
+    assert history.rowCount() == 0
+    panel.pushButton__hist_reset_filters.click()
+    assert panel.comboBox__hist_ihda_node.currentData() == -1
+    assert panel.lineEdit__search_hda_hist.text() == ""
+    assert not panel.checkBox__hist_search_date.isChecked()
+    assert not panel.dateEdit__hist_search_start.isEnabled()
+    assert history.rowCount() == 2 and panel.label__hist_cnt.text() == "2"
+
     # The poller notices a revision change and drops a selection that vanished.
     external.delete_asset(1, root / "sop" / "Water")
     panel._known_revision = -1

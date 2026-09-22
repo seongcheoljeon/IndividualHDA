@@ -40,7 +40,6 @@ class View:
 
     show_command_error = show_error
     show_media_error = show_error
-    show_history_error = show_error
     show_preference_error = show_error
     show_video_settings_error = show_error
 
@@ -306,13 +305,13 @@ def test_name_validation(name: str, valid: bool) -> None:
         assert result.name == "Water_Sim"
 
 
-def test_history_invalid_range_keeps_previous_filter() -> None:
+def test_history_inverted_range_is_sorted_not_refused() -> None:
     view = View()
     presenter = HistoryPresenter(view)
     presenter.filter_dates(True, date(2026, 1, 1), date(2026, 2, 1))
     assert view.content == ["2026-01-01", "2026-02-01"]
-    presenter.filter_dates(True, date(2026, 2, 1), date(2026, 1, 1))
-    assert view.errors and view.content == ["2026-01-01", "2026-02-01"]
+    presenter.filter_dates(True, date(2026, 3, 1), date(2026, 1, 1))
+    assert view.content == ["2026-01-01", "2026-03-01"] and not view.errors
     presenter.filter_dates(False, date(2026, 2, 1), date(2026, 1, 1))
     assert view.content == []
 

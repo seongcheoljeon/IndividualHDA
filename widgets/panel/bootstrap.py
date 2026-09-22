@@ -349,6 +349,9 @@ class PanelBootstrap:
         window.checkBox__casesensitive_hda_hist.stateChanged.connect(
             window.selection._slot_checkbox_hist_hda_item_casesensitive
         )
+        window.pushButton__hist_reset_filters.clicked.connect(
+            window.selection.reset_history_filters
+        )
         from libs.debounce import DebouncedText
 
         window._history_search_debounce = DebouncedText(

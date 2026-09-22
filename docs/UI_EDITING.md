@@ -31,7 +31,9 @@
 
 `build_ui()`에는 화면을 만드는 순서가 있습니다. 해당 `_build_*` 메서드에서
 위젯 생성, 이름, 텍스트, 크기, 배치가 함께 보이도록 구성했습니다.
-예를 들어 이력 날짜 검색은 `layout_history.py`의 `build_history_date_filter()`에서 수정합니다.
+예를 들어 이력 날짜 검색은 `layout_history.py`의 `build_history_date_filter()`에서 수정합니다
+(기본 기간은 `DEFAULT_DATE_SPAN_DAYS`, 필터 초기화 버튼은 `pushButton__hist_reset_filters`
+→ `PanelSelection.reset_history_filters()`).
 큰 페이지는 자기 모듈의 `build_*(layout, window)` 함수에 있고, 위젯은 여전히
 `MainWindowLayout`의 속성으로 선언됩니다.
 

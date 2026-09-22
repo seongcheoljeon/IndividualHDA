@@ -109,6 +109,8 @@ class MainWindowLayout:
     label__found_hda_inside_hipfile_count: QLabel
     label__hist_cnt: QLabel
     label__hist_cnt_suffix: QLabel
+    line__history_filters: QFrame
+    pushButton__hist_reset_filters: QPushButton
     label__hist_tag_pixmap: QLabel
     label__hist_tags: QLabel
     label__join_str: QLabel
