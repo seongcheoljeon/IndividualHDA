@@ -16,7 +16,7 @@ import logging
 import pathlib
 import sqlite3
 
-from PySide6 import QtGui
+from PySide6 import QtCore, QtGui
 
 from libs import identity, ihda_system, log_handler, note_syntax
 from libs.domain import LibraryContext
@@ -184,6 +184,21 @@ class PanelBootstrap:
         attach_empty_state(window.views.inside).set_content(
             "No iHDA nodes here", "Refresh after importing assets into this network."
         )
+        from model.ihda_list_model import ListModel
+        from widgets.item_delegates import CardDelegate
+
+        # Items are drawn by delegates; models keep providing data only.
+        card = CardDelegate(
+            window.views.assets_list,
+            data_role=ListModel.data_role,
+            favorite_role=ListModel.favorite_role,
+            version_role=ListModel.version_role,
+        )
+        window.views.assets_list.setItemDelegate(card)
+        window.views.assets_list.viewport().setAttribute(
+            QtCore.Qt.WidgetAttribute.WA_Hover, True
+        )
+        card.favoriteToggled.connect(window.management.toggle_favorite_at)
         window.selection._slot_chk_hist_search_data(
             window.checkBox__hist_search_date.isChecked()
         )

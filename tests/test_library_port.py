@@ -23,7 +23,7 @@ def test_personal_library_leaves_forwarded_requests_to_the_panel(
     assert library.supports_scene_records
     assert not library.register_nodes([]) and not library.import_drop(None)
     assert not library.remove_selected() and not library.play_video()
-    assert not library.import_selected()
+    assert not library.import_selected() and not library.toggle_favorite(1)
     assert not library.attach("video") and not library.context_menu(None)
     # Without a database file there is nothing to recover or manage.
     assert library.registration_recovery() is None
@@ -45,6 +45,7 @@ def test_team_library_forwards_requests_and_reports_the_role() -> None:
         history_menu=lambda point: calls.append(("history", point)),
         attach=lambda kind: calls.append(("attach", kind)),
         play_video=lambda: calls.append(("play", None)),
+        toggle_favorite=lambda asset_id: calls.append(("favorite", asset_id)),
     )
     presenter = SimpleNamespace(refresh=lambda: calls.append(("refresh", None)))
     team = SimpleNamespace(
@@ -79,3 +80,4 @@ def test_team_library_forwards_requests_and_reports_the_role() -> None:
         ("status", ""),
     ]
     assert library.import_selected() and calls[-1] == ("download", None)
+    assert library.toggle_favorite(7) and calls[-1] == ("favorite", 7)

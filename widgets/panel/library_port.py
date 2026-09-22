@@ -61,6 +61,7 @@ class LibraryPort(Protocol):
     def attach(self, kind: FileKind) -> bool: ...
     def play_video(self) -> bool: ...
     def import_selected(self) -> bool: ...
+    def toggle_favorite(self, asset_id: int) -> bool: ...
 
 
 class PersonalLibrary:
@@ -137,6 +138,9 @@ class PersonalLibrary:
         return False
 
     def import_selected(self) -> bool:
+        return False
+
+    def toggle_favorite(self, asset_id: int) -> bool:
         return False
 
 
@@ -219,4 +223,8 @@ class TeamLibrary:
 
     def import_selected(self) -> bool:
         self._team.download()
+        return True
+
+    def toggle_favorite(self, asset_id: int) -> bool:
+        self._team.actions.toggle_favorite(asset_id)
         return True

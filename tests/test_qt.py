@@ -218,6 +218,18 @@ def test_panel_with_saved_library(
     wait_until(app, lambda: panel.label__metadata_status.text() == "Saved · just now")
     assert panel.session.repository.list_assets()[0].hda_tags == ("Water", "한글")
     assert not panel.label__tag_status.text()
+    # The grid draws cards; the star on a card toggles the favorite of that row.
+    from widgets.item_delegates import CardDelegate
+
+    assert isinstance(panel.views.assets_list.itemDelegate(), CardDelegate)
+    assert not panel.session.repository.list_assets()[0].is_favorite_hda
+    panel.management.toggle_favorite_at(panel.models.list_proxy_model.index(0, 0))
+    assert panel.session.repository.list_assets()[0].is_favorite_hda
+    assert panel.models.list_proxy_model.index(0, 0).data(
+        panel.models.list_proxy_model.favorite_role
+    )
+    panel.management.toggle_favorite_at(panel.models.list_proxy_model.index(0, 0))
+    assert not panel.session.repository.list_assets()[0].is_favorite_hda
     # Double-click plays the video (none here: a toast, no import); Enter imports
     # the selected rows through the Houdini port.
     imported: list[list[bytes]] = []

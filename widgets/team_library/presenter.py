@@ -176,9 +176,17 @@ class WorkspacePresenter:
         self._pending.clear(command.request_id)
         return result
 
-    def mutate(self, operation: Operation, values: dict[str, Any]) -> None:
+    def mutate(
+        self, operation: Operation, values: dict[str, Any], asset_id: int | None = None
+    ) -> None:
+        """Write to the selected asset, or to ``asset_id`` (a card's star)."""
         try:
-            asset = self._selection()
+            if asset_id is None:
+                asset = self._selection()
+            elif asset_id in self._assets:
+                asset = self._assets[asset_id]
+            else:
+                raise TeamError("The asset is no longer loaded")
             command = Command(
                 operation,
                 asset_id=asset["id"],

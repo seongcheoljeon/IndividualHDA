@@ -447,13 +447,28 @@ iHDA note history: {cnt_hda_note_hist}
                 method=logging.error, msg="no node selected "
             )
             return
-        hda_id = self.bindings.selection.state.asset.require_data().hda_id
+        self._toggle_favorite(self.bindings.selection.state.asset.require_data().hda_id)
+
+    def toggle_favorite_at(self, index: QtCore.QModelIndex) -> None:
+        """The star on a card or table row; the team library has its own command."""
+        if not index.isValid():
+            return
+        id_role = getattr(index.model(), "id_role", None)  # source and proxies
+        hda_id = index.data(id_role) if id_role is not None else None
+        if hda_id is None or self.bindings.library().toggle_favorite(hda_id):
+            return
+        self._toggle_favorite(hda_id)
+
+    def _toggle_favorite(self, hda_id: int) -> None:
+        row = self.bindings.models.assets.id_rows.get(hda_id)
+        if row is None:
+            return
+        current = self.bindings.models.assets.rows[row]
         is_update = self.bindings.session.require_repository().toggle_favorite(hda_id)
         if bool(is_update):
-            row = self.bindings.models.assets.id_rows.get(hda_id)
             key = keys.Key.is_favorite_hda
-            val = self.bindings.selection.state.asset.require_data().is_favorite_hda ^ 1
-            hda_name = self.bindings.selection.state.asset.name
+            val = not current.is_favorite_hda
+            hda_name = current.hda_name
             self.bindings.queries.change_hda_data(row=row, key=key, val=val)
             if val:
                 log_handler.LogHandler.log_msg(

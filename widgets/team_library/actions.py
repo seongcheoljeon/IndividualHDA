@@ -118,10 +118,16 @@ class MainAssetActions:
 
     def favorite(self) -> None:
         selected_id = self.bindings.selection.state.asset.id
-        asset = self.library.document(selected_id) if selected_id is not None else None
+        if selected_id is not None:
+            self.toggle_favorite(selected_id)
+
+    def toggle_favorite(self, asset_id: int) -> None:
+        asset = self.library.document(asset_id)
         if asset and self.library.presenter:
             self.library.presenter.mutate(
-                "preference", {"favorite": not asset.get("favorite", False)}
+                "preference",
+                {"favorite": not asset.get("favorite", False)},
+                asset_id=asset_id,
             )
 
     def remove(self) -> None:

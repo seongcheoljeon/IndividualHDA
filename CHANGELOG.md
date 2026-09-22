@@ -2,6 +2,11 @@
 
 ## Unreleased — modern editing
 
+- **Asset cards.** The grid draws each asset as a card: rounded thumbnail,
+  name, a version pill and a favorite star that toggles on click (personal and
+  team). Missing files dim the card instead of striking the name through.
+  Items are now drawn by delegates (`widgets/item_delegates.py`); the models
+  only provide data.
 - **Tags are chips.** The tag pane no longer takes `#a #b` text. Committed tags
   are chips (click one to search it, × or Backspace removes it); the line below
   completes from the tags already in the library. Enter, comma or space commit.
