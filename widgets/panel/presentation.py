@@ -547,24 +547,13 @@ class PanelPresentation:
         dialog.deleteLater()
 
     def _slot_help(self) -> None:
-        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.get_default_font(font_size=15))
-        msgbox.setWindowTitle("Individual HDA Help")
-        msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
-        msgbox.setText(
-            """
-            <a href="https://www.youtube.com/watch?v=XR7h8uGR_iI" style="color:red"
-            target="_blank">iHDA Help video</a><br>
-            <br>
-            <a href="https://www.youtube.com/watch?v=MYkK8c2KOCA" style="color:red"
-            target="_blank">Codec & FFmpeg Setup Help video</a>
-            """
+        from widgets.help_dialog import HelpDialog
+
+        dialog = HelpDialog(
+            self.bindings.parent, open_url=ihda_system.IHDASystem.open_browser
         )
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        msgbox.setStyleSheet("QLabel {min-width: 500px;}")
-        msgbox.resize(msgbox.sizeHint())
-        _ = msgbox.exec()
+        dialog.exec()
+        dialog.deleteLater()
 
     def _slot_submit_bug_report(self) -> None:
         msgbox = QtWidgets.QMessageBox(self.bindings.parent)

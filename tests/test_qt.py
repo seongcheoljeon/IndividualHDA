@@ -371,6 +371,12 @@ def test_panel_with_saved_library(
         s.context() != QtCore.Qt.ShortcutContext.WindowShortcut
         for s in panel._shortcuts.values()
     )
+    # Help promises these keys; the panel must actually bind them.
+    from widgets.help_dialog import SHORTCUTS
+
+    bound = {s.key() for s in panel._shortcuts.values()}
+    bound.add(panel.actionReload.shortcut())
+    assert all(QtGui.QKeySequence(key) in bound for key, _ in SHORTCUTS)
     # Markdown preview renders the plain-text note; the stored value is untouched.
     panel.textEdit__note.setPlainText("# Title\n\nSome **bold** text")
     panel.toolButton__note_preview.setChecked(True)

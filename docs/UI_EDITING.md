@@ -29,6 +29,7 @@
 | 웹 보기 | `widgets/web_view/layout.py` | `_build_navigation()`, `_build_bookmarks_and_address()`; 북마크는 `BOOKMARKS` 표에 한 줄 추가 (`pushButton__<key>` 생성·연결 자동) |
 | AI 모델 관리 / 라이브러리 관리 | `widgets/ai_models/dialog.py`, `widgets/library_manager/dialog.py` | 기존 코드 UI의 생성 메서드 |
 | 팀 연결 / 구성원 | `widgets/library_connection/dialog.py`, `members.py` | `__init__` 안의 폼·표 구성 (최근 서버는 `workspace.json`의 `server_urls`) |
+| 도움말(Help) | `widgets/help_dialog.py` | `GESTURES`·`SHORTCUTS`·`TABS` 표에 줄 추가 (`SHORTCUTS`는 `widgets/panel/shortcuts.py`가 바인딩한 키와 일치해야 함) |
 | 정보(About) | `widgets/about_dialog.py` | `environment_facts()`(표시·복사 항목), `AboutDialog.__init__`(링크 버튼); 라이선스 본문은 `LICENSE`·`THIRD_PARTY_LICENSES.txt`에서 읽음 |
 
 `build_ui()`에는 화면을 만드는 순서가 있습니다. 해당 `_build_*` 메서드에서

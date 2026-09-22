@@ -2,6 +2,10 @@
 
 ## Unreleased — modern editing
 
+- **Help says how to use the panel.** The two video links are replaced by the
+  gestures, the keys the panel binds (named the way this platform names them,
+  with a test that keeps the list honest), what each tab is for and the first
+  run steps, plus links to the documentation and the issue tracker.
 - **No icon errors at startup.** The panel looked for `$HH/help/icons.zip`,
   where Houdini kept its icons until 19 moved them, and logged an error and a
   warning every launch. Node icons come from `hou.qt.Icon`, which is what
