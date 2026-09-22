@@ -20,7 +20,7 @@ PANEL = QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut
 WIDGET = QtCore.Qt.ShortcutContext.WidgetShortcut
 
 
-def _shortcut(
+def shortcut(
     key: QtGui.QKeySequence | QtGui.QKeySequence.StandardKey | QtCore.Qt.Key,
     parent: QtCore.QObject,
     slot: Callable[[], None],
@@ -48,16 +48,16 @@ def install_shortcuts(window: IndividualHDA) -> dict[str, QtGui.QShortcut]:
             window.menus.remove_selected_assets()
 
     shortcuts = {
-        "save": _shortcut(
+        "save": shortcut(
             QtGui.QKeySequence.StandardKey.Save,
             window,
             window.notes._slot_save_metadata,
             PANEL,
         ),
-        "find": _shortcut(
+        "find": shortcut(
             QtGui.QKeySequence.StandardKey.Find, window, focus_search, PANEL
         ),
-        "clear_search": _shortcut(
+        "clear_search": shortcut(
             QtCore.Qt.Key.Key_Escape,
             window.lineEdit__search_hda,
             window.lineEdit__search_hda.clear,
@@ -71,14 +71,14 @@ def install_shortcuts(window: IndividualHDA) -> dict[str, QtGui.QShortcut]:
         "history": window.views.history,
     }
     for name in ("list", "table"):
-        shortcuts[f"remove_{name}"] = _shortcut(
+        shortcuts[f"remove_{name}"] = shortcut(
             QtCore.Qt.Key.Key_Delete, views[name], remove_selected, WIDGET
         )
     for name, view in views.items():
-        shortcuts[f"import_{name}"] = _shortcut(
+        shortcuts[f"import_{name}"] = shortcut(
             QtCore.Qt.Key.Key_Return, view, window.selection.import_current, WIDGET
         )
-        shortcuts[f"import_{name}_enter"] = _shortcut(
+        shortcuts[f"import_{name}_enter"] = shortcut(
             QtCore.Qt.Key.Key_Enter, view, window.selection.import_current, WIDGET
         )
     return shortcuts

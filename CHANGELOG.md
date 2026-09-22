@@ -2,6 +2,13 @@
 
 ## Unreleased — modern editing
 
+- **Web view behaves like a browser.** A thin progress bar under the address
+  bar, a "Could not load …" notice with Reload instead of a blank page, back
+  and forward buttons that disable when there is nowhere to go, the address bar
+  completes from pages visited this session, and Ctrl+L, F5/Ctrl+R, Alt+←/→,
+  Ctrl+=/−/0 work while the focus is in the web page. The "Close Page" button
+  is now labelled for what it did all along, stopping the load, and the reset
+  zoom button has a zoom icon. Bookmarks live in one table in the layout.
 - **Video player you can read.** Track name, playback status, buffering and
   errors were written to the player's window title, which is never visible
   inside the panel; they now appear on footer labels (errors in red). The

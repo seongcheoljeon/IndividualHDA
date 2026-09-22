@@ -578,6 +578,66 @@ def test_saved_address_never_revives_a_dead_help_server(
     assert (keys.Name.WebUI.url_addr in stored) is kept
 
 
+def test_web_view_shows_progress_failures_and_history(
+    app: Any, monkeypatch: pytest.MonkeyPatch, tmp_path: pathlib.Path
+) -> None:
+    import public
+    from widgets.web_view.layout import BOOKMARKS
+    from widgets.web_view.web_view import WebView
+
+    monkeypatch.setattr(public.Paths, "json_web_filepath", tmp_path / "web.json")
+    monkeypatch.setattr(public.Paths, "ini_web_filepath", tmp_path / "web.ini")
+    loads: list[str] = []
+    monkeypatch.setattr(
+        WebView, "_WebView__load", lambda self, url=None: loads.append(url or "")
+    )
+    view = WebView(help_site="http://localhost:1/")
+    try:
+        view.show()
+        app.processEvents()
+        web = view.webEngineView__webview
+        # Nothing to go back to yet, so the buttons say so.
+        assert not view.pushButton__back_page.isEnabled()
+        assert not view.pushButton__forward_page.isEnabled()
+        assert view.progressBar__load.isHidden()
+        assert view.widget__page_status.isHidden()
+        web.loadStarted.emit()
+        web.loadProgress.emit(40)
+        assert not view.progressBar__load.isHidden()
+        assert view.progressBar__load.value() == 40
+        assert view.pushButton__close_page.isEnabled()
+        web.loadFinished.emit(False)
+        assert view.progressBar__load.isHidden()
+        assert not view.widget__page_status.isHidden()
+        assert view.label__page_status.text().startswith("Could not load")
+        assert not view.pushButton__close_page.isEnabled()
+        # The next attempt clears the failure notice; success keeps it hidden.
+        web.loadStarted.emit()
+        assert view.widget__page_status.isHidden()
+        web.loadFinished.emit(True)
+        assert view.widget__page_status.isHidden()
+        # Visited addresses feed the address bar completer.
+        web.page().urlChanged.emit(QtCore.QUrl("https://forums.odforce.net/"))
+        assert view.lineEdit__address.text() == "https://forums.odforce.net/"
+        assert view.visited_urls() == ["https://forums.odforce.net/"]
+        # Browser keys never leave the widget: Houdini owns F5 and Ctrl+L.
+        assert set(view._shortcuts) >= {"address", "reload", "back", "zoom_reset"}
+        assert all(
+            s.context() == QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut
+            for s in view._shortcuts.values()
+        )
+        view._shortcuts["address"].activated.emit()
+        assert view.lineEdit__address.hasSelectedText()
+        # Bookmarks come from one table; the help entry resolves to the help site.
+        assert view.horizontalLayout__web_bookmarks.count() == len(BOOKMARKS)
+        view.pushButton__odforce.click()
+        view.pushButton__help.click()
+        assert loads[-2:] == ["https://forums.odforce.net/", "http://localhost:1/"]
+        assert view.pushButton__close_page.toolTip() == "Stop loading"
+    finally:
+        view.close()
+
+
 @pytest.mark.parametrize(
     ("url", "loopback"),
     [

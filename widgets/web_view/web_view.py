@@ -7,16 +7,20 @@ from __future__ import annotations
 # description:
 import logging
 from collections.abc import Callable
+from functools import partial
 from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
-from PySide6.QtWebEngineCore import QWebEngineFullScreenRequest, QWebEngineProfile
+from PySide6.QtWebEngineCore import QWebEngineProfile
 
 from libs import host, log_handler, paths
 from libs.houdini_api import HoudiniAPI
+from widgets.panel.shortcuts import PANEL, shortcut
 from widgets.web_view import web_ui_settings
-from widgets.web_view.layout import WebViewLayout
+from widgets.web_view.layout import BOOKMARKS, WebViewLayout
 from widgets.web_view.presenter import WebPresenter
+
+BLANK_SITE = "about:blank"
 
 
 class WebView(QtWidgets.QWidget, WebViewLayout):
@@ -31,12 +35,19 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
             self, HoudiniAPI.global_scale_factor() if host.IS_HOUDINI else 1.0
         )
         self.__ui_settings = web_ui_settings.WebUISettings(window=self)
-        self.__blank_site = "about:blank"
         self.__help_site = help_site
         self.__initial_load_pending = True
+        # Addresses visited this session, offered by the address bar.
+        self.__visited = QtCore.QStringListModel(self)
+        completer = QtWidgets.QCompleter(self.__visited, self)
+        completer.setCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
+        completer.setFilterMode(QtCore.Qt.MatchFlag.MatchContains)
+        self.lineEdit__address.setCompleter(completer)
 
         self.__load_config()
         self.__connections()
+        self._shortcuts = self.__install_shortcuts()
+        self.__sync_history_buttons()
 
     def showEvent(self, event: QtGui.QShowEvent) -> None:
         super().showEvent(event)
@@ -66,8 +77,8 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
         self.webEngineView__webview.page().renderProcessTerminated.connect(
             self.__render_process_terminated
         )
-        # self.webEngineView__webview.page().fullScreenRequested.connect(self.__full_screen)
-        #
+        # No fullScreenRequested handling: the view is embedded in a Houdini pane
+        # and has no window of its own to enlarge.
         self.pushButton__back_page.clicked.connect(self.__back)
         self.pushButton__forward_page.clicked.connect(self.__forward)
         self.pushButton__refresh_page.clicked.connect(self.__reload)
@@ -78,27 +89,32 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
         self.pushButton__reset_zoom.clicked.connect(self.__reset_zoom)
         self.lineEdit__address.returnPressed.connect(self.__load)
         #
-        self.pushButton__sidefx.clicked.connect(
-            lambda: self.__load(url=self.__urls()["sidefx"])
-        )
-        self.pushButton__odforce.clicked.connect(
-            lambda: self.__load(url=self.__urls()["odforce"])
-        )
-        self.pushButton__google.clicked.connect(
-            lambda: self.__load(url=self.__urls()["google"])
-        )
-        self.pushButton__translation.clicked.connect(
-            lambda: self.__load(url=self.__urls()["translation"])
-        )
-        self.pushButton__youtube.clicked.connect(
-            lambda: self.__load(url=self.__urls()["youtube"])
-        )
-        self.pushButton__vimeo.clicked.connect(
-            lambda: self.__load(url=self.__urls()["vimeo"])
-        )
-        self.pushButton__help.clicked.connect(
-            lambda: self.__load(url=self.__urls()["help"])
-        )
+        self.pushButton__retry_page.clicked.connect(self.__reload)
+        for bookmark in BOOKMARKS:
+            button: QtWidgets.QPushButton = getattr(self, f"pushButton__{bookmark.key}")
+            button.clicked.connect(partial(self.__open_bookmark, bookmark.key))
+
+    def __install_shortcuts(self) -> dict[str, QtGui.QShortcut]:
+        """Browser keys, scoped to this widget so Houdini keeps its own F5/Ctrl+L."""
+        keys = QtGui.QKeySequence
+        std = QtGui.QKeySequence.StandardKey
+        return {
+            "address": shortcut(keys("Ctrl+L"), self, self.focus_address, PANEL),
+            "reload": shortcut(std.Refresh, self, self.__reload, PANEL),
+            "reload_ctrl": shortcut(keys("Ctrl+R"), self, self.__reload, PANEL),
+            "back": shortcut(std.Back, self, self.__back, PANEL),
+            "forward": shortcut(std.Forward, self, self.__forward, PANEL),
+            "zoom_in": shortcut(std.ZoomIn, self, self.__zoom_in, PANEL),
+            "zoom_out": shortcut(std.ZoomOut, self, self.__zoom_out, PANEL),
+            "zoom_reset": shortcut(keys("Ctrl+0"), self, self.__reset_zoom, PANEL),
+        }
+
+    def focus_address(self) -> None:
+        self.lineEdit__address.setFocus()
+        self.lineEdit__address.selectAll()
+
+    def visited_urls(self) -> list[str]:
+        return list(self.__visited.stringList())
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         self.__ui_settings.save_main_window_geometry()
@@ -128,37 +144,36 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
         if address.isValid():
             self.webEngineView__webview.load(address)
 
-    def __full_screen(self, request: Any) -> None:
-        req = QWebEngineFullScreenRequest(request)
-        req.accept()
-
     @QtCore.Slot()
     def __load_started(self) -> None:
-        log_handler.LogHandler.log_msg(
-            method=logging.info, msg="start loading iHDA webview"
-        )
+        self.widget__page_status.hide()
+        self.progressBar__load.setValue(0)
+        self.progressBar__load.show()
+        self.pushButton__close_page.setEnabled(True)
 
     @QtCore.Slot(int)
     def __load_progress(self, prog: int) -> None:
-        log_handler.LogHandler.log_msg(
-            method=logging.info, msg=f"loading progress: {prog}"
-        )
+        self.progressBar__load.setValue(prog)
 
     @QtCore.Slot(bool)
     def __load_finished(self, status: bool) -> None:
+        self.progressBar__load.hide()
+        self.pushButton__close_page.setEnabled(False)
+        self.__sync_history_buttons()
         if status:
-            log_handler.LogHandler.log_msg(
-                method=logging.info, msg="iHDA webview loading ends"
-            )
-        else:
-            # requestedUrl(), not url(): a navigation that fails never commits,
-            # so url() still reports the page already on screen (about:blank on
-            # the first attempt) rather than the address that could not load.
-            log_handler.LogHandler.log_msg(
-                method=logging.error,
-                msg=f"iHDA webview loading ends failed: "
-                f"{self.webEngineView__webview.page().requestedUrl().toString()}",
-            )
+            return
+        # requestedUrl(), not url(): a navigation that fails never commits,
+        # so url() still reports the page already on screen (about:blank on
+        # the first attempt) rather than the address that could not load.
+        requested = self.webEngineView__webview.page().requestedUrl().toString()
+        self.__show_page_status(f"Could not load {requested}")
+        log_handler.LogHandler.log_msg(
+            method=logging.error, msg=f"iHDA webview loading ends failed: {requested}"
+        )
+
+    def __show_page_status(self, message: str) -> None:
+        self.label__page_status.setText(message)
+        self.widget__page_status.show()
 
     @QtCore.Slot(object, int)
     def __render_process_terminated(self, status: Any, exit_code: int) -> None:
@@ -168,6 +183,8 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
         helper cannot start, loadFinished(False) is all that surfaces, which looks
         identical to an unreachable site. Naming the termination separates the two.
         """
+        self.progressBar__load.hide()
+        self.__show_page_status(f"The page stopped responding (exit {exit_code})")
         log_handler.LogHandler.log_msg(
             method=logging.error,
             msg=f"iHDA webview render process terminated: {status} (exit {exit_code})",
@@ -186,19 +203,17 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
         self.webEngineView__webview.stop()
 
     def __url_changed(self, url: QtCore.QUrl) -> None:
-        self.lineEdit__address.setText(url.toString())
+        address = url.toString()
+        self.lineEdit__address.setText(address)
+        self.__sync_history_buttons()
+        if address != BLANK_SITE and address not in self.__visited.stringList():
+            self.__visited.insertRows(0, 1)
+            self.__visited.setData(self.__visited.index(0), address)
 
-    def __set_view_by_zoom_factor(self, zoom_factor: Any) -> None:
-        if host.IS_HOUDINI:
-            self.webEngineView__webview.setZoomFactor(
-                zoom_factor * HoudiniAPI.global_scale_factor()
-            )
-        else:
-            self.webEngineView__webview.setZoomFactor(zoom_factor)
-        log_handler.LogHandler.log_msg(
-            method=logging.info,
-            msg=f"current zoom factor of the webview: {self.curt_zoom_value}",
-        )
+    def __sync_history_buttons(self) -> None:
+        history = self.webEngineView__webview.history()
+        self.pushButton__back_page.setEnabled(history.canGoBack())
+        self.pushButton__forward_page.setEnabled(history.canGoForward())
 
     def show_zoom(self, factor: float) -> None:
         self.webEngineView__webview.setZoomFactor(factor)
@@ -212,33 +227,8 @@ class WebView(QtWidgets.QWidget, WebViewLayout):
     def __reset_zoom(self) -> None:
         self._presenter.reset_zoom()
 
-    @property
-    def curt_zoom_value(self) -> int:
-        percent = int(self.webEngineView__webview.zoomFactor() * 100)
-        return percent
-
-    @staticmethod
-    def __maximum_zoom_factor() -> float:
-        if host.IS_HOUDINI:
-            return 5 * HoudiniAPI.global_scale_factor()
-        else:
-            return 5
-
-    @staticmethod
-    def __minimum_zoom_factor() -> float:
-        if host.IS_HOUDINI:
-            return 0.25 * HoudiniAPI.global_scale_factor()
-        else:
-            return 0.25
-
-    def __urls(self) -> dict[str, Any]:
-        url_dat = {
-            "sidefx": "https://www.sidefx.com/learn/",
-            "odforce": "https://forums.odforce.net/",
-            "google": "https://www.google.com/",
-            "translation": "https://translate.google.com/?hl=ko&tab=wT1&authuser=0",
-            "youtube": "https://www.youtube.com/",
-            "vimeo": "https://vimeo.com/",
-            "help": self.__help_url() or self.__blank_site,
-        }
-        return url_dat
+    def __open_bookmark(self, key: str) -> None:
+        url = next(b.url for b in BOOKMARKS if b.key == key)
+        if url is None:  # the help bookmark: Houdini's per-session help server
+            url = self.__help_url() or BLANK_SITE
+        self.__load(url=url)

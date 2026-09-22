@@ -6,6 +6,8 @@ This module owns presentation only. Event handling stays in the owning widget.
 
 from __future__ import annotations
 
+from typing import NamedTuple
+
 from PySide6.QtCore import (
     QCoreApplication,
     QSize,
@@ -19,7 +21,9 @@ from PySide6.QtGui import (
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (
     QHBoxLayout,
+    QLabel,
     QLineEdit,
+    QProgressBar,
     QPushButton,
     QSizePolicy,
     QSpacerItem,
@@ -28,6 +32,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+import icons_rc  # noqa: F401 (register bundled icons)
+from libs.ui_icons import Icon
 from widgets.layout_helpers import make_font
 from widgets.ui_tokens import TOOLBAR_ICON_SIZE
 
@@ -36,6 +42,29 @@ from . import web_view_icons_rc  # noqa: F401 (register bundled icons)
 
 def _translate(text: str) -> str:
     return QCoreApplication.translate("Form__web", text)
+
+
+class Bookmark(NamedTuple):
+    key: str  # widget attribute is pushButton__<key>
+    icon: str
+    tooltip: str
+    url: str | None  # None: resolved by the widget (Houdini help server)
+
+
+BOOKMARKS: tuple[Bookmark, ...] = (
+    Bookmark("help", "houdini_logo.png", "Houdini Help", None),
+    Bookmark("sidefx", "news.png", "SideFX Learn", "https://www.sidefx.com/learn/"),
+    Bookmark("odforce", "odforce.png", "odforce forums", "https://forums.odforce.net/"),
+    Bookmark("google", "google.png", "Google", "https://www.google.com/"),
+    Bookmark(
+        "translation",
+        "ic_g_translate_white.png",
+        "Google Translate",
+        "https://translate.google.com/?hl=ko&tab=wT1&authuser=0",
+    ),
+    Bookmark("youtube", "youtube.png", "YouTube", "https://www.youtube.com/"),
+    Bookmark("vimeo", "vimeo.png", "Vimeo", "https://vimeo.com/"),
+)
 
 
 class WebViewLayout:
@@ -88,7 +117,7 @@ class WebViewLayout:
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
         self.pushButton__back_page.setFlat(True)
-        self.pushButton__back_page.setToolTip(_translate("Back Page"))
+        self.pushButton__back_page.setToolTip(_translate("Back (Alt+Left)"))
         self.pushButton__back_page.setStatusTip(_translate("back page"))
         self.pushButton__back_page.setText("")
         self.horizontalLayout__web_navigation.addWidget(self.pushButton__back_page)
@@ -104,7 +133,7 @@ class WebViewLayout:
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
         self.pushButton__forward_page.setFlat(True)
-        self.pushButton__forward_page.setToolTip(_translate("Forward Page"))
+        self.pushButton__forward_page.setToolTip(_translate("Forward (Alt+Right)"))
         self.pushButton__forward_page.setStatusTip(_translate("forward page"))
         self.pushButton__forward_page.setText("")
         self.horizontalLayout__web_navigation.addWidget(self.pushButton__forward_page)
@@ -120,7 +149,7 @@ class WebViewLayout:
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
         self.pushButton__refresh_page.setFlat(True)
-        self.pushButton__refresh_page.setToolTip(_translate("Refresh Page"))
+        self.pushButton__refresh_page.setToolTip(_translate("Reload (F5)"))
         self.pushButton__refresh_page.setStatusTip(_translate("refresh page"))
         self.pushButton__refresh_page.setText("")
         self.horizontalLayout__web_navigation.addWidget(self.pushButton__refresh_page)
@@ -129,15 +158,13 @@ class WebViewLayout:
         self.pushButton__close_page.setCursor(
             QCursor(Qt.CursorShape.PointingHandCursor)
         )
-        self.pushButton__close_page.setIcon(
-            QIcon(":/web_view_main/icons/ic_close_white.png")
-        )
+        self.pushButton__close_page.setIcon(QIcon(Icon.IC_CLEAR_WHITE))
         self.pushButton__close_page.setIconSize(
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
         self.pushButton__close_page.setFlat(True)
-        self.pushButton__close_page.setToolTip(_translate("Close Page"))
-        self.pushButton__close_page.setStatusTip(_translate("close page"))
+        self.pushButton__close_page.setToolTip(_translate("Stop loading"))
+        self.pushButton__close_page.setStatusTip(_translate("stop loading"))
         self.pushButton__close_page.setText("")
         self.horizontalLayout__web_navigation.addWidget(self.pushButton__close_page)
         self.pushButton__home_page = QPushButton(self.widget__web_controls)
@@ -166,7 +193,7 @@ class WebViewLayout:
         )
         self.pushButton__zoomin.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
         self.pushButton__zoomin.setFlat(True)
-        self.pushButton__zoomin.setToolTip(_translate("zoom in"))
+        self.pushButton__zoomin.setToolTip(_translate("Zoom in (Ctrl+=)"))
         self.pushButton__zoomin.setStatusTip(_translate("zoom in"))
         self.pushButton__zoomin.setText("")
         self.horizontalLayout__web_navigation.addWidget(self.pushButton__zoomin)
@@ -180,7 +207,7 @@ class WebViewLayout:
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
         self.pushButton__zoomout.setFlat(True)
-        self.pushButton__zoomout.setToolTip(_translate("zoom out"))
+        self.pushButton__zoomout.setToolTip(_translate("Zoom out (Ctrl+-)"))
         self.pushButton__zoomout.setStatusTip(_translate("zoom out"))
         self.pushButton__zoomout.setText("")
         self.horizontalLayout__web_navigation.addWidget(self.pushButton__zoomout)
@@ -189,14 +216,12 @@ class WebViewLayout:
         self.pushButton__reset_zoom.setCursor(
             QCursor(Qt.CursorShape.PointingHandCursor)
         )
-        self.pushButton__reset_zoom.setIcon(
-            QIcon(":/web_view_main/icons/ic_search_white.png")
-        )
+        self.pushButton__reset_zoom.setIcon(QIcon(Icon.IC_RESTORE_PAGE_WHITE))
         self.pushButton__reset_zoom.setIconSize(
             QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
         )
         self.pushButton__reset_zoom.setFlat(True)
-        self.pushButton__reset_zoom.setToolTip(_translate("reset zoom"))
+        self.pushButton__reset_zoom.setToolTip(_translate("Reset zoom (Ctrl+0)"))
         self.pushButton__reset_zoom.setStatusTip(_translate("reset zoom"))
         self.pushButton__reset_zoom.setText("")
         self.horizontalLayout__web_navigation.addWidget(self.pushButton__reset_zoom)
@@ -214,97 +239,38 @@ class WebViewLayout:
         self.horizontalLayout__web_bookmarks.setObjectName(
             "horizontalLayout__web_bookmarks"
         )
-        self.pushButton__help = QPushButton(self.widget__web_controls)
-        self.pushButton__help.setObjectName("pushButton__help")
-        self.pushButton__help.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton__help.setIcon(QIcon(":/web_view_main/icons/houdini_logo.png"))
-        self.pushButton__help.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
-        self.pushButton__help.setFlat(True)
-        self.pushButton__help.setToolTip(_translate("Help"))
-        self.pushButton__help.setStatusTip(_translate("Houdini Help"))
-        self.pushButton__help.setText("")
-        self.horizontalLayout__web_bookmarks.addWidget(self.pushButton__help)
-        self.pushButton__sidefx = QPushButton(self.widget__web_controls)
-        self.pushButton__sidefx.setObjectName("pushButton__sidefx")
-        self.pushButton__sidefx.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton__sidefx.setIcon(QIcon(":/web_view_main/icons/news.png"))
-        self.pushButton__sidefx.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
-        self.pushButton__sidefx.setFlat(True)
-        self.pushButton__sidefx.setToolTip(_translate("SideFX"))
-        self.pushButton__sidefx.setStatusTip(_translate("go to sidefx"))
-        self.pushButton__sidefx.setText("")
-        self.horizontalLayout__web_bookmarks.addWidget(self.pushButton__sidefx)
-        self.pushButton__odforce = QPushButton(self.widget__web_controls)
-        self.pushButton__odforce.setObjectName("pushButton__odforce")
-        self.pushButton__odforce.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton__odforce.setIcon(QIcon(":/web_view_main/icons/odforce.png"))
-        self.pushButton__odforce.setIconSize(
-            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
-        )
-        self.pushButton__odforce.setFlat(True)
-        self.pushButton__odforce.setToolTip(_translate("ODFORCE"))
-        self.pushButton__odforce.setStatusTip(_translate("home page"))
-        self.pushButton__odforce.setText("")
-        self.horizontalLayout__web_bookmarks.addWidget(self.pushButton__odforce)
-        self.pushButton__google = QPushButton(self.widget__web_controls)
-        self.pushButton__google.setObjectName("pushButton__google")
-        self.pushButton__google.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton__google.setIcon(QIcon(":/web_view_main/icons/google.png"))
-        self.pushButton__google.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
-        self.pushButton__google.setFlat(True)
-        self.pushButton__google.setToolTip(_translate("Google"))
-        self.pushButton__google.setStatusTip(_translate("go to google"))
-        self.pushButton__google.setText("")
-        self.horizontalLayout__web_bookmarks.addWidget(self.pushButton__google)
-        self.pushButton__translation = QPushButton(self.widget__web_controls)
-        self.pushButton__translation.setObjectName("pushButton__translation")
-        self.pushButton__translation.setCursor(
-            QCursor(Qt.CursorShape.PointingHandCursor)
-        )
-        self.pushButton__translation.setIcon(
-            QIcon(":/web_view_main/icons/ic_g_translate_white.png")
-        )
-        self.pushButton__translation.setIconSize(
-            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
-        )
-        self.pushButton__translation.setFlat(True)
-        self.pushButton__translation.setToolTip(_translate("Translation"))
-        self.pushButton__translation.setStatusTip(_translate("translation"))
-        self.pushButton__translation.setText("")
-        self.horizontalLayout__web_bookmarks.addWidget(self.pushButton__translation)
-        self.pushButton__youtube = QPushButton(self.widget__web_controls)
-        self.pushButton__youtube.setObjectName("pushButton__youtube")
-        self.pushButton__youtube.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton__youtube.setIcon(QIcon(":/web_view_main/icons/youtube.png"))
-        self.pushButton__youtube.setIconSize(
-            QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE)
-        )
-        self.pushButton__youtube.setFlat(True)
-        self.pushButton__youtube.setToolTip(_translate("Youtube"))
-        self.pushButton__youtube.setStatusTip(_translate("go to youtube"))
-        self.pushButton__youtube.setText("")
-        self.horizontalLayout__web_bookmarks.addWidget(self.pushButton__youtube)
-        self.pushButton__vimeo = QPushButton(self.widget__web_controls)
-        self.pushButton__vimeo.setObjectName("pushButton__vimeo")
-        self.pushButton__vimeo.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-        self.pushButton__vimeo.setIcon(QIcon(":/web_view_main/icons/vimeo.png"))
-        self.pushButton__vimeo.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
-        self.pushButton__vimeo.setFlat(True)
-        self.pushButton__vimeo.setToolTip(_translate("Vimeo"))
-        self.pushButton__vimeo.setStatusTip(_translate("go to vimeo"))
-        self.pushButton__vimeo.setText("")
-        self.horizontalLayout__web_bookmarks.addWidget(self.pushButton__vimeo)
+        for bookmark in BOOKMARKS:
+            button = QPushButton(self.widget__web_controls)
+            button.setObjectName(f"pushButton__{bookmark.key}")
+            button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+            button.setIcon(QIcon(f":/web_view_main/icons/{bookmark.icon}"))
+            button.setIconSize(QSize(TOOLBAR_ICON_SIZE, TOOLBAR_ICON_SIZE))
+            button.setFlat(True)
+            button.setToolTip(_translate(bookmark.tooltip))
+            button.setStatusTip(_translate(bookmark.tooltip))
+            setattr(self, f"pushButton__{bookmark.key}", button)
+            self.horizontalLayout__web_bookmarks.addWidget(button)
         self.horizontalLayout__web_address.addLayout(
             self.horizontalLayout__web_bookmarks
         )
         self.lineEdit__address = QLineEdit(self.widget__web_controls)
         self.lineEdit__address.setObjectName("lineEdit__address")
         self.lineEdit__address.setClearButtonEnabled(True)
+        self.lineEdit__address.setPlaceholderText(_translate("Search or enter address"))
+        self.lineEdit__address.setToolTip(_translate("Address (Ctrl+L)"))
         self.lineEdit__address.setText(
             _translate("https://www.google.co.kr/?gws_rd=ssl")
         )
         self.horizontalLayout__web_address.addWidget(self.lineEdit__address)
         self.verticalLayout__web_controls.addLayout(self.horizontalLayout__web_address)
+        # A thin bar under the address: the only progress feedback the page gives.
+        self.progressBar__load = QProgressBar(self.widget__web_controls)
+        self.progressBar__load.setObjectName("progressBar__load")
+        self.progressBar__load.setRange(0, 100)
+        self.progressBar__load.setTextVisible(False)
+        self.progressBar__load.setFixedHeight(3)
+        self.progressBar__load.hide()
+        self.verticalLayout__web_controls.addWidget(self.progressBar__load)
         self.splitter__webview_whole_vertical.addWidget(self.widget__web_controls)
 
     def _build_web_content(self, window: QWidget) -> None:
@@ -314,6 +280,25 @@ class WebViewLayout:
         self.verticalLayout__web_content.setSpacing(1)
         self.verticalLayout__web_content.setObjectName("verticalLayout__web_content")
         self.verticalLayout__web_content.setContentsMargins(0, 0, 0, 0)
+        # Shown instead of Chromium's blank page when a load fails.
+        self.widget__page_status = QWidget(self.widget__web_content)
+        self.widget__page_status.setObjectName("widget__page_status")
+        self.horizontalLayout__page_status = QHBoxLayout(self.widget__page_status)
+        self.horizontalLayout__page_status.setContentsMargins(6, 2, 6, 2)
+        self.label__page_status = QLabel(self.widget__page_status)
+        self.label__page_status.setObjectName("label__page_status")
+        self.label__page_status.setWordWrap(True)
+        self.horizontalLayout__page_status.addWidget(self.label__page_status, 1)
+        self.pushButton__retry_page = QPushButton(
+            _translate("Reload"), self.widget__page_status
+        )
+        self.pushButton__retry_page.setObjectName("pushButton__retry_page")
+        self.pushButton__retry_page.setIcon(
+            QIcon(":/web_view_main/icons/ic_refresh_white.png")
+        )
+        self.horizontalLayout__page_status.addWidget(self.pushButton__retry_page)
+        self.widget__page_status.hide()
+        self.verticalLayout__web_content.addWidget(self.widget__page_status)
         self.webEngineView__webview = QWebEngineView(self.widget__web_content)
         self.webEngineView__webview.setObjectName("webEngineView__webview")
         self.webEngineView__webview.setUrl(QUrl("about:blank"))
