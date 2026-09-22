@@ -16,7 +16,7 @@ def test_facts_name_the_host_and_fall_back_without_houdini() -> None:
     facts = dict(environment_facts("21.0.512", Path("/cfg")))
     assert facts["Version"] == DISPLAY_VERSION
     assert facts["Houdini"] == "21.0.512"
-    assert facts["Settings"] == "/cfg"
+    assert facts["Settings"] == str(Path("/cfg"))
     assert set(facts) >= {"Qt", "Python", "System"}
     # Outside Houdini (the developer panel, tests) the row says so instead of lying.
     assert "not running" in dict(environment_facts(None, None))["Houdini"]

@@ -211,7 +211,8 @@ def test_record_view_drags_only_concrete_records(app: Any, monkeypatch: Any) -> 
     assert folder.data(RecordModel.count_role) == 2  # badge counts the records
     assert hip.data(RecordModel.count_role) == 2
     assert model.index(0, 0, network).data(RecordModel.count_role) is None
-    assert "/hips" in folder.data(QtCore.Qt.ItemDataRole.ToolTipRole)
+    # The HIP directory is a path, so the separator is the platform's own.
+    assert str(Path("/hips")) in folder.data(QtCore.Qt.ItemDataRole.ToolTipRole)
     assert "/obj/geo1" in model.index(0, 0, network).data(
         QtCore.Qt.ItemDataRole.ToolTipRole
     )
