@@ -29,7 +29,7 @@ Recommended Houdini Version: {houdini_ver}<br>
 <br>
 <b><i>Please donate if you like this app.<i><b><br>
 <br>
-<a href="{SUPPORT_URL}" style="color:#ff6f00" target="_blank">Buy Me A Coffee</a><br>
+<a href="{SUPPORT_URL}" style="color:#ff5f5f" target="_blank">📖 Buy me a book</a><br>
 <br>
 <a href="https://vimeo.com/seongcheolzeon" style="color:red"
 target="_blank">Vimeo</a><br>

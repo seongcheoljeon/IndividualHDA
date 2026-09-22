@@ -2,6 +2,8 @@
 
 Individual HDA is a personal Houdini digital-asset library. It runs inside Houdini and keeps HDA files, versions, thumbnails, notes, tags, favorites, preview videos, and HIP-file locations together.
 
+<a href="https://buymeacoffee.com/seongcheol"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20book&emoji=%F0%9F%93%96&slug=seongcheol&button_colour=FF5F5F&font_colour=ffffff&font_family=Bree&outline_colour=000000&coffee_colour=FFDD00" alt="Buy me a book" /></a>
+
 ![Individual HDA interface](image/ihda_main.png)
 
 ![Individual HDA workflow](image/ihda_main.gif)
@@ -178,7 +180,7 @@ It uses temporary files and a fresh Houdini process. Architecture, schema, recov
 
 ## Support
 
-<a href="https://buymeacoffee.com/seongcheol"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20book&emoji=%F0%9F%93%96&slug=seongcheol&button_colour=40DCA5&font_colour=ffffff&font_family=Bree&outline_colour=000000&coffee_colour=FFDD00" alt="Buy me a book" /></a>
+<a href="https://buymeacoffee.com/seongcheol"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20book&emoji=%F0%9F%93%96&slug=seongcheol&button_colour=FF5F5F&font_colour=ffffff&font_family=Bree&outline_colour=000000&coffee_colour=FFDD00" alt="Buy me a book" /></a>
 
 ## License
 

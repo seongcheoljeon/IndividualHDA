@@ -153,3 +153,9 @@ Keep PRs focused, explain resulting behavior and list checks actually run. For a
 visible UI change include an image if useful; for storage changes explain migration
 and rollback implications. See [architecture](docs/ARCHITECTURE.md),
 [UI editing](docs/UI_EDITING.md) and [validation history](docs/VALIDATION.md).
+
+## Support the project
+
+If Individual HDA saves you time, you can support its development:
+
+<a href="https://buymeacoffee.com/seongcheol"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20book&emoji=%F0%9F%93%96&slug=seongcheol&button_colour=FF5F5F&font_colour=ffffff&font_family=Bree&outline_colour=000000&coffee_colour=FFDD00" alt="Buy me a book" /></a>
