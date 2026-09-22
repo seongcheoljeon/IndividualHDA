@@ -2,6 +2,11 @@
 
 ## Unreleased — modern editing
 
+- **Tree rows keep their icons; favourites are scarlet.** Under Houdini's
+  stylesheet the record and category trees showed a row's icon only once it
+  was selected; the badge delegate now paints the icon and text itself, and
+  the count badge sits only on the name column instead of every column. A
+  favourite's star is filled with `#FF2400` so it reads at a glance.
 - **Team dialogs.** Connect: a Show token toggle, Enter connects and then
   opens the chosen project, addresses without http(s):// are refused before a
   request goes out, recently used servers are remembered and suggested, and

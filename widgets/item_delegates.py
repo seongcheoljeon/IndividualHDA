@@ -13,7 +13,13 @@ from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from widgets.ui_tokens import BADGE_HEIGHT, CARD_PADDING, CARD_RADIUS, STAR_SIZE
+from widgets.ui_tokens import (
+    BADGE_HEIGHT,
+    CARD_PADDING,
+    CARD_RADIUS,
+    FAVORITE_COLOR,
+    STAR_SIZE,
+)
 
 UNAVAILABLE_OPACITY = 0.55
 
@@ -77,7 +83,7 @@ def draw_star(
     path = star_path(rect)
     if filled:
         painter.setPen(QtCore.Qt.PenStyle.NoPen)
-        painter.setBrush(palette.highlight())
+        painter.setBrush(QtGui.QColor(FAVORITE_COLOR))
     else:
         painter.setPen(QtGui.QPen(palette.mid().color(), 1.2))
         painter.setBrush(QtCore.Qt.BrushStyle.NoBrush)
@@ -451,15 +457,22 @@ def two_line_row_height(font: QtGui.QFont) -> int:
 
 
 class CountBadgeDelegate(QtWidgets.QStyledItemDelegate):
-    """Default tree row plus a right-aligned count badge when the count is known.
+    """Tree row (icon, text) plus a right-aligned count badge on the first column.
 
     Any model that answers ``count_role`` with an int for its group rows can use
-    it; the category tree and the scene-record tree both do.
+    it; the category tree and the scene-record tree both do. The icon and text
+    are drawn here rather than through the style: under Houdini's stylesheet the
+    style path left unselected rows without their icons.
     """
 
     def __init__(self, parent: QtCore.QObject | None, *, count_role: int) -> None:
         super().__init__(parent)
         self._count_role = count_role
+
+    def _count(self, index: QtCore.QModelIndex | QtCore.QPersistentModelIndex) -> int:
+        if index.column() != 0:
+            return 0
+        return int(index.data(self._count_role) or 0)
 
     def paint(  # type: ignore[override]
         self,
@@ -467,22 +480,58 @@ class CountBadgeDelegate(QtWidgets.QStyledItemDelegate):
         option: QtWidgets.QStyleOptionViewItem,
         index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> None:
-        count = index.data(self._count_role)
-        if not count:
-            super().paint(painter, option, index)
-            return
         opt = QtWidgets.QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
-        pill_font = small_font(opt.font)
-        width = QtGui.QFontMetrics(pill_font).horizontalAdvance(str(count)) + 14
-        opt.rect = opt.rect.adjusted(0, 0, -(width + CARD_PADDING), 0)
-        super().paint(painter, opt, index)
-        top_left = QtCore.QPoint(
-            option.rect.right() - width - CARD_PADDING // 2,
-            option.rect.center().y() - BADGE_HEIGHT // 2,
-        )
+        theme_background(painter, opt)
+        palette = opt.palette
+        rect = opt.rect.adjusted(CARD_PADDING, 0, -CARD_PADDING, 0)
         painter.save()
-        draw_pill(painter, top_left, str(count), opt.palette, pill_font)
+        painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
+        count = self._count(index)
+        if count:
+            pill_font = small_font(opt.font)
+            width = (
+                QtGui.QFontMetrics(pill_font).horizontalAdvance(str(count))
+                + BADGE_HEIGHT // 2
+                + 6
+            )
+            top_left = QtCore.QPoint(
+                rect.right() - width, rect.center().y() - BADGE_HEIGHT // 2
+            )
+            draw_pill(painter, top_left, str(count), palette, pill_font)
+            rect.setRight(top_left.x() - CARD_PADDING)
+        pixmap = index.data(QtCore.Qt.ItemDataRole.DecorationRole)
+        if isinstance(pixmap, QtGui.QIcon):
+            pixmap = pixmap.pixmap(opt.decorationSize)
+        text_left = rect.left()
+        if isinstance(pixmap, QtGui.QPixmap) and not pixmap.isNull():
+            size = pixmap.deviceIndependentSize().toSize()
+            size = size.boundedTo(QtCore.QSize(size.width(), rect.height()))
+            target = QtCore.QRect(QtCore.QPoint(0, 0), size)
+            target.moveLeft(rect.left())
+            target.moveCenter(QtCore.QPoint(target.center().x(), rect.center().y()))
+            painter.setRenderHint(QtGui.QPainter.RenderHint.SmoothPixmapTransform)
+            painter.drawPixmap(target, pixmap)
+            text_left = target.right() + CARD_PADDING * 2
+        text = str(index.data(QtCore.Qt.ItemDataRole.DisplayRole) or "")
+        if text and text_left < rect.right():
+            text_rect = QtCore.QRect(
+                text_left, rect.top(), rect.right() - text_left, rect.height()
+            )
+            selected = bool(opt.state & QtWidgets.QStyle.StateFlag.State_Selected)
+            painter.setFont(opt.font)
+            painter.setPen(
+                palette.highlightedText().color()
+                if selected
+                else palette.text().color()
+            )
+            painter.drawText(
+                text_rect,
+                int(opt.displayAlignment),
+                QtGui.QFontMetrics(opt.font).elidedText(
+                    text, QtCore.Qt.TextElideMode.ElideRight, text_rect.width()
+                ),
+            )
         painter.restore()
 
     def sizeHint(  # type: ignore[override]
@@ -491,7 +540,7 @@ class CountBadgeDelegate(QtWidgets.QStyledItemDelegate):
         index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
     ) -> QtCore.QSize:
         size = super().sizeHint(option, index)
-        count = index.data(self._count_role)
+        count = self._count(index)
         if count:
             size.setWidth(
                 size.width()

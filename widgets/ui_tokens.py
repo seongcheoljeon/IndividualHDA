@@ -18,6 +18,7 @@ CARD_RADIUS = 6
 CARD_PADDING = 4
 BADGE_HEIGHT = 16
 STAR_SIZE = 16
+FAVORITE_COLOR = "#FF2400"  # a filled star must read at a glance in both themes
 
 # Column identity belongs to each model; widths are presentation policy.
 ASSET_TABLE_COLUMN_WIDTHS = (

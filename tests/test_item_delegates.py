@@ -10,6 +10,7 @@ from test_models import asset
 
 from model.ihda_list_model import ListModel
 from widgets.item_delegates import CardDelegate, star_rect
+from widgets.ui_tokens import FAVORITE_COLOR
 
 
 def option_for(
@@ -80,6 +81,8 @@ def test_card_paints_from_roles_and_toggles_the_star(
         for x in range(star.left(), star.right())
         for y in range(star.top(), star.bottom())
     )
+    # A favorite's star is filled with the accent colour, not the theme highlight.
+    assert favorite.pixelColor(star.center()).name().lower() == FAVORITE_COLOR.lower()
     assert painted(hovered) > painted(plain)
     assert delegate.sizeHint(option_for(rect), model.index(0, 0)) == model.index(
         0, 0
@@ -232,3 +235,53 @@ def test_category_counts_come_from_the_store_and_draw_as_a_badge(app: Any) -> No
         delegate.sizeHint(option_for(rect), sop).width()
         > delegate.sizeHint(option_for(rect), vop).width()
     )
+
+
+def test_record_rows_draw_their_icon_unselected_and_badge_only_the_name(
+    app: Any,
+) -> None:
+    from pathlib import Path
+
+    from libs.scene_contracts import SceneRecord
+    from model.ihda_record_model import RecordModel
+    from widgets.item_delegates import CountBadgeDelegate
+
+    red = QtGui.QPixmap(20, 20)
+    red.fill(QtGui.QColor("#ff0000"))
+    records = [
+        SceneRecord(
+            record_id=n,
+            hda_id=n,
+            hip_filename="shot.hip",
+            hip_dirpath=Path("/hips"),
+            parent_node_path="/obj/geo1",
+            node_name=f"fx{n}",
+            node_ver="1.0",
+        )
+        for n in (1, 2)
+    ]
+    model = RecordModel(data=records, pixmap_ihda_data={1: red, 2: red}, icon_size=20)
+    delegate = CountBadgeDelegate(None, count_role=RecordModel.count_role)
+    root = model.index(0, 0)
+    folder = model.index(0, 0, root)
+    network = model.index(0, 0, model.index(0, 0, folder))
+    leaf = model.index(0, 0, network)
+    rect = QtCore.QRect(0, 0, 200, 24)
+
+    def red_pixels(image: QtGui.QImage) -> int:
+        return sum(
+            1
+            for x in range(image.width())
+            for y in range(image.height())
+            if image.pixelColor(x, y).red() > 200
+            and image.pixelColor(x, y).green() < 60
+            and image.pixelColor(x, y).blue() < 60
+        )
+
+    # The icon is painted by the delegate itself, selected or not.
+    assert red_pixels(render(delegate, option_for(rect), leaf)) >= 20 * 20 * 0.9
+    assert red_pixels(render(delegate, option_for(rect, selected=True), leaf)) >= 360
+    # The count badge belongs to the name column only.
+    name_hint = delegate.sizeHint(option_for(rect), folder)
+    other_hint = delegate.sizeHint(option_for(rect), folder.siblingAtColumn(1))
+    assert name_hint.width() > other_hint.width()
