@@ -36,6 +36,7 @@ if TYPE_CHECKING:
         InsidePagePort,
         LibraryQueryPort,
         NotesPort,
+        NotificationsPort,
         PresentationPort,
     )
     from widgets.panel.state import PanelSessionState, PanelViews
@@ -51,6 +52,7 @@ class PanelSelectionBindings:
     notes: NotesPort
     preference: Preference
     presentation: PresentationPort
+    notifications: NotificationsPort
     queries: LibraryQueryPort
     session: PanelSessionState
     library: Callable[[], LibraryPort]
@@ -404,7 +406,7 @@ class PanelSelection:
     def play_video_most_recent_by_version(self, video_info: Any = None) -> None:
         video_filepath = video_info
         if video_filepath is None or not video_filepath.exists():
-            self.bindings.presentation.notify(
+            self.bindings.notifications.notify(
                 "The video file was renamed or removed.", level="warning"
             )
             return
@@ -432,7 +434,7 @@ class PanelSelection:
             hda_id, hda_ver
         )
         if video_info is None:
-            self.bindings.presentation.notify(
+            self.bindings.notifications.notify(
                 f'"{hda_name} (v{hda_ver})" iHDA node has no video', level="warning"
             )
             return
@@ -471,7 +473,7 @@ class PanelSelection:
             ihda_ver = self.state.history.require_data().version
             hist_id = self.state.history.require_data().hist_id
             if video_dirpath is None:
-                self.bindings.presentation.notify(
+                self.bindings.notifications.notify(
                     f'id: {hist_id} "{self.state.history.name} [{ihda_ver}]" iHDA node has no video',
                     level="warning",
                 )
@@ -481,14 +483,14 @@ class PanelSelection:
         else:
             video_dirpath = self.state.asset.require_data().video_dirpath
             if video_dirpath is None:
-                self.bindings.presentation.notify(
+                self.bindings.notifications.notify(
                     f'"{self.state.asset.name}" iHDA node has no video', level="warning"
                 )
                 return
             video_filename = self.state.asset.require_data().video_filename
             video_filepath = item_path(video_dirpath, video_filename)
         if video_filepath is None or not video_filepath.exists():
-            self.bindings.presentation.notify(
+            self.bindings.notifications.notify(
                 "The video file was renamed or removed.", level="warning"
             )
             return

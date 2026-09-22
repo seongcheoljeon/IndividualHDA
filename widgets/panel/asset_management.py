@@ -21,6 +21,7 @@ if TYPE_CHECKING:
         LibraryQueryPort,
         LibraryToolsPort,
         NotesPort,
+        NotificationsPort,
         PresentationPort,
         SelectionPort,
     )
@@ -57,6 +58,7 @@ class PanelAssetManagementBindings:
     notes: NotesPort
     parent: QtWidgets.QWidget
     presentation: PresentationPort
+    notifications: NotificationsPort
     queries: LibraryQueryPort
     reload_library: Callable[[], None]
     rename_dialog: RenameIHDA
@@ -172,7 +174,7 @@ class PanelAssetManagement:
         restore(QtCore.QModelIndex())
         self.bindings.ui.label__loc_record_count.setText(str(proxy.get_row_count()))
         removed = len(result.deleted)
-        self.bindings.presentation.notify(
+        self.bindings.notifications.notify(
             f"Removed {removed} stale scene record{'s' if removed != 1 else ''}."
             if removed
             else "No stale scene records; every HIP and asset file still exists."
@@ -182,7 +184,7 @@ class PanelAssetManagement:
                 f"{identity}: {message}" for identity, message in result.failed
             )
             self.show_command_error("Some records were kept: " + details)
-            self.bindings.presentation.notify(
+            self.bindings.notifications.notify(
                 f"{len(result.failed)} record(s) could not be checked; see the log.",
                 level="warning",
             )
@@ -682,7 +684,7 @@ iHDA note history: {cnt_hda_note_hist}
         self.bindings.ui.label__loc_record_count.setText(
             str(self.bindings.models.record_proxy_model.get_row_count())
         )
-        self.bindings.presentation.notify(
+        self.bindings.notifications.notify(
             f'"{name}" moved to Trash',
             action="Undo",
             on_action=lambda: self._restore_trashed(name, {"asset_id": hda_id}),
@@ -753,7 +755,7 @@ iHDA note history: {cnt_hda_note_hist}
         self._restore_history_selection_data()
         self.bindings.notes.clear_hist_parms()
         if verbose:
-            self.bindings.presentation.notify(
+            self.bindings.notifications.notify(
                 f"Version {history.version} moved to Trash",
                 action="Undo",
                 on_action=lambda: self._restore_trashed(

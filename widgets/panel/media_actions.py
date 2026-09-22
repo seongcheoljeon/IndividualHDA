@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from widgets.panel.ports import (
         AssetModelPort,
         LibraryQueryPort,
+        NotificationsPort,
         PresentationPort,
         SelectionPort,
     )
@@ -43,6 +44,7 @@ class PanelMediaActionsBindings:
     parent: QtWidgets.QWidget
     preference: Preference
     presentation: PresentationPort
+    notifications: NotificationsPort
     queries: LibraryQueryPort
     selection: SelectionPort
     sequence_pattern: Pattern[str]
@@ -137,7 +139,7 @@ class PanelMediaActions:
         if self.bindings.tasks.busy:
             return
         if not self.bindings.preference.is_ffmpeg_valid:
-            self.bindings.presentation.notify(
+            self.bindings.notifications.notify(
                 "FFmpeg is not configured; set its folder in Preferences.",
                 action="Preferences",
                 on_action=self.bindings.preference.show,

@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from widgets.panel.ports import (
         AssetModelPort,
         LibraryQueryPort,
+        NotificationsPort,
         PresentationPort,
         SelectionPort,
     )
@@ -39,6 +40,7 @@ class PanelLibraryToolsBindings:
     parent: QtWidgets.QWidget
     queries: LibraryQueryPort
     presentation: PresentationPort
+    notifications: NotificationsPort
     reload_library: Callable[[], None]
     scene_usage: Callable[[], SceneUsageIntegration]
     selection: SelectionPort
@@ -173,7 +175,7 @@ class PanelLibraryTools:
         asset_id = self.bindings.selection.state.asset.id
         source = library.copy_source(asset_id) if asset_id is not None else None
         if source is None:
-            self.bindings.presentation.notify(
+            self.bindings.notifications.notify(
                 "Select an asset in your personal library first.", level="warning"
             )
             return
@@ -194,7 +196,9 @@ class PanelLibraryTools:
     def _open_selected_version_details(self) -> None:
         asset_id = self.bindings.selection.state.asset.id
         if asset_id is None:
-            self.bindings.presentation.notify("Select an asset first.", level="warning")
+            self.bindings.notifications.notify(
+                "Select an asset first.", level="warning"
+            )
             return
         self._open_metadata_tools(asset_id)
 
@@ -234,7 +238,7 @@ class PanelLibraryTools:
             self.bindings.queries.hda_base_dirpath,
         )
         if database is None or assets is None or not database.is_file():
-            self.bindings.presentation.notify(
+            self.bindings.notifications.notify(
                 "Configure a library in Preferences first.", level="warning"
             )
             return
@@ -335,7 +339,7 @@ class PanelLibraryTools:
                     f"Imported {snapshot['version']}: {node.path()}"
                 )
         except Exception as error:
-            self.bindings.presentation.notify(
+            self.bindings.notifications.notify(
                 f"Import version failed: {error}", level="error"
             )
 

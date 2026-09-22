@@ -30,6 +30,7 @@ if TYPE_CHECKING:
         CallbacksPort,
         InsidePagePort,
         LibraryQueryPort,
+        NotificationsPort,
         PresentationPort,
         SelectionPort,
     )
@@ -59,6 +60,7 @@ class PanelHoudiniActionsBindings:
     models: AssetModelPort
     parent: QtWidgets.QWidget
     presentation: PresentationPort
+    notifications: NotificationsPort
     queries: LibraryQueryPort
     scene_usage: Callable[[], SceneUsageIntegration]
     selection: SelectionPort
@@ -129,7 +131,7 @@ class PanelHoudiniActions:
             self.bindings.presentation.dragdrop_overlay_close()
             return
         if total_node_cnt > self.bindings.services.policy.maximum_node_batch:
-            self.bindings.presentation.notify(
+            self.bindings.notifications.notify(
                 f"Too many nodes to import: {total_node_cnt} selected, the limit is"
                 f" {self.bindings.services.policy.maximum_node_batch}.",
                 level="error",

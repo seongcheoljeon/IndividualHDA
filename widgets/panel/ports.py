@@ -141,6 +141,19 @@ class AssetModelPort(Protocol):
     ) -> None: ...
 
 
+class NotificationsPort(Protocol):
+    """Non-modal feedback: a toast, the status bar and the log in one call."""
+
+    def notify(
+        self,
+        message: str,
+        *,
+        action: str | None = None,
+        on_action: Callable[[], None] | None = None,
+        level: Literal["info", "warning", "error"] = "info",
+    ) -> None: ...
+
+
 class PresentationPort(Protocol):
     def change_org_node_name(
         self, parent_node: Any = None, node_name: Any = None
@@ -163,14 +176,6 @@ class PresentationPort(Protocol):
     def is_show_thumbnail(self) -> bool: ...
     def loading_close(self) -> None: ...
     def loading_show(self) -> None: ...
-    def notify(
-        self,
-        message: str,
-        *,
-        action: str | None = None,
-        on_action: Callable[[], None] | None = None,
-        level: Literal["info", "warning", "error"] = "info",
-    ) -> None: ...
     def open_houdini_file(self, hip_filepath: pathlib.Path | None = None) -> None: ...
     def resizing_listview(self) -> None: ...
     def set_view_item_icon_size(self, val: Any) -> None: ...

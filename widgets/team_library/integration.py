@@ -43,6 +43,7 @@ if TYPE_CHECKING:
         AssetModelPort,
         LibraryToolsPort,
         NotesPort,
+        NotificationsPort,
         PresentationPort,
         SelectionPort,
     )
@@ -67,6 +68,7 @@ class TeamBindings:
     models: AssetModelPort
     notes: NotesPort
     presentation: PresentationPort
+    notifications: NotificationsPort
     selection: SelectionPort
     session: PanelSessionState
     status: PanelStatus
@@ -686,7 +688,7 @@ class MainLibraryIntegration(QtCore.QObject):
         self._refresh_pending = True
         presenter = self.presenter
         if result.get("deleted") and presenter is not None:
-            self.bindings.presentation.notify(
+            self.bindings.notifications.notify(
                 f'"{result.get("name", "Asset")}" moved to Trash',
                 action="Undo",
                 on_action=lambda: presenter.restore(result["id"], result["revision"]),

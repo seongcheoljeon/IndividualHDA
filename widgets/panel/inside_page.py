@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from model.ihda_inside_model import InsideModel
     from model.ihda_inside_proxy_model import InsideProxyModel
     from widgets.empty_state import EmptyState
-    from widgets.panel.ports import PresentationPort
+    from widgets.panel.ports import NotificationsPort
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -42,7 +42,7 @@ class InsidePageBindings:
     icons: IHDAIcons
     selected_asset_id: Callable[[], int | None]
     go_to_node: Callable[[str | None], None]
-    presentation: PresentationPort
+    notifications: NotificationsPort
 
 
 class InsidePageController:
@@ -86,7 +86,7 @@ class InsidePageController:
         try:
             nodes = tuple(b.scan_scene())
         except Exception as error:
-            b.presentation.notify(
+            b.notifications.notify(
                 f"Scanning the HIP file failed: {error}", level="error"
             )
             return

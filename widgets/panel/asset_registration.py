@@ -28,6 +28,7 @@ if TYPE_CHECKING:
         HoudiniActionsPort,
         InsidePagePort,
         LibraryQueryPort,
+        NotificationsPort,
         PresentationPort,
         SelectionPort,
     )
@@ -52,6 +53,7 @@ class PanelAssetRegistrationBindings:
     parent: QtWidgets.QWidget
     preference: Preference
     presentation: PresentationPort
+    notifications: NotificationsPort
     queries: LibraryQueryPort
     reload_library: Callable[[], None]
     selection: SelectionPort
@@ -89,7 +91,7 @@ class PanelAssetRegistration:
             return
         total_node_cnt = len(node_lst)
         if total_node_cnt > self.bindings.services.policy.maximum_node_batch:
-            self.bindings.presentation.notify(
+            self.bindings.notifications.notify(
                 f"Too many nodes to register: {total_node_cnt} dropped, the limit is"
                 f" {self.bindings.services.policy.maximum_node_batch}.",
                 level="error",
@@ -223,7 +225,7 @@ But it didn't stop, so please wait a little longer.
                 msg=f'[{node_cnt + 1}/{total_node_cnt}] node dropped "{node_path}" ({node_cate})',
             )
         if skipped:
-            self.bindings.presentation.notify(
+            self.bindings.notifications.notify(
                 f"Skipped {skipped} of {total_node_cnt} nodes; the log says why.",
                 level="warning",
             )
@@ -272,7 +274,7 @@ But it didn't stop, so please wait a little longer.
             hda_key_id = identity.asset_id
             # 업데이트하려는 노드가 저장되어있는 노드 타입과 같은지 확인
             if identity.node_type != houdini_api.HoudiniAPI.node_type_name(node):
-                self.bindings.presentation.notify(
+                self.bindings.notifications.notify(
                     f'"{node_name}" is a different node type from the stored asset;'
                     " rename it to register it separately.",
                     level="error",

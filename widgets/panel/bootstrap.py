@@ -200,7 +200,7 @@ class PanelBootstrap:
                 icons=window._ihda_icons,
                 selected_asset_id=lambda: window.selection.state.asset.id,
                 go_to_node=lambda path: window.selection.go_to_houdini_node(path),
-                presentation=window.presentation,
+                notifications=window.presentation,
             )
         )
 
