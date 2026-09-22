@@ -2,6 +2,11 @@
 
 ## Unreleased — modern editing
 
+- **Tables read like tables.** The asset and history tables drop the grid
+  lines and the "iHDA n" row-number column, band alternate rows, left-align a
+  quieter header and give the Like / Version / Count columns room for their
+  labels. Version pills are solid blue with white text instead of grey on
+  grey, in the grid cards as well.
 - **One place for dependencies.** The four `requirements-*.txt` files are gone;
   `pyproject.toml` declares the `core`, `server`, `server-test` and `dev`
   dependency groups and `uv.lock` pins them. CI, the Docker images and the

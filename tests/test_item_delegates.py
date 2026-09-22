@@ -285,3 +285,36 @@ def test_record_rows_draw_their_icon_unselected_and_badge_only_the_name(
     name_hint = delegate.sizeHint(option_for(rect), folder)
     other_hint = delegate.sizeHint(option_for(rect), folder.siblingAtColumn(1))
     assert name_hint.width() > other_hint.width()
+
+
+def test_version_pills_are_accented_and_tables_drop_grid_and_row_numbers(
+    app: Any,
+) -> None:
+    from libs.model_columns import AssetColumn
+    from model.ihda_table_model import TableModel
+    from view.ihda_history_view import HistoryView
+    from view.ihda_table_view import TableView
+    from widgets.item_delegates import RowDelegate
+    from widgets.ui_tokens import VERSION_COLOR
+
+    table = TableModel(items=[replace(asset(1), hda_version="1.0")])
+    rows = RowDelegate(
+        None,
+        data_role=TableModel.data_role,
+        name_column=AssetColumn.NAME,
+        secondary_column=AssetColumn.DEFINITION,
+        version_column=AssetColumn.VERSION,
+    )
+    rect = QtCore.QRect(0, 0, 76, 28)
+    cell = render(rows, option_for(rect), table.index(0, AssetColumn.VERSION))
+    colours = {
+        cell.pixelColor(x, y).name().lower()
+        for x in range(cell.width())
+        for y in range(cell.height())
+    }
+    assert VERSION_COLOR.lower() in colours and "#ffffff" in colours
+    for view in (TableView(), HistoryView()):
+        assert view.verticalHeader().isHidden()
+        assert not view.showGrid()
+        assert view.alternatingRowColors()
+        view.deleteLater()

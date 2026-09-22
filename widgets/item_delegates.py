@@ -19,6 +19,7 @@ from widgets.ui_tokens import (
     CARD_RADIUS,
     FAVORITE_COLOR,
     STAR_SIZE,
+    VERSION_COLOR,
 )
 
 UNAVAILABLE_OPACITY = 0.55
@@ -97,19 +98,30 @@ def draw_pill(
     text: str,
     palette: QtGui.QPalette,
     font: QtGui.QFont,
+    *,
+    accent: QtGui.QColor | None = None,
 ) -> QtCore.QRect:
-    """A small rounded label (version, count); returns the rect it used."""
+    """A small rounded label; returns the rect it used.
+
+    Without ``accent`` it is a quiet count badge in the palette's mid tone. With
+    one (versions) the pill is that solid colour with white text.
+    """
     metrics = QtGui.QFontMetrics(font)
     width = metrics.horizontalAdvance(text) + BADGE_HEIGHT // 2 + 6
     rect = QtCore.QRect(top_left, QtCore.QSize(width, BADGE_HEIGHT))
     painter.save()
     painter.setRenderHint(QtGui.QPainter.RenderHint.Antialiasing)
     painter.setPen(QtCore.Qt.PenStyle.NoPen)
-    background = QtGui.QColor(palette.mid().color())
-    background.setAlpha(200)
+    if accent is None:
+        background = QtGui.QColor(palette.mid().color())
+        background.setAlpha(200)
+        text_color = palette.text().color()
+    else:
+        background = QtGui.QColor(accent)
+        text_color = QtGui.QColor("#ffffff")
     painter.setBrush(background)
     painter.drawRoundedRect(rect, BADGE_HEIGHT / 2, BADGE_HEIGHT / 2)
-    painter.setPen(palette.text().color())
+    painter.setPen(text_color)
     painter.setFont(font)
     painter.drawText(rect, QtCore.Qt.AlignmentFlag.AlignCenter, text)
     painter.restore()
@@ -226,6 +238,7 @@ class CardDelegate(QtWidgets.QStyledItemDelegate):
                 f"v{version}",
                 palette,
                 small_font(font),
+                accent=QtGui.QColor(VERSION_COLOR),
             )
         favorite = bool(index.data(self._favorite_role))
         if favorite or hovered:
@@ -332,7 +345,14 @@ class RowDelegate(QtWidgets.QStyledItemDelegate):
                     opt.rect.center().x() - width // 2,
                     opt.rect.center().y() - BADGE_HEIGHT // 2,
                 )
-                draw_pill(painter, top_left, text, palette, pill_font)
+                draw_pill(
+                    painter,
+                    top_left,
+                    text,
+                    palette,
+                    pill_font,
+                    accent=QtGui.QColor(VERSION_COLOR),
+                )
         else:
             self._paint_name(painter, opt, index, data, font)
         painter.restore()

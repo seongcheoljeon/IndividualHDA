@@ -19,14 +19,15 @@ CARD_PADDING = 4
 BADGE_HEIGHT = 16
 STAR_SIZE = 16
 FAVORITE_COLOR = "#FF2400"  # a filled star must read at a glance in both themes
+VERSION_COLOR = "#3B82F6"  # version pills: grey on grey was unreadable in Houdini
 
 # Column identity belongs to each model; widths are presentation policy.
 ASSET_TABLE_COLUMN_WIDTHS = (
     (AssetColumn.NAME, 250),
     (AssetColumn.DEFINITION, 130),
-    (AssetColumn.FAVORITE, 28),
-    (AssetColumn.VERSION, 60),
-    (AssetColumn.USE_COUNT, 50),
+    (AssetColumn.FAVORITE, 40),
+    (AssetColumn.VERSION, 76),
+    (AssetColumn.USE_COUNT, 64),
 )
 HISTORY_TABLE_COLUMN_WIDTHS = (
     (HistoryColumn.ID, 80),

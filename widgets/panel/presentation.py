@@ -27,7 +27,7 @@ from libs.ui_icons import Icon
 def app_info(houdini_ver: Any = None) -> str:
     info = f"""
 <p>Individual HDA (Houdini built-in app)<br><br>
-Release Date: 2026.09.11<br>
+Release Date: 2026.09.22<br>
 Release Version: {keys.Value.current_ver}<br>
 OS Available: {platform_info.platform_system().title()}<br>
 Recommended Houdini Version: {houdini_ver}<br>
@@ -37,8 +37,8 @@ Recommended Houdini Version: {houdini_ver}<br>
 <a href="{SUPPORT_URL}" style="color:#ff5f5f" target="_blank">📖 Buy me a book</a><br>
 <a href="{SPONSORS_URL}" style="color:#ea4aaa" target="_blank">❤ Sponsor on GitHub</a><br>
 <br>
-<a href="https://vimeo.com/seongcheolzeon" style="color:red"
-target="_blank">Vimeo</a><br>
+<a href="https://youtube.com/@seongcheoljeon5785?si=SQx4Waw5RWszO666" style="color:red"
+target="_blank">Youtube</a><br>
     """
     return info
 

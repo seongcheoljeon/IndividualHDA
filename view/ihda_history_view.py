@@ -28,7 +28,6 @@ class HistoryView(AssetDragMixin, QtWidgets.QTableView):
         self.setDropIndicatorShown(True)
         self.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.CustomContextMenu)
-        self.setAlternatingRowColors(False)
         self.setMouseTracking(True)  # hover styling only; selection needs a click
         self.setSelectionMode(
             QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection
@@ -39,7 +38,16 @@ class HistoryView(AssetDragMixin, QtWidgets.QTableView):
         self.setDragDropMode(QtWidgets.QAbstractItemView.DragDropMode.DragDrop)
         self.setSortingEnabled(True)
         self.horizontalHeader().setStretchLastSection(True)
-        self.setWordWrap(True)
+        # Modern table chrome: no grid or row numbers, banded rows, a quiet header.
+        self.setShowGrid(False)
+        self.setAlternatingRowColors(True)
+        self.setWordWrap(False)
+        self.verticalHeader().hide()
+        self.horizontalHeader().setHighlightSections(False)
+        self.horizontalHeader().setDefaultAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
+        self.horizontalHeader().setMinimumSectionSize(36)
         self.verticalHeader().setDefaultSectionSize(46)
         #
         self.__signal = Object()
