@@ -156,11 +156,10 @@ explicit migration; API v2 is retained and older servers hide the new tracking t
 Use a separate environment; do not install development dependencies into Houdini:
 
 ```sh
-python -m venv .venv
-python -m pip install -r requirements-dev.txt
-python -m tools.dev_app
-python -m tools.check lint
-python -m tools.check all --coverage
+uv sync --group dev
+uv run python -m tools.dev_app
+uv run python -m tools.check lint
+uv run python -m tools.check all --coverage
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for a Houdini-free sample panel, minimal

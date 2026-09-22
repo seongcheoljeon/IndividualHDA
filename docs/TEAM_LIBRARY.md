@@ -106,7 +106,7 @@ docker compose run --rm api python -m ihda_server.cli revoke-user USER_UUID
 
 ### Docker 없이 실행
 
-별도 가상 환경에서 `pip install -r requirements-server.txt`를 실행합니다.
+별도 가상 환경에서 `uv sync --only-group server`(또는 pip 25.1+: `pip install --group server`)를 실행합니다.
 `IHDA_DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/DATABASE`와
 쓰기 가능한 `IHDA_BLOB_ROOT`를 설정한 뒤 동일한 CLI 명령을 실행합니다.
 

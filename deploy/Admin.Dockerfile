@@ -7,8 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 python3
     && chown -R ihda:ihda /data
 ENV PATH="/opt/ihda/bin:$PATH"
 WORKDIR /app
-COPY requirements-server.txt LICENSE THIRD_PARTY_LICENSES.txt ./
-RUN pip install --no-cache-dir -r requirements-server.txt
+COPY pyproject.toml LICENSE THIRD_PARTY_LICENSES.txt ./
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir --group server
 COPY ihda_server ./ihda_server
 COPY libs ./libs
 USER ihda

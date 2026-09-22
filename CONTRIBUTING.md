@@ -6,15 +6,18 @@ compatible unless the change explicitly includes a migration.
 
 ## Set up a checkout
 
-Use Python 3.11 or newer. From the repository root:
+Use Python 3.11 or newer and [uv](https://docs.astral.sh/uv/). From the
+repository root:
 
 ```sh
-python -m venv .venv
-# Linux/macOS: source .venv/bin/activate
-# Windows PowerShell: .venv\Scripts\Activate.ps1
-python -m pip install -r requirements-dev.txt
-python -m tools.dev_app
+uv sync --group dev          # creates .venv from uv.lock
+uv run python -m tools.dev_app
 ```
+
+Without uv, pip 25.1 or newer installs the same group into an active virtual
+environment: `python -m pip install --group dev`. The groups are declared in
+`pyproject.toml` (`[dependency-groups]`) and pinned in `uv.lock`; change a
+version there and run `uv lock`.
 
 The developer panel uses the real UI and a temporary three-asset library. It does
 not use your saved settings or library and deletes its samples when closed.
@@ -22,9 +25,9 @@ Houdini capture/import is unavailable; the sample HDA files are placeholders.
 To check startup and shutdown headlessly, run `python -m tools.dev_app --smoke`.
 Linux needs the Qt runtime libraries listed in `.github/workflows/tests.yml`.
 
-For core-only work install `requirements-core.txt`; for server-only work install
-`requirements-test-server.txt`. Neither environment requires Houdini or PySide6.
-The full developer environment includes optional server/Qt test dependencies.
+For core-only work sync the `core` group; for server-only work sync
+`server-test` (`uv sync --only-group server-test`). Neither environment requires
+Houdini or PySide6. The `dev` group includes the server and Qt test dependencies.
 
 ## Choose the change boundary
 

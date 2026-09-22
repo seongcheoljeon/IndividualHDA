@@ -13,18 +13,19 @@ jobs:
       matrix:
         include:
           - suite: core
-            requirements: requirements-core.txt
+            group: core
           - suite: server
-            requirements: requirements-test-server.txt
+            group: server-test
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.11'
-      - run: python -m pip install -r ${{ matrix.requirements }}
-      - run: python -m tools.check ${{ matrix.suite }}
+          enable-cache: true
+      - run: uv sync --locked --only-group ${{ matrix.group }}
+      - run: uv run --no-sync python -m tools.check ${{ matrix.suite }}
       - name: Verify isolation from Qt
-        run: python -c "import importlib.util; assert importlib.util.find_spec('PySide6') is None"
+        run: uv run --no-sync python -c "import importlib.util; assert importlib.util.find_spec('PySide6') is None"
 
   test:
     strategy:
@@ -38,23 +39,22 @@ jobs:
       QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
           python-version: ${{ matrix.python }}
-          cache: pip
-          cache-dependency-path: requirements-dev.txt
+          enable-cache: true
       - name: Install Linux Qt runtime libraries
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libegl1 libopengl0 libnss3 libxkbcommon0 libasound2t64 libpulse0
       - name: Install test tools
-        run: python -m pip install -r requirements-dev.txt
-      - run: python -m tools.check lint
+        run: uv sync --locked --group dev
+      - run: uv run --no-sync python -m tools.check lint
       - name: Verify Qt boundary
-        run: python -m tools.check qt
+        run: uv run --no-sync python -m tools.check qt
       - name: Test with coverage
-        run: python -m tools.check all --coverage
+        run: uv run --no-sync python -m tools.check all --coverage
       - name: Verify developer sample panel
-        run: python -m tools.dev_app --smoke
+        run: uv run --no-sync python -m tools.dev_app --smoke
       - name: Upload test report on failure
         if: failure()
         uses: actions/upload-artifact@v4
@@ -83,13 +83,14 @@ jobs:
       IHDA_TEST_POSTGRES_URL: postgresql+psycopg://ihda:test-only-password@127.0.0.1:5432/ihda_test
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.11'
+          enable-cache: true
       - name: Install Qt runtime and test tools
         run: |
           sudo apt-get update
           sudo apt-get install -y libegl1 libopengl0 libnss3 libxkbcommon0 libasound2t64 libpulse0 postgresql-client-16
-          python -m pip install -r requirements-dev.txt
+          uv sync --locked --group dev
       - name: Verify contracts and real HTTP against PostgreSQL
-        run: python -m tools.check postgres
+        run: uv run --no-sync python -m tools.check postgres

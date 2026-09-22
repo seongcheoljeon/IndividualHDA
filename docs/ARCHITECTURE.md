@@ -258,7 +258,7 @@ deferred close, host destruction, startup fallbacks, settings tolerance, data
 safety (WAL, orphan cleanup, auto backup), Python layout construction and dialog contracts, version
 consistency, the architecture ratchets and annotation coverage. CI runs
 `ruff check`, `ruff format --check`, `mypy` and `pytest --cov` with a coverage
-floor (`pyproject.toml`); `requirements-dev.txt` pins the tools. Host-side checks
+floor (`pyproject.toml`); the `dev` dependency group pins the tools through `uv.lock`. Host-side checks
 and their limits are recorded in [VALIDATION.md](VALIDATION.md).
 
 The session-scoped `app` fixture deletes every top-level widget a test left

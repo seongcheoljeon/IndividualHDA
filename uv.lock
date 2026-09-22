@@ -377,7 +377,25 @@ name = "individual-hda"
 version = "2.2.0"
 source = { virtual = "." }
 
-[package.optional-dependencies]
+[package.dev-dependencies]
+core = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+]
+dev = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "mypy" },
+    { name = "psycopg", extra = ["binary"] },
+    { name = "pyside6" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+    { name = "sqlalchemy" },
+    { name = "uvicorn" },
+]
 server = [
     { name = "fastapi" },
     { name = "httpx" },
@@ -385,28 +403,57 @@ server = [
     { name = "sqlalchemy" },
     { name = "uvicorn" },
 ]
-test = [
+server-test = [
+    { name = "fastapi" },
+    { name = "httpx" },
     { name = "mypy" },
-    { name = "pyside6" },
+    { name = "psycopg", extra = ["binary"] },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "sqlalchemy" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "fastapi", marker = "extra == 'server'", specifier = ">=0.115,<1" },
-    { name = "httpx", marker = "extra == 'server'", specifier = ">=0.27,<1" },
-    { name = "mypy", marker = "extra == 'test'", specifier = ">=1.15" },
-    { name = "psycopg", extras = ["binary"], marker = "extra == 'server'", specifier = ">=3.2,<4" },
-    { name = "pyside6", marker = "extra == 'test'", specifier = ">=6.5.3,<7" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=8" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=6" },
-    { name = "ruff", marker = "extra == 'test'", specifier = ">=0.11" },
-    { name = "sqlalchemy", marker = "extra == 'server'", specifier = ">=2.0,<2.1" },
-    { name = "uvicorn", marker = "extra == 'server'", specifier = ">=0.30,<1" },
+
+[package.metadata.requires-dev]
+core = [
+    { name = "mypy", specifier = ">=2.3,<3" },
+    { name = "pytest", specifier = ">=9,<10" },
+    { name = "pytest-cov", specifier = ">=7,<8" },
+    { name = "ruff", specifier = ">=0.16,<0.17" },
 ]
-provides-extras = ["server", "test"]
+dev = [
+    { name = "fastapi", specifier = ">=0.115,<1" },
+    { name = "httpx", specifier = ">=0.27,<1" },
+    { name = "mypy", specifier = ">=2.3,<3" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.2,<4" },
+    { name = "pyside6", specifier = ">=6.5.3,<7" },
+    { name = "pytest", specifier = ">=9,<10" },
+    { name = "pytest-cov", specifier = ">=7,<8" },
+    { name = "ruff", specifier = ">=0.16,<0.17" },
+    { name = "sqlalchemy", specifier = ">=2.0,<2.1" },
+    { name = "uvicorn", specifier = ">=0.30,<1" },
+]
+server = [
+    { name = "fastapi", specifier = ">=0.115,<1" },
+    { name = "httpx", specifier = ">=0.27,<1" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.2,<4" },
+    { name = "sqlalchemy", specifier = ">=2.0,<2.1" },
+    { name = "uvicorn", specifier = ">=0.30,<1" },
+]
+server-test = [
+    { name = "fastapi", specifier = ">=0.115,<1" },
+    { name = "httpx", specifier = ">=0.27,<1" },
+    { name = "mypy", specifier = ">=2.3,<3" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.2,<4" },
+    { name = "pytest", specifier = ">=9,<10" },
+    { name = "pytest-cov", specifier = ">=7,<8" },
+    { name = "ruff", specifier = ">=0.16,<0.17" },
+    { name = "sqlalchemy", specifier = ">=2.0,<2.1" },
+    { name = "uvicorn", specifier = ">=0.30,<1" },
+]
 
 [[package]]
 name = "iniconfig"

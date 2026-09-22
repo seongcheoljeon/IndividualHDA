@@ -2,6 +2,11 @@
 
 ## Unreleased — modern editing
 
+- **One place for dependencies.** The four `requirements-*.txt` files are gone;
+  `pyproject.toml` declares the `core`, `server`, `server-test` and `dev`
+  dependency groups and `uv.lock` pins them. CI, the Docker images and the
+  docs install from the groups (`uv sync --group …`, or pip 25.1+
+  `pip install --group …`).
 - **Tree rows keep their icons; favourites are scarlet.** Under Houdini's
   stylesheet the record and category trees showed a row's icon only once it
   was selected; the badge delegate now paints the icon and text itself, and

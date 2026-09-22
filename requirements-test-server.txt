@@ -1,3 +1,0 @@
-# Server development needs neither Houdini nor Qt.
--r requirements-core.txt
--r requirements-server.txt
