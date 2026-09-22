@@ -168,7 +168,9 @@ def build_inside_nodes(layout: MainWindowLayout, window: QMainWindow) -> None:
     layout.label__found_hda_inside_hipfile.setObjectName(
         "label__found_hda_inside_hipfile"
     )
-    layout.label__found_hda_inside_hipfile.setText(main_window_text("found iHDA of "))
+    layout.label__found_hda_inside_hipfile.setText(
+        main_window_text("iHDA nodes in this HIP:")
+    )
     layout.horizontalLayout__inside_count.addWidget(
         layout.label__found_hda_inside_hipfile
     )
@@ -179,9 +181,7 @@ def build_inside_nodes(layout: MainWindowLayout, window: QMainWindow) -> None:
         "label__found_hda_inside_hipfile_count"
     )
     layout.label__found_hda_inside_hipfile_count.setAlignment(
-        Qt.AlignmentFlag.AlignRight
-        | Qt.AlignmentFlag.AlignRight
-        | Qt.AlignmentFlag.AlignVCenter
+        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
     )
     layout.label__found_hda_inside_hipfile_count.setText(main_window_text("0"))
     layout.horizontalLayout__inside_count.addWidget(

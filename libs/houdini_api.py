@@ -101,10 +101,7 @@ class HoudiniAPI:
     import_individual_hda_into_houdini = staticmethod(
         assets.import_individual_hda_into_houdini
     )
-    get_ihda_node_instance_data = staticmethod(assets.get_ihda_node_instance_data)
-    get_ihda_node_instance_nested_list = staticmethod(
-        assets.get_ihda_node_instance_nested_list
-    )
+    scan_ihda_nodes = staticmethod(assets.scan_ihda_nodes)
 
     def __init__(
         self,

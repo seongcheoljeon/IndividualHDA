@@ -116,6 +116,10 @@ class TreeProxyModel(QtCore.QSortFilterProxyModel):
     def row_matches(self, index: QtCore.QModelIndex) -> bool:
         return True
 
+    def search_texts(self, index: QtCore.QModelIndex) -> list[str]:
+        """Texts the filter expression is matched against for one row."""
+        return [search_text(index.data(self.filterRole()))]
+
     def filterAcceptsRow(
         self,
         source_row: int,
@@ -127,11 +131,10 @@ class TreeProxyModel(QtCore.QSortFilterProxyModel):
         index = model.index(source_row, 0, source_parent)
         if not index.isValid() or not self.row_matches(index):
             return False
+        expression = self.filterRegularExpression()
         while index.isValid():
-            if (
-                self.filterRegularExpression()
-                .match(search_text(index.data(self.filterRole())))
-                .hasMatch()
+            if any(
+                expression.match(text).hasMatch() for text in self.search_texts(index)
             ):
                 return True
             index = index.parent()

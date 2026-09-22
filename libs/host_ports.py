@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import pathlib
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Protocol
+
+from libs.scene_scan import ScannedNode
 
 if TYPE_CHECKING:
     import hou
@@ -53,6 +55,7 @@ class HostCapturePort(Protocol):
 class HostScenePort(Protocol):
     def current_hipfile(self) -> pathlib.Path: ...
     def current_houdini_version(self) -> str: ...
+    def scan_ihda_nodes(self, root: Any = None) -> Sequence[ScannedNode]: ...
     def import_individual_hda_into_houdini(
         self,
         node_filepath: pathlib.Path | None = None,

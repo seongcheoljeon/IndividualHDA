@@ -284,7 +284,6 @@ class PanelModelBinding:
             keys.UISetting.padding_inside, keys.Name.PreferenceUI.pad_inside
         )
         self.inside_model = ihda_inside_model.InsideModel(
-            data={},
             pixmap_cate_data=self.bindings.icons.pixmap_cate_data,
             pixmap_ihda_data=self.bindings.icons.pixmap_ihda_data,
             inst_ihda_icon=self.bindings.icons,

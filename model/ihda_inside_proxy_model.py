@@ -5,7 +5,7 @@ from __future__ import annotations
 from PySide6 import QtCore
 
 from model.ihda_inside_model import InsideModel
-from model.proxy_filters import TreeProxyModel
+from model.proxy_filters import TreeProxyModel, search_text
 
 
 class InsideProxyModel(TreeProxyModel):
@@ -19,6 +19,13 @@ class InsideProxyModel(TreeProxyModel):
         return (
             self._hda_id is None or index.data(InsideModel.hda_id_role) == self._hda_id
         )
+
+    def search_texts(self, index: QtCore.QModelIndex) -> list[str]:
+        # Node names and their full paths ("/obj/geo1/fire") both find a row.
+        return [
+            search_text(index.data(self.filterRole())),
+            search_text(index.data(InsideModel.node_path_role)),
+        ]
 
     def get_row_count(self) -> int:
         return self.count_role(InsideModel.hda_id_role)

@@ -551,6 +551,7 @@ class PanelComposition:
             video_player=window._video_player,
             views=window.views,
             houdini=window.houdini,
+            scan_scene=window._services.host_scene.scan_ihda_nodes,
         )
         window.tools.bindings = PanelLibraryToolsBindings(
             imported=lambda: window._archives.imported,

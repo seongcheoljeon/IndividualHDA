@@ -433,6 +433,7 @@ class PanelHoudiniActions:
             )
             num_count += 1
         self.bindings.presentation.dragdrop_overlay_close()
+        self.bindings.selection.mark_inside_stale()  # new instances in the scene
 
     def _insert_hda_node_loc_record(self, record_data: SceneRecord) -> None:
         self.bindings.models.add_record_item(data=record_data)

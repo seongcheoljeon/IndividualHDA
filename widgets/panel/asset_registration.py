@@ -229,6 +229,7 @@ But it didn't stop, so please wait a little longer.
             self.bindings.selection.select_category(
                 category=self.bindings.selection.state.item_text
             )
+            self.bindings.selection.mark_inside_stale()  # comments were written
 
     def _node_declare(self, node: hou.Node | None = None) -> bool:
         if node is None:

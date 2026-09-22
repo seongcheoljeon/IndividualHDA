@@ -1,29 +1,22 @@
 #!/usr/bin/env python
 from __future__ import annotations
 
-import contextlib
-
 # author            : SeongCheol Jeon
 # email addr        : saelly55@gmail.com
 # create date       : 2020.05.14 01:55
 # modify date       :
 # description       :
-from operator import itemgetter
+from collections.abc import Sequence
 from typing import Any, overload
 
 from PySide6 import QtCore, QtGui
 
+from libs import keys
 from libs.model_columns import InsideColumn
+from libs.scene_scan import ScannedNode
 from libs.ui_icons import Icon
 from model.model_style import UNHANDLED, ModelStyleMixin, header_data
 from model.tree_nodes import Node
-
-with contextlib.suppress(ImportError):
-    pass
-
-import contextlib
-
-from libs import houdini_api, keys
 
 
 class NodeData(Node):
@@ -102,7 +95,7 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
 
     def __init__(
         self,
-        data: Any = None,
+        nodes: Sequence[ScannedNode] = (),
         pixmap_cate_data: dict[str, QtGui.QPixmap] | None = None,
         pixmap_ihda_data: dict[int, QtGui.QPixmap] | None = None,
         inst_ihda_icon: Any = None,
@@ -113,8 +106,7 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
         parent: QtCore.QObject | None = None,
     ) -> None:
         super().__init__(parent)
-        self.__data = self.__default_data
-        self.__update_data(data=data)
+        self.__nodes: tuple[ScannedNode, ...] = tuple(nodes)
         self.__pixmap_cate_data = (
             pixmap_cate_data if pixmap_cate_data is not None else {}
         )
@@ -140,160 +132,86 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
 
     def __init_set_data(self) -> None:
         self.__root = NodeData(node_name=keys.Type.root, node_depth=0, parent=None)
-        root_pixmap = self.__pixmap_cate_data.get(keys.Type.root)
+        scene = NodeData(
+            node_name=keys.Type.root,
+            node_type=keys.Type.root,
+            node_depth=0,
+            icon=self.__pixmap_cate_data.get(keys.Type.root),
+            parent=self.__root,
+        )
+        self.__add_scanned(self.__nodes, depth=1, parent=scene)
 
-        if self.__data is not None:
-            for root_key, root_val in sorted(
-                iter(self.__data.items()), key=itemgetter(0)
-            ):
-                parent_node = NodeData(
-                    node_name=root_key,
-                    node_type=keys.Type.root,
-                    node_depth=0,
-                    icon=root_pixmap,
-                    parent=self.__root,
-                )
-                self.set_treemodel_data(
-                    data=root_val, root_type=root_key, depth=1, parent=parent_node
-                )
-
-    #               0           1       2           3           4       5       6          7            8
-    # LIST DATA: [inside_id, hda_id, node_name, node_type, node_cate, ctime, mtime, hip_dirpath, hip_filename,
-    #          9            10
-    #    hda_dirpath, hda_filename
-    # ]
-    def set_treemodel_data(
-        self,
-        data: Any = None,
-        root_type: Any = None,
-        depth: int = 1,
-        parent: NodeData | None = None,
+    def __add_scanned(
+        self, nodes: Sequence[ScannedNode], depth: int, parent: NodeData
     ) -> None:
-        if isinstance(data, dict):
-            for key, val in data.items():
-                node_name = key.name()
-                node_path = key.path()
-                node_cate = houdini_api.HoudiniAPI.node_category_type_name(key)
-                hda_info = houdini_api.HoudiniAPI.get_hda_info_by_selection_node(
-                    node=key
+        """Mirror the scanned Houdini hierarchy; icons come from the shared caches."""
+        for scanned in sorted(nodes, key=lambda item: item.name):
+            mark = scanned.mark
+            if mark is not None:
+                node_type = keys.Type.ihda
+                display = f"{scanned.name} (v{mark.version})"
+                icon = self.__pixmap_ihda_data.get(mark.hda_id) or self.__houdini_icon(
+                    scanned.icon_paths
                 )
-                node_descript = houdini_api.HoudiniAPI.node_definition_description(key)
-                created_time, modified_time = houdini_api.HoudiniAPI.get_node_datetime(
-                    key
+            else:
+                display = scanned.name
+                node_type = (
+                    "manager"
+                    if scanned.category == keys.Type.manager
+                    else scanned.type_name
                 )
-                created_time = created_time.strftime(keys.Value.datetime_fmt_str)
-                modified_time = modified_time.strftime(keys.Value.datetime_fmt_str)
-                if hda_info is not None:
-                    hda_id = hda_info.get(keys.Key.Comment.ihda_id)
-                    hda_ver = hda_info.get(keys.Key.Comment.ihda_version)
-                    hda_org_name = hda_info.get(keys.Key.Comment.ihda_name)
-                    node_name = f"{node_name} (v{hda_ver})"
-                    node_type = keys.Type.ihda
-                    icon = (
-                        self.__pixmap_ihda_data.get(hda_id)
-                        if hda_id is not None
-                        else None
-                    )
-                    if icon is None:
-                        icon = self.__inst_ihda_icon.get_houdini_icon(
-                            icon_lst=houdini_api.HoudiniAPI.node_icon_path_lst(key)
-                        )
-                    # pixmap 공유 데이터 변수에 존재하지 않는다면 직접 가공해서 넣어준다.
-                    icon_cate = self.__pixmap_cate_data.get(node_cate or "")
-                    if icon_cate is None:
-                        icon_cate = self.__inst_ihda_icon.get_category_icon(
-                            category=node_cate
-                        )
-                else:
-                    hda_id = None
-                    hda_ver = None
-                    hda_org_name = None
-                    if node_cate == keys.Type.manager:
-                        node_type = "manager"
-                        icon_cate = self.__generic_pixmap
-                    else:
-                        node_type = houdini_api.HoudiniAPI.node_type_name(key) or ""
-                        # pixmap 공유 데이터 변수에 존재하지 않는다면 직접 가공해서 넣어준다.
-                        icon_cate = self.__pixmap_cate_data.get(node_cate or "")
-                        if icon_cate is None:
-                            icon_cate = self.__inst_ihda_icon.get_category_icon(
-                                category=node_cate
-                            )
-                    icon_lst = houdini_api.HoudiniAPI.node_icon_path_lst(key)
-                    icon = (
-                        self.__pixmap_cate_data.get(icon_lst[1]) if icon_lst else None
-                    )
-                    if icon is None:
-                        icon = self.__inst_ihda_icon.get_houdini_icon(icon_lst=icon_lst)
-                node = NodeData(
-                    node_name=node_name,
-                    node_type=node_type,
-                    icon=icon,
-                    icon_cate=icon_cate,
-                    node_depth=depth,
-                    category=node_cate,
-                    node_descript=node_descript,
-                    version=hda_ver,
-                    hda_id=hda_id,
-                    node_path=node_path,
-                    created_time=created_time,
-                    modified_time=modified_time,
-                    hda_org_name=hda_org_name,
-                    parent=parent,
-                )
-                self.set_treemodel_data(
-                    data=val, root_type=root_type, depth=depth + 1, parent=node
-                )
-        elif isinstance(data, list):
-            if not len(data):
-                return
-            for val in sorted(data, key=itemgetter(2)):
-                node = NodeData(
-                    node_name=val,
-                    node_type=keys.Type.ihda,
-                    category="",
-                    parent=parent,
-                )
-        else:
-            pass
+                icon = (
+                    self.__pixmap_cate_data.get(scanned.icon_paths[1])
+                    if len(scanned.icon_paths) > 1
+                    else None
+                ) or self.__houdini_icon(scanned.icon_paths)
+            icon_cate: QtGui.QPixmap | None
+            if mark is None and scanned.category == keys.Type.manager:
+                icon_cate = self.__generic_pixmap
+            else:
+                icon_cate = self.__pixmap_cate_data.get(
+                    scanned.category
+                ) or self.__category_icon(scanned.category)
+            node = NodeData(
+                node_name=display,
+                node_type=node_type,
+                icon=icon,
+                icon_cate=icon_cate,
+                node_depth=depth,
+                category=scanned.category,
+                node_descript=scanned.description,
+                version=mark.version if mark else None,
+                hda_id=mark.hda_id if mark else None,
+                node_path=scanned.path,
+                created_time=scanned.created,
+                modified_time=scanned.modified,
+                hda_org_name=mark.name if mark else None,
+                parent=parent,
+            )
+            self.__add_scanned(scanned.children, depth=depth + 1, parent=node)
+
+    def __houdini_icon(self, icon_paths: Sequence[str]) -> QtGui.QPixmap | None:
+        if self.__inst_ihda_icon is None:
+            return self.__generic_pixmap
+        return self.__inst_ihda_icon.get_houdini_icon(icon_lst=list(icon_paths) or None)
+
+    def __category_icon(self, category: str) -> QtGui.QPixmap | None:
+        if self.__inst_ihda_icon is None:
+            return self.__generic_pixmap
+        return self.__inst_ihda_icon.get_category_icon(category=category)
 
     @property
-    def inside_data(self) -> Any:
-        return self.__data
+    def scanned(self) -> tuple[ScannedNode, ...]:
+        return self.__nodes
 
-    @inside_data.setter
-    def inside_data(self, val: Any) -> None:
-        self.__update_data(val)
-
-    @property
-    def __default_data(self) -> dict[str, Any]:
-        return {keys.Type.root: {}}
-
-    def __update_data(self, data: Any = None) -> None:
-        if data is None:
-            return
-        assert isinstance(data, dict)
-        if (data is None) or (not len(data)):
-            return
-        self.__data[keys.Type.root].update(data)
-
-    def make_node_tree(self, node_data: Any = None) -> None:
+    def make_node_tree(self, nodes: Sequence[ScannedNode] = ()) -> None:
+        """Replace the tree with a new scan result."""
         self.beginResetModel()
-        self.__data = self.__default_data
-        self.inside_data = node_data
+        self.__nodes = tuple(nodes)
         self.__init_set_data()
         self.endResetModel()
 
-    # build context 에서 선택한 아이템을 삭제할 때 호출하는 함수.
-    # bhild context에서 제공하는 index로 삭제하려는 무한루프에 빠지면서 오류난다.
-    # 그래서 선택한 노드를 재귀적으로 돌려 찾은 index로 삭제하는 방식으로 돌아간다.
-    # 유효한 데이터가 남아 있지 않은 껍데기 뿐인 inside 데이터/모델 삭제하는 함수
-    # 인자로 들어 온 key_data로 inside data가져오는 함수
-
-    # 선택한 부모에 존재하는 모든 inside data의 id를 찾아 반환하는 함수
-    # 이렇게 찾은 id를 DB에서 제거하기 위함.
-
-    # hda_id를 가진 노드의 [[이름/hda_id/노드경로],]를 반환하는 함수
+    # [[name, hda_id, node_path], ...] for the filter combobox, one per asset.
     def get_ihda_node_list(self) -> Any:
         root_index = self.index(0, 0, QtCore.QModelIndex())
         tmp_id_lst: list[int] = []
@@ -321,53 +239,13 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             )
         return find_lst
 
-    # key_date를 기준으로 아이템을 찾아들어가서 find_item을 찾고 리스트 반환
-
-    # 유효하지 않는 데이터를 반환하는 함수. 껍데기만 존재하는 데이터
-    # 이 함수로 반환된 데이터를 삭제한다. 선택하여 삭제하는 함수를 쓰면, 유효한 데이터가 하나도 존재 하지 않을 때
-    # 그 껍데기를 삭제하는 용도이다.
-
-    # 유효하지 않는 데이터가 존재하는지 확인하는 함수. 존재하지 않는다면 껍데기만 있는 데이터라 그 껍데기를 지우도록 확인한다.
-    # 즉, 유효한 데이터가 존재하지 않는 최상위 부모를 찾는다.
-
-    # 인자로 들어온 index의 부모들 이름을 구하는 함수. inside data를 현재는 이름을 가져오지만 차후에는 inside_id로
-    # 변환해 이것으로 지워야 정확함. 현재 노드 이름과 버전이 공존하여 이것을 기반으로 삭제한다. 이름과 버전은 unique하기 때문.
-    # ex) ['root', 'c:/users/scii', aaa.hip', '/obj/cam', 'bakeoedtest']
-
-    # 모델 데이터와 inside 데이터를 제거하는 함수
-    # 유효하지 않는 레코드 데이터, 모델 데이터 취합하는 함수의 랩퍼 함수
-
-    # 유효하지 않는 레코드 데이터를 재귀적으로 찾는 함수
-
-    # 해당 부모를 지워도 되는지 확인하는 함수. 자식 중 하나라도 유효한 데이터가 있다면 부모를 지울 수 없다.
-
-    # hda_id와 같은 inside data 삭제 함수
-    # iHDA 삭제 시, inside 데이터 삭제되도록 DB에서 Constraint 걸어 놓아서 여기서만 삭제하면 된다.
-    # 해당 hda_id를 가진 자식의 부모가 자식이 하나라면 가장 끝 부모를 삭제해야하기 때문에 is_find_parent를 True로 주었다.
-    # inside data 이름 변경 함수 (iHDA 파일 경로도 변경해야 함)
-    # iHDA 이름 변경 시, inside 데이터도 함께 변경되어야 한다. DB는 트리거로 자동화 시켜 놓았다.
-    # 정확하게 해당 데이터를 찾아가야해서 is_find_parent를 False로 주었다.
-    # 여러 개의 inside data (중첩 된 딕셔너리&리스트 데이터)를 하나의 데이터로 만드는 함수
-
-    # 인자로 들어온 hda_id를 가진 자식들이 존재하는지
-
-    def add_item(self, data: Any = None) -> None:
-        assert isinstance(data, dict)
-        self.__update_data(data=data)
-
-    def remove_item(self, category: str | None = None) -> None:
-        del self.__data[keys.Type.root][category]
-
     def set_icon_size(self, val: Any) -> None:
         self.beginResetModel()
         self.__icon_size = val
         self.endResetModel()
 
     def clear_item(self) -> None:
-        self.beginResetModel()
-        self.__data = self.__default_data
-        self.__init_set_data()
-        self.endResetModel()
+        self.make_node_tree(())
 
     def flags(
         self,
@@ -501,7 +379,7 @@ class InsideModel(QtCore.QAbstractItemModel, ModelStyleMixin):
             return getattr(node, InsideColumn(column).field)()
         elif role == QtCore.Qt.ItemDataRole.ToolTipRole:
             if column == InsideColumn.NAME:
-                return node.name()
+                return node.node_path() or node.name()
             return None
         elif role == QtCore.Qt.ItemDataRole.DecorationRole:
             if column == InsideColumn.NAME:

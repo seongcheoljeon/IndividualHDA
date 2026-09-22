@@ -165,11 +165,50 @@ def test_panel_with_saved_library(
         )
         assert db.insert_thumbnail_info(key, assets, "thumb.jpg", "1.0") == 1
         assert db.insert_tag_info(key, ["water"]) == 1
+    from libs.houdini_api import HoudiniAPI
+    from libs.scene_scan import IhdaMark, ScannedNode
     from widgets.panel.policy import PanelPolicy
     from widgets.panel.services import PanelServices
 
+    scans: list[tuple[ScannedNode, ...]] = [
+        (
+            ScannedNode(
+                "/obj",
+                "obj",
+                "obj",
+                "mgr",
+                children=(
+                    ScannedNode(
+                        "/obj/geo1",
+                        "geo1",
+                        "geo",
+                        "obj",
+                        children=(
+                            ScannedNode(
+                                "/obj/geo1/water",
+                                "water",
+                                "subnet",
+                                "sop",
+                                mark=IhdaMark(key, "Water", "1.0"),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+        )
+    ]
+
+    class FakeScene(HoudiniAPI):
+        @staticmethod
+        def scan_ihda_nodes(root: Any = None) -> tuple[ScannedNode, ...]:
+            if scans and scans[0] is None:  # type: ignore[comparison-overlap]
+                raise RuntimeError("scene locked")
+            return scans[0]
+
     panel = IndividualHDA(
-        services=PanelServices(policy=PanelPolicy(autosave_delay_ms=20))
+        services=PanelServices(
+            policy=PanelPolicy(autosave_delay_ms=20), host_scene=FakeScene
+        )
     )
     model = panel.models.list_proxy_model
     assert model.rowCount() == 1
@@ -218,6 +257,39 @@ def test_panel_with_saved_library(
     wait_until(app, lambda: panel.label__metadata_status.text() == "Saved · just now")
     assert panel.session.repository.list_assets()[0].hda_tags == ("Water", "한글")
     assert not panel.label__tag_status.text()
+    # The Find page scans the HIP when it opens, lists the instances and jumps
+    # to a node on double-click; imports mark it stale so it rescans itself.
+    inside = panel.models.inside_model
+    assert inside.rowCount(inside.index(0, 0)) == 0
+    assert panel.views.inside_empty.title.text() == "Not scanned yet"
+    panel.pushButton__hda_inside_node_view.click()
+    assert (
+        panel.stackedWidget__hda_infos.currentWidget() is panel.page__hda_inside_hipfile
+    )
+    assert inside.rowCount(inside.index(0, 0)) == 1
+    assert panel.label__found_hda_inside_hipfile_count.text() == "1"
+    assert panel.comboBox__hda_inside_node.count() == 2  # ALL + Water
+    assert panel.comboBox__hda_inside_node.itemText(1) == "Water"
+    visited: list[str] = []
+    monkeypatch.setattr(
+        panel.selection,
+        "go_to_houdini_node",
+        lambda node_path=None: visited.append(node_path),
+    )
+    proxy = panel.models.inside_proxy_model
+    geo = proxy.index(0, 0, proxy.index(0, 0, proxy.index(0, 0)))
+    panel.selection._slot_hda_inside_double_clicked(geo)
+    assert visited == ["/obj/geo1"]  # any node, not only iHDA rows
+    scans[0] = ()
+    panel.selection.mark_inside_stale()  # page is visible: rescan now
+    assert inside.rowCount(inside.index(0, 0)) == 0
+    assert panel.views.inside_empty.title.text() == "No iHDA nodes in this HIP file"
+    scans[0] = None  # type: ignore[call-overload]
+    panel.selection._slot_refresh_inside_nodes()
+    assert "Scanning the HIP file failed" in panel._toasts.toasts()[-1].message.text()
+    for toast in panel._toasts.toasts():
+        toast.dismiss()
+    panel.pushButton__hda_info.click()
     # The category tree knows how many assets each category holds.
     from model.ihda_category_model import CategoryModel
 

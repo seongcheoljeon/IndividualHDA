@@ -177,12 +177,17 @@ class PanelBootstrap:
         attach_empty_state(window.views.history).set_content(
             "No versions", "Select an asset to see its versions and activity."
         )
-        attach_empty_state(window.views.record).set_content(
+        window.views.record_empty = attach_empty_state(window.views.record)
+        window.views.record_empty.set_content(
             "No scene records",
             "Records appear when iHDA nodes are imported into a saved scene.",
         )
-        attach_empty_state(window.views.inside).set_content(
-            "No iHDA nodes here", "Refresh after importing assets into this network."
+        window.views.inside_empty = attach_empty_state(window.views.inside)
+        window.views.inside_empty.set_content(
+            "Not scanned yet",
+            "The current HIP file is scanned when this page opens.",
+            "Scan now",
+            window.selection._slot_refresh_inside_nodes,
         )
         from model.ihda_list_model import ListModel
         from widgets.item_delegates import CardDelegate

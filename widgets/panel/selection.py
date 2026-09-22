@@ -6,7 +6,7 @@ Explicit bindings connect this feature to its view and collaborators.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import date
 from operator import itemgetter
@@ -17,6 +17,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from libs import host, houdini_api, keys, log_handler
 from libs.domain import SelectionState
 from libs.item_paths import item_path
+from libs.scene_scan import ScannedNode, count_marks
 from model import (
     ihda_history_model,
     ihda_inside_model,
@@ -59,6 +60,7 @@ class PanelSelectionBindings:
     video_player: VideoPlayer | UnavailableVideoPlayer
     views: PanelViews
     houdini: HoudiniActionsPort
+    scan_scene: Callable[[], Sequence[ScannedNode]]
 
 
 class PanelSelection:
@@ -414,29 +416,40 @@ class PanelSelection:
                 self.bindings.ui.comboBox__hda_inside_node.currentIndex()
             )
 
+    # The inside-node tree is rebuilt lazily: imports and registrations mark it
+    # stale, and the scan runs when the page is (or becomes) visible.
+    _inside_stale = True
+
+    def mark_inside_stale(self) -> None:
+        self._inside_stale = True
+        if self.bindings.ui.pushButton__hda_inside_node_view.isChecked():
+            self._slot_refresh_inside_nodes()
+
     @log_handler.log_elapsed("iHDA node search")
     def _slot_refresh_inside_nodes(self) -> None:
-        if not host.IS_HOUDINI:
-            return
-        root_node = houdini_api.HoudiniAPI.find_node("/")
-        node_data = houdini_api.HoudiniAPI.get_ihda_node_instance_data(
-            parent_node=root_node
-        )
-        if not len(node_data):
-            node_data = {}
-            log_handler.LogHandler.log_msg(
-                method=logging.debug, msg="iHDA node not found in current HIP file"
+        try:
+            nodes = tuple(self.bindings.scan_scene())
+        except Exception as error:
+            self.bindings.presentation.notify(
+                f"Scanning the HIP file failed: {error}", level="error"
             )
-        self.bindings.models.inside_model.make_node_tree(node_data=node_data)
+            return
+        self._inside_stale = False
+        self.bindings.models.inside_model.make_node_tree(nodes)
         self.bindings.views.inside.expandAll()
         self.bindings.ui.label__found_hda_inside_hipfile_count.setText(
             str(self.bindings.models.inside_proxy_model.get_row_count())
         )
-        # inside node combobox 셋팅
+        self.bindings.views.inside_empty.set_content(
+            "No iHDA nodes in this HIP file",
+            "Import an asset into the scene, then scan again.",
+            "Scan again",
+            self._slot_refresh_inside_nodes,
+        )
         self._init_set_inside_ihda_combobox()
         log_handler.LogHandler.log_msg(
             method=logging.info,
-            msg="iHDA node search in the current HIP file has been updated",
+            msg=f"iHDA node scan: {count_marks(nodes)} instance(s) in the current HIP file",
         )
 
     def _slot_thumbnails(self) -> None:
@@ -538,9 +551,7 @@ class PanelSelection:
         index = args[0]
         if index is None or not index.isValid():
             return
-        item_type = index.data(ihda_inside_model.InsideModel.node_type_role)
-        if item_type != keys.Type.ihda:
-            return
+        # Any row is a Houdini node; the context menu's "Go To Node" agrees.
         node_path = index.data(ihda_inside_model.InsideModel.node_path_role)
         self.go_to_houdini_node(node_path=node_path)
 
@@ -705,3 +716,5 @@ class PanelSelection:
             self.bindings.ui.stackedWidget__hda_infos.setCurrentWidget(
                 self.bindings.ui.page__hda_inside_hipfile
             )
+            if self._inside_stale:
+                self._slot_refresh_inside_nodes()

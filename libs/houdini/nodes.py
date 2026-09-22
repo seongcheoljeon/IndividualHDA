@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import logging
 import math
-import re
 from contextlib import suppress
 from typing import Any
 
@@ -407,19 +406,39 @@ def create_network_box(
         return net_box
 
 
+def parse_ihda_comment(comment: str | None) -> None | dict[str, Any]:
+    """The iHDA identity written into a node comment, or None.
+
+    The panel writes three ``key: value`` lines; users may add anything else
+    (notes with colons, blank lines). Only the three known keys are read, each
+    from its first colon, so extra text never breaks the scan. A missing or
+    non-numeric ID means the node is not an iHDA instance.
+    """
+    if not comment:
+        return None
+    wanted = {
+        keys.Key.Comment.ihda_name,
+        keys.Key.Comment.ihda_version,
+        keys.Key.Comment.ihda_id,
+    }
+    found: dict[str, Any] = {}
+    for line in comment.splitlines():
+        key, separator, value = line.partition(":")
+        key = key.strip()
+        if separator and key in wanted and key not in found:
+            found[key] = value.strip()
+    if keys.Key.Comment.ihda_id not in found:
+        return None
+    try:
+        found[keys.Key.Comment.ihda_id] = int(found[keys.Key.Comment.ihda_id])
+    except ValueError:
+        return None
+    found.setdefault(keys.Key.Comment.ihda_name, "")
+    found.setdefault(keys.Key.Comment.ihda_version, "")
+    return found
+
+
 def get_hda_info_by_selection_node(
     node: hou.Node | None = None,
 ) -> None | dict[str, Any]:
-    comment = get_node_comment(node=node)
-    if comment is None:
-        return None
-    regex_is_valid = re.compile(rf"{keys.Key.Comment.ihda_id}")
-    search_comment = regex_is_valid.search(comment)
-    if search_comment is None:
-        return None
-    hda_info_lst = []
-    for info in comment.split("\n"):
-        hda_info_lst.append([x.strip() for x in info.split(":")])
-    hda_info_dat: dict[str, Any] = dict(hda_info_lst)
-    hda_info_dat[keys.Key.Comment.ihda_id] = int(hda_info_dat[keys.Key.Comment.ihda_id])
-    return hda_info_dat
+    return parse_ihda_comment(get_node_comment(node=node))

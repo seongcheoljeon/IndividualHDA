@@ -15,6 +15,7 @@ from typing import Any
 
 from libs import keys, log_handler, paths
 from libs.houdini import nodes, session
+from libs.scene_scan import IhdaMark, ScannedNode
 
 with suppress(ImportError):
     import hou
@@ -365,67 +366,53 @@ def import_individual_hda_into_houdini(
                 hou.hda.uninstallFile(str(staged))
 
 
-def _is_exist_ihda_node(parent_node: hou.Node | None = None) -> bool:
-    if parent_node is None:
-        return False
-    is_found = False
+def _scan_children(parent: Any) -> tuple[ScannedNode, ...]:
     try:
-        leaves = parent_node.children()
-    except hou.Error:
-        if parent_node is None:
-            return False
-        hda_info = nodes.get_hda_info_by_selection_node(node=parent_node)
-        return hda_info is not None
-    if len(leaves) == 0:
-        hda_info = nodes.get_hda_info_by_selection_node(node=parent_node)
-        if hda_info is not None:
-            return True
-    else:
-        for child_node in leaves:
-            hda_info = nodes.get_hda_info_by_selection_node(node=child_node)
-            if hda_info is not None:
-                return True
-            is_found |= _is_exist_ihda_node(parent_node=child_node)
-    return is_found
-
-
-def get_ihda_node_instance_data(
-    parent_node: hou.Node | None = None,
-) -> dict[str, Any]:
-    if parent_node is None:
-        return {}
-    node_data: dict[str, Any] = {}
-    for child_node in parent_node.children():
-        hda_info = nodes.get_hda_info_by_selection_node(node=child_node)
-        is_exist = _is_exist_ihda_node(parent_node=child_node)
-        if not is_exist and hda_info is None:
+        children = parent.children()
+    except (hou.Error, AttributeError):
+        return ()
+    found: list[ScannedNode] = []
+    for child in children:
+        info = nodes.get_hda_info_by_selection_node(node=child)
+        mark = (
+            IhdaMark(
+                hda_id=int(info[keys.Key.Comment.ihda_id]),
+                name=str(info.get(keys.Key.Comment.ihda_name, "")),
+                version=str(info.get(keys.Key.Comment.ihda_version, "")),
+            )
+            if info is not None
+            else None
+        )
+        locked = hasattr(child, "isLockedHDA") and child.isLockedHDA()
+        below = () if locked else _scan_children(child)
+        if mark is None and not below:
             continue
-        node_data[child_node] = {}
-        if hasattr(child_node, "isLockedHDA"):
-            if child_node.isLockedHDA():
-                continue
-        result = get_ihda_node_instance_data(parent_node=child_node)
-        if len(result):
-            node_data[child_node].update(result)
-    return node_data
+        created, modified = nodes.get_node_datetime(child)
+        found.append(
+            ScannedNode(
+                path=child.path(),
+                name=child.name(),
+                type_name=nodes.node_type_name(child) or "",
+                category=nodes.node_category_type_name(child) or "",
+                description=nodes.node_definition_description(child) or "",
+                icon_paths=tuple(nodes.node_icon_path_lst(child) or ()),
+                created=created.strftime(keys.Value.datetime_fmt_str),
+                modified=modified.strftime(keys.Value.datetime_fmt_str),
+                mark=mark,
+                children=below,
+            )
+        )
+    return tuple(found)
 
 
-def get_ihda_node_instance_nested_list(
-    parent_node: hou.Node | None = None,
-) -> list[Any]:
-    if parent_node is None:
-        return []
-    node_data = []
-    for child_node in parent_node.children():
-        hda_info = nodes.get_hda_info_by_selection_node(node=child_node)
-        is_exist = _is_exist_ihda_node(parent_node=child_node)
-        if not is_exist and hda_info is None:
-            continue
-        node_data.append(child_node)
-        if hasattr(child_node, "isLockedHDA"):
-            if child_node.isLockedHDA():
-                continue
-        result = get_ihda_node_instance_nested_list(parent_node=child_node)
-        if len(result):
-            node_data.append(result)
-    return node_data
+def scan_ihda_nodes(root: Any = None) -> tuple[ScannedNode, ...]:
+    """Every node that is an iHDA instance or has one below it, in one pass.
+
+    Children are scanned first, so each node is visited once; locked HDAs are
+    listed but not entered. Runs on the Houdini main thread (HOM rule).
+    """
+    if root is None:
+        root = nodes.find_node("/")
+    if root is None:
+        return ()
+    return _scan_children(root)

@@ -2,6 +2,13 @@
 
 ## Unreleased — modern editing
 
+- **Find tab (iHDA nodes in the current HIP) works reliably.** The scan no
+  longer breaks when a node comment was edited (notes with colons or blank
+  lines used to abort it silently), walks the scene once instead of once per
+  node, and runs by itself when the page opens or after an import or
+  registration. Any row jumps to its node on double-click, the search also
+  matches node paths, and an empty result says so with a Scan button. The scan
+  sits behind the host port, so it is covered by tests without Houdini.
 - **Asset cards.** The grid draws each asset as a card: rounded thumbnail,
   name, a version pill and a favorite star that toggles on click (personal and
   team). Missing files dim the card instead of striking the name through.

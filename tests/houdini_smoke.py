@@ -56,6 +56,21 @@ def main() -> None:
         )
         assert box.path() == original_path and len(geo.children()) == 2
         assert HoudiniAPI.node_type_name(node=box) == "box"
+        # The Find page scan: the imported node is identified by its comment,
+        # and a user's extra note lines (colons, blanks) do not break the scan.
+        HoudiniAPI.set_node_comment(
+            node=imported,
+            contents="iHDA Name: smoke\niHDA Version: 1.0\niHDA ID: 42",
+            show_comments=False,
+            is_unpack_subnet=False,
+        )
+        imported.setComment(imported.comment() + "\n\nmemo: review at 10:30")
+        from libs.scene_scan import marked_nodes
+
+        marks = {n.path: n.mark for n in marked_nodes(HoudiniAPI.scan_ihda_nodes())}
+        assert marks[imported.path()] is not None
+        assert marks[imported.path()].hda_id == 42
+        print("iHDA node scan with edited comments: PASS", flush=True)
         print("HDA export/import and original node preservation: PASS", flush=True)
         from libs.version_compare import compare_expanded, expand_asset
 

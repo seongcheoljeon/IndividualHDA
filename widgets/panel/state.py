@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from view.ihda_list_view import ListView
     from view.ihda_record_view import RecordView
     from view.ihda_table_view import TableView
+    from widgets.empty_state import EmptyState
     from widgets.panel.library_session import PanelLibrarySession
 
 
@@ -68,3 +69,5 @@ class PanelViews:
     record: RecordView
     assets_list: ListView
     assets_table: TableView
+    inside_empty: EmptyState
+    record_empty: EmptyState
