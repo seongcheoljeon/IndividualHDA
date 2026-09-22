@@ -447,11 +447,15 @@ def two_line_row_height(font: QtGui.QFont) -> int:
     return metrics.height() + QtGui.QFontMetrics(small_font(font)).height() + 6
 
 
-# --- the category tree ----------------------------------------------------------
+# --- trees with a count per group (categories, scene-record folders) -----------
 
 
-class CategoryDelegate(QtWidgets.QStyledItemDelegate):
-    """Default tree row plus a right-aligned count badge when the count is known."""
+class CountBadgeDelegate(QtWidgets.QStyledItemDelegate):
+    """Default tree row plus a right-aligned count badge when the count is known.
+
+    Any model that answers ``count_role`` with an int for its group rows can use
+    it; the category tree and the scene-record tree both do.
+    """
 
     def __init__(self, parent: QtCore.QObject | None, *, count_role: int) -> None:
         super().__init__(parent)

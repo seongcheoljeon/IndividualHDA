@@ -719,16 +719,15 @@ class PanelSelection:
             model_idx = model_idx[0]
 
     def _slot_stackedwidget_hda_infos(self) -> None:
-        if self.bindings.ui.pushButton__hda_info.isChecked():
-            self.bindings.ui.stackedWidget__hda_infos.setCurrentWidget(
-                self.bindings.ui.page__hda_info
-            )
-        elif self.bindings.ui.pushButton__hda_loc_record.isChecked():
-            self.bindings.ui.stackedWidget__hda_infos.setCurrentWidget(
-                self.bindings.ui.page__hda_loc_record
-            )
-        elif self.bindings.ui.pushButton__hda_inside_node_view.isChecked():
-            self.bindings.ui.stackedWidget__hda_infos.setCurrentWidget(
-                self.bindings.ui.page__hda_inside_hipfile
-            )
-            self._scan_if_showing()
+        """Show the detail page whose navigation button is checked."""
+        ui = self.bindings.ui
+        pages = (
+            (ui.pushButton__hda_info, ui.page__hda_info),
+            (ui.pushButton__hda_loc_record, ui.page__hda_loc_record),
+            (ui.pushButton__hda_inside_node_view, ui.page__hda_inside_hipfile),
+        )
+        for button, page in pages:
+            if button.isChecked():
+                ui.stackedWidget__hda_infos.setCurrentWidget(page)
+                break
+        self._scan_if_showing()  # only acts when the Find page is the one showing

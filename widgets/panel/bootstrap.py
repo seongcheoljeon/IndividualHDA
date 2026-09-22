@@ -235,15 +235,17 @@ class PanelBootstrap:
         for view in (window.views.assets_table, window.views.history):
             view.viewport().setAttribute(QtCore.Qt.WidgetAttribute.WA_Hover, True)
         from model.ihda_category_model import CategoryModel
-        from widgets.item_delegates import CategoryDelegate
+        from widgets.item_delegates import CountBadgeDelegate
 
         window.views.category.setItemDelegate(
-            CategoryDelegate(window.views.category, count_role=CategoryModel.count_role)
+            CountBadgeDelegate(
+                window.views.category, count_role=CategoryModel.count_role
+            )
         )
         from model.ihda_record_model import RecordModel
 
         window.views.record.setItemDelegate(
-            CategoryDelegate(window.views.record, count_role=RecordModel.count_role)
+            CountBadgeDelegate(window.views.record, count_role=RecordModel.count_role)
         )
         window.selection._slot_chk_hist_search_data(
             window.checkBox__hist_search_date.isChecked()

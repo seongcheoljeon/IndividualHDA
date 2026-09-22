@@ -184,7 +184,7 @@ def test_row_delegate_paints_versions_activity_and_the_star(app: Any) -> None:
 def test_category_counts_come_from_the_store_and_draw_as_a_badge(app: Any) -> None:
     from libs.asset_store import AssetStore
     from model.ihda_category_model import CategoryModel
-    from widgets.item_delegates import CategoryDelegate
+    from widgets.item_delegates import CountBadgeDelegate
 
     store = AssetStore()
     store.reset(
@@ -215,7 +215,7 @@ def test_category_counts_come_from_the_store_and_draw_as_a_badge(app: Any) -> No
     }
     assert counts == {"sop": 1, "obj": 1, "vop": 0}
     assert root.data(CategoryModel.count_role) is None  # the root is not a category
-    delegate = CategoryDelegate(None, count_role=CategoryModel.count_role)
+    delegate = CountBadgeDelegate(None, count_role=CategoryModel.count_role)
     rect = QtCore.QRect(0, 0, 160, 22)
     sop = next(
         model.index(row, 0, root)
