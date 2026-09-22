@@ -1,6 +1,6 @@
 [project]
 name = "individual-hda"
-version = "2.2.0"
+version = "2.3.0"
 description = "Personal Houdini digital asset library for Houdini 21+ Qt 6 builds"
 requires-python = ">=3.11"
 

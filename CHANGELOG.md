@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — modern editing
+## 2.3.0 — modern editing, modern views and dialogs that tell you things
 
 - **Help says how to use the panel.** The two video links are replaced by the
   gestures, the keys the panel binds (named the way this platform names them,
