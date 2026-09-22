@@ -11,6 +11,7 @@
 | 카테고리 트리 | `widgets/panel/layout_category.py` | `build_category_panel()` |
 | 이력 페이지 | `widgets/panel/layout_history.py` | `build_history_search()`, `build_history_date_filter()`, `build_history_results()` |
 | 씬 레코드 / 인사이드 노드 | `widgets/panel/layout_scene_records.py`, `layout_inside_nodes.py` | `build_scene_records()`, `build_inside_nodes()` |
+| 현재 HIP의 iHDA 노드 스캔(Find 탭) | `libs/houdini/assets.py` `scan_ihda_nodes()` → `libs/scene_scan.py` 데이터 → `model/ihda_inside_model.py` | 스캔은 `HostScenePort`를 통해서만; 모델은 `ScannedNode`만 받음. 갱신 시점은 `selection.mark_inside_stale()` |
 | 검색·에셋 목록·확대·화면 전환 | `widgets/asset_browser/view.py` | `_build_toolbar()`, `_build_search_row()` |
 | 항목 모양 — 그리드 카드·표 행·카테고리 배지 | `widgets/item_delegates.py` | `CardDelegate`, `RowDelegate`, `CategoryDelegate` (모델 `data()`는 데이터만, 그리기는 여기) |
 | 개인 / 팀 라이브러리 선택 | `widgets/asset_browser/view.py` | `_build_toolbar()`의 `comboBox__library_source` |
