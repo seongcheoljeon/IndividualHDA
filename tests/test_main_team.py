@@ -339,9 +339,21 @@ def test_connection_dialog_only_opens_verified_project_and_never_saves_token(
             dialog.lineEdit__access_token.echoMode()
             == QtWidgets.QLineEdit.EchoMode.Password
         )
-        dialog.lineEdit__server_url.setText("http://127.0.0.1:8000")
+        dialog.checkBox__show_token.setChecked(True)
+        assert (
+            dialog.lineEdit__access_token.echoMode()
+            == QtWidgets.QLineEdit.EchoMode.Normal
+        )
+        dialog.checkBox__show_token.setChecked(False)
         dialog.lineEdit__access_token.setText(token)
+        # A bare host is refused before any request goes out.
+        dialog.lineEdit__server_url.setText("127.0.0.1:8000")
+        dialog.pushButton__connect.click()
+        assert not dialog._tasks.busy
+        assert "http://" in dialog.label__connection_status.text()
+        dialog.lineEdit__server_url.setText("http://127.0.0.1:8000")
         assert not dialog.pushButton__open_library.isEnabled()
+        assert dialog.pushButton__connect.isDefault()
         dialog.pushButton__connect.click()
         for _ in range(500):
             app.processEvents()
@@ -351,12 +363,25 @@ def test_connection_dialog_only_opens_verified_project_and_never_saves_token(
         assert not dialog._tasks.busy
         assert dialog.comboBox__project.currentText() == "Studio"
         assert dialog.pushButton__open_library.isEnabled()
+        assert dialog.pushButton__open_library.isDefault()
         dialog.pushButton__open_library.click()
         assert len(connected) == 1
-        assert token not in (tmp_path / "workspace.json").read_text(encoding="utf-8")
+        saved = (tmp_path / "workspace.json").read_text(encoding="utf-8")
+        assert token not in saved
         dialog.lineEdit__server_url.setText("http://127.0.0.1:8001")
         assert not dialog.pushButton__open_library.isEnabled()
         assert dialog._transport is None
     finally:
         dialog.shutdown()
         dialog.deleteLater()
+    # The next dialog starts on the last server and suggests the recent ones.
+    assert connection_module.recent_servers(tmp_path) == ["http://127.0.0.1:8000"]
+    again = connection_module.ConnectionDialog(tmp_path)
+    try:
+        assert again.lineEdit__server_url.text() == "http://127.0.0.1:8000"
+        assert again.lineEdit__server_url.completer().model().stringList() == [
+            "http://127.0.0.1:8000"
+        ]
+    finally:
+        again.shutdown()
+        again.deleteLater()

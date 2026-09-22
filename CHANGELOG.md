@@ -2,6 +2,12 @@
 
 ## Unreleased — modern editing
 
+- **Team dialogs.** Connect: a Show token toggle, Enter connects and then
+  opens the chosen project, addresses without http(s):// are refused before a
+  request goes out, recently used servers are remembered and suggested, and
+  failures are shown in red. Members: a Name / User ID / Role table replaces
+  the "name · role" list, Save is enabled only for a full user ID with the
+  reason shown inline, and Remove access asks for confirmation first.
 - **History filters that start useful.** The date filter defaults to the last
   30 days (it used to be the year 2020, which hid everything the moment it was
   switched on), dates read as `yyyy-MM-dd`, a start after the end is sorted
