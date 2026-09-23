@@ -108,8 +108,8 @@ def test_activity_rows_are_local_time_non_version_rows() -> None:
         library_id="team-1",
     )
     assert [row.comment for row in rows] == [
-        "NAME (CHANGE) fire_presets1 → preset_tmp",
-        "VIDEO (INSERT)",
+        'Renamed "fire_presets1" → "preset_tmp"',
+        "Video attached",
     ]
     assert [row.kind for row in rows] == ["rename", "video"]
     expected = datetime.fromisoformat(stamp).astimezone()
@@ -142,8 +142,8 @@ def test_activity_rows_drop_the_video_move_that_accompanies_a_rename() -> None:
         ]
     )
     assert [row.comment for row in rows] == [
-        "NAME (CHANGE) fire_presets1 → preset_tmp",
-        "VIDEO (UPDATE)",
+        'Renamed "fire_presets1" → "preset_tmp"',
+        "Video replaced",
     ]
 
 

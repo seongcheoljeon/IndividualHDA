@@ -174,6 +174,17 @@ def test_ai_suggest_fills_editors_without_saving(
     app.processEvents()
     assert "95 tokens" in panel.label__ai_status.text()
     assert panel.pushButton__ai_suggest.isEnabled()
+
+    # A suggestion belongs to the asset it was asked for. It used to survive the
+    # selection change, so the next asset showed chips that were not about it and
+    # one click would have tagged the wrong asset.
+    repo.register_asset(payload(root, "Fire"))
+    panel.reload_library()
+    wait_sync(app, panel)
+    fire = next(row for row in panel.models.assets.rows if row.hda_name == "Fire")
+    panel._details.presenter.select(fire.hda_id, fire.hda_note or "", ())
+    assert panel.textEdit__tag.suggestions() == []
+    assert panel.textEdit__tag.tags() == []
     panel.close()
     app.processEvents()
 

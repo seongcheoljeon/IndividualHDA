@@ -2,6 +2,16 @@
 
 ## 2.4.0 — dialogs that answer, tables that match, one theme
 
+- **History activity rows read as events.** A video or rename row showed the
+  asset name with the event stranded in the Comment column, clipped to
+  "VIDEO (INSE…", beside icons for a definition and a Houdini version the row
+  does not have. The row now leads with what happened, in words the Version
+  details dialog already used ("Video attached", `Renamed "old" → "new"`),
+  with the asset underneath and those icons gone. The date column fits a full
+  timestamp.
+- **An AI suggestion stays with its asset.** The suggested tag chips survived a
+  selection change, so another asset showed tags that were never about it and a
+  click would have added one. Loading a tag set clears them.
 - **The Record tab keeps up.** Reload re-read every view except the scene
   records, which were read once when the panel opened, so imports made by
   another panel never appeared. The library snapshot carries them now. The
@@ -196,7 +206,7 @@
 
 - **History shows renames and video changes.** Rename and preview-video events
   were already recorded by the audit triggers but never shown. They appear as
-  italic non-version rows (`NAME (CHANGE) old → new`, `VIDEO (INSERT/UPDATE)`)
+  italic non-version rows (renamed, video attached or replaced)
   interleaved by time with the versions, in the personal and the team library;
   they own no files, so open/detail/delete/drag skip them. The Version details
   Activity tab names the rename (`Renamed "old" → "new"`) and says whether a

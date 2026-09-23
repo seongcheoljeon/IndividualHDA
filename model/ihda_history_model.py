@@ -153,6 +153,10 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
                     self.__thumb_size,
                 )
             elif column == self.__hda_def_column:
+                # An activity row carries no definition, so the lone icon beside
+                # an empty cell only made the row look like broken data.
+                if not data.is_version:
+                    return None
                 icon_pixmap = self.__pixmap_ihda_data.get(data.hda_id)
                 if icon_pixmap is None:
                     return None
@@ -182,6 +186,8 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
                     QtCore.Qt.AspectRatioMode.KeepAspectRatio,
                 )
             elif column == self.__hda_hou_ver_column:
+                if not data.is_version:
+                    return None
                 hou_icon = "houdini_logo.png"
                 return QtGui.QPixmap(f":/main/icons/{hou_icon}").scaled(
                     QtCore.QSize(

@@ -193,9 +193,9 @@ def test_activity_rows_come_from_audit_events_not_history(tmp_path: Path) -> Non
 
     rows = repo.activity("tester")
     assert [row.comment for row in rows] == [
-        "VIDEO (INSERT)",
-        "VIDEO (UPDATE)",
-        "NAME (CHANGE) Water → Ocean",
+        "Video attached",
+        "Video replaced",
+        'Renamed "Water" → "Ocean"',
     ]
     assert all(not row.is_version and row.hist_id == 0 for row in rows)
     assert {row.userid for row in rows} == {"tester"}

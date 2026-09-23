@@ -327,3 +327,64 @@ def test_version_pills_are_accented_and_tables_drop_grid_and_row_numbers(
         assert not view.showGrid()
         assert view.alternatingRowColors()
         view.deleteLater()
+
+
+def test_activity_rows_say_what_happened_under_the_asset_name(app: Any) -> None:
+    """The event used to be legible only in a clipped Comment column."""
+    from libs.asset_contracts import HistoryData
+    from libs.model_columns import HistoryColumn
+    from model.ihda_history_model import HistoryModel
+    from widgets.item_delegates import RowDelegate, two_line_row_height
+
+    activity = HistoryData(
+        kind="video",
+        hist_id=0,
+        hda_id=1,
+        org_hda_name="Lava",
+        version="",
+        comment="Video attached",
+        node_category="sop",
+    )
+    model = HistoryModel(items=[activity])
+    rows = RowDelegate(
+        None,
+        data_role=HistoryModel.data_role,
+        name_column=HistoryColumn.NAME,
+        secondary_column=HistoryColumn.DEFINITION,
+        version_column=HistoryColumn.VERSION,
+        activity_column=HistoryColumn.COMMENT,
+    )
+    rect = QtCore.QRect(0, 0, 240, max(46, two_line_row_height(QtGui.QFont())))
+    name_cell = render(rows, option_for(rect), model.index(0, HistoryColumn.NAME))
+    without = RowDelegate(
+        None,
+        data_role=HistoryModel.data_role,
+        name_column=HistoryColumn.NAME,
+        secondary_column=HistoryColumn.DEFINITION,
+        version_column=HistoryColumn.VERSION,
+    )
+    one_line = render(without, option_for(rect), model.index(0, HistoryColumn.NAME))
+
+    def lower_half(image: QtGui.QImage) -> int:
+        return sum(
+            1
+            for x in range(image.width())
+            for y in range(image.height() // 2, image.height())
+            if image.pixelColor(x, y).alpha()
+        )
+
+    # Without the column the cell holds one centred line; with it, a second one.
+    assert lower_half(name_cell) > lower_half(one_line)
+    # A row too short for two lines keeps the event, which is the news.
+    short = QtCore.QRect(0, 0, 240, 18)
+    assert painted(render(rows, option_for(short), model.index(0, 1))) > 0
+    # An activity row owns no definition and no Houdini version, so no icon.
+    for column in (HistoryColumn.DEFINITION, HistoryColumn.HOUDINI):
+        assert (
+            model.index(0, column).data(QtCore.Qt.ItemDataRole.DecorationRole) is None
+        )
+    # The category is real, so its icon stays.
+    assert (
+        model.index(0, HistoryColumn.CATEGORY).data(QtCore.Qt.ItemDataRole.DisplayRole)
+        == "sop"
+    )

@@ -7,7 +7,7 @@ from typing import Any
 
 from PySide6 import QtCore, QtWidgets
 
-from libs.history_activity import rename_names, video_action
+from libs.history_activity import activity_title
 from libs.library_management import ManagementGateway
 from libs.resource_policy import CallbackPolicy
 from libs.task_controller import TaskController
@@ -261,12 +261,9 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
             "restore_history": "Version restored",
             "purge_history": "Version permanently deleted",
         }
-        names = rename_names(item)
-        video = video_action(item)
-        if names is not None:
-            title = f'Renamed "{names[0]}" → "{names[1]}"'
-        elif video is not None:
-            title = "Video attached" if video == "insert" else "Video replaced"
+        spelled = activity_title(item)
+        if spelled is not None:
+            title = spelled
         elif "." in operation:
             table, action = operation.split(".", 1)
             label = {

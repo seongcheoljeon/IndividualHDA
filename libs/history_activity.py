@@ -80,15 +80,27 @@ def local_time(value: Any) -> str:
     return moment.astimezone().strftime(keys.Value.datetime_fmt_str)
 
 
-def activity_comment(event: Mapping[str, Any]) -> tuple[str, str] | None:
-    """(kind, comment) for a row the panel shows; None for everything else."""
+def activity_title(event: Mapping[str, Any]) -> str | None:
+    """What happened, in words, or None when the panel does not show the event.
+
+    The History table and the Version details dialog both label these events, so
+    they say it the same way: "VIDEO (INSERT)" read like a database row.
+    """
     names = rename_names(event)
     if names is not None:
-        return "rename", f"NAME (CHANGE) {names[0]} → {names[1]}"
+        return f'Renamed "{names[0]}" → "{names[1]}"'
     action = video_action(event)
     if action is not None:
-        return "video", f"VIDEO ({action.upper()})"
+        return "Video attached" if action == "insert" else "Video replaced"
     return None
+
+
+def activity_comment(event: Mapping[str, Any]) -> tuple[str, str] | None:
+    """(kind, comment) for a row the panel shows; None for everything else."""
+    title = activity_title(event)
+    if title is None:
+        return None
+    return ("rename" if rename_names(event) is not None else "video"), title
 
 
 def activity_rows(

@@ -130,9 +130,14 @@ class TagEditor(QtWidgets.QWidget):
         return list(self._tags)
 
     def setTags(self, tags: Sequence[str]) -> None:
-        """Programmatic replacement; never reports as a user edit."""
+        """Load a tag set; never reports as a user edit.
+
+        Suggestions are dropped: they were computed for the tags that were here
+        before. Keeping them let an AI suggestion for one asset follow the
+        selection onto the next one, where a click would have added it.
+        """
         self._tags = normalize_tags(tags)
-        self._suggestions = [tag for tag in self._suggestions if not self._has(tag)]
+        self._suggestions = []
         self._rebuild()
 
     def setVocabulary(self, words: Sequence[str]) -> None:

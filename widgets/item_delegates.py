@@ -274,7 +274,8 @@ class RowDelegate(QtWidgets.QStyledItemDelegate):
     """Table rows: thumbnail + two-line name cell, version pill, clickable star.
 
     Activity rows of the history table (renames, video changes: ``is_version``
-    False) get a timeline dot and dim italic text instead of a thumbnail.
+    False) get a timeline dot and dim italic text instead of a thumbnail, with
+    what happened on the second line (``activity_column``).
     """
 
     favoriteToggled = QtCore.Signal(QtCore.QModelIndex)
@@ -289,11 +290,13 @@ class RowDelegate(QtWidgets.QStyledItemDelegate):
         version_column: int | None = None,
         favorite_column: int | None = None,
         favorite_role: int | None = None,
+        activity_column: int | None = None,
     ) -> None:
         super().__init__(parent)
         self._data_role = data_role
         self._name_column = name_column
         self._secondary_column = secondary_column
+        self._activity_column = activity_column
         self._version_column = version_column
         self._favorite_column = favorite_column
         self._favorite_role = favorite_role
@@ -369,21 +372,21 @@ class RowDelegate(QtWidgets.QStyledItemDelegate):
         rect = opt.rect.adjusted(CARD_PADDING, 0, -CARD_PADDING, 0)
         name = str(index.data(QtCore.Qt.ItemDataRole.DisplayRole) or "")
         if not self._is_version(data):
-            # Activity row: a timeline dot and the event text, quieter than a version.
+            # Activity row: a timeline dot, the asset, and what happened to it.
+            # The event used to be readable only in the Comment column, far to
+            # the right and cut off, which made the row look like broken data.
             dot = QtCore.QRectF(rect.left() + 2, rect.center().y() - 3, 7, 7)
             painter.setPen(QtCore.Qt.PenStyle.NoPen)
             painter.setBrush(palette.mid())
             painter.drawEllipse(dot)
             font.setItalic(True)
-            painter.setFont(font)
+            text_rect = rect.adjusted(14, 0, 0, 0)
             painter.setPen(palette.placeholderText().color())
-            painter.drawText(
-                rect.adjusted(14, 0, 0, 0),
-                QtCore.Qt.AlignmentFlag.AlignLeft
-                | QtCore.Qt.AlignmentFlag.AlignVCenter,
-                QtGui.QFontMetrics(font).elidedText(
-                    name, QtCore.Qt.TextElideMode.ElideRight, rect.width() - 14
-                ),
+            # What happened comes first: the History tab is usually one asset's,
+            # so the event is the news and the name only says which one.
+            event = self._sibling_text(index, self._activity_column)
+            self._draw_two_lines(
+                painter, text_rect, event or name, name if event else "", font
             )
             return
         pixmap = index.data(QtCore.Qt.ItemDataRole.DecorationRole)
@@ -396,15 +399,40 @@ class RowDelegate(QtWidgets.QStyledItemDelegate):
         text_rect = QtCore.QRect(
             text_left, rect.top(), rect.right() - text_left, rect.height()
         )
-        secondary = ""
+        painter.setPen(palette.text().color())
+        self._draw_two_lines(
+            painter,
+            text_rect,
+            name,
+            self._sibling_text(index, self._secondary_column),
+            font,
+            palette.placeholderText().color(),
+        )
+
+    @staticmethod
+    def _sibling_text(
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex, column: int | None
+    ) -> str:
         model = index.model()
-        if self._secondary_column != index.column() and model is not None:
-            sibling = model.index(index.row(), self._secondary_column, index.parent())
-            secondary = str(sibling.data(QtCore.Qt.ItemDataRole.DisplayRole) or "")
+        if column is None or model is None or column == index.column():
+            return ""
+        sibling = model.index(index.row(), column, index.parent())
+        return str(sibling.data(QtCore.Qt.ItemDataRole.DisplayRole) or "")
+
+    def _draw_two_lines(
+        self,
+        painter: QtGui.QPainter,
+        text_rect: QtCore.QRect,
+        title: str,
+        detail: str,
+        font: QtGui.QFont,
+        detail_color: QtGui.QColor | None = None,
+    ) -> None:
+        """``title`` over a smaller ``detail``, or one centred line without room."""
         metrics = QtGui.QFontMetrics(font)
         detail_font = small_font(font)
         detail_metrics = QtGui.QFontMetrics(detail_font)
-        two_lines = bool(secondary) and (
+        two_lines = bool(detail) and (
             metrics.height() + detail_metrics.height() <= text_rect.height()
         )
         if two_lines:
@@ -412,7 +440,7 @@ class RowDelegate(QtWidgets.QStyledItemDelegate):
                 text_rect.top()
                 + (text_rect.height() - metrics.height() - detail_metrics.height()) // 2
             )
-            name_rect = QtCore.QRect(
+            title_rect = QtCore.QRect(
                 text_rect.left(), top, text_rect.width(), metrics.height()
             )
             detail_rect = QtCore.QRect(
@@ -422,25 +450,25 @@ class RowDelegate(QtWidgets.QStyledItemDelegate):
                 detail_metrics.height(),
             )
         else:
-            name_rect, detail_rect = text_rect, QtCore.QRect()
+            title_rect, detail_rect = text_rect, QtCore.QRect()
+        left = QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
         painter.setFont(font)
-        painter.setPen(palette.text().color())
         painter.drawText(
-            name_rect,
-            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter,
+            title_rect,
+            int(left),
             metrics.elidedText(
-                name, QtCore.Qt.TextElideMode.ElideMiddle, name_rect.width()
+                title, QtCore.Qt.TextElideMode.ElideMiddle, title_rect.width()
             ),
         )
         if two_lines:
             painter.setFont(detail_font)
-            painter.setPen(palette.placeholderText().color())
+            if detail_color is not None:
+                painter.setPen(detail_color)
             painter.drawText(
                 detail_rect,
-                QtCore.Qt.AlignmentFlag.AlignLeft
-                | QtCore.Qt.AlignmentFlag.AlignVCenter,
+                int(left),
                 detail_metrics.elidedText(
-                    secondary, QtCore.Qt.TextElideMode.ElideRight, detail_rect.width()
+                    detail, QtCore.Qt.TextElideMode.ElideRight, detail_rect.width()
                 ),
             )
 

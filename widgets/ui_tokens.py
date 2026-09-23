@@ -34,6 +34,7 @@ HISTORY_TABLE_COLUMN_WIDTHS = (
     (HistoryColumn.NAME, 255),
     (HistoryColumn.DEFINITION, 185),
     (HistoryColumn.VERSION, 80),
+    (HistoryColumn.CREATED, 200),  # a full "yyyy-MM-dd HH:mm:ss" plus its icon
     (HistoryColumn.TYPE, 150),
 )
 INSIDE_TREE_COLUMN_WIDTHS = (
