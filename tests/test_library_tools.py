@@ -336,3 +336,33 @@ def test_malformed_backup_is_not_offered_as_restorable(
         archive.writestr("ihda-manifest.json", "invalid JSON")
     entry = list_backups(database.parent)[0]
     assert not entry.restorable and entry.reason == "Unreadable archive"
+
+
+def test_tool_tables_match_the_panel_and_say_when_they_are_empty(
+    app: Any, library: tuple[Path, Path]
+) -> None:
+    """A dialog table should not read like a spreadsheet next to the panel's."""
+    from PySide6 import QtWidgets
+
+    from widgets.library_manager.dialog import LibraryManager
+    from widgets.tables import configure_table
+
+    plain = QtWidgets.QTableWidget(0, 2)
+    configure_table(plain)
+    assert not plain.showGrid()
+    assert plain.alternatingRowColors()
+    assert plain.verticalHeader().isHidden()
+    assert not plain.horizontalHeader().highlightSections()
+
+    database, assets = library
+    dialog = LibraryManager(database, assets, "user", 1)
+    try:
+        for name in ("health", "backups", "paths", "explorer", "recovery"):
+            view = getattr(dialog, name)
+            assert not view.showGrid(), name
+            assert view.verticalHeader().isHidden(), name
+            # Empty tables say so instead of showing a blank grid.
+            state = view.viewport().findChild(QtWidgets.QWidget, "empty_state")
+            assert state is not None and not state.isHidden(), name
+    finally:
+        dialog.shutdown()

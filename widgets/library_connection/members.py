@@ -10,6 +10,7 @@ from PySide6 import QtWidgets
 from libs.task_controller import TaskController
 from libs.team.client import Transport
 from libs.team.contracts import API_PREFIX
+from widgets.tables import configure_table
 
 COLUMNS = ("Name", "User ID", "Role")
 REMOVE_ACCESS = "Remove access"
@@ -50,23 +51,9 @@ class MembersDialog(QtWidgets.QDialog):
         self.tableWidget__members = QtWidgets.QTableWidget(0, len(COLUMNS))
         self.tableWidget__members.setObjectName("tableWidget__members")
         self.tableWidget__members.setHorizontalHeaderLabels(list(COLUMNS))
-        self.tableWidget__members.verticalHeader().hide()
-        self.tableWidget__members.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.tableWidget__members.setSelectionMode(
-            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
-        )
-        self.tableWidget__members.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-        )
-        self.tableWidget__members.setAlternatingRowColors(True)
-        self.tableWidget__members.setShowGrid(False)
-        header = self.tableWidget__members.horizontalHeader()
-        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        header.setSectionResizeMode(
-            2, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+        configure_table(self.tableWidget__members, stretch_column=0)
+        self.tableWidget__members.horizontalHeader().setSectionResizeMode(
+            1, QtWidgets.QHeaderView.ResizeMode.Stretch
         )
         self.tableWidget__members.setToolTip("Select a member to change their role")
         layout.addWidget(self.tableWidget__members)

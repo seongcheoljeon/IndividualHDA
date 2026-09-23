@@ -2,6 +2,11 @@
 
 ## 2.3.0 — modern editing, modern views and dialogs that tell you things
 
+- **The tool dialogs match the panel.** Library Tools, Version details and the
+  members list drew spreadsheet grids with a row-number column while the asset
+  and history tables had dropped both. One helper now decides that look for
+  every table, and the empty ones say what would appear there instead of
+  showing a blank grid.
 - **Questions name what they do.** "Yes" and "No" told you nothing about what
   was about to happen. Every confirmation now goes through one helper: the
   accepting button carries the verb ("Move to Trash", "Remove records",

@@ -11,7 +11,9 @@ from libs.history_activity import rename_names, video_action
 from libs.library_management import ManagementGateway
 from libs.resource_policy import CallbackPolicy
 from libs.task_controller import TaskController
+from widgets.empty_state import attach_empty_state
 from widgets.library_metadata.tracking import tracking_page
+from widgets.tables import configure_table
 
 
 class LibraryMetadataDialog(QtWidgets.QDialog):
@@ -45,16 +47,10 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
         self.tableWidget__items.setHorizontalHeaderLabels(
             ["Asset", "Version", "Deleted"]
         )
-        self.tableWidget__items.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
+        configure_table(self.tableWidget__items, stretch_column=0)
+        attach_empty_state(self.tableWidget__items).set_content(
+            "No versions", "Register a version of this asset to see it here."
         )
-        self.tableWidget__items.setSelectionMode(
-            QtWidgets.QAbstractItemView.SelectionMode.SingleSelection
-        )
-        self.tableWidget__items.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-        )
-        self.tableWidget__items.horizontalHeader().setStretchLastSection(True)
         self.comboBox__version = QtWidgets.QComboBox()
         self.textEdit__description = QtWidgets.QPlainTextEdit()
         self.textEdit__description.setPlaceholderText(
@@ -64,20 +60,16 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
         self.tableWidget__dependencies.setHorizontalHeaderLabels(
             ["Kind", "Target", "Version", "Required"]
         )
-        self.tableWidget__dependencies.horizontalHeader().setStretchLastSection(True)
+        configure_table(self.tableWidget__dependencies, stretch_column=1)
+        attach_empty_state(self.tableWidget__dependencies).set_content(
+            "No dependencies", "This version references no other asset."
+        )
         from widgets.library_metadata.activity_model import ActivityModel
 
         self.activity_model = ActivityModel(self)
         self.tableView__activity = QtWidgets.QTableView()
         self.tableView__activity.setModel(self.activity_model)
-        self.tableView__activity.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        self.tableView__activity.setEditTriggers(
-            QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers
-        )
-        self.tableView__activity.setAlternatingRowColors(True)
-        self.tableView__activity.verticalHeader().setVisible(False)
+        configure_table(self.tableView__activity)
         self.tableView__activity.horizontalHeader().setStretchLastSection(True)
         self.tableView__activity.setSortingEnabled(False)
         self.tabWidget__details = QtWidgets.QTabWidget()

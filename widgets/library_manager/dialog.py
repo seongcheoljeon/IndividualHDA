@@ -24,7 +24,9 @@ from libs.library_maintenance import apply_paths, inspect_library, plan_paths
 from libs.runtime_settings import RuntimeSettings
 from libs.task_controller import TaskController
 from libs.version_compare import compare_expanded, expand_asset
+from widgets.empty_state import attach_empty_state
 from widgets.library_manager.presenter import LibraryManagerPresenter
+from widgets.tables import configure_table
 
 
 class LibraryManager(QtWidgets.QDialog):
@@ -98,14 +100,16 @@ class LibraryManager(QtWidgets.QDialog):
         return button
 
     @staticmethod
-    def _table(layout: QtWidgets.QLayout, columns: list[str]) -> QtWidgets.QTableWidget:
+    def _table(
+        layout: QtWidgets.QLayout,
+        columns: list[str],
+        empty: tuple[str, str] | None = None,
+    ) -> QtWidgets.QTableWidget:
         table = QtWidgets.QTableWidget(0, len(columns))
         table.setHorizontalHeaderLabels(columns)
-        table.setSelectionBehavior(
-            QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows
-        )
-        table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
-        table.horizontalHeader().setStretchLastSection(True)
+        configure_table(table, single_selection=False)
+        if empty is not None:
+            attach_empty_state(table).set_content(*empty)
         layout.addWidget(table)
         return table
 
@@ -257,7 +261,11 @@ class LibraryManager(QtWidgets.QDialog):
                 )
             ),
         )
-        self.health = self._table(layout, ["Severity", "Location", "Details"])
+        self.health = self._table(
+            layout,
+            ["Severity", "Location", "Details"],
+            ("Nothing to report", "Run a check to see what it finds."),
+        )
         self._button(
             layout,
             "Export report…",
@@ -306,7 +314,9 @@ class LibraryManager(QtWidgets.QDialog):
         layout.addWidget(self.reason)
         self._button(layout, "Create full backup", lambda: self._guard(self._backup))
         self.backups = self._table(
-            layout, ["File", "Created / modified", "MiB", "Reason", "Restore"]
+            layout,
+            ["File", "Created / modified", "MiB", "Reason", "Restore"],
+            ("No backups yet", "Create one before a risky change."),
         )
         self._button(
             layout, "Validate selected backup", lambda: self._guard(self._validate)
@@ -393,7 +403,9 @@ class LibraryManager(QtWidgets.QDialog):
             layout, "Preview changes", lambda: self._guard(self._preview_paths)
         )
         self.paths = self._table(
-            layout, ["Field / row", "Old directory", "New directory", "File exists"]
+            layout,
+            ["Field / row", "Old directory", "New directory", "File exists"],
+            ("No changes to apply", "Choose the library's new location to preview."),
         )
         self._button(
             layout, "Apply checked changes…", lambda: self._guard(self._apply_paths)
@@ -539,7 +551,11 @@ class LibraryManager(QtWidgets.QDialog):
         self.search.textChanged.connect(self._queue_search)
         self.field.currentIndexChanged.connect(self._queue_search)
         self._button(layout, "Search / reload", self._queue_search)
-        self.explorer = self._table(layout, ["ID", "Name", "Category", "Version"])
+        self.explorer = self._table(
+            layout,
+            ["ID", "Name", "Category", "Version"],
+            ("No results", "Search by name, category or version."),
+        )
         self._button(
             layout,
             f"Load next {self.runtime.explorer_page_size}",
@@ -623,7 +639,11 @@ class LibraryManager(QtWidgets.QDialog):
                 )
             ),
         )
-        self.recovery = self._table(layout, ["Path", "MiB", "Referenced"])
+        self.recovery = self._table(
+            layout,
+            ["Path", "MiB", "Referenced"],
+            ("No recovery files", "Interrupted operations would leave files here."),
+        )
         self._button(
             layout,
             "Back up and remove checked files…",
