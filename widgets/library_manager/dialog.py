@@ -68,6 +68,15 @@ class LibraryManager(QtWidgets.QDialog):
         )
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
+        # A scan or a restore takes as long as the library is large: greyed tabs
+        # and the word "Working" are easy to miss, so the wait is also drawn.
+        self.progressBar__task = QtWidgets.QProgressBar()
+        self.progressBar__task.setObjectName("progressBar__task")
+        self.progressBar__task.setRange(0, 0)  # indeterminate: no step to count
+        self.progressBar__task.setTextVisible(False)
+        self.progressBar__task.setFixedHeight(3)
+        self.progressBar__task.hide()
+        layout.addWidget(self.progressBar__task)
         row = QtWidgets.QHBoxLayout()
         self.cancel_button = QtWidgets.QPushButton("Cancel task")
         self.cancel_button.setEnabled(False)
@@ -180,11 +189,13 @@ class LibraryManager(QtWidgets.QDialog):
         self.tabs.setEnabled(False)
         self.cancel_button.setEnabled(cancellable)
         self.status.setText("Working…")
+        self.progressBar__task.show()
         try:
             self.tasks.start(lambda: operation(token), completion)
         except Exception:
             self.tabs.setEnabled(True)
             self.cancel_button.setEnabled(False)
+            self.progressBar__task.hide()
             raise
 
     def _result(self, value: Any, error: Exception | None) -> None:
@@ -196,6 +207,7 @@ class LibraryManager(QtWidgets.QDialog):
     def _idle(self) -> None:
         self.tabs.setEnabled(True)
         self.cancel_button.setEnabled(False)
+        self.progressBar__task.hide()
         if self._temporary is not None:
             self._temporary.cleanup()
             self._temporary = None

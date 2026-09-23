@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
 
 from libs.ui_icons import Icon
 from widgets.layout_helpers import make_font
+from widgets.ui_tokens import ERROR_COLOR
 
 from . import icons_rc  # noqa: F401 (register bundled icons)
 
@@ -375,6 +376,12 @@ class VideoInfoLayout:
         self.verticalLayout__video_info.addWidget(self.groupBox__flipbook)
 
     def _build_dialog_buttons(self, window: QDialog) -> None:
+        self.label__video_errors = QLabel(window)
+        self.label__video_errors.setObjectName("label__video_errors")
+        self.label__video_errors.setWordWrap(True)
+        self.label__video_errors.setStyleSheet(f"color: {ERROR_COLOR};")
+        self.label__video_errors.hide()
+        self.verticalLayout__video_info.addWidget(self.label__video_errors)
         self.buttonBox__confirm = QDialogButtonBox(window)
         self.buttonBox__confirm.setObjectName("buttonBox__confirm")
         self.buttonBox__confirm.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))

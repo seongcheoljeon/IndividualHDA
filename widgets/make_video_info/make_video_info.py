@@ -20,6 +20,7 @@ class MakeVideoInfo(QtWidgets.QDialog, VideoInfoLayout):
         super().__init__(parent)
         self.build_ui(self)
         self._presenter = VideoInfoPresenter(self)
+        self.__error = ""
         self.__sf = 1001
         self.__ef = 1240
         self.__fps = 24
@@ -78,6 +79,7 @@ class MakeVideoInfo(QtWidgets.QDialog, VideoInfoLayout):
         self.comboBox__resolution_share.setCurrentText(keys.Key.Resolution.sd)
         self.__slot_confirm_resolution()
         self.__slot_confirm_resolution_share()
+        self.__validate()
 
     def __connections(self) -> None:
         self.spinBox__sf.valueChanged.connect(self.__slot_sf)
@@ -89,6 +91,8 @@ class MakeVideoInfo(QtWidgets.QDialog, VideoInfoLayout):
         self.comboBox__resolution_share.currentTextChanged.connect(
             self.__slot_confirm_resolution_share
         )
+        for spin in (self.spinBox__sf, self.spinBox__ef, self.spinBox__fps):
+            spin.valueChanged.connect(self.__validate)
 
     def __slot_confirm_resolution(self, *args: Any) -> None:
         self.label__confirm_resolution.setText(
@@ -160,9 +164,22 @@ class MakeVideoInfo(QtWidgets.QDialog, VideoInfoLayout):
     def is_crop_mask(self) -> bool:
         return self.checkBox__crop_out_mask_overlay.isChecked()
 
+    def __validate(self, *args: Any) -> None:
+        """Say why the range is wrong while it is being typed, not after OK."""
+        self.__error = ""
+        valid = self._presenter.validate(self.sf, self.ef, self.fps)
+        self.label__video_errors.setText(self.__error)
+        self.label__video_errors.setVisible(bool(self.__error))
+        ok = self.buttonBox__confirm.button(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+        )
+        if ok is not None:
+            ok.setEnabled(valid)
+            ok.setToolTip(self.__error or "Start Make Video")
+
     def accept(self) -> None:
         if self._presenter.validate(self.sf, self.ef, self.fps):
             super().accept()
 
     def show_video_settings_error(self, message: str) -> None:
-        QtWidgets.QMessageBox.warning(self, "Video settings", message)
+        self.__error = message

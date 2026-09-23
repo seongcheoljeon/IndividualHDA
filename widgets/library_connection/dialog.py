@@ -14,9 +14,10 @@ from libs.settings_store import save_json
 from libs.task_controller import TaskController
 from libs.team.client import BlobCache, HttpCatalog, HttpTransport
 from libs.team.contracts import API_PREFIX
+from widgets.ui_tokens import ERROR_COLOR
 
 RECENT_SERVERS = 5
-ERROR_STYLE = "color: #d9534f;"
+ERROR_STYLE = f"color: {ERROR_COLOR};"
 
 
 def recent_servers(config_root: Path) -> list[str]:

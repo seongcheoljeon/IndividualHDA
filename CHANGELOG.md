@@ -2,6 +2,12 @@
 
 ## 2.3.0 — modern editing, modern views and dialogs that tell you things
 
+- **A long task is visible, and a wrong value is caught while you type.**
+  Library Tools and Version details drew an indeterminate bar while a scan,
+  backup or restore runs, instead of only greying the tabs. The rename dialog
+  and the video capture settings disable their accept button and show the
+  reason under the fields, the way the registration form does, rather than
+  waiting for OK to open a warning box.
 - **The tool dialogs match the panel.** Library Tools, Version details and the
   members list drew spreadsheet grids with a row-number column while the asset
   and history tables had dropped both. One helper now decides that look for

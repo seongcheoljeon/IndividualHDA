@@ -431,6 +431,15 @@ def test_dialog_validation_controls_accepted_signal(
     rename.lineEdit__input_ihda_name.setText("a/")
     video.sf, video.ef = 100, 1
     preference.lineEdit__data_dirpath.setText("")
+    # The reason is on screen and the button is off, rather than a box after OK.
+    assert not rename.buttonBox__confirm.button(
+        QtWidgets.QDialogButtonBox.StandardButton.Ok
+    ).isEnabled()
+    assert not video.buttonBox__confirm.button(
+        QtWidgets.QDialogButtonBox.StandardButton.Ok
+    ).isEnabled()
+    assert "start frame" in video.label__video_errors.text()
+    assert not video.label__video_errors.isHidden()
     for dialog in (rename, video, preference):
         dialog.buttonBox__confirm.button(
             QtWidgets.QDialogButtonBox.StandardButton.Ok
@@ -441,6 +450,7 @@ def test_dialog_validation_controls_accepted_signal(
     assert not rename.is_valid_ihda_name
     rename.lineEdit__input_ihda_name.setText("Fire")
     video.ef = 200
+    assert video.label__video_errors.isHidden()
     preference.data_dirpath = str(tmp_path)
     for dialog in (rename, video, preference):
         dialog.buttonBox__confirm.button(

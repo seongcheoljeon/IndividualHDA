@@ -366,3 +366,23 @@ def test_tool_tables_match_the_panel_and_say_when_they_are_empty(
             assert state is not None and not state.isHidden(), name
     finally:
         dialog.shutdown()
+
+
+def test_a_running_task_is_visible_not_just_greyed_out(
+    app: Any, library: tuple[Path, Path]
+) -> None:
+    from widgets.library_manager.dialog import LibraryManager
+
+    database, assets = library
+    dialog = LibraryManager(database, assets, "user", 1)
+    try:
+        assert dialog.progressBar__task.isHidden()
+        dialog._run(
+            lambda token: inspect_library(database, token), dialog._health_ready
+        )
+        assert not dialog.progressBar__task.isHidden()
+        assert dialog.progressBar__task.maximum() == 0  # indeterminate
+        wait_tasks(app, dialog)
+        assert dialog.progressBar__task.isHidden()
+    finally:
+        dialog.shutdown()

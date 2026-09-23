@@ -12,6 +12,7 @@ from pathlib import Path
 from PySide6 import QtCore, QtGui, QtWidgets
 
 from libs.registration_request import RegistrationRequest, Taken, validate
+from widgets.ui_tokens import ERROR_COLOR
 
 
 class RegistrationDialog(QtWidgets.QDialog):
@@ -78,7 +79,7 @@ class RegistrationDialog(QtWidgets.QDialog):
         self.label__errors = QtWidgets.QLabel(self)
         self.label__errors.setObjectName("label__errors")
         self.label__errors.setWordWrap(True)
-        self.label__errors.setStyleSheet("color: #d9534f;")
+        self.label__errors.setStyleSheet(f"color: {ERROR_COLOR};")
         layout.addWidget(self.label__errors)
         self.buttonBox = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok

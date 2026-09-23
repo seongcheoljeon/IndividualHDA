@@ -39,17 +39,16 @@ class RenameIHDA(QtWidgets.QDialog, RenameLayout):
         self.set_confirm_text(validation.error or "Valid iHDA name.")
         self.is_valid_ihda_name = validation.valid
         self.__final_ihda_name = validation.name if validation.valid else ""
+        # The reason is already on screen; Rename simply waits until it is gone.
+        ok = self.buttonBox__confirm.button(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+        )
+        if ok is not None:
+            ok.setEnabled(validation.valid)
+            ok.setToolTip("" if validation.valid else validation.error or "")
 
     def accept(self) -> None:
-        if not self.__is_valid_ihda_name:
-            msgbox = QtWidgets.QMessageBox(self)
-            msgbox.setWindowTitle("iHDA Rename")
-            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
-            msgbox.setText("It's not a valid iHDA name.")
-            msgbox.setDetailedText(f"{self.label__confirm_ihda_name.text()}")
-            msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-            _ = msgbox.exec()
-        else:
+        if self.__is_valid_ihda_name:
             super().accept()
 
     def clear_parms(self) -> None:

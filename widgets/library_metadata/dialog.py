@@ -43,6 +43,12 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
         self._items: list[dict[str, Any]] = []
         layout = QtWidgets.QVBoxLayout(self)
         self.label__status = QtWidgets.QLabel()
+        self.progressBar__task = QtWidgets.QProgressBar()
+        self.progressBar__task.setObjectName("progressBar__task")
+        self.progressBar__task.setRange(0, 0)
+        self.progressBar__task.setTextVisible(False)
+        self.progressBar__task.setFixedHeight(3)
+        self.progressBar__task.hide()
         self.tableWidget__items = QtWidgets.QTableWidget(0, 3)
         self.tableWidget__items.setHorizontalHeaderLabels(
             ["Asset", "Version", "Deleted"]
@@ -130,6 +136,7 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
             buttons.addWidget(button)
         layout.addLayout(buttons)
         layout.addWidget(self.label__status)
+        layout.addWidget(self.progressBar__task)
         self.pushButton__restore.clicked.connect(lambda: self._change("restore"))
         self.pushButton__purge.clicked.connect(lambda: self._change("purge"))
         self.pushButton__save.clicked.connect(self._save)
@@ -156,9 +163,11 @@ class LibraryMetadataDialog(QtWidgets.QDialog):
         self._callback = callback
         self.setEnabled(False)
         self.label__status.setText("Working…")
+        self.progressBar__task.show()
 
     def _finished(self, result: Any, error: Exception | None) -> None:
         self.setEnabled(True)
+        self.progressBar__task.hide()
         callback, self._callback = self._callback, None
         if self._closing:
             self.reject()

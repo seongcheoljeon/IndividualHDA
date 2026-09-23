@@ -20,6 +20,7 @@ from libs.process_job import ProcessJob
 from libs.resource_policy import MediaPolicy
 from libs.ui_icons import Icon
 from widgets.confirm import confirm
+from widgets.ui_tokens import ERROR_COLOR
 from widgets.video_player import video_ui_settings, video_widget
 from widgets.video_player.layout import VideoPlayerLayout
 from widgets.video_player.presenter import VideoPresenter
@@ -66,7 +67,7 @@ PLAYBACK_MODE_NAMES = {
     3: "Repeat list",
     4: "Shuffle",
 }
-STATUS_ERROR_STYLE = "color: #d9534f;"
+STATUS_ERROR_STYLE = f"color: {ERROR_COLOR};"
 
 
 def _filter(label: str, extensions: Sequence[str]) -> str:

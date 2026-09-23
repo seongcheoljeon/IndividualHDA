@@ -11,10 +11,11 @@ from libs.task_controller import TaskController
 from libs.team.client import Transport
 from libs.team.contracts import API_PREFIX
 from widgets.tables import configure_table
+from widgets.ui_tokens import ERROR_COLOR
 
 COLUMNS = ("Name", "User ID", "Role")
 REMOVE_ACCESS = "Remove access"
-ERROR_STYLE = "color: #d9534f;"
+ERROR_STYLE = f"color: {ERROR_COLOR};"
 
 
 def valid_user_id(text: str) -> bool:
