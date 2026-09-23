@@ -374,7 +374,7 @@ wheels = [
 
 [[package]]
 name = "individual-hda"
-version = "2.3.0"
+version = "2.4.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]

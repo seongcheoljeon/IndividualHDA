@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.3.0 — modern editing, modern views and dialogs that tell you things
+## 2.4.0 — dialogs that answer, tables that match, one theme
 
 - **One theme: Houdini's.** The "Dark blue" option applied a 2019
   QDarkStyleSheet over the panel. It knew none of the widgets added since, and
@@ -36,6 +36,9 @@
   (ordinary lines simply use the pane's text colour) and escapes the message,
   so a path with a bracket no longer eats the rest of the line. Tag labels take
   the palette's link colour instead of a fixed lime green.
+
+## 2.3.0 — modern editing, modern views and dialogs that tell you things
+
 - **Help says how to use the panel.** The two video links are replaced by the
   gestures, the keys the panel binds (named the way this platform names them,
   with a test that keeps the list honest), what each tab is for and the first

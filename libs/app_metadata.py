@@ -1,6 +1,6 @@
 """Runtime product identity; packaging metadata is checked against this module."""
 
-VERSION = "2.3.0"
+VERSION = "2.4.0"
 DISPLAY_VERSION = f"v{VERSION}"
 MINIMUM_HOUDINI_MAJOR = 21
 LEGACY_HOUDINI_PREF_FOLDER = "houdini21.0"
