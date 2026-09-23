@@ -32,6 +32,16 @@ def wildcard_expression(
     return expression
 
 
+def source_model(
+    index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+) -> QtCore.QAbstractItemModel | None:
+    """The model that owns ``index``'s row, behind any proxies."""
+    model = index.model()
+    while isinstance(model, QtCore.QAbstractProxyModel):
+        model = model.sourceModel()
+    return model
+
+
 def center_on_screen(widget: QtWidgets.QWidget) -> None:
     """Move a top-level widget to the middle of the primary screen."""
     screen = QtGui.QGuiApplication.primaryScreen()

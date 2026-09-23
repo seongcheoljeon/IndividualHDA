@@ -2,6 +2,12 @@
 
 ## 2.4.0 — dialogs that answer, tables that match, one theme
 
+- **The panel starts on the History page again.** Closing the panel there and
+  reopening it failed to start: the asset list, the asset table and the history
+  table share one click handler, and it read the roles of whichever page was on
+  screen rather than the ones of the model the row came from. Since both models
+  number their roles alike, the first asset arrived as a history row. The
+  handler asks the index's own model now.
 - **History activity rows read as events.** A video or rename row showed the
   asset name with the event stranded in the Comment column, clipped to
   "VIDEO (INSE…", beside icons for a definition and a Houdini version the row

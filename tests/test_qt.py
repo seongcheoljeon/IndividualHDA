@@ -244,6 +244,25 @@ def test_panel_with_saved_library(
         panel.models.inside_model.rowCount(panel.models.inside_model.index(0, 0)) == 1
     )
     panel.pushButton__hda_info.click()
+    # The previous session also left the History page open. The three views share
+    # one click handler, and it used to read the roles of whichever page was on
+    # screen: the first asset then arrived as a history row and its AssetData
+    # reached select_history, which failed before the panel finished starting.
+    history_page = panel.stackedWidget__whole.indexOf(panel.page__history)
+    panel.close()  # closing saves the UI state, so write the file afterwards
+    app.processEvents()
+    Paths.json_filepath.write_text(
+        json.dumps({"stacked_widget_whole": history_page}), encoding="utf-8"
+    )
+    panel = IndividualHDA(
+        services=PanelServices(
+            policy=PanelPolicy(autosave_delay_ms=20), host_scene=FakeScene
+        )
+    )
+    assert panel.stackedWidget__whole.currentWidget() is panel.page__history
+    assert panel.selection.state.asset.id == key  # the asset, not a history row
+    assert panel.selection.state.history.data is None
+    panel.stackedWidget__whole.setCurrentIndex(0)
     Paths.json_filepath.unlink()
     model = panel.models.list_proxy_model
     assert model.rowCount() == 1

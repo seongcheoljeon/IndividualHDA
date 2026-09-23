@@ -16,6 +16,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from libs import host, houdini_api, keys, log_handler
 from libs.domain import SelectionState
 from libs.item_paths import item_path
+from libs.qt_helpers import source_model
 from model import (
     ihda_history_model,
     ihda_list_model,
@@ -515,28 +516,26 @@ class PanelSelection:
         )
 
     def selected_ihda_item(self, index: QtCore.QModelIndex | None = None) -> None:
+        """Select what ``index`` points at, asking the model it came from.
+
+        The page on screen used to decide instead. The three views share one
+        click handler, and the asset and history models number ``data_role``
+        alike, so restoring the panel on the History page made the first asset
+        arrive as a history row and its AssetData reach select_history.
+        """
         if index is None or not index.isValid():
             return
-        if self.bindings.presentation.is_ihda_history_view:
-            roles: (
-                type[ihda_history_model.HistoryModel]
-                | type[ihda_list_model.ListModel]
-                | type[ihda_table_model.TableModel]
-            ) = ihda_history_model.HistoryModel
+        model = source_model(index)
+        if isinstance(model, ihda_history_model.HistoryModel):
             self.presenter.select_history(
-                index.data(roles.data_role),
-                index.data(roles.row_role),
+                index.data(model.data_role),
+                index.data(model.row_role),
                 str(index.data()),
             )
-        else:
-            roles = (
-                ihda_list_model.ListModel
-                if self.bindings.presentation.is_icon_mode
-                else ihda_table_model.TableModel
-            )
+        elif isinstance(model, ihda_list_model.ListModel | ihda_table_model.TableModel):
             self.presenter.select_asset(
-                index.data(roles.data_role),
-                index.data(roles.row_role),
+                index.data(model.data_role),
+                index.data(model.row_role),
                 str(index.data()),
             )
 
