@@ -129,3 +129,23 @@ def test_unreadable_database_becomes_library_unavailable(
     (tmp_path / "ihda.db").write_bytes(b"this is not a database")
     with pytest.raises(LibraryUnavailable):
         IndividualHDA()
+
+
+def test_log_pane_colours_the_level_against_its_own_palette() -> None:
+    """The old near-white info colour disappeared on a light host theme."""
+    import logging as log
+
+    from PySide6 import QtGui
+
+    from libs.log_handler import level_html
+
+    dark, light = QtGui.QPalette(), QtGui.QPalette()
+    dark.setColor(QtGui.QPalette.ColorRole.Base, QtGui.QColor("#2b2b2b"))
+    light.setColor(QtGui.QPalette.ColorRole.Base, QtGui.QColor("#ffffff"))
+    # Ordinary lines carry no colour, so they use the pane's own text colour.
+    assert level_html("saved", log.INFO, dark) == "saved"
+    assert level_html("saved", log.INFO, light) == "saved"
+    assert level_html("gone", log.ERROR, dark) != level_html("gone", log.ERROR, light)
+    assert "<b>" in level_html("stop", log.CRITICAL, dark)
+    # A path with a bracket is text, not markup.
+    assert "&lt;unknown&gt;" in level_html("<unknown>", log.WARNING, dark)

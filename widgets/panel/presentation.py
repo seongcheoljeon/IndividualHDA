@@ -236,9 +236,8 @@ class PanelPresentation:
         msgbox.setFont(self.get_default_font())
         msgbox.setWindowTitle("Open Houdini File")
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
-        msgbox.setText("""
-<font color=white size=3>Open the Houdini file?</font><br><br>
-<font color=red size=5>[Note]</font> <font color=white size=4>Open the file with the new Houdini.</font>""")
+        msgbox.setText("Open the Houdini file?")
+        msgbox.setInformativeText("It opens in a new Houdini session.")
         msgbox.setStandardButtons(
             QtWidgets.QMessageBox.StandardButton.Yes
             | QtWidgets.QMessageBox.StandardButton.No

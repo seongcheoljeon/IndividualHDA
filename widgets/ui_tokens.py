@@ -12,7 +12,6 @@ COMPACT_MARGIN = 3
 TOOLBAR_SPACING = 3
 SEARCH_SPACING = 5
 PANEL_SPACING = 1
-TAG_TEXT_COLOR = "#bfff00"
 # Item delegates (widgets/item_delegates.py)
 CARD_RADIUS = 6
 CARD_PADDING = 4

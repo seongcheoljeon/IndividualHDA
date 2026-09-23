@@ -277,6 +277,7 @@ def build_history_results(layout: MainWindowLayout, window: QMainWindow) -> None
     layout.horizontalLayout__history_footer.addWidget(layout.label__hist_tag_pixmap)
     layout.label__hist_tags = QLabel(layout.page__history)
     layout.label__hist_tags.setObjectName("label__hist_tags")
+    layout.label__hist_tags.setStyleSheet("color: palette(link);")
     layout.label__hist_tags.setText("")
     layout.horizontalLayout__history_footer.addWidget(layout.label__hist_tags)
     layout.spacer__history_footer = QSpacerItem(

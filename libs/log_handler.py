@@ -5,6 +5,7 @@ from __future__ import annotations
 # create date:      2020.02.17 03:11:54
 # modified date:
 # description:
+import html
 import logging
 import logging.handlers
 import os
@@ -18,6 +19,31 @@ from PySide6 import QtCore, QtGui, QtWidgets
 
 _FILE_HANDLER_MARK = "_ihda_file_handler"
 _TAGS = re.compile(r"<[^>]+>")
+# Level colours belong to the view, which knows the palette it draws on: the old
+# near-white info colour was invisible whenever the host theme was light. INFO
+# carries no colour at all, so most lines simply use the pane's text colour.
+_DARK_LEVELS = {
+    logging.DEBUG: "#5bc8e8",
+    logging.WARNING: "#e0a33a",
+    logging.ERROR: "#ff6b6b",
+    logging.CRITICAL: "#ff3b3b",
+}
+_LIGHT_LEVELS = {
+    logging.DEBUG: "#0b6e8a",
+    logging.WARNING: "#8a6100",
+    logging.ERROR: "#c0392b",
+    logging.CRITICAL: "#a01010",
+}
+
+
+def level_html(message: str, level: int, palette: QtGui.QPalette) -> str:
+    """``message`` as rich text for a log pane with this palette."""
+    dark = palette.base().color().lightness() < 128
+    colour = (_DARK_LEVELS if dark else _LIGHT_LEVELS).get(level)
+    text = html.escape(message)
+    if level >= logging.CRITICAL:
+        text = f"<b>{text}</b>"
+    return text if colour is None else f'<span style="color:{colour}">{text}</span>'
 
 
 class _PlainFormatter(logging.Formatter):
@@ -67,16 +93,18 @@ def uninstall_file_logging() -> None:
 
 
 class _LogRelay(QtCore.QObject):
-    message = QtCore.Signal(str)
+    message = QtCore.Signal(str, int)
 
     def __init__(self, widget: QtWidgets.QTextEdit) -> None:
         super().__init__(widget)
         self.widget = widget
         self.message.connect(self.append, QtCore.Qt.ConnectionType.QueuedConnection)
 
-    @QtCore.Slot(str)
-    def append(self, message: str) -> None:
-        self.widget.append(message)
+    @QtCore.Slot(str, int)
+    def append(self, message: str, level: int) -> None:
+        # On the GUI thread: the palette is read now, so a theme switch applies
+        # to the lines written after it.
+        self.widget.append(level_html(message, level, self.widget.palette()))
         self.widget.moveCursor(QtGui.QTextCursor.MoveOperation.End)
 
 
@@ -118,7 +146,7 @@ class LogHandler(logging.Handler):
     def emit(self, record: Any) -> None:
         if self._relay is not None:
             try:
-                self._relay.message.emit(self.format(record))
+                self._relay.message.emit(self.format(record), record.levelno)
             except RuntimeError:
                 self.close()
 
@@ -131,19 +159,9 @@ class LogHandler(logging.Handler):
     def log_msg(method: Callable[..., Any] | None = None, msg: object = "") -> None:
         if method is None:
             return
-        if method.__name__ == "info":
-            new_msg = f"<font color=#dddddd>{msg}</font>"
-        elif method.__name__ == "debug":
-            new_msg = f"<font color=#23bcde>{msg}</font>"
-        elif method.__name__ == "warning":
-            new_msg = f"<font color=#cc9900>{msg}</font>"
-        elif method.__name__ == "error":
-            new_msg = f"<font color=#e32474>{msg}</font>"
-        elif method.__name__ == "critical":
-            new_msg = f"<font color=#ff0000>{msg}</font>"
-        else:
+        if method.__name__ not in {"info", "debug", "warning", "error", "critical"}:
             raise TypeError("[log method] unknown type")
-        method(new_msg)
+        method(msg)
 
 
 if __name__ == "__main__":

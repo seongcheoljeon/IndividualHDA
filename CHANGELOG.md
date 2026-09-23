@@ -2,6 +2,12 @@
 
 ## 2.3.0 — modern editing, modern views and dialogs that tell you things
 
+- **Text follows the theme.** The log pane coloured INFO lines near-white and
+  a few messages carried `<font color=white>` inline, so they vanished on a
+  light Houdini theme. The pane now colours by level against its own palette
+  (ordinary lines simply use the pane's text colour) and escapes the message,
+  so a path with a bracket no longer eats the rest of the line. Tag labels take
+  the palette's link colour instead of a fixed lime green.
 - **Help says how to use the panel.** The two video links are replaced by the
   gestures, the keys the panel binds (named the way this platform names them,
   with a test that keeps the list honest), what each tab is for and the first

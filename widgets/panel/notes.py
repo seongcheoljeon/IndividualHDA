@@ -16,7 +16,7 @@ from libs import keys, log_handler, note_syntax
 from libs.tags import normalize_tags
 from libs.ui_icons import Icon
 from widgets.detail_view import detail_view
-from widgets.ui_tokens import COMPACT_MARGIN, TAG_TEXT_COLOR
+from widgets.ui_tokens import COMPACT_MARGIN
 
 if TYPE_CHECKING:
     from widgets.panel.layout import MainWindowLayout
@@ -57,14 +57,10 @@ class PanelNotes:
             self.bindings.ui.label__hist_tags.clear()
 
     def set_label_tags(self, tags: Sequence[str]) -> None:
-        self.bindings.ui.label__tags.setText(
-            f"<font color={TAG_TEXT_COLOR}>{self.set_tag_string(tags)}</font>"
-        )
+        self.bindings.ui.label__tags.setText(self.set_tag_string(tags))
 
     def _set_label_hist_tags(self, tags: Sequence[str]) -> None:
-        self.bindings.ui.label__hist_tags.setText(
-            f"<font color={TAG_TEXT_COLOR}>{self.set_tag_string(tags)}</font>"
-        )
+        self.bindings.ui.label__hist_tags.setText(self.set_tag_string(tags))
 
     def slot_hda_note_history(
         self, hist_note_data: Any = None, hda_name: str | None = None

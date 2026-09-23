@@ -188,7 +188,7 @@ class PanelLibraryQueries:
             return True
         log_handler.LogHandler.log_msg(
             method=logging.warning,
-            msg="<font color=#cc6600>node is not selected</font>",
+            msg="node is not selected",
         )
         return False
 
@@ -198,6 +198,6 @@ class PanelLibraryQueries:
             return True
         log_handler.LogHandler.log_msg(
             method=logging.warning,
-            msg="<font color=#cc6600>iHDA history node is not selected</font>",
+            msg="iHDA history node is not selected",
         )
         return False

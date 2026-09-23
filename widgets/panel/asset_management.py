@@ -536,7 +536,7 @@ iHDA note history: {cnt_hda_note_hist}
         msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
         msgbox.setWindowTitle("Remove iHDA History Node")
         msgbox.setText(
-            f'Delete the <font color=red>"{len(indexes)}"</font> selected iHDA nodes?\n'
+            f"Delete the <b>{len(indexes)}</b> selected iHDA nodes?<br>"
             "Move to Trash? Files are retained; the current version is protected."
         )
         msgbox.setStandardButtons(

@@ -538,6 +538,7 @@ class MainWindowLayout:
         self.horizontalLayout__asset_tags.addWidget(self.label__tag_pixmap)
         self.label__tags = QLabel(self.widget__asset_panel)
         self.label__tags.setObjectName("label__tags")
+        self.label__tags.setStyleSheet("color: palette(link);")
         self.label__tags.setText("")
         self.horizontalLayout__asset_tags.addWidget(self.label__tags)
         self.horizontalLayout__asset_footer.addLayout(self.horizontalLayout__asset_tags)
