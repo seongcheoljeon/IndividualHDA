@@ -60,3 +60,18 @@ def test_dialog_copies_the_facts_opens_links_and_hides_the_licence(
         assert folders == [Path("/cfg")]
     finally:
         dialog.deleteLater()
+
+
+def test_new_issue_url_carries_the_environment() -> None:
+    from urllib.parse import parse_qs, urlsplit
+
+    from widgets.about_dialog import ISSUES_URL, new_issue_url
+
+    query = parse_qs(urlsplit(new_issue_url("bug", "Version: v9\nQt: 6")).query)
+    assert query["title"] == ["[Bug report] "]
+    assert "Version: v9" in query["body"][0] and "What happened" in query["body"][0]
+    assert parse_qs(urlsplit(new_issue_url("idea", "x")).query)["title"] == [
+        "[Feedback] "
+    ]
+    # Without facts there is nothing to prefill, so the plain form opens.
+    assert new_issue_url("bug") == ISSUES_URL + "/new"

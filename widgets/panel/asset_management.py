@@ -40,6 +40,7 @@ from libs.asset_contracts import AssetData, HistoryData
 from libs.asset_lifecycle import RenameResult
 from model import ihda_history_model, ihda_list_model, ihda_table_model
 from widgets.asset_lifecycle.presenter import AssetCommandPresenter
+from widgets.confirm import confirm
 
 if TYPE_CHECKING:
     from libs.ihda_icons import IHDAIcons
@@ -98,22 +99,15 @@ class PanelAssetManagement:
         log_handler.LogHandler.log_msg(method=logging.error, msg=message)
 
     def _slot_cleanup_hda_record(self) -> None:
-        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.bindings.presentation.get_default_font())
-        msgbox.setWindowTitle("Cleanup iHDA Record")
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
-        msgbox.setText(
-            "Are you sure you want to remove all unnecessary iHDA record data that does not exist?"
-        )
-        msgbox.setDetailedText(
-            "Only scene-record metadata is removed. HIP and HDA files are kept."
-        )
-        msgbox.setStandardButtons(
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No
-        )
-        reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+        if confirm(
+            self.bindings.parent,
+            title="Cleanup iHDA Record",
+            question="Remove the records whose scene or asset no longer exists?",
+            detail="Only scene-record metadata is removed. HIP and HDA files are kept.",
+            accept="Remove records",
+            destructive=True,
+            font=self.bindings.presentation.get_default_font(),
+        ):
             self._delete_unused_hda_record_info()
 
     def _delete_unused_hda_record_info(
@@ -398,34 +392,18 @@ class PanelAssetManagement:
     def _slot_delete_all_history(self) -> None:
         counts = self.bindings.session.require_repository().history_counts()
         cnt_hda_hist, cnt_hda_note_hist = counts.versions, counts.notes
-        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.bindings.presentation.get_default_font())
-        msgbox.setWindowTitle("Delete all iHDA history")
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
-        msgbox.setText(
-            "Move historical versions to Trash? Current versions and note history are retained."
-        )
-        # chkbox = QtWidgets.QCheckBox(msgbox)
-        # chkbox.setText('Delete All History Files')
-        # chkbox.setChecked(True)
-        # chkbox.setIcon(QtGui.QIcon(QtGui.QPixmap(':/main/icons/ic_delete_forever_white.png')))
-        # chkbox.setToolTip('Delete all iHDA history files')
-        # msgbox.setCheckBox(chkbox)
-        msgbox.setDetailedText(
-            f"""
-Historical versions move to Trash. Files and note history are retained.
-iHDA node history: {cnt_hda_hist}
-iHDA note history: {cnt_hda_note_hist}
-        """
-        )
-        msgbox.setStandardButtons(
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No
-        )
-        msgbox.setStyleSheet("QLabel {min-width: 500px;}")
-        msgbox.resize(msgbox.sizeHint())
-        reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+        if confirm(
+            self.bindings.parent,
+            title="Delete all iHDA history",
+            question="Move every historical version to the Trash?",
+            detail=(
+                f"{cnt_hda_hist} versions and {cnt_hda_note_hist} note entries are "
+                "listed. Current versions, files and note history are kept."
+            ),
+            accept="Move to Trash",
+            destructive=True,
+            font=self.bindings.presentation.get_default_font(),
+        ):
             # 만약 파일들까지 삭제한다면
             # if chkbox.isChecked():
             all_hkey_id = self.bindings.session.require_repository().asset_ids(
@@ -501,19 +479,15 @@ iHDA note history: {cnt_hda_note_hist}
             return
         identities = self.bindings.models.record_model.selected_record_ids(index)
         record_data_name = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
-        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.bindings.presentation.get_default_font())
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
-        msgbox.setWindowTitle("Remove iHDA Record Information")
-        msgbox.setText(
-            f'Are you sure you want to delete the selected "{record_data_name}" record information?'
-        )
-        msgbox.setStandardButtons(
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No
-        )
-        reply = msgbox.exec()
-        if reply != QtWidgets.QMessageBox.StandardButton.Yes:
+        if not confirm(
+            self.bindings.parent,
+            title="Remove iHDA Record Information",
+            question=f'Remove the record for "{record_data_name}"?',
+            detail="The scene and the asset files are not touched.",
+            accept="Remove record",
+            destructive=True,
+            font=self.bindings.presentation.get_default_font(),
+        ):
             return
         if (
             repository is not self.bindings.session.repository
@@ -531,20 +505,15 @@ iHDA note history: {cnt_hda_note_hist}
                 method=logging.info, msg="iHDA history is not selected"
             )
             return
-        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.bindings.presentation.get_default_font())
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
-        msgbox.setWindowTitle("Remove iHDA History Node")
-        msgbox.setText(
-            f"Delete the <b>{len(indexes)}</b> selected iHDA nodes?<br>"
-            "Move to Trash? Files are retained; the current version is protected."
-        )
-        msgbox.setStandardButtons(
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No
-        )
-        reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+        if confirm(
+            self.bindings.parent,
+            title="Remove iHDA History Node",
+            question=f"Move the {len(indexes)} selected versions to the Trash?",
+            detail="Files are kept and the current version is protected.",
+            accept="Move to Trash",
+            destructive=True,
+            font=self.bindings.presentation.get_default_font(),
+        ):
             # player가 재생중이거나 일시 정지상태면 정지
             self.bindings.video_player.player_stop()
             selected = [

@@ -10,6 +10,7 @@ from __future__ import annotations
 import platform
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from urllib.parse import urlencode
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
@@ -25,6 +26,18 @@ from widgets.layout_helpers import copy_to_clipboard
 
 REPOSITORY_URL = "https://github.com/seongcheoljeon/IndividualHDA"
 ISSUES_URL = REPOSITORY_URL + "/issues"
+
+
+def new_issue_url(kind: str, facts: str = "") -> str:
+    """A prefilled issue: the reporter writes what happened, not their setup."""
+    heading = "Bug report" if kind == "bug" else "Feedback"
+    if not facts:
+        return ISSUES_URL + "/new"
+    body = f"## What happened\n\n\n## Environment\n\n```\n{facts}\n```\n"
+    query = urlencode({"title": f"[{heading}] ", "body": body})
+    return f"{ISSUES_URL}/new?{query}"
+
+
 YOUTUBE_URL = "https://youtube.com/@seongcheoljeon5785"
 LICENSE_PANE_WIDTH = 640  # the licence files are hard-wrapped at 80 columns
 LICENSE_PATH = Path(__file__).resolve().parent.parent / "LICENSE"

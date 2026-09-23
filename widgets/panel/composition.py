@@ -595,6 +595,7 @@ class PanelComposition:
 
         window._archives.bindings = PanelArchivesBindings(
             parent=window,
+            notifications=window.presentation,
             presentation=window.presentation,
             queries=window.queries,
             services=window._services,

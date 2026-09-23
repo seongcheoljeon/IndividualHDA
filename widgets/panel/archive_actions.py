@@ -18,7 +18,11 @@ from libs import ihda_system
 if TYPE_CHECKING:
     from libs.task_controller import TaskController
     from widgets.panel.layout import MainWindowLayout
-    from widgets.panel.ports import LibraryQueryPort, PresentationPort
+    from widgets.panel.ports import (
+        LibraryQueryPort,
+        NotificationsPort,
+        PresentationPort,
+    )
     from widgets.panel.services import PanelServices
     from widgets.panel.state import PanelSessionState, PanelStatus
     from widgets.video_player import UnavailableVideoPlayer
@@ -28,6 +32,7 @@ if TYPE_CHECKING:
 @dataclass(frozen=True, slots=True)
 class PanelArchivesBindings:
     parent: QtWidgets.QWidget
+    notifications: NotificationsPort
     presentation: PresentationPort
     queries: LibraryQueryPort
     services: PanelServices
@@ -110,11 +115,9 @@ class PanelArchives:
         self.stage_import(self.stream)
         if self.bindings.status.host_destroying:
             return
-        QtWidgets.QMessageBox.information(
-            self.bindings.parent,
-            "Individual HDA",
-            "Import is complete. restart iHDA app\nThe existing iHDA data was backed up\n"
-            + str(backup),
+        self.bindings.notifications.notify(
+            f"Import complete. Reopen the panel. Previous data was backed up to {backup}",
+            level="warning",
         )
 
     def commit_import(self) -> None:

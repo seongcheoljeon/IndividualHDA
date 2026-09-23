@@ -37,6 +37,8 @@ if TYPE_CHECKING:
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from widgets.confirm import confirm
+
 if TYPE_CHECKING:
     from widgets.panel.layout import MainWindowLayout
     from widgets.panel.services import PanelServices
@@ -98,27 +100,17 @@ class PanelAssetRegistration:
             )
             return
         if total_node_cnt > self.bindings.services.policy.warn_node_batch:
-            msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation.get_default_font())
-            msgbox.setWindowTitle("iHDA Node Registration")
-            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
-            msgbox.setText(
-                f"""
-The number of nodes you are trying to register exceeds {self.bindings.services.policy.warn_node_batch}.
-Should I proceed with registration?
-
-NOTE: Registering a large number of nodes at a time may make the Houdini appear to be stationary.
-But it didn't stop, so please wait a little longer.
-            """
-            )
-            msgbox.setDetailedText(f"Total Nodes: {total_node_cnt}")
-            # msgbox.resize(msgbox.sizeHint())
-            msgbox.setStandardButtons(
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No
-            )
-            reply = msgbox.exec()
-            if reply == QtWidgets.QMessageBox.StandardButton.No:
+            if not confirm(
+                self.bindings.parent,
+                title="iHDA Node Registration",
+                question=f"Register {total_node_cnt} nodes at once?",
+                detail=(
+                    "Houdini may look frozen while a batch this large is registered."
+                    " It is still working; give it a moment."
+                ),
+                accept=f"Register {total_node_cnt}",
+                font=self.bindings.presentation.get_default_font(),
+            ):
                 log_handler.LogHandler.log_msg(
                     method=logging.info, msg="Node registration has been canceled"
                 )

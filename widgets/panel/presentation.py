@@ -13,9 +13,10 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from libs import host, houdini_api, ihda_system, keys, log_handler
+from libs import host, houdini_api, ihda_system, keys, log_handler, paths
 from libs.app_metadata import FFMPEG_DOWNLOAD_URL, SUPPORT_URL
 from libs.domain import LibraryContext
+from widgets.confirm import confirm
 
 if TYPE_CHECKING:
     from libs.dragdrop_overlay import Overlay as DragOverlay
@@ -232,18 +233,14 @@ class PanelPresentation:
         self.bindings.views.assets_list.setSpacing(3)
 
     def open_houdini_file(self, hip_filepath: pathlib.Path | None = None) -> None:
-        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.get_default_font())
-        msgbox.setWindowTitle("Open Houdini File")
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
-        msgbox.setText("Open the Houdini file?")
-        msgbox.setInformativeText("It opens in a new Houdini session.")
-        msgbox.setStandardButtons(
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No
-        )
-        reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+        if confirm(
+            self.bindings.parent,
+            title="Open Houdini File",
+            question="Open this scene?",
+            detail="It opens in a new Houdini session; this one stays as it is.",
+            accept="Open scene",
+            font=self.get_default_font(),
+        ):
             ihda_system.IHDASystem.open_hipfile_using_thread(hip_filepath)
 
     def _slot_local_ai_models(self) -> None:
@@ -285,12 +282,10 @@ class PanelPresentation:
                         method=logging.error, msg="user creation failed"
                     )
                     return
-                msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-                msgbox.setFont(self.get_default_font())
-                msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
-                msgbox.setWindowTitle("Individual iHDA")
-                msgbox.setText("Please restart the app.")
-                _ = msgbox.exec()
+                self.notify(
+                    "Your library user was created. Reopen the panel to use it.",
+                    level="warning",
+                )
         # app properties
         font_size, font_style = self.get_font_properties(
             keys.Name.PreferenceUI.spb_view_font_size,
@@ -496,38 +491,29 @@ class PanelPresentation:
         )
 
     def _slot_cfg_reset(self) -> None:
-        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.get_default_font())
-        msgbox.setWindowTitle("iHDA Reset APP Properties")
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Question)
-        msgbox.setText("Do you want to reset app properties?")
-        msgbox.setStandardButtons(
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No
-        )
-        reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.StandardButton.No:
+        if not confirm(
+            self.bindings.parent,
+            title="iHDA Reset APP Properties",
+            question="Reset every app preference to its default?",
+            detail="Your library and its files are not touched.",
+            accept="Reset preferences",
+            destructive=True,
+            font=self.get_default_font(),
+        ):
             return
         self.bindings.status.reset_settings = True
         self.bindings.ui.centralwidget.setDisabled(True)
         self.bindings.ui.toolBar.setDisabled(True)
         self.bindings.ui.menubar.setDisabled(True)
-        log_handler.LogHandler.log_msg(
-            method=logging.debug, msg="initialized application properties"
+        self.notify(
+            "Preferences are back at their defaults. Reopen the panel to start over.",
+            level="warning",
         )
-        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.get_default_font())
-        msgbox.setWindowTitle("iHDA Reset APP Properties")
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
-        msgbox.setText("App property initialization is complete. Please start again.")
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        _ = msgbox.exec()
 
     def _set_theme(self, theme: str = "Default") -> None:
         self.bindings.ui_settings.set_theme(theme=theme)
 
     def _slot_about(self) -> None:
-        from libs import paths
         from widgets.about_dialog import AboutDialog
 
         houdini_version = (
@@ -554,35 +540,35 @@ class PanelPresentation:
         dialog.exec()
         dialog.deleteLater()
 
-    def _slot_submit_bug_report(self) -> None:
-        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.get_default_font(font_size=15))
-        msgbox.setWindowTitle("Submit Bug Report")
-        msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
-        msgbox.setText(
-            '<a href="mailto:saelly55@gmail.com?Subject=[iHDA] Bug Report" style="color:red"'
-            'target="_top">Send Bug Report</a><br>'
+    def _open_issue(self, kind: Literal["bug", "idea"]) -> None:
+        """The tracker, with the environment already filled in.
+
+        A mailto: link asked the reporter to describe their setup from memory,
+        and the answer landed in one inbox where nobody else could see it.
+        """
+        from widgets.about_dialog import environment_facts, facts_text, new_issue_url
+
+        facts = facts_text(
+            environment_facts(
+                houdini_api.HoudiniAPI.current_houdini_version()
+                if host.IS_HOUDINI
+                else None,
+                paths.Paths.config_dirpath,
+            )
         )
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        msgbox.setDetailedText("Click the link to send an email.")
-        msgbox.resize(msgbox.sizeHint())
-        _ = msgbox.exec()
+        opened = ihda_system.IHDASystem.open_browser(new_issue_url(kind, facts))
+        self.notify(
+            "Opened the issue tracker in your browser."
+            if opened
+            else "Could not open the browser; the tracker is linked in Help.",
+            level="info" if opened else "warning",
+        )
+
+    def _slot_submit_bug_report(self) -> None:
+        self._open_issue("bug")
 
     def _slot_submit_feedback(self) -> None:
-        msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-        msgbox.setFont(self.get_default_font(font_size=15))
-        msgbox.setWindowTitle("Submit Feedback")
-        msgbox.setTextFormat(QtCore.Qt.TextFormat.RichText)
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Information)
-        msgbox.setText(
-            '<a href="mailto:saelly55@gmail.com?Subject=[iHDA] Feedback" style="color:red"'
-            'target="_top">Send Feedback</a><br>'
-        )
-        msgbox.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Ok)
-        msgbox.setDetailedText("Click the link to send an email.")
-        msgbox.resize(msgbox.sizeHint())
-        _ = msgbox.exec()
+        self._open_issue("idea")
 
     @staticmethod
     def _slot_donate() -> None:

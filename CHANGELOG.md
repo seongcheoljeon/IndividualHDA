@@ -2,6 +2,17 @@
 
 ## 2.3.0 — modern editing, modern views and dialogs that tell you things
 
+- **Questions name what they do.** "Yes" and "No" told you nothing about what
+  was about to happen. Every confirmation now goes through one helper: the
+  accepting button carries the verb ("Move to Trash", "Remove records",
+  "Import anyway"), Cancel is the default for anything destructive, and the
+  explanation sits under the question instead of behind "Show Details".
+- **Notices stopped blocking.** "Please restart the app", the preferences
+  reset and the archive-import result were modal boxes over a panel that was
+  already disabled; they are toasts with the text kept in the status bar.
+- **Bug reports and feedback open the issue tracker**, with the version,
+  Houdini, Qt, Python and system already filled into the issue body. They used
+  to be a mailto: link in a message box.
 - **Text follows the theme.** The log pane coloured INFO lines near-white and
   a few messages carried `<font color=white>` inline, so they vanished on a
   light Houdini theme. The pane now colours by level against its own palette

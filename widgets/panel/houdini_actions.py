@@ -40,6 +40,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from widgets.confirm import confirm
+
 if TYPE_CHECKING:
     from widgets.panel.layout import MainWindowLayout
     from widgets.panel.scene_usage import SceneUsageIntegration
@@ -138,27 +140,17 @@ class PanelHoudiniActions:
             )
             return
         if total_node_cnt > self.bindings.services.policy.warn_node_batch:
-            msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-            msgbox.setFont(self.bindings.presentation.get_default_font())
-            msgbox.setWindowTitle("Import iHDA Node")
-            msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
-            msgbox.setText(
-                f"""
-            The number of iHDA nodes you are trying to import exceeds {self.bindings.services.policy.warn_node_batch}.
-            Should I bring it though?
-
-            NOTE: Registering a large number of nodes at a time may make the Houdini appear to be stationary.
-            But it didn't stop, so please wait a little longer.
-            """
-            )
-            msgbox.setDetailedText(f"Total Nodes: {total_node_cnt}")
-            # msgbox.resize(msgbox.sizeHint())
-            msgbox.setStandardButtons(
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No
-            )
-            reply = msgbox.exec()
-            if reply == QtWidgets.QMessageBox.StandardButton.No:
+            if not confirm(
+                self.bindings.parent,
+                title="Import iHDA Node",
+                question=f"Import {total_node_cnt} nodes at once?",
+                detail=(
+                    "Houdini may look frozen while a batch this large is imported."
+                    " It is still working; give it a moment."
+                ),
+                accept=f"Import {total_node_cnt}",
+                font=self.bindings.presentation.get_default_font(),
+            ):
                 log_handler.LogHandler.log_msg(
                     method=logging.info, msg="importing iHDA nodes was canceled"
                 )
@@ -288,29 +280,21 @@ class PanelHoudiniActions:
                     method=logging.warning,
                     msg=f'[{node_cnt + 1}/{total_node_cnt}] houdini license and "{hda_name} (v{hda_ver})" iHDA license are different',
                 )
-                msgbox = QtWidgets.QMessageBox(self.bindings.parent)
-                msgbox.setFont(self.bindings.presentation.get_default_font())
-                msgbox.setWindowTitle("Import iHDA Node")
-                msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
-                msgbox.setText(
-                    f"""
-                [{node_cnt + 1}/{total_node_cnt}] Imported "{hda_name} (v{hda_ver})" iHDA are not commercial.
-                When I import it into the current HIP file, the HIP file also becomes non-commercial.
-                Should I bring it though?"""
-                )
-                msgbox.setDetailedText(
-                    f"""
-                Current HIP File License: {curt_houdini_license}
-                Current iHDA Node License: {hda_license}
-                """
-                )
-                # msgbox.resize(msgbox.sizeHint())
-                msgbox.setStandardButtons(
-                    QtWidgets.QMessageBox.StandardButton.Yes
-                    | QtWidgets.QMessageBox.StandardButton.No
-                )
-                reply = msgbox.exec()
-                if reply == QtWidgets.QMessageBox.StandardButton.No:
+                if not confirm(
+                    self.bindings.parent,
+                    title="Import iHDA Node",
+                    question=(
+                        f'Import "{hda_name} (v{hda_ver})" and make this HIP file'
+                        " non-commercial?"
+                    ),
+                    detail=(
+                        f"Node {node_cnt + 1} of {total_node_cnt}. This scene is"
+                        f" {curt_houdini_license}; the asset is {hda_license}."
+                    ),
+                    accept="Import anyway",
+                    destructive=True,
+                    font=self.bindings.presentation.get_default_font(),
+                ):
                     log_handler.LogHandler.log_msg(
                         method=logging.info,
                         msg=f'[{node_cnt + 1}/{total_node_cnt}] importing "{hda_name} (v{hda_ver})" iHDA nodes was canceled',

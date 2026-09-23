@@ -19,6 +19,7 @@ from libs.media_playlist import MediaPlaylist
 from libs.process_job import ProcessJob
 from libs.resource_policy import MediaPolicy
 from libs.ui_icons import Icon
+from widgets.confirm import confirm
 from widgets.video_player import video_ui_settings, video_widget
 from widgets.video_player.layout import VideoPlayerLayout
 from widgets.video_player.presenter import VideoPresenter
@@ -616,16 +617,13 @@ class VideoPlayer(QtWidgets.QWidget, VideoPlayerLayout):
         item_lst = self.listWidget__playlist.selectedItems()
         if not item_lst:
             return
-        msgbox = QtWidgets.QMessageBox(self)
-        msgbox.setWindowTitle("Delete Video From Playlist")
-        msgbox.setText(f"delete {len(item_lst)} selected video from playlist?")
-        msgbox.setIcon(QtWidgets.QMessageBox.Icon.Warning)
-        msgbox.setStandardButtons(
-            QtWidgets.QMessageBox.StandardButton.Ok
-            | QtWidgets.QMessageBox.StandardButton.Cancel
-        )
-        reply = msgbox.exec()
-        if reply == QtWidgets.QMessageBox.StandardButton.Cancel:
+        if not confirm(
+            self,
+            title="Delete Video From Playlist",
+            question=f"Remove {len(item_lst)} videos from the playlist?",
+            detail="The files stay where they are.",
+            accept="Remove",
+        ):
             return
         for item in item_lst:
             row = self.listWidget__playlist.row(item)
