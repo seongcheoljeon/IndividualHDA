@@ -127,7 +127,7 @@ class PanelBootstrap:
             window._ui_settings.load_splitter_status()
             window._ui_settings.load_cfg_dict_from_file()
             # theme
-            window._ui_settings.set_theme(theme=window._ui_settings.get_theme)
+            window._ui_settings.apply_host_style()
             # stackedwidget & view tool button
             window.selection.slot_select_view(
                 index=window.stackedWidget__whole.currentIndex()
@@ -135,8 +135,7 @@ class PanelBootstrap:
             # stackecdwidget hda infos
             window.selection._slot_stackedwidget_hda_infos()
         else:
-            # theme
-            window._ui_settings.set_theme(theme=Name.default_theme)
+            window._ui_settings.apply_host_style()
         if window.session.repository is not None:
             window._ihda_icons.make_pixmap_ihda_data(
                 icon_info=window.session.require_repository().asset_icons(
@@ -428,12 +427,6 @@ class PanelBootstrap:
         window.views.inside.doubleClicked.connect(inside_page.double_clicked)
         window.actionNode_Synchronization.triggered.connect(
             window.callbacks._slot_selection_node_sync
-        )
-        window.actionDefault.triggered.connect(
-            lambda: window.presentation._set_theme(theme=Name.default_theme)
-        )
-        window.actionDark_blue.triggered.connect(
-            lambda: window.presentation._set_theme(theme=Name.darkblue_theme)
         )
         window.actionHelp.triggered.connect(window.presentation._slot_help)
         window.actionOpen_Log_Folder = QtGui.QAction(

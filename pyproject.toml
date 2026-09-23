@@ -42,5 +42,5 @@ exclude = ["_rc\\.py$"]
 
 # Generated resource modules are never type-checked; Python layouts are maintained code.
 [[tool.mypy.overrides]]
-module = ["icons_rc", "libs.darkstyle_rc", "widgets.detail_view.detail_view_rc", "widgets.make_video_info.icons_rc", "widgets.preference.preference_icons_rc", "widgets.rename_ihda.rename_ihda_icons_rc", "widgets.video_player.video_player_icons_rc", "widgets.web_view.web_view_icons_rc"]
+module = ["icons_rc", "widgets.detail_view.detail_view_rc", "widgets.make_video_info.icons_rc", "widgets.preference.preference_icons_rc", "widgets.rename_ihda.rename_ihda_icons_rc", "widgets.video_player.video_player_icons_rc", "widgets.web_view.web_view_icons_rc"]
 ignore_errors = true

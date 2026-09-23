@@ -2,6 +2,12 @@
 
 ## 2.3.0 — modern editing, modern views and dialogs that tell you things
 
+- **One theme: Houdini's.** The "Dark blue" option applied a 2019
+  QDarkStyleSheet over the panel. It knew none of the widgets added since, and
+  it looked nothing like the host around it. The Theme menu, the stylesheet
+  resource and its saved setting are gone; the panel follows Houdini's
+  stylesheet and palette, which is where every colour added this release comes
+  from anyway.
 - **A long task is visible, and a wrong value is caught while you type.**
   Library Tools and Version details drew an indeterminate bar while a scan,
   backup or restore runs, instead of only greying the tabs. The rename dialog

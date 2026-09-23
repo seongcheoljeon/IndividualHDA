@@ -146,11 +146,9 @@ def main() -> None:
         from main import IndividualHDA
 
         panel = IndividualHDA()
-        import public
 
-        panel.presentation._set_theme(public.Name.darkblue_theme)
-        assert panel.styleSheet()
-        panel.presentation._set_theme(public.Name.default_theme)
+        panel._ui_settings.apply_host_style()
+        assert panel.styleSheet()  # Houdini's own sheet plus the panel's rules
         from widgets.library_manager.dialog import LibraryManager
 
         manager = LibraryManager(

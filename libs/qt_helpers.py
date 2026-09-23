@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 from functools import cache
-from importlib import import_module
 from pathlib import Path
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -74,19 +73,6 @@ def startup_fallback(error: BaseException, log_dir: Path) -> QtWidgets.QWidget:
     layout.addLayout(buttons)
     layout.addStretch(1)
     return widget
-
-
-def dark_stylesheet() -> str:
-    # Resource registration is an intentional import side effect. Keep it here
-    # so direct callers and first-time theme switches work without other imports.
-    import_module("libs.darkstyle_rc")
-    resource = QtCore.QFile(":/qdarkstyle/style.qss")
-    if not resource.open(QtCore.QIODevice.OpenModeFlag.ReadOnly):
-        raise RuntimeError("Bundled dark stylesheet is unavailable")
-    try:
-        return bytes(resource.readAll().data()).decode("utf-8")
-    finally:
-        resource.close()
 
 
 def install_bundled_fonts() -> frozenset[str]:

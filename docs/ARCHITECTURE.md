@@ -372,8 +372,8 @@ Shared predicates are in `model/proxy_filters.py`. Tree descendant propagation
 uses Qt's recursive filtering; record/file constraints must match the same row.
 Selection uses explicit source/proxy mapping. Model mutations must emit the
 appropriate structural/data notifications before dependent proxies are read.
-Dark resources are registered by `libs.qt_helpers.dark_stylesheet()` itself, and
-default theme overrides are combined with Houdini's stylesheet on the panel only.
+The panel follows Houdini's own stylesheet and palette; `UISettings.apply_host_style()`
+adds hover and toolbar rules derived from the palette, on the panel only.
 
 ## Service boundaries
 

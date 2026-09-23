@@ -510,9 +510,6 @@ class PanelPresentation:
             level="warning",
         )
 
-    def _set_theme(self, theme: str = "Default") -> None:
-        self.bindings.ui_settings.set_theme(theme=theme)
-
     def _slot_about(self) -> None:
         from widgets.about_dialog import AboutDialog
 

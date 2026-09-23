@@ -216,8 +216,6 @@ class Name:
     chk_sync_network_cate: Final = "chk_sync_network_cate"
     chk_sync_node: Final = "chk_sync_node"
     chk_note_to_sticky: Final = "chk_note_to_sticky"
-    chk_action_default: Final = "chk_action_default"
-    chk_action_darkblue: Final = "chk_action_darkblue"
     chk_action_null: Final = "chk_action_null"
     chk_action_input: Final = "chk_action_input"
     chk_action_output: Final = "chk_action_output"
@@ -248,8 +246,6 @@ class Name:
     houdini_name: Final = "houdini"
     houdinifx_name: Final = "houdinifx"
     # theme (toolbar에 등록된 디스플레이 이름이랑 똑같아야 한다)
-    default_theme: Final = "Default"
-    darkblue_theme: Final = "Dark blue"
     # ######################### #
 
     class Icons:

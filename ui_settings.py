@@ -19,7 +19,7 @@ from PySide6 import QtCore
 
 from libs import host, keys, paths
 from libs.houdini_api import HoudiniAPI
-from libs.qt_helpers import center_on_screen, dark_stylesheet
+from libs.qt_helpers import center_on_screen
 from libs.settings_store import apply_settings, load_json, save_json
 
 
@@ -41,31 +41,24 @@ class UISettings:
     def zoom_val(self, val: Any) -> None:
         self.__zoom_val = val
 
-    @property
-    def get_theme(self) -> str:
-        is_default = self.__cfg_dict.get(keys.Name.chk_action_default)
-        if is_default is None:
-            return keys.Name.default_theme
-        if is_default:
-            return keys.Name.default_theme
-        return keys.Name.darkblue_theme
+    def apply_host_style(self) -> None:
+        """Follow Houdini's own stylesheet and palette; the panel adds no theme.
 
-    def set_theme(self, theme: str = "Default") -> None:
-        if theme == keys.Name.default_theme:
-            self.__window.actionDefault.setChecked(True)
-            self.__window.actionDark_blue.setChecked(False)
-            if host.IS_HOUDINI:
-                self.__window.setProperty("houdiniStyle", True)
-                # Hover/checked colours follow the host palette (Houdini's
-                # highlight is orange, so the look is unchanged there) instead
-                # of a hard-coded orange that clashed with other palettes.
-                highlight = self.__window.palette().highlight().color()
-                hover = (
-                    f"rgba({highlight.red()}, {highlight.green()},"
-                    f" {highlight.blue()}, 85)"
-                )
-                border = highlight.darker(125).name()
-                add_style = f"""
+        A second theme used to ship as a 2019 QDarkStyleSheet resource, which
+        neither knew the widgets added since nor matched the host around the
+        panel. Colour now comes from the palette wherever the panel draws.
+        """
+        if host.IS_HOUDINI:
+            self.__window.setProperty("houdiniStyle", True)
+            # Hover/checked colours follow the host palette (Houdini's
+            # highlight is orange, so the look is unchanged there) instead
+            # of a hard-coded orange that clashed with other palettes.
+            highlight = self.__window.palette().highlight().color()
+            hover = (
+                f"rgba({highlight.red()}, {highlight.green()}, {highlight.blue()}, 85)"
+            )
+            border = highlight.darker(125).name()
+            add_style = f"""
 QToolButton:pressed {{
     background-color: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
         stop: 0 #dadbde, stop: 1 #f6f7fa);
@@ -93,17 +86,11 @@ QToolBar {{
 QMenuBar {{
     border-style: none;
 }}
-                """
-                self.__window.setStyleSheet(
-                    HoudiniAPI.host_stylesheet() + "\n" + add_style
-                )
-            else:
-                self.__window.setStyleSheet("")
+            """
+            self.__window.setStyleSheet(HoudiniAPI.host_stylesheet() + "\n" + add_style)
         else:
-            self.__window.setProperty("houdiniStyle", False)
-            self.__window.actionDefault.setChecked(False)
-            self.__window.actionDark_blue.setChecked(True)
-            self.__window.setStyleSheet(dark_stylesheet())
+            self.__window.setProperty("houdiniStyle", True)
+            self.__window.setStyleSheet("")
 
     def save_cfg_dict_to_file(self) -> None:
         # checkbox
@@ -127,12 +114,6 @@ QMenuBar {{
         #
         self.__cfg_dict[keys.Name.chk_note_to_sticky] = (
             self.__window.actionSticky_Note.isChecked()
-        )
-        self.__cfg_dict[keys.Name.chk_action_default] = (
-            self.__window.actionDefault.isChecked()
-        )
-        self.__cfg_dict[keys.Name.chk_action_darkblue] = (
-            self.__window.actionDark_blue.isChecked()
         )
         self.__cfg_dict[keys.Name.chk_action_comment] = (
             self.__window.actionComment.isChecked()
@@ -317,8 +298,6 @@ QMenuBar {{
                 ),
                 (names.chk_sync_node, w.actionNode_Synchronization.setChecked),
                 (names.chk_note_to_sticky, w.actionSticky_Note.setChecked),
-                (names.chk_action_default, w.actionDefault.setChecked),
-                (names.chk_action_darkblue, w.actionDark_blue.setChecked),
                 (names.chk_action_comment, w.actionComment.setChecked),
                 (names.chk_action_null, w.actionNull.setChecked),
                 (names.chk_action_input, w.actionInput.setChecked),

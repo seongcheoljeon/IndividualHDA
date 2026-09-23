@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
@@ -139,22 +138,13 @@ def test_category_descendant_and_ancestor_search(app: Any) -> None:
     assert proxy.rowCount(proxy.index(0, 0, proxy.index(0, 0))) == 2
 
 
-def test_dark_resources_and_host_theme_roundtrip(
+def test_the_panel_follows_the_host_stylesheet(
     app: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    import public
+    """One theme: Houdini's. The hover rules are derived from its palette."""
     import ui_settings
-    from libs.qt_helpers import dark_stylesheet
 
-    sheet = dark_stylesheet()
-    urls = re.findall(r"url\([\s\"\']*(:/[^)\s\"\']+)", sheet)
-    assert urls
-    assert all(QtCore.QFile.exists(url) for url in urls)
     window = QtWidgets.QWidget()
-    window.actionDefault = QtGui.QAction(window)
-    window.actionDefault.setCheckable(True)
-    window.actionDark_blue = QtGui.QAction(window)
-    window.actionDark_blue.setCheckable(True)
     settings = ui_settings.UISettings(window)
     from libs import host
     from libs.houdini import session
@@ -166,13 +156,12 @@ def test_dark_resources_and_host_theme_roundtrip(
         monkeypatch.setattr(module, "IS_HOUDINI", True)
         monkeypatch.setattr(module, "hou", fake_hou, raising=False)
     original = app.styleSheet()
-    for _ in range(2):
-        settings.set_theme(public.Name.darkblue_theme)
-        assert window.styleSheet() == sheet and window.property("houdiniStyle") is False
-        settings.set_theme(public.Name.default_theme)
-        assert "#abcdef" in window.styleSheet() and "QToolBar" in window.styleSheet()
-        assert window.property("houdiniStyle") is True
-    assert app.styleSheet() == original
+    settings.apply_host_style()
+    assert "#abcdef" in window.styleSheet() and "QToolBar" in window.styleSheet()
+    assert window.property("houdiniStyle") is True
+    highlight = window.palette().highlight().color()
+    assert f"{highlight.red()}, {highlight.green()}" in window.styleSheet()
+    assert app.styleSheet() == original  # the host application is never restyled
     window.close()
 
 
