@@ -123,15 +123,19 @@ class IHDAIcons:
     ) -> None:
         self.__pixmap_hist_thumbnail_data.set_path(hist_id, thumb_filepath)
 
+    # A re-capture writes the same filename with new pixels, so these two ask
+    # for the reread that set_path otherwise skips.
     def update_pixmap_thumbnail_data(
         self, hkey_id: int, thumb_filepath: pathlib.Path
     ) -> None:
-        self.__pixmap_thumbnail_data.set_path(hkey_id, thumb_filepath)
+        self.__pixmap_thumbnail_data.set_path(hkey_id, thumb_filepath, refresh=True)
 
     def update_pixmap_hist_thumbnail_data(
         self, hist_id: int, thumb_filepath: pathlib.Path
     ) -> None:
-        self.__pixmap_hist_thumbnail_data.set_path(hist_id, thumb_filepath)
+        self.__pixmap_hist_thumbnail_data.set_path(
+            hist_id, thumb_filepath, refresh=True
+        )
 
     def shutdown(self) -> None:
         self.__pixmap_thumbnail_data.shutdown()
@@ -168,6 +172,10 @@ class IHDAIcons:
         self, all_data: Sequence[HistoryThumbnail | HistoryData] | None = None
     ) -> None:
         for data in all_data or []:
+            # Callers may hand over merged history rows: an activity row owns no
+            # thumbnail and they all share hist_id 0, which would clobber it.
+            if not getattr(data, "is_version", True):
+                continue
             directory, filename = data.thumb_dirpath, data.thumb_filename
             self.__pixmap_hist_thumbnail_data.set_path(
                 data.hist_id,

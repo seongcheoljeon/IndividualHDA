@@ -133,8 +133,25 @@ class ThumbnailCache(QtCore.QObject):
         self._bytes = 0
 
     def set_path(
-        self, key: int, path: Path | None, resolve: Callable[[], Path] | None = None
+        self,
+        key: int,
+        path: Path | None,
+        resolve: Callable[[], Path] | None = None,
+        *,
+        refresh: bool = False,
     ) -> None:
+        """Point ``key`` at ``path``; registering the same path again is free.
+
+        Every library reload re-registers every row. Dropping the decoded pixmap
+        each time made the whole view fall back to the placeholder and re-decode,
+        two workers at a time, so making a video emptied the thumbnails of rows
+        that had not changed at all. The team cache addresses its files by
+        digest, so an equal path means equal bytes and the resolver need not be
+        compared. ``refresh`` forces the reread for a file written in place,
+        which is what re-capturing a thumbnail does.
+        """
+        if not refresh and key in self._versions and self._paths.get(key) == path:
+            return
         self.__delitem__(key)
         self._generation += 1
         self._versions[key] = self._generation

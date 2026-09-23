@@ -95,12 +95,11 @@ def activity_title(event: Mapping[str, Any]) -> str | None:
     return None
 
 
-def activity_comment(event: Mapping[str, Any]) -> tuple[str, str] | None:
-    """(kind, comment) for a row the panel shows; None for everything else."""
-    title = activity_title(event)
-    if title is None:
+def activity_kind(event: Mapping[str, Any]) -> str | None:
+    """ "rename" | "video" for a row the panel shows; None for everything else."""
+    if activity_title(event) is None:
         return None
-    return ("rename" if rename_names(event) is not None else "video"), title
+    return "rename" if rename_names(event) is not None else "video"
 
 
 def activity_rows(
@@ -127,17 +126,16 @@ def activity_rows(
             and item.get("request_id") in rename_requests
         ):
             continue
-        shown = activity_comment(item)
-        if shown is None:
+        kind = activity_kind(item)
+        if kind is None:
             continue
-        kind, comment = shown
         rows.append(
             HistoryData(
                 kind=kind,
+                activity=activity_title(item) or "",
                 hda_id=int(item["hda_id"]),
                 org_hda_name=item.get("org_hda_name") or "",
                 version="",
-                comment=comment,
                 reg_time=local_time(item.get("occurred_at")),
                 userid=item.get("actor") or "",
                 node_category=item.get("node_category") or "",

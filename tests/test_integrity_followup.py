@@ -233,11 +233,14 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
         _remove_preview_dir=lambda **kwargs: True,
         loading_close=lambda: None,
     )
+    refreshed: list[bool] = []
     owner.bindings = SimpleNamespace(
         models=SimpleNamespace(assets=store),
         selection=SimpleNamespace(state=selection),
         session=SimpleNamespace(
-            repository=repository, require_repository=lambda: repository
+            repository=repository,
+            require_repository=lambda: repository,
+            actions=SimpleNamespace(refresh=lambda: refreshed.append(True)),
         ),
         queries=SimpleNamespace(change_hda_data=owner.change_hda_data),
         presentation=SimpleNamespace(loading_close=lambda: None),
@@ -247,6 +250,8 @@ def test_video_completion_uses_encoded_asset_when_selection_changes(
     )
     assert rows == [0, 0]
     assert history == []  # Preview changes do not create synthetic HDA versions.
+    # The audit row the write adds is read back at once, not a poll later.
+    assert refreshed == [True]
     assert stored == [(1, tmp_path, "encoded.mp4", "1.0")]
 
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from PySide6 import QtTest
+from PySide6 import QtGui, QtTest
 from support.personal import payload
 
 import public
@@ -66,6 +66,19 @@ def test_reload_and_revision_poll_follow_external_changes(
     assert panel.comboBox__hist_ihda_node.currentData() == -1
     assert panel.comboBox__hist_ihda_node.count() == 3
     assert panel.models.history_model.rowCount() == 2
+
+    # A reload re-registers every thumbnail. It used to drop the decoded pixmap
+    # with it, so making a video emptied the pictures of rows nothing touched.
+    cache = panel._ihda_icons.pixmap_hist_thumbnail_data
+    hist_id = panel.models.history_model.index(0, 0).data(
+        panel.models.history_model.hist_id_role
+    )
+    kept = QtGui.QPixmap(4, 4)
+    kept.fill(QtGui.QColor("#00ff00"))
+    cache._cache[hist_id] = kept
+    panel.reload_library()
+    wait_sync(app, panel)
+    assert cache.get(hist_id) is kept
 
     # History filters: the date filter starts on the last month, so entries
     # registered today stay visible; Clear filters undoes everything at once.

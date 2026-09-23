@@ -107,10 +107,13 @@ def test_activity_rows_are_local_time_non_version_rows() -> None:
         remote=True,
         library_id="team-1",
     )
-    assert [row.comment for row in rows] == [
+    # The event is its own field; the Comment column belongs to the author of
+    # the version and an activity row has none.
+    assert [row.activity for row in rows] == [
         'Renamed "fire_presets1" → "preset_tmp"',
         "Video attached",
     ]
+    assert all(row.comment is None for row in rows)
     assert [row.kind for row in rows] == ["rename", "video"]
     expected = datetime.fromisoformat(stamp).astimezone()
     assert rows[0].reg_time == expected.strftime(keys.Value.datetime_fmt_str)
@@ -141,7 +144,7 @@ def test_activity_rows_drop_the_video_move_that_accompanies_a_rename() -> None:
             {**PERSONAL_CATEGORY_ONLY, **shared, "request_id": "req-3"},
         ]
     )
-    assert [row.comment for row in rows] == [
+    assert [row.activity for row in rows] == [
         'Renamed "fire_presets1" → "preset_tmp"',
         "Video replaced",
     ]

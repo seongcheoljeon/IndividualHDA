@@ -192,11 +192,12 @@ def test_activity_rows_come_from_audit_events_not_history(tmp_path: Path) -> Non
     repo.rename_asset(plan)
 
     rows = repo.activity("tester")
-    assert [row.comment for row in rows] == [
+    assert [row.activity for row in rows] == [
         "Video attached",
         "Video replaced",
         'Renamed "Water" → "Ocean"',
     ]
+    assert all(row.comment is None for row in rows)
     assert all(not row.is_version and row.hist_id == 0 for row in rows)
     assert {row.userid for row in rows} == {"tester"}
     assert {row.org_hda_name for row in rows} == {"Ocean"}

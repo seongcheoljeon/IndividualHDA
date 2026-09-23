@@ -69,6 +69,9 @@ class HistoryData:
     # "version" is a real hda_history row; "rename"/"video" rows come from
     # audit events and own no files, so the panel neither opens nor deletes them.
     kind: str = "version"
+    # What happened, in words, for a row that is not a version. The Comment
+    # column holds the description its author typed and nothing else.
+    activity: str = ""
     available: bool = True
     hist_id: int = 0
     hda_id: int

@@ -289,8 +289,10 @@ class PanelMediaActions:
         self.bindings.queries.change_hda_data(
             row=row, key=keys.Key.video_filename, val=video_filename
         )
-        # history
-        # Media changes update the current version and its audit trail.
+        # The write also updates the current version and adds an audit row, and
+        # the revision poller would show them a sync interval later. Read now,
+        # so the History tab agrees with what just happened.
+        self.bindings.session.actions.refresh()
 
     def _make_preview(
         self,

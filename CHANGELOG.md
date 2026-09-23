@@ -2,6 +2,17 @@
 
 ## 2.4.0 — dialogs that answer, tables that match, one theme
 
+- **Making a video no longer empties the thumbnails.** Every library reload
+  re-registers each row's thumbnail, and the cache threw the decoded picture
+  away each time, so the whole history fell back to "no image available" and
+  re-decoded two rows at a time. Saving a video triggers a reload, which is why
+  it looked like the pictures were lost. Registering the same file again is now
+  free; re-capturing a thumbnail still rereads it. The history also refreshes
+  as soon as the video is stored instead of at the next poll.
+- **Activity rows are events, not half-empty versions.** A rename or a video
+  change wrote its sentence into the Comment column, which belongs to whoever
+  described the version, and showed no picture at all. The event now carries
+  its own field and its own icon, and the Comment column is left alone.
 - **The panel starts on the History page again.** Closing the panel there and
   reopening it failed to start: the asset list, the asset table and the history
   table share one click handler, and it read the roles of whichever page was on

@@ -8,6 +8,7 @@ from typing import Any
 from PySide6 import QtCore, QtGui, QtWidgets
 from test_models import asset
 
+import icons_rc  # noqa: F401 (the event icons live in this resource)
 from model.ihda_list_model import ListModel
 from widgets.item_delegates import CardDelegate, star_rect
 from widgets.ui_tokens import FAVORITE_COLOR
@@ -180,8 +181,18 @@ def test_row_delegate_paints_versions_activity_and_the_star(app: Any) -> None:
         hist_rows, option_for(rect), model.index(1, HistoryColumn.NAME)
     )
     assert painted(version_cell) > 0 and painted(activity_cell) > 0
-    # Only the version row carries a thumbnail; the activity row starts with a dot.
-    assert activity_cell.pixelColor(7, rect.center().y()).alpha() > 0
+
+    def leading_image(image: QtGui.QImage) -> int:
+        """Opaque pixels in the strip where the row's image is drawn."""
+        return sum(
+            1
+            for x in range(0, 30)
+            for y in range(image.height())
+            if image.pixelColor(x, y).alpha()
+        )
+
+    # Both rows lead with a picture: the version its thumbnail, the event an icon.
+    assert leading_image(version_cell) > 0 and leading_image(activity_cell) > 0
 
 
 def test_category_counts_come_from_the_store_and_draw_as_a_badge(app: Any) -> None:
@@ -329,8 +340,8 @@ def test_version_pills_are_accented_and_tables_drop_grid_and_row_numbers(
         view.deleteLater()
 
 
-def test_activity_rows_say_what_happened_under_the_asset_name(app: Any) -> None:
-    """The event used to be legible only in a clipped Comment column."""
+def test_activity_rows_look_like_events_not_like_broken_versions(app: Any) -> None:
+    """The event used to borrow the Comment column and show no image at all."""
     from libs.asset_contracts import HistoryData
     from libs.model_columns import HistoryColumn
     from model.ihda_history_model import HistoryModel
@@ -338,24 +349,37 @@ def test_activity_rows_say_what_happened_under_the_asset_name(app: Any) -> None:
 
     activity = HistoryData(
         kind="video",
+        activity="Video attached",
         hist_id=0,
         hda_id=1,
         org_hda_name="Lava",
         version="",
-        comment="Video attached",
         node_category="sop",
     )
     model = HistoryModel(items=[activity])
+    # The Comment column stays empty: it holds what a version's author wrote.
+    assert model.index(0, HistoryColumn.COMMENT).data(
+        QtCore.Qt.ItemDataRole.DisplayRole
+    ) in (None, "")
+    assert model.index(0, HistoryColumn.NAME).data(HistoryModel.activity_role) == (
+        "Video attached"
+    )
+    # An event carries its own icon where a version keeps its thumbnail.
+    icon = model.index(0, HistoryColumn.NAME).data(
+        QtCore.Qt.ItemDataRole.DecorationRole
+    )
+    assert isinstance(icon, QtGui.QPixmap) and not icon.isNull()
+
     rows = RowDelegate(
         None,
         data_role=HistoryModel.data_role,
         name_column=HistoryColumn.NAME,
         secondary_column=HistoryColumn.DEFINITION,
         version_column=HistoryColumn.VERSION,
-        activity_column=HistoryColumn.COMMENT,
+        activity_role=HistoryModel.activity_role,
     )
     rect = QtCore.QRect(0, 0, 240, max(46, two_line_row_height(QtGui.QFont())))
-    name_cell = render(rows, option_for(rect), model.index(0, HistoryColumn.NAME))
+    cell = render(rows, option_for(rect), model.index(0, HistoryColumn.NAME))
     without = RowDelegate(
         None,
         data_role=HistoryModel.data_role,
@@ -373,8 +397,7 @@ def test_activity_rows_say_what_happened_under_the_asset_name(app: Any) -> None:
             if image.pixelColor(x, y).alpha()
         )
 
-    # Without the column the cell holds one centred line; with it, a second one.
-    assert lower_half(name_cell) > lower_half(one_line)
+    assert lower_half(cell) > lower_half(one_line)  # the asset name's line
     # A row too short for two lines keeps the event, which is the news.
     short = QtCore.QRect(0, 0, 240, 18)
     assert painted(render(rows, option_for(short), model.index(0, 1))) > 0
@@ -383,8 +406,3 @@ def test_activity_rows_say_what_happened_under_the_asset_name(app: Any) -> None:
         assert (
             model.index(0, column).data(QtCore.Qt.ItemDataRole.DecorationRole) is None
         )
-    # The category is real, so its icon stays.
-    assert (
-        model.index(0, HistoryColumn.CATEGORY).data(QtCore.Qt.ItemDataRole.DisplayRole)
-        == "sop"
-    )

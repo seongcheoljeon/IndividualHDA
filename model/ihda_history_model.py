@@ -12,6 +12,7 @@ from libs.asset_contracts import HistoryData, numbered
 from libs.item_paths import item_path
 from libs.model_columns import HistoryColumn
 from libs.path_updates import PathMoves, relocate_history
+from libs.ui_icons import Icon
 from model.item_media import PixmapSource, thumbnail
 
 # author            : SeongCheol Jeon
@@ -41,6 +42,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
     tag_role = QtCore.Qt.ItemDataRole.UserRole + 9
     type_role = QtCore.Qt.ItemDataRole.UserRole + 10
     datetime_role = QtCore.Qt.ItemDataRole.UserRole + 11
+    activity_role = QtCore.Qt.ItemDataRole.UserRole + 12
 
     def __init__(
         self,
@@ -146,7 +148,17 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
             other_icon_size = self.__icon_size * 0.7
             if column == self.__hda_name_column:
                 if not data.is_version:
-                    return None
+                    # An event has no thumbnail of its own; it says what it is.
+                    icon = (
+                        Icon.IC_MOVIE_WHITE
+                        if data.kind == "video"
+                        else Icon.IC_BORDER_COLOR_WHITE
+                    )
+                    edge = int(self.__icon_size * 0.8)
+                    return QtGui.QPixmap(icon).scaled(
+                        QtCore.QSize(edge, edge),
+                        QtCore.Qt.AspectRatioMode.KeepAspectRatio,
+                    )
                 return thumbnail(
                     self.__pixmap_hist_thumb_data,
                     data.hist_id,
@@ -249,6 +261,12 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
             return data.tags
         elif role == HistoryModel.type_role:
             return data.node_type_name
+        elif role == QtCore.Qt.ItemDataRole.ToolTipRole:
+            if data.activity and column == self.__hda_name_column:
+                return data.activity
+            return None
+        elif role == HistoryModel.activity_role:
+            return data.activity
         elif role == HistoryModel.datetime_role:
             return data.reg_time
 

@@ -249,7 +249,7 @@ class PanelBootstrap:
                 name_column=HistoryColumn.NAME,
                 secondary_column=HistoryColumn.DEFINITION,
                 version_column=HistoryColumn.VERSION,
-                activity_column=HistoryColumn.COMMENT,
+                activity_role=HistoryModel.activity_role,
             )
         )
         for view in (window.views.assets_table, window.views.history):

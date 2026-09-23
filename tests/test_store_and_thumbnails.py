@@ -121,3 +121,49 @@ def test_scaled_thumbnails_are_memoised_and_follow_the_decode(
     ) is placeholder(20)
     assert thumbnail(cache, 1, 24) is cache.scaled(1, 24)
     cache.shutdown()
+
+
+def test_registering_the_same_file_again_keeps_the_decoded_image(
+    app: Any, tmp_path: Path
+) -> None:
+    """A reload re-registers every row; it used to empty the view each time."""
+    image = QtGui.QImage(16, 16, QtGui.QImage.Format_RGB32)
+    image.fill(QtCore.Qt.red)
+    path = tmp_path / "thumb.png"
+    assert image.save(str(path))
+    fallback = QtGui.QPixmap(8, 8)
+    cache = ThumbnailCache(fallback, capacity=4)
+    try:
+        cache.set_path(1, path)
+        cache.get(1)
+        deadline = time.monotonic() + 5
+        while cache.pending_count and time.monotonic() < deadline:
+            app.processEvents()
+            time.sleep(0.005)
+        decoded = cache.get(1)
+        assert decoded is not fallback
+
+        changed: list[int] = []
+        cache.changed.connect(changed.append)
+        cache.set_path(1, path)  # what every library reload does
+        assert changed == []  # nothing to repaint, nothing to decode again
+        assert cache.get(1) is decoded
+
+        # A re-capture writes the same name with new pixels and must be read.
+        cache.set_path(1, path, refresh=True)
+        assert changed == [1]
+        assert cache.get(1) is fallback  # until the worker delivers
+        while cache.pending_count and time.monotonic() < deadline + 5:
+            app.processEvents()
+            time.sleep(0.005)
+        assert cache.get(1) is not fallback
+
+        # Losing the file is a change, so the pixmap goes.
+        cache.set_path(1, None)
+        assert cache.get(1) is fallback
+        quiet = len(changed)
+        cache.set_path(1, None)  # still nothing there; still no work
+        assert len(changed) == quiet
+    finally:
+        cache.shutdown()
+        app.processEvents()
