@@ -308,9 +308,23 @@ class PanelBootstrap:
         window.views.record.customContextMenuRequested.connect(
             window.menus._build_context_record_menu
         )
-        window.views.record.selectionModel().selectionChanged.connect(
-            window.selection._slot_selected_record
-        )
+
+        # The scene-record count follows the rows instead of every mutation
+        # remembering to set it: an import used to leave the number behind.
+        def record_count() -> None:
+            window.label__loc_record_count.setText(
+                str(window.models.record_proxy_model.get_row_count())
+            )
+
+        record_proxy = window.models.record_proxy_model
+        for signal in (
+            record_proxy.modelReset,
+            record_proxy.layoutChanged,
+            record_proxy.rowsInserted,
+            record_proxy.rowsRemoved,
+        ):
+            signal.connect(record_count)
+        record_count()
         window.views.inside.customContextMenuRequested.connect(
             window.menus._build_context_inside_menu
         )

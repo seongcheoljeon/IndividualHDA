@@ -2,6 +2,14 @@
 
 ## 2.4.0 — dialogs that answer, tables that match, one theme
 
+- **The Record tab keeps up.** Reload re-read every view except the scene
+  records, which were read once when the panel opened, so imports made by
+  another panel never appeared. The library snapshot carries them now. The
+  count beside the tree follows the rows instead of each mutation remembering
+  to set it, which is why an import left it behind. Deleting a folder or HIP
+  row says how many records go, Go To Network says when the node is not in the
+  scene that is open, and the current-scene filter no longer throws outside
+  Houdini.
 - **One theme: Houdini's.** The "Dark blue" option applied a 2019
   QDarkStyleSheet over the panel. It knew none of the widgets added since, and
   it looked nothing like the host around it. The Theme menu, the stylesheet

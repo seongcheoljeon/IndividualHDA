@@ -158,9 +158,13 @@ class PanelLibrarySync:
         repository, owner = self.bindings.session.repository, self.bindings.session.user
         if repository is None:
             return None
+        # Read on the worker with the rest of the library, so a Reload shows the
+        # records another panel wrote instead of the ones read at startup.
+        records = getattr(repository, "scene_records", None)
 
         def snapshot() -> LibrarySnapshot:
             return LibrarySnapshot(
+                scene_records=tuple(records()) if callable(records) else (),
                 revision=repository.revision(),
                 assets=tuple(repository.list_assets(owner=owner)),
                 categories=tuple(repository.categories(owner=owner)),
@@ -189,6 +193,7 @@ class PanelLibrarySync:
         categories = list(snapshot.categories)
         histories = list(snapshot.histories)
         icons = snapshot.icons
+        records = snapshot.scene_records
         hist_thumbs = snapshot.history_thumbnails
         self.presenter.accept(snapshot)
         self.bindings.selection.presenter.restore(rows, histories)
@@ -223,6 +228,8 @@ class PanelLibrarySync:
         self.bindings.models.category_model.reload()
         self.bindings.views.category.expandAll()
         self.bindings.models.history_model.reload(histories)
+        self.bindings.models.record_model.replace_record_data(records)
+        self.bindings.views.record.expandAll()
         self.bindings.selection.default_set_hist_ihda_combobox()
         for row in rows:
             self.bindings.selection.set_hist_ihda_to_combobox(

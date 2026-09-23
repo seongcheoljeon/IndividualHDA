@@ -166,7 +166,6 @@ class PanelAssetManagement:
                 restore(index)
 
         restore(QtCore.QModelIndex())
-        self.bindings.ui.label__loc_record_count.setText(str(proxy.get_row_count()))
         removed = len(result.deleted)
         self.bindings.notifications.notify(
             f"Removed {removed} stale scene record{'s' if removed != 1 else ''}."
@@ -478,13 +477,21 @@ class PanelAssetManagement:
         if repository is None or not self.bindings.library().supports_scene_records:
             return
         identities = self.bindings.models.record_model.selected_record_ids(index)
+        if not identities:
+            return
         record_data_name = index.data(QtCore.Qt.ItemDataRole.DisplayRole)
+        # A folder or a HIP row stands for every record beneath it.
+        count = len(identities)
         if not confirm(
             self.bindings.parent,
             title="Remove iHDA Record Information",
-            question=f'Remove the record for "{record_data_name}"?',
-            detail="The scene and the asset files are not touched.",
-            accept="Remove record",
+            question=(
+                f'Remove the record for "{record_data_name}"?'
+                if count == 1
+                else f'Remove the {count} records under "{record_data_name}"?'
+            ),
+            detail="The scenes and the asset files are not touched.",
+            accept="Remove record" if count == 1 else f"Remove {count} records",
             destructive=True,
             font=self.bindings.presentation.get_default_font(),
         ):
@@ -649,9 +656,6 @@ class PanelAssetManagement:
         )
         self.bindings.ui.label__cate_count.setText(
             str(self.bindings.models.get_category_count())
-        )
-        self.bindings.ui.label__loc_record_count.setText(
-            str(self.bindings.models.record_proxy_model.get_row_count())
         )
         self.bindings.notifications.notify(
             f'"{name}" moved to Trash',

@@ -337,10 +337,13 @@ class PanelSelection:
         self.state.clear_asset()
 
     def _slot_record_only_curt_filter(self, *args: Any) -> None:
+        hip_filepath = None
         if self.bindings.ui.checkBox__record_only_current_hipfile.isChecked():
-            hip_filepath = houdini_api.HoudiniAPI.current_hipfile()
-        else:
-            hip_filepath = None
+            # Outside Houdini there is no open scene to compare against; the
+            # unguarded call raised inside the slot and left the filter off.
+            hip_filepath = (
+                houdini_api.HoudiniAPI.current_hipfile() if host.IS_HOUDINI else None
+            )
         if self.bindings.ui.checkBox__record_only_current_ihda.isChecked():
             hda_id = self.state.asset.id
         else:
@@ -349,9 +352,6 @@ class PanelSelection:
             hda_id=hda_id, hip_filepath=hip_filepath
         )
         self.bindings.views.record.expandAll()
-        self.bindings.ui.label__loc_record_count.setText(
-            str(self.bindings.models.record_proxy_model.get_row_count())
-        )
 
     def _slot_thumbnails(self) -> None:
         if self.bindings.presentation.is_show_thumbnail:
@@ -375,17 +375,21 @@ class PanelSelection:
             self.bindings.ui.doubleSpinBox__zoom.value()
         )
 
-    @staticmethod
-    def go_to_houdini_node(node_path: str | None = None) -> None:
+    def go_to_houdini_node(self, node_path: str | None = None) -> None:
+        """Jump to a node, and say so when it is not in the scene that is open.
+
+        A scene record points into the scene it was imported into, so looking it
+        up from a different scene fails normally. That used to reach the log
+        only, which reads as a menu item that does nothing.
+        """
         if not host.IS_HOUDINI:
             return
         if node_path is None:
             return
         node = houdini_api.HoudiniAPI.find_node(node_path)
         if node is None:
-            log_handler.LogHandler.log_msg(
-                method=logging.warning,
-                msg=f'path "{node_path}" does not exist',
+            self.bindings.notifications.notify(
+                f'"{node_path}" is not in the scene that is open.', level="warning"
             )
             return
         if houdini_api.HoudiniAPI.is_root_network(node):
@@ -582,17 +586,6 @@ class PanelSelection:
         except AttributeError:
             # log_handler.LogHandler.log_msg(method=logging.warning, msg='search results do not exist')
             pass
-
-    def _slot_selected_record(self, *args: Any) -> None:
-        index = args[0]
-        try:
-            model_idx = index.indexes()
-            if not len(model_idx):
-                model_idx = index
-        except AttributeError:
-            model_idx = index
-        if isinstance(model_idx, (list, tuple)):
-            model_idx = model_idx[0]
 
     def _slot_stackedwidget_hda_infos(self) -> None:
         """Show the detail page whose navigation button is checked."""

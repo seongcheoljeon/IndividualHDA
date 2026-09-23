@@ -270,9 +270,6 @@ class PanelModelBinding:
         # self._ihda_record_view.setColumnWidth(0, 100)
         for column, width in RECORD_TREE_COLUMN_WIDTHS:
             self.bindings.views.record.header().resizeSection(column, width)
-        self.bindings.ui.label__loc_record_count.setText(
-            str(self.record_proxy_model.get_row_count())
-        )
 
     def _init_set_ihda_inside_model(self) -> None:
         font_size, font_style = self.bindings.presentation.get_font_properties(
@@ -367,9 +364,6 @@ class PanelModelBinding:
         casesensitivity = QtCore.Qt.CaseSensitivity.CaseInsensitive
         regexp = wildcard_expression(text.strip(), casesensitivity)
         self.record_proxy_model.setFilterRegularExpression(regexp)
-        self.bindings.ui.label__loc_record_count.setText(
-            str(self.record_proxy_model.get_row_count())
-        )
         self.bindings.views.record.expandAll()
 
     @QtCore.Slot(str)

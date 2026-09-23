@@ -180,3 +180,85 @@ def test_confirmation_uses_ids_captured_before_a_model_reset(
         r.record_id
         for r in panel.session.repository.scene_record_files(panel.session.user)
     } == set(identities[1:])
+
+
+def test_record_count_follows_the_rows_and_reload_rereads_the_records(
+    app: Any, mutation_panel: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The count used to stay behind an import, and Reload skipped the records."""
+    from libs.scene_contracts import SceneRecord
+
+    panel = mutation_panel
+    seed_records(panel, tmp_path)
+    proxy = panel.models.record_proxy_model
+    assert proxy.get_row_count() == 3
+    assert panel.label__loc_record_count.text() == "3"
+
+    asset = panel.session.repository.list_assets()[0]
+    fresh = SceneRecord(
+        record_id=999,
+        hda_id=asset.hda_id,
+        hip_filename="fresh.hip",
+        hip_dirpath=tmp_path,
+        hda_filename=asset.hda_filename,
+        hda_dirpath=asset.hda_dirpath,
+        parent_node_path="/obj",
+        node_name="fresh",
+        node_ver=asset.hda_version,
+    )
+    panel.models.add_record_item(data=fresh)  # what an import does
+    assert proxy.get_row_count() == 4 and panel.label__loc_record_count.text() == "4"
+
+    panel.models._search_filter_regexp_hda_record("fresh")
+    assert panel.label__loc_record_count.text() == "1"
+    panel.models._search_filter_regexp_hda_record("")
+
+    # A Reload carries the records, so another panel's imports show up.
+    snapshot = panel._library_sync.read_snapshot()()
+    assert {record.record_id for record in snapshot.scene_records} == {1, 2, 3}
+    panel._library_sync.show_snapshot(snapshot)
+    assert proxy.get_row_count() == 3  # the unsaved 999 is gone again
+    assert panel.label__loc_record_count.text() == "3"
+
+
+def test_removing_a_group_row_says_how_many_records_go(
+    app: Any, mutation_panel: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    panel = mutation_panel
+    seed_records(panel, tmp_path)
+    asked: list[str] = []
+    from widgets.panel import asset_management
+
+    monkeypatch.setattr(
+        asset_management,
+        "confirm",
+        lambda parent, **kwargs: asked.append(kwargs["question"]) or False,
+    )
+    proxy = panel.models.record_proxy_model
+    root = proxy.index(0, 0)
+    folder = proxy.index(0, 0, root)
+    assert len(panel.models.record_model.selected_record_ids(folder)) == 3
+    panel.management.remove_selected_record_item(index=folder)
+    assert asked and "3 records" in asked[0]
+    record = proxy.index(0, 0, proxy.index(0, 0, proxy.index(0, 0, folder)))
+    panel.management.remove_selected_record_item(index=record)
+    assert "the record for" in asked[-1] and "records under" not in asked[-1]
+    assert proxy.get_row_count() == 3  # nothing was removed; both were declined
+
+
+def test_going_to_a_node_that_is_not_in_the_open_scene_says_so(
+    app: Any, mutation_panel: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from libs import houdini_api
+    from widgets.panel import selection as selection_module
+
+    panel = mutation_panel
+    monkeypatch.setattr(selection_module.host, "IS_HOUDINI", True)
+    monkeypatch.setattr(
+        houdini_api.HoudiniAPI, "find_node", staticmethod(lambda p: None)
+    )
+    panel.selection.go_to_houdini_node(node_path="/obj/gone")
+    toasts = panel._toasts.toasts()
+    assert toasts and "not in the scene" in toasts[-1].message.text()
+    for toast in toasts:
+        toast.dismiss()

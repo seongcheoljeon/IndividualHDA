@@ -7,6 +7,8 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TypeVar
 
+from libs.scene_contracts import SceneRecord
+
 RowT = TypeVar("RowT", "AssetData", "HistoryData")
 
 
@@ -146,6 +148,8 @@ class LibrarySnapshot:
     histories: tuple[HistoryData, ...] = ()
     icons: tuple[AssetIcon, ...] = ()
     history_thumbnails: tuple[HistoryThumbnail, ...] = ()
+    # Empty for a library that keeps no scene records (the team one).
+    scene_records: tuple[SceneRecord, ...] = ()
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
