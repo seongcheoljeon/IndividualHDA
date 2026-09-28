@@ -10,7 +10,7 @@ python -m pytest -q
 ```
 
 - Linux Python 3.11 / PySide6 6.x (offscreen): the regression suite covers schema
-  upgrade, backup contents, migration rejection/rollback, quoted Unicode values,
+  version handling, backup contents, quoted Unicode values,
   normalized tags, transaction rollback, archive traversal, relocation, WAL
   snapshots, import rollback, Qt model notifications, drag payloads, search,
   process failure, cancellation, playlist behavior, settings atomicity, populated
@@ -21,7 +21,7 @@ python -m pytest -q
 - Windows Houdini 21.0.559 / Python 3.11.7 / Qt 6.5.3: `hython tests/houdini_smoke.py`
   creates a temporary SOP asset, exports and reimports it, verifies original node
   identity and absence of leaked wrapper output nodes, compares versions without
-  changing installed definitions, exercises SQLite/Unicode and legacy migration,
+  changing installed definitions, exercises SQLite/Unicode paths,
   and constructs/closes the panel and six-tab manager offscreen, including
   dark/default theme switching.
 - CI also runs the suite on Python 3.12. Whether Houdini 21 ships a Python 3.12
@@ -56,22 +56,14 @@ On each of Windows, macOS and Linux, using a disposable library and HIP:
 Native desktop behavior and macOS execution are not established by the local
 headless tests. The OS CI matrix is configured but has not been run from this workspace.
 
-## SQLite migration and backups
+## SQLite schema and backups
 
-The current schema version is `SCHEMA_VERSION = 4` in `libs/database_migrations.py`.
-The original tables, primary keys, asset IDs, version strings and local timestamp
-values remain across upgrades. Version steps: v1 indexes, trigger-maintained
-`asset_tags`, favorite/load-count validation and user-scoped category cleanup;
-v2 `operation_commits` for crash recovery and savepoint-based nested transactions;
-v3 user predicate on the category-cleanup trigger and synced tag index; v4 removal
-of redundant UNIQUE constraints, typed/constrained numeric columns (fractional FPS
-preserved, zero FPS rejected) and in-place legacy table rebuilds.
-
-An existing unversioned database is backed up next to itself as
-`ihda.db.pre-v<N>-<UTC timestamp>-<unique suffix>.bak` before migration. DDL, indexes,
-triggers and `user_version` advance in one transaction. Foreign-key violations
-abort the upgrade; newer unsupported schema versions are refused. Migration
-backups are not silently overwritten or deleted.
+The schema is declared once in `libs/database/schema.py` and stamped as
+`SCHEMA_VERSION` in `PRAGMA user_version`. A file at another version is not
+upgraded: it is backed up next to itself as
+`ihda.db.pre-v<N>-<UTC timestamp>.bak`, emptied and given the current schema in one
+transaction. Files from a newer build are refused. Backups are never silently
+overwritten or deleted.
 
 The default journal mode is retained for compatibility. Connections enable foreign
 keys and a five-second busy timeout. Each background operation opens and closes its
@@ -86,7 +78,7 @@ Use the old app for a true downgrade; this app upgrades older versions on reopen
 Extraction occurs in a unique staging directory on the destination filesystem.
 Absolute/traversal/Windows drive paths, symlinks and duplicate case-folded names
 are rejected. A manifest records the original asset root; legacy archives derive
-it from their stored asset paths. The staged database is migrated and checked
+it from their stored asset paths. The staged database must be at the current schema version and is checked
 before the active library is touched.
 
 Import first creates a full ZIP backup in the data folder's `backup` directory.

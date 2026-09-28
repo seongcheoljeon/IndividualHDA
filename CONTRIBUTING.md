@@ -2,7 +2,7 @@
 
 IndividualHDA is MIT-licensed. Start with a small change in one feature and keep
 personal SQLite, team SQLite/PostgreSQL, saved settings, and Houdini entry points
-compatible unless the change explicitly includes a migration.
+compatible unless the change explicitly bumps a schema version.
 
 ## Set up a checkout
 
@@ -154,8 +154,8 @@ necessary for capture/import, callbacks, scene saving and display/render flags;
 headless tests do not replace it.
 
 Keep PRs focused, explain resulting behavior and list checks actually run. For a
-visible UI change include an image if useful; for storage changes explain migration
-and rollback implications. See [architecture](docs/ARCHITECTURE.md),
+visible UI change include an image if useful; for storage changes bump `SCHEMA_VERSION`
+and say so, since libraries of the old version are backed up and start empty. See [architecture](docs/ARCHITECTURE.md),
 [UI editing](docs/UI_EDITING.md) and [validation history](docs/VALIDATION.md).
 
 ## Support the project

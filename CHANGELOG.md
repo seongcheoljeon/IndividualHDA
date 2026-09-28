@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.4.0 — dialogs that answer, tables that match, one theme
+## 2.5.0 — the history tells the whole story, and the schema is one file
 
 - **Making a video no longer empties the thumbnails.** Every library reload
   re-registers each row's thumbnail, and the cache threw the decoded picture
@@ -9,23 +9,37 @@
   it looked like the pictures were lost. Registering the same file again is now
   free; re-capturing a thumbnail still rereads it. The history also refreshes
   as soon as the video is stored instead of at the next poll.
-- **Activity rows are events, not half-empty versions.** A rename or a video
-  change wrote its sentence into the Comment column, which belongs to whoever
-  described the version, and showed no picture at all. The event now carries
-  its own field and its own icon, and the Comment column is left alone.
+- **A video or a rename shows up in the History like the version it happened
+  to.** Such a row is an audit event, not a `hda_history` row, and it was drawn
+  as one: grey italics, an event icon, and no id, version, definition, Houdini
+  version or comment. It now borrows all of that from the version current at
+  the time, as the original app's copied row did, and the Comment column says
+  `VIDEO (INSERT)`, `VIDEO (UPDATE)` or `NAME (CHANGE) old → new` in the style
+  of `NODE (INSERT)`. It still cannot be dragged, opened or deleted.
+- **Re-capturing a thumbnail is in the History too**, as `THUMBNAIL (UPDATE)`,
+  and the table reads it the moment it is stored. The capture a new version
+  makes, and the move a rename makes, are part of those and stay quiet.
+- **A video or thumbnail event names its version.** The audit triggers on the
+  media tables recorded only the path (schema 7 adds the version), so the
+  History had to guess from the clock which version a video was made for.
+- **One schema module, no in-place upgrades.** The personal library's schema
+  was the sum of a base file and four versioned migrations, and the team
+  server kept its own upgrade chain. Both are now declared once
+  (`libs/database/schema.py`; the server's SQLAlchemy metadata) and stamped
+  with a `SCHEMA_VERSION`. A personal library of another version is backed up
+  as `ihda.db.pre-v<N>-<stamp>.bak` and starts empty; a team server of another
+  version refuses to start and is recreated with `init-db`. `upgrade-db` is
+  gone, and so is `migration_reports`. Backup ZIPs of another version are
+  refused rather than imported as an empty library.
+- **Audit rows share one clock.** The rows the application wrote itself used a
+  different timestamp format from the ones the triggers wrote, so events in the
+  same second could sort out of order.
 - **The panel starts on the History page again.** Closing the panel there and
   reopening it failed to start: the asset list, the asset table and the history
   table share one click handler, and it read the roles of whichever page was on
   screen rather than the ones of the model the row came from. Since both models
   number their roles alike, the first asset arrived as a history row. The
   handler asks the index's own model now.
-- **History activity rows read as events.** A video or rename row showed the
-  asset name with the event stranded in the Comment column, clipped to
-  "VIDEO (INSE…", beside icons for a definition and a Houdini version the row
-  does not have. The row now leads with what happened, in words the Version
-  details dialog already used ("Video attached", `Renamed "old" → "new"`),
-  with the asset underneath and those icons gone. The date column fits a full
-  timestamp.
 - **An AI suggestion stays with its asset.** The suggested tag chips survived a
   selection change, so another asset showed tags that were never about it and a
   click would have added one. Loading a tag set clears them.
@@ -37,6 +51,8 @@
   row says how many records go, Go To Network says when the node is not in the
   scene that is open, and the current-scene filter no longer throws outside
   Houdini.
+## 2.4.0 — dialogs that answer, tables that match, one theme
+
 - **One theme: Houdini's.** The "Dark blue" option applied a 2019
   QDarkStyleSheet over the panel. It knew none of the widgets added since, and
   it looked nothing like the host around it. The Theme menu, the stylesheet

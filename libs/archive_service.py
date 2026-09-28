@@ -15,8 +15,9 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 from libs.archive_policy import ArchiveLimits
+from libs.database.backup import backup_database
 from libs.database.rows import named_query
-from libs.database_migrations import backup_database, migrate
+from libs.database.schema import SCHEMA_VERSION, schema_version
 
 ARCHIVE_FORMAT_VERSION = 1
 
@@ -118,7 +119,13 @@ def prepare_database(stage: str | Path, target_assets: str | Path) -> None:
     database = stage / "ihda.db"
     with closing(sqlite3.connect(str(database))) as connection:
         connection.execute("PRAGMA foreign_keys = ON")
-        migrate(connection, database)
+        # There is no in-place upgrade: an archive of another schema would only
+        # come back as an empty library, so say so instead.
+        version = schema_version(connection)
+        if version != SCHEMA_VERSION:
+            raise ValueError(
+                f"Archive database schema {version} is not this build's {SCHEMA_VERSION}"
+            )
         manifest = stage / "ihda-manifest.json"
         old_root = None
         if manifest.exists():

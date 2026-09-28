@@ -366,10 +366,11 @@ def test_activity_rows_are_readable_but_inert(app: Any) -> None:
     )
     activity = HistoryData(
         kind="rename",
-        activity='Renamed "Water" → "Ocean"',
+        comment="NAME (CHANGE) Water → Ocean",
+        hist_id=7,  # lent by merge_history_rows: the version it happened to
         hda_id=1,
         org_hda_name="Ocean",
-        version="",
+        version="1.0",
         reg_time="2026-09-17 11:00:00",
     )
     model = HistoryModel(items=[version, activity])
@@ -379,15 +380,11 @@ def test_activity_rows_are_readable_but_inert(app: Any) -> None:
     index = model.index(1, 0)
     assert not index.flags() & QtCore.Qt.ItemFlag.ItemIsDragEnabled
     assert index.flags() & QtCore.Qt.ItemFlag.ItemIsSelectable
-    font = index.data(QtCore.Qt.ItemDataRole.FontRole)
-    assert font.italic() and not font.strikeOut()
-    assert index.data(QtCore.Qt.ItemDataRole.DisplayRole) == ""  # no history id
-    assert index.data(QtCore.Qt.ItemDataRole.DecorationRole) is None  # not the name
-    # The event is its own field; the Comment column stays the author's.
-    assert model.index(1, 1).data(HistoryModel.activity_role) == (
-        'Renamed "Water" → "Ocean"'
+    assert not index.data(QtCore.Qt.ItemDataRole.FontRole).italic()
+    assert index.data(QtCore.Qt.ItemDataRole.DisplayRole) == 7
+    assert model.index(1, 4).data(QtCore.Qt.ItemDataRole.DisplayRole) == (
+        "NAME (CHANGE) Water → Ocean"
     )
-    assert model.index(1, 4).data(QtCore.Qt.ItemDataRole.DisplayRole) is None
     # The version row keeps its missing-file strike-out and its identity lookup.
     assert model.index(0, 0).data(QtCore.Qt.ItemDataRole.FontRole).strikeOut()
     assert model.get_history_id_from_model(1, "1.0") == 7

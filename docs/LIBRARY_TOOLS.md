@@ -19,8 +19,8 @@ read-only database connection and does not attempt automatic repairs.
 copies, with timestamps, size and reason. Enter a reason and choose **Create full
 backup** to save a consistent SQLite snapshot with the library files.
 
-**Validate selected backup** extracts into temporary storage, migrates and checks
-the copied database, and verifies its referenced library files. Source HIP files
+**Validate selected backup** extracts into temporary storage, checks that the copied
+database is at the current schema version, and verifies its referenced library files. Source HIP files
 are not expected in the archive. Database-only and recovery-file copies are
 clearly marked for manual recovery and cannot be used as full-library restores.
 
@@ -99,8 +99,8 @@ staged imports and unrelated directories are not cleanup candidates.
 
 Cancellation of archive validation is checked between extraction/validation
 phases; a running ZIP extraction may finish its phase first. Mutating operations
-finish before shutdown rather than being interrupted midway. Migration during
-restore validation affects only the temporary copy. All development tests use
+finish before shutdown rather than being interrupted midway. Validation touches
+only the temporary copy. All development tests use
 temporary libraries; no live user library has been restored, rebased or cleaned.
 
 Functional tests cover missing references, path previews and rollback checks,

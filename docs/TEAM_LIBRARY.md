@@ -118,10 +118,9 @@ python -m ihda_server.cli issue-token USER_UUID --days 30
 uvicorn ihda_server.app:create_app --factory --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-`init-db`는 신규 설치에 스키마 버전 3을 설치합니다. 서버 시작은 스키마를 확인할 뿐
-자동으로 변경하지 않습니다. 후속 스키마 변경에는 명시적인 마이그레이션과 복구
-절차를 추가해야 합니다. SQLite 서버 어댑터는 테스트용이며 실제 서버는 PostgreSQL을
-요구합니다.
+`init-db`는 빈 데이터베이스에 현재 스키마(`ihda_server/database.py`의 `SCHEMA_VERSION`)를
+설치합니다. 서버 시작은 스키마 버전을 확인할 뿐 자동으로 변경하지 않으며, 버전이 다르면
+시작을 거부합니다. SQLite 서버 어댑터는 테스트용이며 실제 서버는 PostgreSQL을 요구합니다.
 
 ### Houdini에서 연결
 
@@ -291,25 +290,24 @@ IHDA_TEST_POSTGRES_URL=postgresql+psycopg://USER:PASSWORD@localhost/ihda_test \
 Houdini에서 실제 선택 노드 캡처·썸네일·가져오기와 HTTPS 배포는 별도 수동 확인이
 필요합니다.
 
-## 개인 스키마 6 / 팀 스키마 3 업그레이드
+## 스키마 버전
 
-개인 DB는 스키마 6, 팀 DB는 스키마 3 / HTTP API v2를 사용합니다. 새 추적 기능은
-팀 서버를 업그레이드한 뒤 사용할 수 있습니다. API v1 요청은 426 응답으로 차단하며
-클라이언트는 연결 시 API 버전을 확인합니다. API v2 서버는 계속 연결할 수 있으며
-`version_tracking` 기능이 없는 서버에서는 새 추적 탭을 숨깁니다. 개인 DB는 처음 열 때 백업 후 단계별로 업그레이드합니다.
-기존 ID, 파일 위치, 확장 필드와 과거 시각은 보존합니다. 식별하기 어려운 과거 버전과
-시간대는 추측하지 않으며 `migration_reports`에 기록합니다.
+개인 DB와 팀 DB 모두 스키마 전체가 한 모듈에 선언되어 있고(`libs/database/schema.py`,
+`ihda_server/schema.py`·`lifecycle_schema.py`·`tracking_schema.py`), 버전 번호 하나로
+표시됩니다. 제자리 업그레이드는 없습니다. 스키마를 바꾸면 그 모듈과 `SCHEMA_VERSION`만
+고치면 됩니다.
 
-기존 팀 서버는 다음 순서로 전환합니다.
+- 개인 DB: 버전이 다른 파일은 처음 열 때 `ihda.db.pre-v<N>-<시각>.bak`으로 옆에
+  백업되고, 라이브러리는 비어 있는 상태로 시작합니다. 자산 파일 자체는 건드리지 않습니다.
+  더 새로운 빌드가 만든 파일은 열기를 거부합니다. 버전이 다른 백업 ZIP은 가져오기와
+  검증에서 거부됩니다.
+- 팀 DB: 서버 시작과 `check-files`, `backup`이 버전을 확인하고, 다르면 거부합니다.
+  전환은 서버를 멈추고 PostgreSQL DB와 `IHDA_BLOB_ROOT`를 백업한 뒤, 빈 데이터베이스에
+  `python -m ihda_server.cli init-db`를 실행하고 새 서버를 시작하는 순서입니다.
+  다운그레이드는 DB·파일 저장소 백업을 함께 복원하고 이전 서버/앱으로 돌아가는 방식입니다.
 
-1. 서버를 중지합니다.
-2. PostgreSQL DB와 `IHDA_BLOB_ROOT`를 함께 백업합니다.
-3. 새 서버 코드로 `python -m ihda_server.cli upgrade-db`를 실행합니다.
-4. 새 서버를 시작하고 새 앱으로 접속합니다.
-
-신규 설치에는 `init-db`를 사용합니다. 기존 스키마를 앱 시작 과정에서 변경하지 않습니다.
-업그레이드 실패 시 원인을 해결한 후 같은 명령을 다시 실행할 수 있습니다.
-다운그레이드는 DB·파일 저장소의 백업을 함께 복원하고 이전 서버/앱으로 돌아가는 방식입니다.
+API v1 요청은 426 응답으로 차단하며 클라이언트는 연결 시 API 버전을 확인합니다.
+`version_tracking` 기능이 없는 서버에서는 새 추적 탭을 숨깁니다.
 
 ### 사용자에게 보이는 변화
 

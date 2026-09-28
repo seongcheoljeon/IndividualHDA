@@ -271,12 +271,7 @@ class CardDelegate(QtWidgets.QStyledItemDelegate):
 
 
 class RowDelegate(QtWidgets.QStyledItemDelegate):
-    """Table rows: thumbnail + two-line name cell, version pill, clickable star.
-
-    Activity rows of the history table (renames, video changes: ``is_version``
-    False) lead with what happened (``activity_role``) over the asset name, in
-    dim italics, behind the event's own icon rather than a thumbnail.
-    """
+    """Table rows: thumbnail + two-line name cell, version pill, clickable star."""
 
     favoriteToggled = QtCore.Signal(QtCore.QModelIndex)
 
@@ -290,20 +285,14 @@ class RowDelegate(QtWidgets.QStyledItemDelegate):
         version_column: int | None = None,
         favorite_column: int | None = None,
         favorite_role: int | None = None,
-        activity_role: int | None = None,
     ) -> None:
         super().__init__(parent)
         self._data_role = data_role
         self._name_column = name_column
         self._secondary_column = secondary_column
-        self._activity_role = activity_role
         self._version_column = version_column
         self._favorite_column = favorite_column
         self._favorite_role = favorite_role
-
-    @staticmethod
-    def _is_version(data: Any) -> bool:
-        return bool(getattr(data, "is_version", True))
 
     def paint(  # type: ignore[override]
         self,
@@ -371,38 +360,6 @@ class RowDelegate(QtWidgets.QStyledItemDelegate):
         palette = opt.palette
         rect = opt.rect.adjusted(CARD_PADDING, 0, -CARD_PADDING, 0)
         name = str(index.data(QtCore.Qt.ItemDataRole.DisplayRole) or "")
-        if not self._is_version(data):
-            # Activity row: the event's icon where a version keeps its thumbnail,
-            # then what happened, then which asset. The event used to be legible
-            # only in the Comment column, which belongs to the version's author.
-            font.setItalic(True)
-            text_left = rect.left()
-            icon = index.data(QtCore.Qt.ItemDataRole.DecorationRole)
-            if isinstance(icon, QtGui.QPixmap) and not icon.isNull():
-                area = QtCore.QRect(
-                    rect.left(), rect.top() + 1, icon.width(), rect.height() - 2
-                )
-                painter.drawPixmap(
-                    QtCore.QPoint(area.left(), area.center().y() - icon.height() // 2),
-                    icon,
-                )
-                text_left = area.right() + CARD_PADDING * 2
-            painter.setPen(palette.placeholderText().color())
-            event = (
-                str(index.data(self._activity_role) or "")
-                if self._activity_role is not None
-                else ""
-            )
-            self._draw_two_lines(
-                painter,
-                QtCore.QRect(
-                    text_left, rect.top(), rect.right() - text_left, rect.height()
-                ),
-                event or name,
-                name if event else "",
-                font,
-            )
-            return
         pixmap = index.data(QtCore.Qt.ItemDataRole.DecorationRole)
         text_left = rect.left()
         if isinstance(pixmap, QtGui.QPixmap) and not pixmap.isNull():

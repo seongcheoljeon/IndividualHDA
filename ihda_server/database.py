@@ -46,9 +46,6 @@ def initialize(engine: Engine) -> None:
         metadata.create_all(connection)
         installed = connection.execute(select(versions.c.version)).scalar_one_or_none()
         if installed is None:
-            from ihda_server.tracking import install
-
-            install(connection)
             connection.execute(insert(versions).values(version=SCHEMA_VERSION))
         elif installed != SCHEMA_VERSION:
             raise RuntimeError(
@@ -62,4 +59,7 @@ def verify_schema(engine: Engine) -> None:
             connection.execute(select(versions.c.version)).scalar_one()
             != SCHEMA_VERSION
         ):
-            raise RuntimeError("Database schema needs migration")
+            raise RuntimeError(
+                f"Database schema is not {SCHEMA_VERSION}; there is no in-place "
+                "upgrade. Create an empty database and run init-db."
+            )

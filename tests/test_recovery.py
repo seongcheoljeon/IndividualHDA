@@ -138,23 +138,6 @@ def test_delete_asset_rolls_back_files_when_database_write_fails(
         assert not list(tmp_path.glob(".ihda-deleted-*"))
 
 
-def test_version_one_migration_adds_operation_markers(tmp_path: Path) -> None:
-    path = tmp_path / "ihda.db"
-    from libs.database_migrations_v4 import migrate as migrate_v4
-
-    with sqlite3.connect(path) as db:
-        migrate_v4(db, path)
-        db.execute("INSERT INTO users VALUES('keep','keep@example.com','2020-01-01')")
-    with sqlite3.connect(path) as connection:
-        connection.execute("DROP TABLE operation_commits")
-        connection.execute("PRAGMA user_version=1")
-    with SQLite3DatabaseAPI(path) as db:
-        assert db.get_user_id() == ["keep"]
-        with db.transaction():
-            db.record_operation_commit("test")
-    assert list(tmp_path.glob("ihda.db.pre-v*-*.bak"))
-
-
 def test_durable_operation_requires_outermost_database_transaction(
     tmp_path: Path,
 ) -> None:

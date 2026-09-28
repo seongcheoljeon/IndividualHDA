@@ -12,7 +12,6 @@ from libs.asset_contracts import HistoryData, numbered
 from libs.item_paths import item_path
 from libs.model_columns import HistoryColumn
 from libs.path_updates import PathMoves, relocate_history
-from libs.ui_icons import Icon
 from model.item_media import PixmapSource, thumbnail
 
 # author            : SeongCheol Jeon
@@ -42,7 +41,6 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
     tag_role = QtCore.Qt.ItemDataRole.UserRole + 9
     type_role = QtCore.Qt.ItemDataRole.UserRole + 10
     datetime_role = QtCore.Qt.ItemDataRole.UserRole + 11
-    activity_role = QtCore.Qt.ItemDataRole.UserRole + 12
 
     def __init__(
         self,
@@ -136,8 +134,6 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         column = index.column()
         data = self.__items[row]
         if role == QtCore.Qt.ItemDataRole.DisplayRole:
-            if column == HistoryColumn.ID and not data.is_version:
-                return ""  # activity rows have no history id
             val = getattr(data, HistoryColumn(column).field)
             if column == self.__hda_dirpath_column:
                 return str(val) if val is not None else ""
@@ -147,28 +143,12 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
         elif role == QtCore.Qt.ItemDataRole.DecorationRole:
             other_icon_size = self.__icon_size * 0.7
             if column == self.__hda_name_column:
-                if not data.is_version:
-                    # An event has no thumbnail of its own; it says what it is.
-                    icon = (
-                        Icon.IC_MOVIE_WHITE
-                        if data.kind == "video"
-                        else Icon.IC_BORDER_COLOR_WHITE
-                    )
-                    edge = int(self.__icon_size * 0.8)
-                    return QtGui.QPixmap(icon).scaled(
-                        QtCore.QSize(edge, edge),
-                        QtCore.Qt.AspectRatioMode.KeepAspectRatio,
-                    )
                 return thumbnail(
                     self.__pixmap_hist_thumb_data,
                     data.hist_id,
                     self.__thumb_size,
                 )
             elif column == self.__hda_def_column:
-                # An activity row carries no definition, so the lone icon beside
-                # an empty cell only made the row look like broken data.
-                if not data.is_version:
-                    return None
                 icon_pixmap = self.__pixmap_ihda_data.get(data.hda_id)
                 if icon_pixmap is None:
                     return None
@@ -198,8 +178,6 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
                     QtCore.Qt.AspectRatioMode.KeepAspectRatio,
                 )
             elif column == self.__hda_hou_ver_column:
-                if not data.is_version:
-                    return None
                 hou_icon = "houdini_logo.png"
                 return QtGui.QPixmap(f":/main/icons/{hou_icon}").scaled(
                     QtCore.QSize(
@@ -231,9 +209,6 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
             font = QtGui.QFont()
             font.setFamily(self._font_style)
             font.setPointSize(self._font_size)
-            if not data.is_version:
-                font.setItalic(True)  # no file behind it, but nothing is missing
-                return font
             if not data.available and not data.remote:
                 font.setItalic(True)
                 font.setStrikeOut(True)
@@ -261,12 +236,6 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
             return data.tags
         elif role == HistoryModel.type_role:
             return data.node_type_name
-        elif role == QtCore.Qt.ItemDataRole.ToolTipRole:
-            if data.activity and column == self.__hda_name_column:
-                return data.activity
-            return None
-        elif role == HistoryModel.activity_role:
-            return data.activity
         elif role == HistoryModel.datetime_role:
             return data.reg_time
 
@@ -341,7 +310,7 @@ class HistoryModel(QtCore.QAbstractTableModel, ModelStyleMixin):
     ) -> list[HistoryData]:
         changed = []
         for row, item in enumerate(self.__items):
-            if item.hda_id != asset_id or not item.is_version:
+            if item.hda_id != asset_id:
                 continue
             item = relocate_history(item, moves)
             self.__items[row] = item

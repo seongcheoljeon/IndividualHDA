@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import datetime
 
 from libs import keys
 from libs.asset_contracts import HistoryData
 from libs.history_activity import (
     activity_rows,
+    activity_title,
     changes,
     merge_history_rows,
     rename_names,
+    thumbnail_action,
     video_action,
 )
 
@@ -107,13 +110,11 @@ def test_activity_rows_are_local_time_non_version_rows() -> None:
         remote=True,
         library_id="team-1",
     )
-    # The event is its own field; the Comment column belongs to the author of
-    # the version and an activity row has none.
-    assert [row.activity for row in rows] == [
-        'Renamed "fire_presets1" → "preset_tmp"',
-        "Video attached",
+    # The Comment reads like the "NODE (INSERT)" of a version row.
+    assert [row.comment for row in rows] == [
+        "NAME (CHANGE) fire_presets1 → preset_tmp",
+        "VIDEO (INSERT)",
     ]
-    assert all(row.comment is None for row in rows)
     assert [row.kind for row in rows] == ["rename", "video"]
     expected = datetime.fromisoformat(stamp).astimezone()
     assert rows[0].reg_time == expected.strftime(keys.Value.datetime_fmt_str)
@@ -144,9 +145,9 @@ def test_activity_rows_drop_the_video_move_that_accompanies_a_rename() -> None:
             {**PERSONAL_CATEGORY_ONLY, **shared, "request_id": "req-3"},
         ]
     )
-    assert [row.activity for row in rows] == [
-        'Renamed "fire_presets1" → "preset_tmp"',
-        "Video replaced",
+    assert [row.comment for row in rows] == [
+        "NAME (CHANGE) fire_presets1 → preset_tmp",
+        "VIDEO (UPDATE)",
     ]
 
 
@@ -170,12 +171,110 @@ def test_merge_interleaves_by_time_and_keeps_versions_first_on_ties() -> None:
         row("video", "2026-01-03 10:00:00"),
     ]
     merged = merge_history_rows(versions, activity)
+    # An event borrows the version current at its time: 1 for the rename, 2
+    # for the video (a tie still lists the version first).
     assert [(r.kind, r.hist_id) for r in merged] == [
         ("version", 1),
-        ("rename", 0),
+        ("rename", 1),
         ("version", 2),
-        ("video", 0),
+        ("video", 2),
     ]
+
+
+def test_merge_lends_the_event_the_version_it_happened_to() -> None:
+    from pathlib import Path
+
+    version = HistoryData(
+        hist_id=7,
+        hda_id=1,
+        org_hda_name="Water",
+        version="1.0",
+        node_def_desc="Water Sim",
+        hou_version="21.0.440",
+        thumb_dirpath=Path("/lib/Water/thumb"),
+        thumb_filename="Water.png",
+        reg_time="2026-01-01 10:00:00",
+        userid="author",
+        remote=True,
+        library_id="team-1",
+    )
+    video = HistoryData(
+        kind="video",
+        comment="VIDEO (INSERT)",
+        hda_id=1,
+        org_hda_name="Water",
+        version="",
+        reg_time="2026-01-02 10:00:00",
+        userid="tester",
+    )
+    other = HistoryData(hda_id=2, org_hda_name="Fire", version="2.0")
+    (_, row) = merge_history_rows([version], [video])
+    assert row.kind == "video" and not row.is_version
+    assert (row.comment, row.reg_time, row.userid) == (
+        "VIDEO (INSERT)",
+        "2026-01-02 10:00:00",
+        "tester",
+    )
+    assert (row.hist_id, row.version, row.node_def_desc, row.hou_version) == (
+        7,
+        "1.0",
+        "Water Sim",
+        "21.0.440",
+    )
+    assert row.thumb_dirpath / row.thumb_filename == Path("/lib/Water/thumb/Water.png")
+    assert row.remote and row.library_id == "team-1"
+    # Clocks may disagree: an event older than every version takes the newest.
+    early = replace(video, reg_time="2025-12-31 10:00:00")
+    assert merge_history_rows([version], [early])[0].hist_id == 7
+    # No version of its own (trashed): the event stays bare.
+    assert merge_history_rows([other], [video])[-1].hist_id == 0
+    # An event that names its version (schema v7) takes that one, even when a
+    # newer version already existed at the time.
+    newer = replace(version, hist_id=8, version="1.1", reg_time="2026-01-01 12:00:00")
+    named = replace(video, version="1.0")
+    assert merge_history_rows([version, newer], [named])[-1].hist_id == 7
+    assert merge_history_rows([version, newer], [video])[-1].hist_id == 8
+
+
+def test_thumbnail_events_are_rows_but_a_new_version_capture_is_not() -> None:
+    shared = {"actor": "tester", "hda_id": 1, "occurred_at": "2026-09-17T05:57:11Z"}
+    after = {"filename": "t.jpg", "dirpath": "/lib/Water/thumbnail", "version": "1.1"}
+    capture = {
+        "operation": "thumbnail_info.update",
+        "changes": json.dumps({"before": {}, "after": after}),
+        **shared,
+    }
+    team = {
+        "operation": "media",
+        "changes": json.dumps(
+            {
+                "files": {
+                    "before": {"thumbnail": "a.jpg"},
+                    "after": {"thumbnail": "b.jpg"},
+                }
+            }
+        ),
+        **shared,
+    }
+    rows = activity_rows(
+        [
+            {**capture, "request_id": "req-1"},
+            {
+                "operation": "hda_history.insert",
+                "changes": "{}",
+                **shared,
+                "request_id": "req-1",
+            },
+            {**capture, "request_id": "req-2"},
+            {**team, "request_id": "req-3"},
+        ]
+    )
+    assert [(row.kind, row.comment, row.version) for row in rows] == [
+        ("thumbnail", "THUMBNAIL (UPDATE)", "1.1"),
+        ("thumbnail", "THUMBNAIL (UPDATE)", ""),
+    ]
+    assert thumbnail_action(team) == "update" and video_action(team) is None
+    assert activity_title(capture) == "Thumbnail replaced"
 
 
 def test_history_rows_are_versions_unless_marked() -> None:

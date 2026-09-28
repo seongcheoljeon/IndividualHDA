@@ -9,8 +9,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
+from libs.database.backup import backup_database
 from libs.database.rows import named_query
-from libs.database_migrations import backup_database
 from libs.library_metadata import file_stamp
 from libs.operation_journal import operation_lock
 

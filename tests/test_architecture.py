@@ -297,12 +297,10 @@ LAZY_IMPORT_SITES: dict[str, int] = {
     "ihda_server.backup_files": 1,
     "ihda_server.backup_postgres": 2,
     "ihda_server.catalog": 2,
-    "ihda_server.cli": 6,
-    "ihda_server.database": 2,
-    "ihda_server.migrations": 2,
+    "ihda_server.cli": 5,
+    "ihda_server.database": 1,
     "ihda_server.queries": 1,
     "ihda_server.storage_lock": 2,
-    "ihda_server.tracking": 1,
     "libs.ai_provider": 1,
     "libs.data_stream": 2,
     "libs.database.assets": 3,
@@ -373,6 +371,8 @@ def _sql_reads_without_live_filter(tree: ast.AST) -> int:
 def test_soft_delete_filter_sites_only_shrink() -> None:
     now = {}
     for path in sorted((ROOT / "libs" / "database").glob("*.py")):
+        if path.name == "schema.py":
+            continue  # DDL: trigger bodies are not application reads
         count = _sql_reads_without_live_filter(
             ast.parse(path.read_text(encoding="utf-8"))
         )

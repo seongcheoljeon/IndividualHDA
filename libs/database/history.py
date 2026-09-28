@@ -336,9 +336,8 @@ class HistoryOperations(DatabaseSession):
         user_id: str | None = None,
         search_date: Any = None,
     ) -> list[HistoryData]:
-        if hda_key_id is not None:
-            query = """
-            SELECT id AS hist_id,
+        query = """
+        SELECT id AS hist_id,
             hda_key_id AS hda_id,
             comment AS comment,
             org_hda_name AS org_hda_name,
@@ -362,54 +361,19 @@ class HistoryOperations(DatabaseSession):
             thumb_dirpath AS thumb_dirpath,
             video_filename AS video_filename,
             video_dirpath AS video_dirpath
-        FROM hda_history WHERE id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) AND hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND hda_key_id = :hda_key_id AND userid = :user_id
-            """
-            query_params: dict[str, Any] = {
-                "hda_key_id": hda_key_id,
-                "user_id": user_id,
-            }
-        else:
-            query = """
-            SELECT id AS hist_id,
-            hda_key_id AS hda_id,
-            comment AS comment,
-            org_hda_name AS org_hda_name,
-            version AS version,
-            hda_filename AS ihda_filename,
-            hda_dirpath AS ihda_dirpath,
-            registration_datetime AS reg_time,
-            houdini_version AS hou_version,
-            hip_filename AS hip_filename,
-            hip_dirpath AS hip_dirpath,
-            hda_license AS hda_license,
-            operating_system AS os,
-            node_old_path AS node_old_path,
-            node_def_desc AS node_def_desc,
-            node_type_name AS node_type_name,
-            node_category AS node_category,
-            userid AS userid,
-            icon AS icon,
-            (SELECT tag FROM tag_info WHERE hda_key_id = hda_history.hda_key_id) AS tags,
-            thumb_filename AS thumb_filename,
-            thumb_dirpath AS thumb_dirpath,
-            video_filename AS video_filename,
-            video_dirpath AS video_dirpath
-        FROM hda_history WHERE id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL) AND hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL) AND userid = :user_id
-            """
-            query_params = {"user_id": user_id}
+        FROM hda_history
+        WHERE id IN (SELECT history_id FROM version_identity WHERE deleted_at IS NULL)
+          AND hda_key_id IN (SELECT asset_id FROM asset_identity WHERE deleted_at IS NULL)
+          AND (:hda_key_id IS NULL OR hda_key_id = :hda_key_id)
+          AND userid = :user_id
+        """
+        query_params: dict[str, Any] = {"hda_key_id": hda_key_id, "user_id": user_id}
         if search_date is not None:
             query += " AND registration_datetime BETWEEN :start_date AND :end_date"
             query_params.update(start_date=search_date[0], end_date=search_date[1])
         query = query + " ORDER BY id"
         cursor = named_query(self._connect, query, query_params)
-        fetch_dat = cursor.fetchall()
-        if (fetch_dat is None) or (not len(fetch_dat)):
-            return []
-        dat = []
-        for row_val in fetch_dat:
-            tmp_dict = dict(row_val)
-            dat.append(history_record(tmp_dict))
-        return dat
+        return [history_record(dict(row)) for row in cursor.fetchall()]
 
     def get_hda_note_history(self, hda_key_id: int | None = None) -> list[NoteHistory]:
         query = """SELECT registration_datetime AS registered_at, hda_version AS version, note

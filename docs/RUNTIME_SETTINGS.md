@@ -63,7 +63,7 @@ dialogs receive the panel's snapshot, not a fresh read of a possibly newer file.
 | Shared toolbar icons | Existing `widgets.ui_tokens`; screen-specific geometry and different semantic roles remain local |
 | Paths, product links | Existing environment/path owner retained; historical Houdini preference fallback and product metadata named centrally; unique site destinations remain local |
 | SQLite, PostgreSQL, archives, HTTP response/upload caps | Existing owning policies/constants retained; not added to Preferences |
-| Historical migrations, saved keys, Qt roles, HDA formats | Fixed compatibility contracts retained; no renumbering or bulk string replacement |
+| Schema versions, saved keys, Qt roles, HDA formats | Fixed compatibility contracts retained; no renumbering or bulk string replacement |
 | Generated Qt resources, test fixtures, samples | Not subject to mechanical constant extraction; distribution images include license notices |
 
 Ordinary indices, arithmetic identities, Qt sentinel values and single-purpose

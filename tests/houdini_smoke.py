@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import os
-import sqlite3
 import sys
 import tempfile
-from contextlib import closing
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -103,40 +101,6 @@ def main() -> None:
             assert db.insert_hda_key("asset's 한글", "sop", "anonymous") == 1
             assert db.get_hda_key_id(name="asset's 한글") == [1]
         print("SQLite and Unicode paths: PASS", flush=True)
-        from libs.database_migrations import SCHEMA_VERSION, migrate
-
-        legacy_path = directory / "legacy.db"
-        with closing(sqlite3.connect(legacy_path)) as connection:
-            connection.execute("PRAGMA foreign_keys=ON")
-            connection.executescript(
-                (Path(__file__).parent / "fixtures/schema_legacy.sql").read_text(
-                    encoding="utf-8"
-                )
-            )
-            connection.execute("INSERT INTO users VALUES ('keep','email','2020-01-01')")
-            connection.execute("INSERT INTO hda_category VALUES ('sop','keep')")
-            connection.execute("INSERT INTO hda_key VALUES (1,'box','sop','keep')")
-            connection.execute(
-                "INSERT INTO hipfile_info VALUES (1,1,'test.hip','/tmp','21','commercial','Windows',-1.5,100.25,23.976)"
-            )
-            connection.commit()
-            migrate(connection, legacy_path)
-            assert (
-                connection.execute("PRAGMA user_version").fetchone()[0]
-                == SCHEMA_VERSION
-            )
-            assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
-            assert not connection.execute("PRAGMA foreign_key_check").fetchall()
-            assert connection.execute(
-                "SELECT sf,ef,fps FROM hipfile_info"
-            ).fetchone() == (-1.5, 100.25, 23.976)
-            try:
-                connection.execute("UPDATE hipfile_info SET fps=0")
-            except sqlite3.IntegrityError:
-                connection.rollback()
-            else:
-                raise AssertionError("Invalid FPS was accepted")
-        print("Legacy schema migration and numeric constraints: PASS", flush=True)
 
         from widgets.web_view.web_view import WebView
 

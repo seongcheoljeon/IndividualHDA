@@ -172,10 +172,6 @@ class IHDAIcons:
         self, all_data: Sequence[HistoryThumbnail | HistoryData] | None = None
     ) -> None:
         for data in all_data or []:
-            # Callers may hand over merged history rows: an activity row owns no
-            # thumbnail and they all share hist_id 0, which would clobber it.
-            if not getattr(data, "is_version", True):
-                continue
             directory, filename = data.thumb_dirpath, data.thumb_filename
             self.__pixmap_hist_thumbnail_data.set_path(
                 data.hist_id,

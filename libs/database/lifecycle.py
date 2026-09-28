@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from libs.database.rows import named_query
+from libs.database.schema import NOW_SQL
 from libs.file_integrity import FILE_READ_CHUNK_BYTES
 from libs.library_metadata import new_identity, utc_now, validate_version_details
 from libs.repository import LibraryConflict
@@ -34,14 +35,14 @@ class PersonalLifecycle:
             or new_identity()
         )
         self.connection.execute(
-            """-- includes trashed rows: an audit row is written for any asset
+            f"""-- includes trashed rows: an audit row is written for any asset
+            -- occurred_at uses the triggers' clock format, so ORDER BY occurred_at holds
             INSERT INTO audit_events
             (id,asset_uuid,version_uuid,actor,occurred_at,request_id,operation,changes)
-            SELECT :new_identity,a.uuid,:version_uuid,k.user_id,:utc_now,:request_id,:operation,:changes FROM asset_identity a JOIN hda_key k ON k.id=a.asset_id WHERE k.id=:asset_id""",
+            SELECT :new_identity,a.uuid,:version_uuid,k.user_id,{NOW_SQL},:request_id,:operation,:changes FROM asset_identity a JOIN hda_key k ON k.id=a.asset_id WHERE k.id=:asset_id""",
             {
                 "new_identity": new_identity(),
                 "version_uuid": version_uuid,
-                "utc_now": utc_now(),
                 "request_id": request_id,
                 "operation": operation,
                 "changes": json.dumps(changes),

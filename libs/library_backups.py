@@ -87,7 +87,7 @@ def auto_backup(
     import sqlite3
     from contextlib import closing
 
-    from libs.database_migrations import backup_database
+    from libs.database.backup import backup_database
 
     stamp = file_stamp()
     target = database.with_name(f"{AUTO_BACKUP_PREFIX}{stamp}.bak")

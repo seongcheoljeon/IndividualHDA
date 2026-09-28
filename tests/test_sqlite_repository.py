@@ -188,22 +188,34 @@ def test_activity_rows_come_from_audit_events_not_history(tmp_path: Path) -> Non
     assert repo.set_video(1, video_dir, "Water_v1.0.mp4", "1.0") == "insert"
     # Re-recording keeps the same path; the trigger is silent, the row is not.
     assert repo.set_video(1, video_dir, "Water_v1.0.mp4", "1.0") == "update"
+    # A new version captures its thumbnail in the same request: not an event.
+    repo.add_version(1, payload(tmp_path, "Water", "1.1"))
+    assert [row.comment for row in repo.activity("tester")][-1] == "VIDEO (UPDATE)"
+    # Re-capturing the thumbnail of a version is one, same path or not.
+    thumb_dir = tmp_path / "sop" / "Water" / "thumbnail"
+    assert repo.set_thumbnail(1, thumb_dir, "t.jpg", "1.1")
     plan = build_rename_plan(repo.list_assets()[0], "Ocean", Names(), rename_video=True)
     repo.rename_asset(plan)
 
     rows = repo.activity("tester")
-    assert [row.activity for row in rows] == [
-        "Video attached",
-        "Video replaced",
-        'Renamed "Water" → "Ocean"',
+    assert [row.comment for row in rows] == [
+        "VIDEO (INSERT)",
+        "VIDEO (UPDATE)",
+        "THUMBNAIL (UPDATE)",
+        "NAME (CHANGE) Water → Ocean",
     ]
-    assert all(row.comment is None for row in rows)
+    # Media events name the version they were made for (schema v7).
+    assert [row.version for row in rows] == ["1.0", "1.0", "1.1", ""]
+    # Bare until merge_history_rows lends them the version they happened to.
     assert all(not row.is_version and row.hist_id == 0 for row in rows)
     assert {row.userid for row in rows} == {"tester"}
     assert {row.org_hda_name for row in rows} == {"Ocean"}
     # Activity never became a version.
-    assert [row.comment for row in repo.histories(1, "tester")] == ["NODE (INSERT)"]
-    assert repo.history_counts().versions == 1
+    assert [row.comment for row in repo.histories(1, "tester")] == [
+        "NODE (INSERT)",
+        "NODE (UPDATE)",
+    ]
+    assert repo.history_counts().versions == 2
     assert repo.activity("someone-else") == []
 
 

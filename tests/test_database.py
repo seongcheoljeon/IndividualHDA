@@ -7,9 +7,8 @@ from typing import Any
 
 import pytest
 
-from libs.database_migrations import SCHEMA_VERSION, migrate
+from libs.database.schema import SCHEMA_VERSION, install
 from libs.sqlite3_db_api import SQLite3DatabaseAPI
-from model.sqlite3_db_schema import db_schema
 
 
 @pytest.fixture
@@ -75,40 +74,51 @@ def test_category_cleanup_is_scoped_to_user(db: Any) -> None:
     assert db.get_hda_category("two") == ["sop"]
 
 
-def test_legacy_upgrade_backs_up_and_preserves_rows(tmp_path: pathlib.Path) -> None:
-    path = tmp_path / "legacy.db"
+def test_other_schema_is_backed_up_and_rebuilt(tmp_path: pathlib.Path) -> None:
+    """No in-place upgrade: the old file is kept as a backup, the library starts empty."""
+    path = tmp_path / "library.db"
+    with SQLite3DatabaseAPI(path) as db:
+        seed(db, "artist")
     with sqlite3.connect(path) as connection:
-        connection.executescript(db_schema())
-        connection.execute(
-            "INSERT INTO users VALUES ('artist','a@example.com','2020-01-01')"
-        )
-        connection.commit()
-        migrate(connection, path)
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
-        assert connection.execute("SELECT user_id FROM users").fetchone()[0] == "artist"
-        migrate(connection, path)
-    backups = list(tmp_path.glob("*.bak"))
+        connection.execute("PRAGMA user_version=3")
+    with SQLite3DatabaseAPI(path) as db:
+        assert db.get_user_id() == []
+        assert db.is_exist_user_id("artist") is False
+    backups = list(tmp_path.glob(f"library.db.pre-v{SCHEMA_VERSION}-*.bak"))
     assert len(backups) == 1
     with sqlite3.connect(backups[0]) as backup:
-        assert backup.execute("PRAGMA user_version").fetchone()[0] == 0
-
-
-def test_failed_migration_restores_original(tmp_path: pathlib.Path) -> None:
-    path = tmp_path / "orphan.db"
+        assert backup.execute("PRAGMA user_version").fetchone()[0] == 3
+        assert backup.execute("SELECT user_id FROM users").fetchone() == ("artist",)
     with sqlite3.connect(path) as connection:
-        connection.executescript(db_schema())
-        connection.execute("INSERT INTO hda_key VALUES (1,'bad','sop','missing')")
-        connection.commit()
-        with pytest.raises(sqlite3.IntegrityError):
-            migrate(connection, path)
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == 0
-        assert (
-            connection.execute(
-                "SELECT name FROM sqlite_master WHERE name='asset_tags'"
-            ).fetchone()
-            is None
-        )
-        assert connection.execute("SELECT name FROM hda_key").fetchone()[0] == "bad"
+        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+    # Opening again touches nothing.
+    with SQLite3DatabaseAPI(path):
+        pass
+    assert len(list(tmp_path.glob("*.bak"))) == 1
+
+
+def test_unversioned_file_with_tables_is_rebuilt_too(tmp_path: pathlib.Path) -> None:
+    path = tmp_path / "old.db"
+    with sqlite3.connect(path) as connection:
+        connection.execute("CREATE TABLE users (user_id TEXT PRIMARY KEY)")
+        connection.execute("INSERT INTO users VALUES ('artist')")
+    with SQLite3DatabaseAPI(path) as db:
+        assert db.get_user_id() == []
+    assert len(list(tmp_path.glob("old.db.pre-v*.bak"))) == 1
+
+
+def test_media_audit_events_name_their_version(db: Any, tmp_path: pathlib.Path) -> None:
+    import json
+
+    key = seed(db)
+    assert db.insert_video_info(
+        hda_key_id=key, dirpath=tmp_path, filename="v.mp4", version="1.0"
+    )
+    (changes,) = db._connect.execute(
+        "SELECT changes FROM audit_events WHERE operation='video_info.insert'"
+    ).fetchone()
+    assert json.loads(changes)["after"]["version"] == "1.0"
 
 
 def test_newer_schema_rejected(tmp_path: pathlib.Path) -> None:
@@ -140,10 +150,10 @@ def test_transaction_spans_catalog_assets_nodes_and_history(
             )
 
 
-def test_base_schema_category_cleanup_scopes_owner() -> None:
+def test_category_cleanup_scopes_owner() -> None:
     with sqlite3.connect(":memory:") as connection:
         connection.execute("PRAGMA foreign_keys=ON")
-        connection.executescript(db_schema())
+        install(connection)
         for user in ("one", "two"):
             connection.execute(
                 "INSERT INTO users VALUES (?, ?, '2026-01-01')", (user, user)
@@ -179,60 +189,13 @@ def test_tag_owner_change_removes_previous_normalized_tags(db: Any) -> None:
         assert not connection.execute("PRAGMA foreign_key_check").fetchall()
 
 
-def test_v2_upgrade_repairs_derived_tags_and_installs_indexes(
-    tmp_path: pathlib.Path,
-) -> None:
-    path = tmp_path / "v2.db"
-    with SQLite3DatabaseAPI(path) as db:
-        key = seed(db)
-        db.insert_tag_info(key, ["valid"])
-        with db.transaction():
-            db.record_operation_commit("preserved")
-    with sqlite3.connect(path) as connection:
-        connection.execute("INSERT INTO asset_tags VALUES (?, 'stale')", (key,))
-        connection.execute("DROP INDEX idx_history_asset_latest")
-        connection.execute("DROP INDEX idx_hda_history_video_filename_reference")
-        connection.execute("DROP TRIGGER sync_tags_update")
-        connection.execute("""CREATE TRIGGER sync_tags_update AFTER UPDATE ON tag_info
-            BEGIN SELECT 1; END""")
-        # Build a genuine pre-v5 database rather than only downgrading its version marker.
-        for (name,) in connection.execute(
-            "SELECT name FROM sqlite_master WHERE type='trigger' AND (name LIKE 'v5_%' OR name LIKE 'v6_%')"
-        ).fetchall():
-            connection.execute(f'DROP TRIGGER "{name}"')
-        for table in (
-            "version_dependencies",
-            "version_checks",
-            "scene_usages",
-            "tracking_requests",
-            "registration_jobs",
-            "version_files",
-            "asset_user_preferences",
-            "version_identity",
-            "asset_identity",
-            "audit_events",
-            "usage_requests",
-            "library_identity",
-            "file_cleanup",
-            "write_context",
-            "migration_reports",
-        ):
-            connection.execute(f'DROP TABLE "{table}"')
-        connection.execute("DROP INDEX idx_scene_record_version")
-        for column in ("library_uuid", "asset_uuid", "version_uuid", "link_status"):
-            connection.execute(
-                f"ALTER TABLE hda_node_location_record DROP COLUMN {column}"
-            )
-        connection.execute("PRAGMA user_version=2")
-        connection.commit()
-        migrate(connection, path)
+def test_tags_are_normalized_and_lookups_use_the_indexes(db: Any) -> None:
+    key = seed(db)
+    db.insert_tag_info(key, ["valid"])
+    with sqlite3.connect(db.db_filepath) as connection:
         assert connection.execute("SELECT tag FROM asset_tags").fetchall() == [
             ("valid",)
         ]
-        assert connection.execute(
-            "SELECT operation_id FROM operation_commits"
-        ).fetchall() == [("preserved",)]
-        assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
         connection.execute("UPDATE tag_info SET tag='changed'")
         assert connection.execute("SELECT tag FROM asset_tags").fetchall() == [
             ("changed",)
@@ -250,11 +213,91 @@ def test_v2_upgrade_repairs_derived_tags_and_installs_indexes(
             "idx_hda_history_video_filename_reference" in row[3]
             for row in reference_plan
         )
-    backups = list(tmp_path.glob("v2.db.pre-v4-*.bak"))
-    assert len(backups) == 1
-    with sqlite3.connect(backups[0]) as backup:
-        assert backup.execute("PRAGMA user_version").fetchone()[0] == 2
-        assert backup.execute("SELECT tag FROM asset_tags ORDER BY tag").fetchall() == [
-            ("stale",),
-            ("valid",),
-        ]
+
+
+def populated(db: Any, tmp_path: pathlib.Path) -> int:
+    key = seed(db, "owner", "asset")
+    assert db.insert_hda_info(key, "1.0", filename="asset.hda", dirpath=tmp_path) == 1
+    assert (
+        db.insert_hipfile_info(
+            key,
+            filename="scene.hip",
+            dirpath=tmp_path,
+            houdini_version="21",
+            hda_license="commercial",
+            operating_system="Linux",
+            sf=-1.5,
+            ef=100.25,
+            fps=23.976,
+        )
+        == 1
+    )
+    assert db.insert_houdini_node_info(key, "box", "Box", False, False, "/obj/box")
+    return key
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        "UPDATE hda_info SET load_count='bad'",
+        "UPDATE hda_info SET load_count=1.5",
+        "UPDATE hda_info SET load_count=-1",
+        "UPDATE hda_info SET is_favorite=2",
+        "UPDATE houdini_node_info SET is_network='true'",
+        "UPDATE houdini_node_info SET is_sub_network=-1",
+        "UPDATE hipfile_info SET fps=0",
+        "UPDATE hipfile_info SET fps='bad'",
+        "UPDATE hipfile_info SET fps=1e999",
+        "UPDATE hipfile_info SET sf='bad'",
+        "INSERT INTO houdini_node_input_connect_info VALUES (1,1,-1,'node','box',0)",
+        "INSERT INTO houdini_node_output_connect_info VALUES (1,1,0,'node','box',0.5)",
+    ],
+)
+def test_constraints_reject_invalid_writes(
+    db: Any, tmp_path: pathlib.Path, mutation: str
+) -> None:
+    populated(db, tmp_path)
+    with sqlite3.connect(db.db_filepath) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(mutation)
+
+
+@pytest.mark.parametrize("identifier", [None, ""])
+def test_operation_markers_require_nonempty_ids(
+    db: Any, identifier: str | None
+) -> None:
+    with pytest.raises(sqlite3.IntegrityError):
+        db._connect.execute(
+            "INSERT INTO operation_commits(operation_id) VALUES (?)", (identifier,)
+        )
+    db._connect.rollback()
+
+
+def test_history_video_path_requires_both_components(
+    db: Any, tmp_path: pathlib.Path
+) -> None:
+    key = populated(db, tmp_path)
+    with sqlite3.connect(db.db_filepath) as connection:
+        connection.execute("PRAGMA foreign_keys=ON")
+        fields = {
+            row[1]: "snapshot"
+            for row in connection.execute("PRAGMA table_info(hda_history)")
+        }
+        fields.update(id=1, hda_key_id=key, video_filename=None, video_dirpath=None)
+        columns = ",".join(fields)
+        placeholders = ",".join("?" for _ in fields)
+        connection.execute(
+            f"INSERT INTO hda_history({columns}) VALUES ({placeholders})",
+            tuple(fields.values()),
+        )
+        connection.commit()
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                "UPDATE hda_history SET video_filename='only_filename.mp4'"
+            )
+        connection.rollback()
+        connection.execute(
+            "UPDATE hda_history SET video_filename='video.mp4', video_dirpath='/video'"
+        )
+        connection.commit()

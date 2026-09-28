@@ -152,9 +152,10 @@ def test_team_uses_main_widgets_and_keeps_personal_database_and_drafts(
             for row in range(panel.models.history_model.rowCount())
         ]
         assert [row.kind for row in rows] == ["version", "rename"]
-        assert rows[1].activity == 'Renamed "TeamWater" → "TeamWater2"'
-        assert rows[1].comment is None
-        assert rows[1].remote and rows[1].hist_id == 0 and rows[1].userid
+        assert rows[1].comment == "NAME (CHANGE) TeamWater → TeamWater2"
+        # The event borrows the version it happened to, so it looks like one.
+        assert rows[1].remote and rows[1].hist_id == rows[0].hist_id
+        assert rows[1].version == rows[0].version and rows[1].userid
         assert not (
             panel.models.history_model.index(1, 0).flags()
             & QtCore.Qt.ItemFlag.ItemIsDragEnabled

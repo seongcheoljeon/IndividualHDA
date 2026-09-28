@@ -8,8 +8,9 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import Any, Self
 
+from libs.database.backup import backup_database
 from libs.database.policy import SQLitePolicy
-from libs.database_migrations import backup_database, migrate
+from libs.database.schema import ensure_schema
 
 
 class DatabaseSession:
@@ -34,7 +35,7 @@ class DatabaseSession:
             # WAL: readers (search worker, revision poller, a second panel) no longer
             # block writers. Persistent; requires a local filesystem (see README).
             self._connect.execute("PRAGMA journal_mode = WAL")
-            migrate(self._connect, self._db_filepath)
+            ensure_schema(self._connect, self._db_filepath)
             self._db_cursor = self._connect.cursor()
         except BaseException:
             self.close()
@@ -75,7 +76,7 @@ class DatabaseSession:
         return self._db_filepath
 
     def create_tables(self) -> bool:
-        migrate(self._connect, self._db_filepath)
+        ensure_schema(self._connect, self._db_filepath)
         return True
 
     def backup(self, destination: str | pathlib.Path) -> None:

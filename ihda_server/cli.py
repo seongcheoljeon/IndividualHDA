@@ -15,7 +15,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("init-db")
-    commands.add_parser("upgrade-db")
     commands.add_parser("check-files")
     clean = commands.add_parser("cleanup-files")
     clean.add_argument("--apply", action="store_true")
@@ -49,10 +48,6 @@ def main() -> None:
     try:
         if args.command == "init-db":
             initialize(engine)
-        elif args.command == "upgrade-db":
-            from ihda_server.migrations import upgrade
-
-            upgrade(engine)
         elif args.command in {"check-files", "cleanup-files"}:
             from pathlib import Path
 

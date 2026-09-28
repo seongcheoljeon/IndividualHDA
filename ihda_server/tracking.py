@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from sqlalchemy import Connection, text
 
-from ihda_server import tracking_schema
 from ihda_server.audit import record_event
 from libs.version_tracking import VersionTracking
 
@@ -67,65 +65,6 @@ def team_tracking(connection: Connection, scope: str) -> VersionTracking:
         )
 
     return VersionTracking(adapter, scope, versions, audit)
-
-
-def install(connection: Connection) -> None:
-    ServerTrackingConnection(connection)
-    for table in tracking_schema.TABLES:
-        table.create(connection, checkfirst=True)
-    for scope in connection.execute(text("SELECT id FROM team_projects")).scalars():
-        tracking = team_tracking(connection, scope)
-        for row in connection.execute(
-            text(
-                "SELECT v.uuid,v.details FROM team_version_state v JOIN team_history h ON h.id=v.history_id WHERE h.project_id=:scope"
-            ),
-            {"scope": scope},
-        ).mappings():
-            details = (
-                json.loads(row["details"])
-                if isinstance(row["details"], str)
-                else row["details"]
-            )
-            tracking.replace_dependencies(row["uuid"], details.get("dependencies", []))
-
-    # Preserve evidence of damaged legacy pointers before clearing them.
-    invalid = (
-        connection.execute(
-            text("""SELECT a.asset_id,a.uuid,a.current_version_uuid,k.project_id FROM team_asset_state a JOIN team_assets k ON k.id=a.asset_id
-        WHERE a.current_version_uuid IS NOT NULL AND NOT EXISTS(SELECT 1 FROM team_version_state v JOIN team_history h ON h.id=v.history_id
-        WHERE v.uuid=a.current_version_uuid AND h.asset_id=a.asset_id AND v.deleted_at IS NULL)""")
-        )
-        .mappings()
-        .all()
-    )
-    for row in invalid:
-        record_event(
-            connection,
-            row["project_id"],
-            "migration",
-            "repair_current_version",
-            {"asset_uuid": row["uuid"], "version_uuid": row["current_version_uuid"]},
-            {"asset_uuid": row["uuid"], "version_uuid": None},
-        )
-        connection.execute(
-            text(
-                "UPDATE team_asset_state SET current_version_uuid=NULL WHERE asset_id=:id"
-            ),
-            {"id": row["asset_id"]},
-        )
-    if connection.dialect.name == "postgresql":
-        from sqlalchemy import inspect
-
-        schema = (
-            connection.get_execution_options().get("schema_translate_map", {}).get(None)
-        )
-        constraints = inspect(connection).get_foreign_keys(
-            "team_asset_state", schema=schema
-        )
-        if not any(item["name"] == "fk_current_version" for item in constraints):
-            connection.exec_driver_sql(
-                "ALTER TABLE team_asset_state ADD CONSTRAINT fk_current_version FOREIGN KEY(current_version_uuid) REFERENCES team_version_state(uuid) ON DELETE SET NULL DEFERRABLE INITIALLY DEFERRED"
-            )
 
 
 def verify_current(connection: Connection, scope: str) -> None:

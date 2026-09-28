@@ -32,7 +32,11 @@ from libs.asset_rename import RenameCounts, RenamePlan, rename_asset
 from libs.database.lifecycle import PersonalLifecycle
 from libs.database.rename_repository import SQLiteRenameRepository
 from libs.database.rows import named_query
-from libs.history_activity import activity_rows
+from libs.history_activity import (
+    ACTIVITY_OPERATIONS,
+    REQUEST_MARKERS,
+    activity_rows,
+)
 from libs.library_explorer import search_asset_ids
 from libs.operation_journal import durable_operation
 from libs.record_codec import decode_record
@@ -258,42 +262,55 @@ class SqliteLibraryRepository:
     def set_thumbnail(
         self, asset_id: int, directory: Path, filename: str, version: str
     ) -> bool:
-        with self._session() as db:
-            done = db.update_thumbnail_info(
-                hda_key_id=asset_id,
-                dirpath=directory,
-                filename=filename,
-                version=version,
-            )
-        if done is None:
-            raise LibraryError("thumbnail was not updated")
-        return bool(done)
+        return (
+            self._set_media("thumbnail_info", asset_id, directory, filename, version)
+            == "update"
+        )
 
     def set_video(
         self, asset_id: int, directory: Path, filename: str, version: str
     ) -> str:
         """Insert or update the preview video row; returns "insert" or "update"."""
+        return self._set_media("video_info", asset_id, directory, filename, version)
+
+    def _set_media(
+        self, table: str, asset_id: int, directory: Path, filename: str, version: str
+    ) -> str:
+        """Insert or update the asset's media row; returns "insert" or "update".
+
+        Re-capturing the same version keeps the path, so the audit trigger sees
+        no change; the replacement is then recorded here so the History shows it.
+        """
         with self._session() as db, db.transaction():
-            current = db.get_video_info(hda_key_id=asset_id)
+            current = named_query(
+                db._connect,
+                f"SELECT dirpath,filename,version FROM {table} WHERE hda_key_id=:asset_id",
+                {"asset_id": asset_id},
+            ).fetchone()
             kind = "update" if current is not None else "insert"
-            write = db.update_video_info if kind == "update" else db.insert_video_info
+            write = getattr(db, f"{kind}_{table}")
             done = write(
                 hda_key_id=asset_id,
                 dirpath=directory,
                 filename=filename,
                 version=version,
             )
-            if done is not None and current == directory / filename:
-                # Re-recording the same version keeps the path, so the audit
-                # trigger sees no change; record the replacement ourselves.
-                snapshot = {"filename": filename, "dirpath": str(directory)}
+            unchanged = current is not None and (
+                current["dirpath"],
+                current["filename"],
+                current["version"],
+            ) == (directory.as_posix(), filename, version)
+            if done is not None and unchanged:
+                snapshot = {
+                    "filename": filename,
+                    "dirpath": directory.as_posix(),
+                    "version": version,
+                }
                 PersonalLifecycle(db._connect).event(
-                    asset_id,
-                    "video_info.update",
-                    {"before": snapshot, "after": snapshot},
+                    asset_id, f"{table}.update", {"before": snapshot, "after": snapshot}
                 )
         if done is None:
-            raise LibraryError("video was not stored")
+            raise LibraryError(f"{table.split('_')[0]} was not stored")
         return kind
 
     def activity(self, owner: str | None = None) -> list[HistoryData]:
@@ -305,16 +322,21 @@ class SqliteLibraryRepository:
         """
         if not self._db_filepath.is_file():
             return []
+        # The markers are read too, so activity_rows can drop the media
+        # updates that a rename or a new version makes in the same request.
+        operations = ",".join(
+            f"'{op}'" for op in dict.fromkeys(ACTIVITY_OPERATIONS + REQUEST_MARKERS)
+        )
         with self._session() as db:
             rows = named_query(
                 db._connect,
-                """SELECT e.operation,e.actor,e.occurred_at,e.request_id,e.changes,
+                f"""SELECT e.operation,e.actor,e.occurred_at,e.request_id,e.changes,
                           k.id AS hda_id,k.name AS org_hda_name,k.category AS node_category
                    FROM audit_events e
                    JOIN asset_identity a ON a.uuid=e.asset_uuid
                    JOIN hda_key k ON k.id=a.asset_id
                    WHERE a.deleted_at IS NULL AND e.actor=:user_id
-                     AND e.operation IN ('hda_key.update','video_info.insert','video_info.update')
+                     AND e.operation IN ({operations})
                    ORDER BY e.occurred_at,e.rowid""",
                 {"user_id": owner},
             ).fetchall()

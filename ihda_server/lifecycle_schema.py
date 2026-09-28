@@ -1,6 +1,15 @@
-"""Additive v2 tables. Legacy v1 table definitions remain migration inputs."""
+"""Asset/version state, preferences, audit events and file references."""
 
-from sqlalchemy import JSON, Column, ForeignKey, Index, Integer, String, Table
+from sqlalchemy import (
+    JSON,
+    Column,
+    ForeignKey,
+    ForeignKeyConstraint,
+    Index,
+    Integer,
+    String,
+    Table,
+)
 
 from ihda_server.schema import metadata
 
@@ -15,6 +24,18 @@ asset_state = Table(
     Column("deleted_at", String(40)),
     Column("deleted_by", String(36)),
     Column("provenance", JSON, nullable=False),
+    # Deferred so a version and the pointer to it commit together. use_alter
+    # emits it as ALTER TABLE after both tables exist; SQLite (contract tests)
+    # cannot ALTER constraints in, so there it is not enforced.
+    ForeignKeyConstraint(
+        ["current_version_uuid"],
+        ["team_version_state.uuid"],
+        name="fk_current_version",
+        ondelete="SET NULL",
+        deferrable=True,
+        initially="DEFERRED",
+        use_alter=True,
+    ),
 )
 version_state = Table(
     "team_version_state",

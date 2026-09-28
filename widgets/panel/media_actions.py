@@ -130,6 +130,8 @@ class PanelMediaActions:
             log_handler.LogHandler.log_msg(
                 method=logging.info, msg="thumbnail update completed"
             )
+        # The write leaves an audit row the History shows; read it now.
+        self.bindings.session.actions.refresh()
 
     def _slot_make_video(self) -> None:
         if not self.bindings.host_enabled:

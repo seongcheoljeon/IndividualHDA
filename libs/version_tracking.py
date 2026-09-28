@@ -15,30 +15,6 @@ from libs.search_limits import TEAM_PAGE_DEFAULT, TEAM_PAGE_MAX
 CAPABILITY = "version_tracking"
 
 
-def schema_statements() -> tuple[str, ...]:
-    return (
-        """CREATE TABLE version_dependencies (scope_id TEXT NOT NULL, source_uuid TEXT NOT NULL,
-        ordinal INTEGER NOT NULL, target_scope TEXT, target_asset TEXT, target_version TEXT,
-        kind TEXT NOT NULL, target TEXT NOT NULL, version TEXT NOT NULL, required INTEGER NOT NULL CHECK(required IN (0,1)),
-        source TEXT NOT NULL, PRIMARY KEY(scope_id,source_uuid,ordinal))""",
-        "CREATE INDEX idx_dependency_target ON version_dependencies(target_scope,target_asset,target_version)",
-        """CREATE TABLE version_checks (scope_id TEXT NOT NULL, id TEXT NOT NULL, version_uuid TEXT NOT NULL,
-        asset_uuid TEXT NOT NULL, actor TEXT NOT NULL, checked_at TEXT NOT NULL, created_at TEXT NOT NULL,
-        document TEXT NOT NULL, PRIMARY KEY(scope_id,id))""",
-        "CREATE INDEX idx_checks_version ON version_checks(scope_id,version_uuid,created_at,id)",
-        """CREATE TABLE scene_usages (scope_id TEXT NOT NULL,id TEXT NOT NULL,actor TEXT NOT NULL,
-        client_id TEXT NOT NULL,scene_key TEXT NOT NULL,node_path TEXT NOT NULL,asset_uuid TEXT NOT NULL,
-        version_uuid TEXT NOT NULL,first_seen TEXT NOT NULL,last_seen TEXT NOT NULL,document TEXT NOT NULL,
-        PRIMARY KEY(scope_id,id),UNIQUE(scope_id,actor,client_id,scene_key,node_path,version_uuid))""",
-        "CREATE INDEX idx_scene_version ON scene_usages(scope_id,asset_uuid,version_uuid,last_seen,id)",
-        """CREATE TABLE tracking_requests (scope_id TEXT NOT NULL,actor TEXT NOT NULL,id TEXT NOT NULL,
-        fingerprint TEXT NOT NULL,result TEXT NOT NULL,PRIMARY KEY(scope_id,actor,id))""",
-        """CREATE TABLE registration_jobs (id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL,
-        phase TEXT NOT NULL, document TEXT NOT NULL, result TEXT, error TEXT,
-        created_at TEXT NOT NULL, updated_at TEXT NOT NULL)""",
-    )
-
-
 class TrackingConnection(Protocol):
     def rows(self, sql: str, values: dict[str, Any]) -> list[dict[str, Any]]: ...
     def write(self, sql: str, values: dict[str, Any]) -> None: ...

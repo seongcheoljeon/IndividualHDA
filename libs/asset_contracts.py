@@ -66,12 +66,11 @@ class AssetData:
 class HistoryData:
     remote: bool = False
     library_id: str = ""
-    # "version" is a real hda_history row; "rename"/"video" rows come from
-    # audit events and own no files, so the panel neither opens nor deletes them.
+    # "version" is a real hda_history row; "rename"/"video"/"thumbnail" rows come
+    # from audit events and own no files, so the panel neither opens nor deletes them.
+    # They borrow the fields of the version they happened to (see
+    # merge_history_rows), so hist_id and the paths are that version's.
     kind: str = "version"
-    # What happened, in words, for a row that is not a version. The Comment
-    # column holds the description its author typed and nothing else.
-    activity: str = ""
     available: bool = True
     hist_id: int = 0
     hda_id: int

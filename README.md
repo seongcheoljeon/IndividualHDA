@@ -131,7 +131,7 @@ the answer so you can see what the model returned.
 
 ## Data safety
 
-The database uses SQLite schema v6 with foreign keys, validation checks, normalized tags, indexes, and transactional migrations. Existing databases are backed up before an upgrade.
+The database is SQLite with foreign keys, validation checks, normalized tags and indexes. The whole schema lives in one module, `libs/database/schema.py`, stamped with `SCHEMA_VERSION`. There is no in-place upgrade: a library file of another version is backed up next to itself as `ihda.db.pre-v<N>-<stamp>.bak` and the library starts empty.
 
 File operations use a persistent journal. Imports, renames, deletions, path repairs, and restores can be recovered after an interrupted operation. Recovery copies are retained until you remove them through **Library Tools**.
 
@@ -148,8 +148,8 @@ the server is unavailable; **Retry scene reporting** resends them.
 **Pending registrations** resumes completed captures/publication or interrupted
 Team uploads using the original request. Incomplete Houdini captures need recapture.
 Discard only removes files whose ownership can be established. Submitted Team
-commands must be retried before cleanup. Server schema v3 requires the administrator's
-explicit migration; API v2 is retained and older servers hide the new tracking tab.
+commands must be retried before cleanup. A team server whose schema version differs
+from the build's refuses to start; API v2 is retained and older servers hide the new tracking tab.
 
 ## Development
 
@@ -197,6 +197,6 @@ MIT License. Copyright (c) 2020 Seongcheol Jeon. Third-party notices are in [`TH
 
 `Library Tools → Trash…` restores deleted assets/versions; files remain until explicit permanent
 cleanup. `Version details…` edits version descriptions and dependencies. Favorites and successful
-import counts are per user. Existing personal libraries upgrade to SQLite schema 6 with a backup.
-Existing team servers require a coordinated app/server upgrade and the explicit `upgrade-db`
-command; see [migration and file maintenance](docs/TEAM_LIBRARY.md#데이터-기반-v2-업그레이드).
+import counts are per user. A personal library of another schema version is backed up and
+replaced by an empty one. A team server of another schema version is recreated from an empty
+database with `init-db`; see [schema versions](docs/TEAM_LIBRARY.md#스키마-버전).

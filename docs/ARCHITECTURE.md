@@ -246,8 +246,8 @@ Operation mixins share exactly one session. They must not open independent
 connections or commit directly: use `_commit`/`_rollback` so operations across
 multiple domains participate in the caller's `transaction()` block. Keep SQL
 parameters bound, and create/use/close each database API instance on one thread.
-The migration implementation remains in `libs/database_migrations.py`; moving
-queries between files does not require or change the database schema version.
+The whole personal schema is declared in `libs/database/schema.py`; moving
+queries between files does not require or change `SCHEMA_VERSION`.
 
 ## Verification
 
@@ -534,9 +534,10 @@ source switching is coordinated by the integration above.
 
 ### Library metadata and lifecycle v2
 
-The v4 SQLite schema/rebuild is a frozen migration input (`database_migrations_v4`).
-The ordered migrator adds identity, preferences, audit, version metadata, file references,
-and trash state without replacing integer IDs. Legacy facade writes share these rules
+The personal schema (`libs/database/schema.py`) declares identity, preferences, audit,
+version metadata, file references and trash state next to the legacy tables, keeping the
+integer IDs. There is no in-place upgrade: a file of another `SCHEMA_VERSION` is backed
+up and the library starts empty. Legacy facade writes share these rules
 through transaction-local request context and database triggers. Missing file diagnostics
 never delete metadata. Personal lifecycle operations are implemented by `PersonalLifecycle`;
 `LocalManagement` and `RemoteManagement` implement the focused management view port.
@@ -710,17 +711,15 @@ journals and the scene outbox are local state, separate from server backups.
 
 ### Version tracking storage and application boundaries
 
-Personal schema v6 adds `version_dependencies`, `version_checks`, `scene_usages`,
-`tracking_requests`, `registration_jobs`, and UUID/link-status fields on legacy
-scene records. Migration backs up first; only unique asset/version/file matches
-are linked. Ambiguous observations remain unresolved. Current-version triggers
+The personal schema has `version_dependencies`, `version_checks`, `scene_usages`,
+`tracking_requests`, `registration_jobs`, and UUID/link-status fields on scene
+records. Current-version triggers
 validate ownership and active state; ordinary same-version activity cannot advance
 that pointer. Deleted dependency targets retain their UUID and original text.
 
-Team schema v3 adds the first four tracking tables to SQLAlchemy metadata, so
-PostgreSQL dumps and inventory verification include them. Explicit migration seeds
-normalized dependencies and logs/clears invalid current pointers. PostgreSQL adds a
-deferred current-version FK; authorized catalog transactions also check ownership
+The team schema declares the first four tracking tables in SQLAlchemy metadata, so
+PostgreSQL dumps and inventory verification include them, and the deferred
+current-version FK (`fk_current_version`, emitted by `create_all` on PostgreSQL); authorized catalog transactions also check ownership
 and active state before commit. API v2 gains a `version_tracking` capability and
 scoped GET/POST tracking routes. Older servers retain the old details UI.
 
@@ -745,8 +744,8 @@ Deletion warnings list dependent versions and never forbid an explicit deletion.
 Personal → Team copy remaps dependencies between copied versions and marks copied
 checks as imported, retaining source report/actor/version provenance. It does not
 certify the destination environment. Existing backup snapshots preserve tracking;
-local unfinished job paths require review after relocation. Schema-v2 Team bundles
-remain restorable into an empty database; run the explicit migration afterward.
+local unfinished job paths require review after relocation. A Team bundle restores
+only into a database of the same schema version.
 
 ### Rename and Trash presentation boundaries
 

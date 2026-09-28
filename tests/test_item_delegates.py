@@ -340,69 +340,37 @@ def test_version_pills_are_accented_and_tables_drop_grid_and_row_numbers(
         view.deleteLater()
 
 
-def test_activity_rows_look_like_events_not_like_broken_versions(app: Any) -> None:
-    """The event used to borrow the Comment column and show no image at all."""
+def test_activity_rows_are_drawn_like_the_version_they_belong_to(app: Any) -> None:
+    """A video or rename row shows the version's id, picture and icons, with
+    the event in the Comment column, the way "NODE (INSERT)" rows do."""
     from libs.asset_contracts import HistoryData
     from libs.model_columns import HistoryColumn
     from model.ihda_history_model import HistoryModel
-    from widgets.item_delegates import RowDelegate, two_line_row_height
 
     activity = HistoryData(
         kind="video",
-        activity="Video attached",
-        hist_id=0,
+        comment="VIDEO (INSERT)",
+        hist_id=7,
         hda_id=1,
         org_hda_name="Lava",
-        version="",
+        version="1.0",
         node_category="sop",
+        hou_version="21.0.440",
     )
     model = HistoryModel(items=[activity])
-    # The Comment column stays empty: it holds what a version's author wrote.
-    assert model.index(0, HistoryColumn.COMMENT).data(
-        QtCore.Qt.ItemDataRole.DisplayRole
-    ) in (None, "")
-    assert model.index(0, HistoryColumn.NAME).data(HistoryModel.activity_role) == (
-        "Video attached"
+    display = QtCore.Qt.ItemDataRole.DisplayRole
+    assert model.index(0, HistoryColumn.ID).data(display) == 7
+    assert model.index(0, HistoryColumn.COMMENT).data(display) == "VIDEO (INSERT)"
+    assert (
+        not model.index(0, HistoryColumn.NAME)
+        .data(QtCore.Qt.ItemDataRole.FontRole)
+        .italic()
     )
-    # An event carries its own icon where a version keeps its thumbnail.
-    icon = model.index(0, HistoryColumn.NAME).data(
-        QtCore.Qt.ItemDataRole.DecorationRole
+    # The Houdini icon is drawn as for any version row.
+    assert isinstance(
+        model.index(0, HistoryColumn.HOUDINI).data(
+            QtCore.Qt.ItemDataRole.DecorationRole
+        ),
+        QtGui.QPixmap,
     )
-    assert isinstance(icon, QtGui.QPixmap) and not icon.isNull()
-
-    rows = RowDelegate(
-        None,
-        data_role=HistoryModel.data_role,
-        name_column=HistoryColumn.NAME,
-        secondary_column=HistoryColumn.DEFINITION,
-        version_column=HistoryColumn.VERSION,
-        activity_role=HistoryModel.activity_role,
-    )
-    rect = QtCore.QRect(0, 0, 240, max(46, two_line_row_height(QtGui.QFont())))
-    cell = render(rows, option_for(rect), model.index(0, HistoryColumn.NAME))
-    without = RowDelegate(
-        None,
-        data_role=HistoryModel.data_role,
-        name_column=HistoryColumn.NAME,
-        secondary_column=HistoryColumn.DEFINITION,
-        version_column=HistoryColumn.VERSION,
-    )
-    one_line = render(without, option_for(rect), model.index(0, HistoryColumn.NAME))
-
-    def lower_half(image: QtGui.QImage) -> int:
-        return sum(
-            1
-            for x in range(image.width())
-            for y in range(image.height() // 2, image.height())
-            if image.pixelColor(x, y).alpha()
-        )
-
-    assert lower_half(cell) > lower_half(one_line)  # the asset name's line
-    # A row too short for two lines keeps the event, which is the news.
-    short = QtCore.QRect(0, 0, 240, 18)
-    assert painted(render(rows, option_for(short), model.index(0, 1))) > 0
-    # An activity row owns no definition and no Houdini version, so no icon.
-    for column in (HistoryColumn.DEFINITION, HistoryColumn.HOUDINI):
-        assert (
-            model.index(0, column).data(QtCore.Qt.ItemDataRole.DecorationRole) is None
-        )
+    assert not model.index(0, 0).flags() & QtCore.Qt.ItemFlag.ItemIsDragEnabled
