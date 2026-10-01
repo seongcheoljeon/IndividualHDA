@@ -18,7 +18,7 @@ jobs:
             group: server-test
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.11'
           enable-cache: true
@@ -39,7 +39,7 @@ jobs:
       QTWEBENGINE_CHROMIUM_FLAGS: --disable-gpu
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ matrix.python }}
           enable-cache: true
@@ -83,7 +83,7 @@ jobs:
       IHDA_TEST_POSTGRES_URL: postgresql+psycopg://ihda:test-only-password@127.0.0.1:5432/ihda_test
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: '3.11'
           enable-cache: true
