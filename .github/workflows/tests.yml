@@ -57,7 +57,7 @@ jobs:
         run: uv run --no-sync python -m tools.dev_app --smoke
       - name: Upload test report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pytest-${{ matrix.os }}-py${{ matrix.python }}
           path: |
